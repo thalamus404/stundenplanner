@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Nichts von fremden Servern, kein Inline-Skript, kein Inline-Stil: Die Richtlinie macht ein
+     durchgerutschtes Stück HTML aus der Datendatei wirkungslos (alles wird ohnehin escaped). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070A">
+<meta name="description" content="Stundenplan zusammenstellen: Termingruppen wählen, Überschneidungen sehen, die Woche planen. Die Auswahl bleibt in deinem Browser.">
+<meta name="apple-mobile-web-app-title" content="Stundenplan">
+<link rel="icon" href="data:,">
+<title>Stundenplanner</title>
+<link rel="stylesheet" href="stil.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main class="sp" id="stundenplan">
+  <header class="sp-head">
+    <div><p class="sp-eyebrow" id="sp-eyebrow">Stundenplan</p><h1>Deine Woche. Dein Plan.</h1>
+      <p class="sp-intro">Alle Lehrveranstaltungen an einem Ort. Wähle deine Termingruppen und sieh, wie deine Woche entsteht.</p></div>
+    <div class="sp-actions">
+      <button type="button" id="sp-share" disabled>Plan teilen</button>
+      <button type="button" id="sp-reload">Daten neu laden ↻</button>
+    </div>
+  </header>
+  <div id="sp-plan" class="sp-plan" hidden>
+    <label>Studiengang · Fachsemester <select id="sp-plan-select"></select></label>
+  </div>
+  <div id="sp-status" class="sp-status" role="status" aria-live="polite">Stundenplan wird geladen …</div>
+  <p class="sp-local"><span id="sp-local-text">Deine Auswahl wird nur in diesem Browser gespeichert.</span>
+    <button type="button" id="sp-reset" disabled>Auswahl zurücksetzen</button></p>
+  <div id="sp-sharebox" class="sp-notice sp-sharebox" hidden>
+    <label for="sp-share-url">Teilen-Link: Er trägt deine Auswahl in der Adresse. Wer ihn öffnet, sieht deinen Plan und entscheidet selbst, ob er ihn übernimmt.</label>
+    <div class="sp-share-row"><input id="sp-share-url" type="text" readonly><button type="button" id="sp-share-copy">Kopieren</button></div>
+    <p id="sp-share-done" class="sp-share-done" hidden>Kopiert.</p>
+  </div>
+  <div id="sp-shared" aria-live="polite"></div>
+  <div id="sp-error" role="alert" hidden></div>
+  <div id="sp-modules" class="sp-modules"></div>
+  <div id="sp-feedback" aria-live="polite"></div>
+  <section class="sp-calendar" id="sp-calendar" hidden>
+    <header class="sp-toolbar">
+      <div><h2>Wochenbaukasten</h2><p id="sp-cycle">Wochenskelett · alle angebotenen Termine</p></div>
+      <div class="sp-controls">
+        <label>Ansicht <select id="sp-view"><option value="all">Alle Möglichkeiten</option><option value="open">Noch offen</option><option value="selected">Mein Stundenplan</option></select></label>
+        <label>Modul <select id="sp-filter"><option value="">Alle Module</option></select></label>
+        <label>Zeitraum <select id="sp-period"><option value="skeleton">Wochenskelett</option></select></label>
+        <label>Tag <select id="sp-day"><option value="">Ganze Woche</option><option value="0">Montag</option><option value="1">Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></label>
+      </div>
+    </header>
+    <p class="sp-help">Ein Klick auf „Einplanen“ übernimmt die ganze Termingruppe, auch bei mehreren Wochentagen. Volle Zeitfenster lassen sich aufklappen.</p>
+    <div id="sp-grid"></div>
+    <div id="sp-unplanned"></div>
+  </section>
+  <details class="sp-rules"><summary>So funktioniert die Planung</summary>
+    <p>Pro Modulbestandteil kannst du eine Termingruppe einplanen und jederzeit wechseln. Die Liste oben streicht eingeplante Bestandteile durch. Die SWS stammen aus der gültigen MOSES-Modulbeschreibung; alternative Gruppen werden nicht addiert. Die Auswahl ist eine Planung und meldet dich für keinen Kurs an.</p>
+    <p>Das Wochenskelett fasst alle angebotenen Termine zusammen. Einzeltermine und Raumwechsel stehen in den Termindetails. Wähle eine konkrete Kalenderwoche, um nur ihre tatsächlichen Termine zu sehen. Eine A/B-Ansicht erscheint automatisch, sobald ein zweiwöchiger Rhythmus aus den Quelldaten erkennbar ist. Zeitkonflikte werden über das gesamte Semester anhand der einzelnen Termine geprüft.</p>
+    <p>Deine Auswahl bleibt in diesem Browser. Es gibt kein Konto, und sie wird auf keinem Server gespeichert. Gespeichert wird erst, wenn du eine Gruppe wählst, und nur, welche Gruppe du je Bestandteil gewählt hast. „Auswahl zurücksetzen“ löscht sie. Ändern sich Zeit oder Raum einer Gruppe, die du gewählt hast, sagt es die Seite, bis du die Änderung als geprüft markierst.</p>
+    <p>Der Teilen-Link trägt deine Auswahl in der Adresse, hinter dem #. Dieser Teil geht nicht an den Server. Mit dem Link nimmst du den Plan auf ein anderes Gerät mit oder vergleichst ihn mit anderen. Wer ihn öffnet, sieht den Plan zuerst nur an; übernommen wird er erst auf Knopfdruck, und eine vorhandene Auswahl wird nie ohne Rückfrage ersetzt.</p>
+    <p>Die Termine stammen aus den öffentlichen Seiten von MOSES; der Datenstand steht oben. Gruppenbindungen, Anmeldung, besondere Termine und asynchrone Anteile bitte anhand der verlinkten MOSES-Hinweise und ISIS-Kurse prüfen. Der Baukasten bestätigt keine Zulassung und keine erfolgreiche Anmeldung.</p>
+  </details>
+  <noscript><p class="sp-notice">Diese Seite braucht JavaScript: Die Auswahl und der Wochenbaukasten laufen in deinem Browser.</p></noscript>
+</main>
+<footer class="sp-foot">
+  <p><b>Kein offizielles Angebot der TU Berlin.</b> Verbindlich sind MOSES und die Anmeldungen dort.</p>
+  <p><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a></p>
+</footer>
+</body>
+</html>
