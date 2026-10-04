@@ -97,7 +97,7 @@ export function bestaetige(auswahl, componentId, gruppe) {
  * Hängt jedem Bestandteil und jeder Gruppe an, was die Seite zum Zeichnen braucht (wie flatten()
  * im Vorbild), und gibt die flachen Listen zurück. Verändert die Objekte des Plans, damit
  * g.component.module ohne Suche geht. `farbe` ist die Stelle des Moduls im Plan, reihum über die acht
- * Modulfarben (CSS-Klassen m0 … m7, docs/DESIGN.md §5.3): das neunte Modul hat wieder die erste.
+ * Modulfarben (Index 0 … 7 für die CSS-Klassen m1 … m8, docs/DESIGN.md §5.3): das neunte Modul hat wieder die erste.
  */
 export function bestand(plan) {
   const groups = [];

@@ -14,19 +14,19 @@
   --schatten: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12);
   --ein: cubic-bezier(.2, 0, 0, 1);
   --aus: cubic-bezier(.3, 0, 1, 1);
-  --h-min: 20px;
+  --h-min: 20.5px;
   --ziel: 32px;
   --rand-x: 24px;
+  --m1-hauch: #ebf5ff; --m1-rand: #488acb; --m1-flaeche: #b4d8ff; --m1-tinte: #0e375c;
+  --m2-hauch: #fbf2e3; --m2-rand: #ac7d1b; --m2-flaeche: #eecf9c; --m2-tinte: #483000;
+  --m3-hauch: #eaf8ec; --m3-rand: #4a9a5e; --m3-flaeche: #b2e3bb; --m3-tinte: #0d401e;
+  --m4-hauch: #ffeef5; --m4-rand: #bb6690; --m4-flaeche: #fbc1db; --m4-tinte: #53223b;
+  --m5-hauch: #e3f8f9; --m5-rand: #03999f; --m5-flaeche: #98e4e8; --m5-tinte: #003e41;
+  --m6-hauch: #f5f1ff; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
+  --m7-hauch: #fff0e8; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
+  --m8-hauch: #f3f6e5; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
   font: 14px/20px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
 }
-.m0 { --hauch: #ebf5ff; --rand: #488acb; --flaeche: #b4d8ff; --tinte: #0e375c; }
-.m1 { --hauch: #fbf2e3; --rand: #ac7d1b; --flaeche: #eecf9c; --tinte: #483000; }
-.m2 { --hauch: #eaf8ec; --rand: #4a9a5e; --flaeche: #b2e3bb; --tinte: #0d401e; }
-.m3 { --hauch: #ffeef5; --rand: #bb6690; --flaeche: #fbc1db; --tinte: #53223b; }
-.m4 { --hauch: #e3f8f9; --rand: #03999f; --flaeche: #98e4e8; --tinte: #003e41; }
-.m5 { --hauch: #f5f1ff; --rand: #9274c3; --flaeche: #dbcaff; --tinte: #3c2a58; }
-.m6 { --hauch: #fff0e8; --rand: #bf6e3e; --flaeche: #fec7a9; --tinte: #552707; }
-.m7 { --hauch: #f3f6e5; --rand: #848e2d; --flaeche: #d2dba2; --tinte: #343900; }
 @media (prefers-color-scheme: dark) {
   :root {
     --grau-1: #292a2c; --grau-2: #111213; --grau-3: #1b1c1e; --grau-4: #202224; --grau-5: #2d2e30;
@@ -35,17 +35,27 @@
     --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
     --rand-ebene: rgb(255 255 255 / .08);
     --schatten: none;
+    --m1-hauch: #131f2c; --m1-rand: #619dda; --m1-flaeche: #254a6e; --m1-tinte: #e9f3ff;
+    --m2-hauch: #261c0d; --m2-rand: #bc9041; --m2-flaeche: #5d420e; --m2-tinte: #fbf0e0;
+    --m3-hauch: #142216; --m3-rand: #63ab74; --m3-flaeche: #265331; --m3-tinte: #e7f7e9;
+    --m4-hauch: #291820; --m4-rand: #cb7ba2; --m4-flaeche: #65364d; --m4-tinte: #ffecf4;
+    --m5-hauch: #0a2224; --m5-rand: #20acb3; --m5-flaeche: #005356; --m5-tinte: #dff7f8;
+    --m6-hauch: #201b2a; --m6-rand: #a388d2; --m6-flaeche: #4e3e6a; --m6-tinte: #f4efff;
+    --m7-hauch: #2a1a11; --m7-rand: #cf8358; --m7-flaeche: #683b20; --m7-tinte: #ffeee5;
+    --m8-hauch: #1e200f; --m8-rand: #96a04c; --m8-flaeche: #474c17; --m8-tinte: #f1f4e1;
   }
-  .m0 { --hauch: #131f2c; --rand: #619dda; --flaeche: #254a6e; --tinte: #e9f3ff; }
-  .m1 { --hauch: #261c0d; --rand: #bc9041; --flaeche: #5d420e; --tinte: #fbf0e0; }
-  .m2 { --hauch: #142216; --rand: #63ab74; --flaeche: #265331; --tinte: #e7f7e9; }
-  .m3 { --hauch: #291820; --rand: #cb7ba2; --flaeche: #65364d; --tinte: #ffecf4; }
-  .m4 { --hauch: #0a2224; --rand: #20acb3; --flaeche: #005356; --tinte: #dff7f8; }
-  .m5 { --hauch: #201b2a; --rand: #a388d2; --flaeche: #4e3e6a; --tinte: #f4efff; }
-  .m6 { --hauch: #2a1a11; --rand: #cf8358; --flaeche: #683b20; --tinte: #ffeee5; }
-  .m7 { --hauch: #1e200f; --rand: #96a04c; --flaeche: #474c17; --tinte: #f1f4e1; }
 }
-/* Touch: 22 px je Stunde und 1 px Luft je Kachel, damit eine 2-h-Kachel 44 px hoch bleibt (§5.11). */
+/* Ein Modul bekommt seine Farbe über die Klasse m1 … m8 (Stelle im Plan, reihum, §5.3). */
+.m1 { --hauch: var(--m1-hauch); --rand: var(--m1-rand); --flaeche: var(--m1-flaeche); --tinte: var(--m1-tinte); }
+.m2 { --hauch: var(--m2-hauch); --rand: var(--m2-rand); --flaeche: var(--m2-flaeche); --tinte: var(--m2-tinte); }
+.m3 { --hauch: var(--m3-hauch); --rand: var(--m3-rand); --flaeche: var(--m3-flaeche); --tinte: var(--m3-tinte); }
+.m4 { --hauch: var(--m4-hauch); --rand: var(--m4-rand); --flaeche: var(--m4-flaeche); --tinte: var(--m4-tinte); }
+.m5 { --hauch: var(--m5-hauch); --rand: var(--m5-rand); --flaeche: var(--m5-flaeche); --tinte: var(--m5-tinte); }
+.m6 { --hauch: var(--m6-hauch); --rand: var(--m6-rand); --flaeche: var(--m6-flaeche); --tinte: var(--m6-tinte); }
+.m7 { --hauch: var(--m7-hauch); --rand: var(--m7-rand); --flaeche: var(--m7-flaeche); --tinte: var(--m7-tinte); }
+.m8 { --hauch: var(--m8-hauch); --rand: var(--m8-rand); --flaeche: var(--m8-flaeche); --tinte: var(--m8-tinte); }
+/* Mindesthöhe je Stunde 20 px, Touch 22 px (§3.2), je plus 0,5 px: Jede Kachel hat oben 1 px Luft,
+   und eine 2-h-Kachel soll trotzdem 40 bzw. 44 px hoch bleiben (§5.11). */
 @media (pointer: coarse) { :root { --h-min: 22.5px; --ziel: 44px; } }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -59,19 +69,21 @@ button, select, input { font: inherit; color: inherit; }
 button { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
 a { color: inherit; text-underline-offset: 2px; }
 :focus-visible { outline: 2px solid var(--grau-10); outline-offset: 2px; }
+/* Knöpfe sind positioniert (für die Überlage); ohne z-index malte der Nachbar über den Fokusring. */
+button:focus-visible { z-index: 1; }
 .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .symbole { position: fixed; top: 0; left: 0; width: 0; height: 0; overflow: hidden; }
 .nur-sr { position: fixed; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Zeigen und Drücken: eine Überlage in der Schriftfarbe auf einem Pseudo-Element, damit nur
    dessen Deckkraft animiert wird (§5.9). Nichts hebt sich, nichts skaliert. */
-button, .seg span { position: relative; }
-button::after, .seg span::after {
+button { position: relative; }
+button::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor;
   opacity: 0; transition: opacity 100ms linear; pointer-events: none;
 }
-@media (hover: hover) { button:hover::after, .seg span:hover::after { opacity: .08; } }
-button:active::after, .seg span:active::after { opacity: .1; }
+@media (hover: hover) { button:hover::after { opacity: .08; } }
+button:active::after { opacity: .1; }
 :disabled::after { display: none; }
 
 /* ── Die fünf Zonen ─────────────────────────────────────────────────────────────────────────── */
@@ -111,14 +123,15 @@ button:active::after, .seg span:active::after { opacity: .1; }
   height: var(--ziel); min-width: var(--ziel); padding: 0 10px; border-radius: 8px; border: 1px solid var(--rand);
   display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;
 }
-.chip:focus-visible { outline-offset: 4px; }
 .chip .c-zahl, .chip .c-mehr { font-size: 12px; color: var(--grau-9); }
 .chip.gewaehlt { background: var(--flaeche); border-color: var(--flaeche); color: var(--tinte); }
 .chip.gewaehlt .c-zahl, .chip.gewaehlt .c-mehr { color: inherit; }
 .chip[aria-pressed="true"] { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); }
 .chip[aria-pressed="true"] :is(.c-zahl, .c-mehr) { color: inherit; }
-.chip.konflikt { box-shadow: 0 0 0 1px var(--grau-2), 0 0 0 3px var(--konflikt); }
-.chip.hinweis { box-shadow: 0 0 0 1px var(--grau-2), 0 0 0 3px var(--hinweis); }
+/* Die Ringe sind outline mit 1 px Luft, kein Schatten: Schatten haben nur schwebende Ebenen (§5.8). */
+.chip.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; }
+.chip.hinweis { outline: 2px solid var(--hinweis); outline-offset: 1px; }
+.chip:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 4px; }
 .chip .i { width: 14px; height: 14px; }
 .c-modul, .c-mehr, .tag .lang { display: none; }
 @media (min-width: 1600px) { .c-mehr { display: inline; } }
@@ -129,11 +142,8 @@ button:active::after, .seg span:active::after { opacity: .1; }
 .w-stand { margin-left: auto; display: flex; align-items: center; gap: 12px; min-height: 40px; color: var(--grau-9); }
 .w-stand .tipp { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .segmente { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--grau-3); }
-.seg { position: relative; display: flex; }
-.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
-.seg span { display: flex; align-items: center; height: var(--ziel); padding: 0 12px; border-radius: 6px; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
-.seg input:checked + span { background: var(--grau-1); border-color: var(--grau-6); font-weight: 600; }
-.seg input:focus-visible + span { outline: 2px solid var(--grau-10); outline-offset: 2px; }
+.seg { display: flex; align-items: center; height: var(--ziel); padding: 0 12px; border-radius: 6px; border: 1px solid transparent; white-space: nowrap; }
+.seg[aria-pressed="true"] { background: var(--grau-1); border-color: var(--grau-6); font-weight: 600; }
 .wahl { position: relative; display: inline-flex; align-items: center; }
 .wahl select {
   appearance: none; -webkit-appearance: none; height: var(--ziel); max-width: 220px; padding: 0 30px 0 10px;
@@ -186,14 +196,14 @@ button:active::after, .seg span:active::after { opacity: .1; }
 .kachel:focus-within, .kachel.zeigen { z-index: 2; }
 .k-flaeche {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden;
-  padding: 3px 4px; border: 1px solid var(--rand); border-radius: 4px; background: var(--hauch);
+  padding: 2px 4px; border: 1px solid var(--rand); border-radius: 4px; background: var(--hauch);
   font-size: 12px; line-height: 16px; text-align: left;
 }
 .k-flaeche:focus-visible { outline-offset: 4px; }
 .gewaehlt > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); }
 .kontext > .k-flaeche { background: var(--grau-3); border-color: var(--grau-5); }
-.konflikt > .k-flaeche { box-shadow: 0 0 0 1px var(--grau-2), 0 0 0 3px var(--konflikt); }
-.zeigen > .k-flaeche { box-shadow: 0 0 0 1px var(--grau-2), 0 0 0 3px var(--grau-10); }
+.kachel.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; border-radius: 4px; }
+.kachel.zeigen { outline: 2px solid var(--grau-10); outline-offset: 1px; border-radius: 4px; }
 .k-flaeche > span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mit-sym > .k-flaeche > span { max-width: calc(100% - 14px); }
 .k-typ, .k-mod, .k-name { font-weight: 600; }
@@ -213,6 +223,12 @@ button:active::after, .seg span:active::after { opacity: .1; }
   .teil .k-mod, .teil .k-lang { display: none; }
   .teil .k-name { display: block; font-size: 14px; line-height: 20px; }
   .k-sym { top: 8px; right: 8px; }
+}
+/* Eine breite, aber niedrige Kachel (unter 52 px, kleine Fenster, Zoom) behält beide Zeilen,
+   die erste in 12 px statt abgeschnitten (§4.4: bei 200 % wird nichts abgeschnitten). */
+@container kachel (min-width: 112px) and (max-height: 51.9px) {
+  .k-flaeche { padding-block: 2px; }
+  .k-mod, .teil .k-name { font-size: 12px; line-height: 16px; }
 }
 @container kachel (min-width: 112px) and (min-height: 72px) { .k-ort { display: block; } }
 @container kachel (min-width: 112px) and (min-height: 76px) { .aktionen .k-akt { display: inline-flex; } }
@@ -283,18 +299,19 @@ details[open] > summary::before { transform: rotate(45deg); }
 .ansicht-blatt { display: grid; gap: 16px; }
 .ansicht-blatt .w-gruppe { width: 100%; }
 .ansicht-blatt .segmente { display: flex; flex: 1; }
-.ansicht-blatt .seg { flex: 1; }
-.ansicht-blatt .seg span { flex: 1; justify-content: center; }
+.ansicht-blatt .seg { flex: 1; justify-content: center; }
 .ansicht-blatt .wahl, .ansicht-blatt .wahl select { flex: 1; max-width: none; width: 100%; }
 .meldung {
   position: fixed; left: 50%; bottom: 64px; z-index: 30; max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 8px;
   background: var(--grau-10); color: var(--grau-1); box-shadow: var(--schatten); pointer-events: none;
   opacity: 0; transform: translate(-50%, 4px); transition: opacity 100ms var(--aus), transform 100ms var(--aus);
 }
-.meldung.da { opacity: 1; transform: translate(-50%, 0); transition-duration: 150ms; transition-timing-function: var(--ein); }
+/* Sichtbar fängt die Meldung Klicks und schließt sich darauf: Was sie verdeckt, gilt als verdeckt
+   und wird nicht aus Versehen angetippt. */
+.meldung.da { opacity: 1; transform: translate(-50%, 0); transition-duration: 150ms; transition-timing-function: var(--ein); pointer-events: auto; cursor: pointer; }
 .ohne-js { position: fixed; inset: auto 16px 16px; padding: 12px; border-radius: 8px; background: var(--hinweis-flaeche); color: var(--hinweis-text); }
 @media (prefers-reduced-motion: reduce) {
-  .ebene, .ebene.blatt, .meldung { transform: none !important; transition: opacity 100ms linear !important; }
+  .ebene, .ebene.blatt, .meldung, .hinter { transform: none !important; transition: opacity 100ms linear !important; }
   .meldung, .meldung.da { transform: translateX(-50%) !important; }
 }
 
@@ -326,10 +343,12 @@ details[open] > summary::before { transform: rotate(45deg); }
   .ein-tag .tage { margin-right: 4px; padding: 0; }
   .ein-tag .tag { border-radius: 8px; min-width: 44px; }
   .tag { flex-direction: column; gap: 0; line-height: 16px; }
-  .ansicht { grid-column: 3; grid-row: 1; height: 44px; padding: 0 6px 0 8px; gap: 2px; max-width: 100px; }
-  .ansicht-text { display: grid; text-align: left; line-height: 16px; min-width: 0; }
+  .ansicht { grid-column: 3; grid-row: 1; height: 44px; padding: 0 6px 0 8px; gap: 2px; max-width: 168px; }
+  .ansicht-text { display: grid; text-align: left; line-height: 20px; min-width: 0; }
   .ansicht-text span { overflow: hidden; text-overflow: ellipsis; }
-  .ansicht-b { font-size: 12px; color: var(--grau-9); }
+  .ansicht-b { font-size: 12px; line-height: 16px; color: var(--grau-9); }
   .fuss { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b" "c"; row-gap: 0; }
   .fuss-c { justify-content: flex-start; gap: 16px; }
 }
+/* Unter 400 px passen fünf Reiter zu 44 px nur, wenn „Ansicht“ höchstens 100 px breit ist. */
+@media (max-width: 399.98px) { .ansicht { max-width: 100px; } }

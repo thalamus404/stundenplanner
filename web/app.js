@@ -254,13 +254,13 @@ function chip(c, m) {
   const mehr = s ? `<span class="c-mehr">${KURZ[s.day]} ${esc(s.start)}</span>` : n > 1 && !fehlt ? '<span class="c-mehr">Gruppen</span>' : '';
   const was = g ? `gewählt: ${g.name}` : fehlt ? 'gewählte Gruppe nicht mehr im Angebot' : n ? mehrzahl(n, 'Gruppe', 'Gruppen') : 'noch ohne veröffentlichte Termine';
   const tipp = `${m.short}, ${R.typLang(c.type)}, ${c.sws} SWS, ${c.required ? 'Pflichtbereich' : c.section || ''}${n ? '' : '. Noch ohne veröffentlichte Termine'}`;
-  return `<button type="button" class="chip${g || fehlt ? ' gewaehlt' : ''}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${m.short}, ${R.typLang(c.type)}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}>${sym}<span class="c-modul">${esc(m.short)}</span>${esc(c.type)}${zahl}${mehr}</button>`;
+  return `<button type="button" data-sicht="chip" class="chip${g || fehlt ? ' gewaehlt' : ''}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${m.short}, ${R.typLang(c.type)}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}>${sym}<span class="c-modul">${esc(m.short)}</span>${esc(c.type)}${zahl}${mehr}</button>`;
 }
 
 function renderModule() {
   $('module').innerHTML = plan.modules.map((m, i) => {
     const warn = m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : '';
-    return `<div class="modul m${i % 8}"><button type="button" class="modul-name" data-act="modul" data-m="${i}" aria-label="${esc(m.short)}: Modul-Infos${warn ? ', mit Hinweis' : ''}"><span class="punkt"></span>${esc(m.short)}${warn}</button>${m.components.map((c) => chip(c, m)).join('')}</div>`;
+    return `<div class="modul m${(i % 8) + 1}"><button type="button" class="modul-name" data-act="modul" data-m="${i}" aria-label="${esc(m.short)}: Modul-Infos${warn ? ', mit Hinweis' : ''}"><span class="punkt"></span>${esc(m.short)}${warn}</button>${m.components.map((c) => chip(c, m)).join('')}</div>`;
   }).join('');
 }
 
@@ -268,14 +268,14 @@ const filterModul = () => z.modul || (z.teil ? (bestand.parts.find((c) => c.id =
 const tagAnsicht = () => (handy.matches || !(wocheMq && wocheMq.matches) ? { woche: false, tag: z.handyTag } : { woche: true, tag: z.tag });
 
 /** Die Steuerung der Ansicht: in der Werkzeugleiste und (am Handy) im Blatt „Ansicht“. */
-function steuerung(s) {
-  const seg = (name, wert, text, an) => `<label class="seg"><input type="radio" name="${name}${s}" value="${wert}" data-set="${name}"${an ? ' checked' : ''}><span>${text}</span></label>`;
+function steuerung() {
+  const seg = (name, wert, text, an) => `<button class="seg" data-act="setze" data-k="${name}" data-v="${wert}" aria-pressed="${an}">${text}</button>`;
   const i = wochen.indexOf(z.zeitraum);
   const fm = filterModul();
-  let html = `<div class="w-gruppe"><div class="segmente" role="radiogroup" aria-label="Ansicht">${ANSICHTEN.map(([w, t]) => seg('ansicht', w, t, z.ansicht === w)).join('')}</div></div>`;
+  let html = `<div class="w-gruppe"><div class="segmente" role="group" aria-label="Ansicht">${ANSICHTEN.map(([w, t]) => seg('ansicht', w, t, z.ansicht === w)).join('')}</div></div>`;
   html += `<div class="w-gruppe"><span class="wahl"><select data-set="modul" aria-label="Modul"><option value="">Alle Module</option>${plan.modules.map((m) => `<option value="${esc(m.number)}"${fm === m.number ? ' selected' : ''}>${esc(m.short)}</option>`).join('')}</select>${ic('unten')}</span></div>`;
   html += `<div class="w-gruppe"><button type="button" class="knopf rund" data-act="zeit" data-d="-1" aria-label="Vorige Woche"${i < 0 ? ' disabled' : ''}>${ic('links')}</button><span class="wahl"><select data-set="zeitraum" aria-label="Zeitraum"><option value="skeleton">Wochenskelett</option>${wochen.map((w) => `<option value="${w}"${w === z.zeitraum ? ' selected' : ''}>Woche ab ${tagMonat(w)}</option>`).join('')}</select>${ic('unten')}</span><button type="button" class="knopf rund" data-act="zeit" data-d="1" aria-label="Nächste Woche"${i === wochen.length - 1 || !wochen.length ? ' disabled' : ''}>${ic('rechts')}</button></div>`;
-  if (hatAB && z.zeitraum === 'skeleton') html += `<div class="w-gruppe"><div class="segmente" role="radiogroup" aria-label="A- oder B-Woche">${seg('ab', 0, 'Woche A', z.ab === 0)}${seg('ab', 1, 'Woche B', z.ab === 1)}</div></div>`;
+  if (hatAB && z.zeitraum === 'skeleton') html += `<div class="w-gruppe"><div class="segmente" role="group" aria-label="A- oder B-Woche">${seg('ab', 0, 'Woche A', z.ab === 0)}${seg('ab', 1, 'Woche B', z.ab === 1)}</div></div>`;
   return html;
 }
 
@@ -285,7 +285,7 @@ function renderWerkzeug() {
   let stand = k === n && n ? `<span class="marke gut">${ic('haken')}Alle ${n} eingeplant</span>` : `<span>${k} von ${n} ${vorschau ? 'im geteilten Plan' : 'gewählt'}</span>`;
   if (!k && !vorschau) stand += `<span class="tipp">${grob.matches ? 'Tippe' : 'Klicke'} auf eine Gruppe, um sie einzuplanen.</span>`;
   stand += marken(h);
-  $('werkzeug').innerHTML = steuerung('') + (t.woche && t.tag !== null ? '<div class="w-gruppe"><button type="button" class="knopf" data-act="woche">Ganze Woche</button></div>' : '') + `<div class="w-stand">${stand}</div>`;
+  $('werkzeug').innerHTML = steuerung() + (t.woche && t.tag !== null ? '<div class="w-gruppe"><button type="button" class="knopf" data-act="woche">Ganze Woche</button></div>' : '') + `<div class="w-stand">${stand}</div>`;
   // Am Handy steht die Steuerung im Blatt; der Knopf nennt die Ansicht und was davon abweicht.
   const ab = [];
   const c = bestand.parts.find((x) => x.id === z.teil);
@@ -366,13 +366,13 @@ function renderRaster() {
   $('tage').innerHTML = [...Array(tageZahl).keys()].map((d) => {
     const unter = t.tag !== null && z.teil ? `<span class="zaehl">${zaehl.get(d) || 0}</span>` : week ? `<span class="datum">${tagMonat(plusTage(week.start, d))}</span>` : '';
     const name = t.woche && t.tag === null ? `${TAGE[d]}, nur diesen Tag zeigen` : TAGE[d] + (z.teil && t.tag !== null ? `, ${mehrzahl(zaehl.get(d) || 0, 'Gruppe', 'Gruppen')}` : '');
-    return `<button type="button" class="tag" data-act="tag" data-tag="${d}" aria-pressed="${t.tag === d}" aria-label="${esc(name)}"><span class="kurz">${KURZ[d]}</span><span class="lang">${TAGE[d]}</span>${unter}</button>`;
+    return `<button type="button" class="tag" data-sicht="tag" data-act="tag" data-tag="${d}" aria-pressed="${t.tag === d}" aria-label="${esc(name)}"><span class="kurz">${KURZ[d]}</span><span class="lang">${TAGE[d]}</span>${unter}</button>`;
   }).join('');
 
   const n = ax.bis - ax.von, von = ax.von * 60, dauer = n * 60;
   const liste = [];
   let html = '<div class="stunden">';
-  for (let i = 0; i <= n; i++) html += `<div class="stunde"><span>${String(ax.von + i).padStart(2, '0')}</span></div>`;
+  for (let i = 0; i <= n; i++) html += `<div class="stunde" data-sicht="stunde"><span>${String(ax.von + i).padStart(2, '0')}</span></div>`;
   html += '</div>';
   for (const d of spalten) {
     const tag = R.spuren(jeTag.get(d).sort(R.ordnung));
@@ -418,7 +418,7 @@ function kachel(e) {
   const name = `${titel(g)}, ${g.name}, ${TAGE[s.day]} ${s.start} bis ${s.end}${raum ? ', Raum ' + raum : ''}${rh ? ', ' + rh : ''}, ${zustand}${neu ? ', geändert seit deiner Wahl' : ''}${mit.length ? ', überschneidet sich mit ' + mit.map((x) => `${x.module_short} ${R.typLang(x.type)}`).join(' und ') : ''}`;
   const akt = g.selected ? ['Lösen', 'Auswahl lösen'] : g.component.selection ? ['Wechseln', 'Gruppe wechseln'] : ['Einplanen', 'Einplanen'];
   const knopf = vorschau || art === 'kontext' && !g.selected ? '' : `<button type="button" class="k-akt" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${akt[0]}</button>`;
-  return `<div class="kachel ${art === 'kontext' ? '' : 'm' + g.farbe} ${art}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="kachel" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-lang">${esc(zeit + g.type + ', ' + (/\d/.test(g.name) ? 'Gruppe ' + nr : g.name))}</span><span class="k-name">${esc(zeit + g.name)}</span><span class="k-nr">${esc(nr)}</span><span class="k-ort">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
+  return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${art === 'kontext' ? '' : 'm' + (g.farbe + 1)} ${art}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="kachel" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-lang">${esc(zeit + g.type + ', ' + (/\d/.test(g.name) ? 'Gruppe ' + nr : g.name))}</span><span class="k-name">${esc(zeit + g.name)}</span><span class="k-nr">${esc(nr)}</span><span class="k-ort">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
 }
 
 function renderFuss() {
@@ -507,7 +507,7 @@ function inhaltGruppe(g, s) {
 function inhaltMehr() {
   return `<p class="klein">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>
 <section><h3>Hinweise</h3>${inhaltHinweise()}</section>
-<section><h3>Module</h3>${plan.modules.map((m, i) => `<button type="button" class="zeile-knopf m${i % 8}" data-act="modul" data-m="${i}"><span class="punkt"></span>${esc(m.title || m.short)}${m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : ''}</button>`).join('')}</section>
+<section><h3>Module</h3>${plan.modules.map((m, i) => `<button type="button" class="zeile-knopf m${(i % 8) + 1}" data-act="modul" data-m="${i}"><span class="punkt"></span>${esc(m.title || m.short)}${m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : ''}</button>`).join('')}</section>
 <section><h3>Datenstand</h3>${inhaltStand()}</section>
 <div class="e-aktionen">${Object.keys(eigene).length && !vorschau ? '<button type="button" class="knopf" data-act="zuruecksetzen">Auswahl zurücksetzen</button>' : ''}<button type="button" class="knopf" data-act="ebene" data-ebene="hilfe">Hilfe</button></div>
 <p class="links"><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>`;
@@ -517,7 +517,7 @@ const EBENEN = {
   hinweise: () => ['karte', 'Hinweise', inhaltHinweise],
   stand: () => ['karte', 'Datenstand', inhaltStand],
   mehr: () => ['karte', 'Mehr', inhaltMehr],
-  ansicht: () => ['karte', 'Ansicht', () => `<div class="ansicht-blatt">${steuerung('-b')}</div>`],
+  ansicht: () => ['karte', 'Ansicht', () => `<div class="ansicht-blatt">${steuerung()}</div>`],
   hilfe: () => ['dialog', 'So funktioniert die Planung', () => $('hilfe-text').innerHTML, 'lesen'],
 };
 
@@ -527,7 +527,8 @@ let offen = null, ebeneNr = 0;
 function oeffne(art, kopf, inhalt, { anker = null, wo = 'unten', klasse = '', zurueck = null, neu = null } = {}) {
   schliesse(true);
   const nr = ++ebeneNr;
-  const typ = handy.matches ? 'blatt' : art;
+  // Eine Karte ohne Anker (etwa „Zum Modul“ aus einer anderen Karte) wird ein Dialog in der Mitte.
+  const typ = handy.matches ? 'blatt' : art === 'karte' && !anker ? 'dialog' : art;
   $('ebenen').innerHTML = `<div class="hinter${typ === 'karte' ? ' leer' : ''}"${typ === 'karte' ? ' hidden' : ''}></div><section class="ebene ${typ} ${klasse}" role="dialog" aria-modal="${typ !== 'karte'}" aria-labelledby="e-titel"><div class="e-kopf"><h2 class="e-titel" id="e-titel">${esc(kopf)}</h2><button type="button" class="e-zu" data-act="zu" aria-label="Schließen">${ic('kreuz')}</button></div><div class="e-inhalt${klasse.includes('lesen') ? ' lesen' : ''}">${inhalt}</div></section>`;
   const el = $('ebenen').querySelector('.ebene');
   offen = { el, typ, anker, wo, zurueck: zurueck || (anker ? () => anker : null), neu, nr };
@@ -555,7 +556,8 @@ function schliesse(sofort = false) {
 /** Karte neben ihrem Anker: bei einer Kachel rechts, sonst links, nie über ihr; im Fenster gehalten. */
 function platziere() {
   const { el, wo } = offen;
-  const a = offen.zurueck && offen.zurueck();
+  // Der Anker, solange es ihn gibt; nach neuem Zeichnen findet zurueck() die neue Kachel.
+  const a = offen.anker && offen.anker.isConnected ? offen.anker : offen.zurueck && offen.zurueck();
   if (!a || !a.isConnected) return;
   const r = a.getBoundingClientRect(), b = el.offsetWidth, h = el.offsetHeight, m = 8, B = innerWidth, H = innerHeight;
   let x, y;
@@ -574,10 +576,11 @@ function platziere() {
 function auffrischen() {
   if (!offen || !offen.neu) return;
   const f = document.activeElement;
-  const sig = f && offen.el.contains(f) ? ['data-set', 'data-act', 'data-key', 'data-d'].map((a) => f.getAttribute(a)) : null;
+  const merkmale = ['data-set', 'data-act', 'data-key', 'data-d', 'data-v'];
+  const sig = f && offen.el.contains(f) ? merkmale.map((a) => f.getAttribute(a)) : null;
   offen.el.querySelector('.e-inhalt').innerHTML = offen.neu();
   if (sig) {
-    const ziel = [...offen.el.querySelectorAll('button, select, input')].find((x) => ['data-set', 'data-act', 'data-key', 'data-d'].every((a, i) => x.getAttribute(a) === sig[i]) && (x.type !== 'radio' || x.checked));
+    const ziel = [...offen.el.querySelectorAll('button, select, input')].find((x) => merkmale.every((a, i) => x.getAttribute(a) === sig[i]));
     (ziel || offen.el.querySelector('.e-zu')).focus({ preventScroll: true });
   }
   if (offen.typ === 'karte') platziere();
@@ -600,7 +603,9 @@ function karteGruppe(b) {
 
 function karteModul(i, anker) {
   const m = plan.modules[i];
-  if (m) oeffne('karte', m.title || m.short, inhaltModul(m), { anker: anker && anker.closest('#module') ? anker : null, zurueck: offen ? offen.zurueck : () => anker });
+  const name = $('module').querySelector(`.modul-name[data-m="${i}"]`);
+  const sichtbar = name && name.offsetParent !== null ? name : null;
+  if (m) oeffne('karte', m.title || m.short, inhaltModul(m), { anker: sichtbar, zurueck: offen ? offen.zurueck : () => anker });
 }
 
 function frage(kopf, text, verb, weiter) {
@@ -617,6 +622,8 @@ function melde(text) {
   clearTimeout(meldungUhr);
   meldungUhr = setTimeout(() => el.classList.remove('da'), 3000);
 }
+
+$('meldung').addEventListener('click', () => { clearTimeout(meldungUhr); $('meldung').classList.remove('da'); });
 
 function sage(text) {
   const el = $('ansage');
@@ -656,6 +663,11 @@ const AKTIONEN = {
     render();
   },
   woche: () => { z.tag = null; render(); },
+  setze: (b) => {
+    if (b.dataset.k === 'ab') z.ab = Number(b.dataset.v);
+    else z.ansicht = b.dataset.v;
+    render();
+  },
   zeit: (b) => {
     const i = wochen.indexOf(z.zeitraum) + Number(b.dataset.d);
     z.zeitraum = i < 0 ? 'skeleton' : wochen[Math.min(i, wochen.length - 1)] || 'skeleton';
@@ -703,10 +715,8 @@ document.addEventListener('change', (e) => {
   const t = e.target, k = t.dataset.set;
   if (!k) return;
   if (k === 'plan') { planWechseln(Number(t.value)); return; }
-  if (k === 'ansicht') z.ansicht = t.value;
   if (k === 'modul') { z.modul = t.value; z.teil = ''; }
   if (k === 'zeitraum') z.zeitraum = t.value;
-  if (k === 'ab') z.ab = Number(t.value);
   render();
 });
 
@@ -769,7 +779,6 @@ $('koerper').addEventListener('pointerleave', () => $('koerper').querySelectorAl
 
 handy.addEventListener('change', () => { schliesse(true); render(); });
 fein.addEventListener('change', render);
-addEventListener('resize', () => { if (offen && offen.typ === 'karte') platziere(); });
 
 // Eine zweite Registerkarte ändert die Auswahl: hier nachziehen, statt sie beim nächsten Klick
 // zu überschreiben (im Vorbild verhinderte das eine Revision mit 409 auf dem Server).

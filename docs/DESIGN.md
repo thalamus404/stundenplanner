@@ -1,8 +1,9 @@
 # Design: der Stundenplanner als One-Pager
 
-> **Stand: 05.10.2026** (V-0218). Diese Datei ist die geschlossene Menge an Entscheidungen, nach
-> der die Seite (`web/`) in Phase 5 des Programms „Stundenplanner, erste Fassung“ von Grund auf neu
-> gebaut wird. Was hier nicht steht, wird nicht erfunden. Wer abweichen will, ändert zuerst diese
+> **Stand: 05.10.2026** (V-0218, gebaut in V-0220). Diese Datei ist die geschlossene Menge an
+> Entscheidungen, nach der die Seite (`web/`) in Phase 5 des Programms „Stundenplanner, erste
+> Fassung“ von Grund auf neu gebaut wurde. Silas' Entscheidungen zu den offenen Fragen stehen in §9,
+> was der Bau begründet anders macht, steht an seiner Stelle und gesammelt in §10. Was hier nicht steht, wird nicht erfunden. Wer abweichen will, ändert zuerst diese
 > Datei, mit Vorgang und Grund.
 > **Was** die Seite kann, steht im [Scope](SCOPE.md) §3. **Welche Daten** sie hat, steht in der
 > [Architektur](ARCHITEKTUR.md) §5 und §6 (dort auch die Speicherregeln und der Teilen-Link).
@@ -23,8 +24,10 @@
 3. **Jede Gruppe hat eine Kachel im Raster, keine wird versteckt.** Parallele Gruppen liegen in
    **Spuren** nebeneinander. Die Beschriftung passt sich der Spurbreite an, es gibt kein
    „+ N weitere“ (§3.2).
-4. **Tippen öffnet die Karte, die Karte plant ein.** Eine Kachel zeigt erst ihre Details und die
-   Überschneidung, dann wählt man. Auf dem Handy ist die Karte ein Blatt von unten (§3.5, §4).
+4. **Wählen auf beiden Wegen** (Silas, 05.10.2026, §9). Breite Kacheln tragen am Rechner direkt
+   „Einplanen“, „Wechseln“ oder „Lösen“. Sonst öffnet ein Tipp die Gruppenkarte mit Details und
+   Überschneidung, und dort wird gewählt. Die Karte gibt es auf jeder Breite, auf dem Handy als
+   Blatt von unten (§3.5, §4).
 5. **Farbe trägt Bedeutung, sonst nichts.** Grautreppe für alles Gerüst, acht Modulfarben als
    Kategorie, Rot für Überschneidung, Bernstein für Hinweise. Der eine Akzent ist die **Tinte**
    (fast schwarz, im dunklen Schema fast weiß): Er füllt nur die Hauptaktion (§5).
@@ -161,16 +164,19 @@ Skript, das beim Größerziehen misst.
   gleich breit (`tabular-nums`). Keine Halbstundenlinien.
 - Tageskopf: „Mo“ bis „Fr“ (ab 1280 px „Montag“ …), in der Kalenderwoche darunter das Datum.
   Ein Klick auf den Tageskopf zeigt nur diesen Tag (Tagesansicht), „Ganze Woche“ führt zurück.
-- **Mindesthöhe:** 20 px je Stunde, auf Touch-Geräten 22 px. Dann ist eine Zwei-Stunden-Kachel
-  mindestens 40 bzw. 44 px hoch. Reicht das Fenster dafür nicht (Handy quer, sehr kleine Fenster),
-  darf die Seite scrollen. Sie schneidet nie etwas ab.
+- **Mindesthöhe:** 20 px je Stunde, auf Touch-Geräten 22 px, gebaut je plus 0,5 px für die Luft
+  über der Kachel (20,5 und 22,5 px). Dann ist eine Zwei-Stunden-Kachel mindestens 40 bzw. 44 px
+  hoch. Reicht das Fenster dafür nicht (Handy quer, sehr kleine Fenster), darf die Seite scrollen.
+  Sie schneidet nie etwas ab.
 
 **Spuren.** Je Tag werden die sichtbaren Kacheln zu Gruppen verketteter Überschneidungen
 zusammengefasst. Innerhalb einer solchen Gruppe bekommt jede Kachel die erste freie Spur.
 Reihenfolge: gewählte zuerst, dann nach Beginn, dann nach Modulreihenfolge, dann nach Gruppenname.
 Die Kacheln einer Gruppe teilen sich die Tagesbreite gleichmäßig. Eine Kachel, die allein liegt,
-ist so breit wie der Tag. Zwischen Spuren liegen 2 px. Kacheln, die direkt aneinander anschließen
-(10–12, 12–14), bekommen oben und unten je 1 px Luft, damit sie getrennt lesbar sind.
+ist so breit wie der Tag. Zwischen Spuren liegen 2 px. Jede Kachel hat **oben 1 px Luft**, damit
+direkt anschließende (10–12, 12–14) getrennt lesbar sind. *Gebaut (V-0220):* nur oben und an jeder
+Kachel statt oben und unten an anschließenden, denn mit 2 px Luft wäre die 2-h-Kachel am
+kleinsten Handy unter 44 px gefallen.
 
 **Beschriftungsstufen** nach der Breite der Kachel. Die Stufe wählt das CSS über Container-Abfragen
 (ohne Unterstützung: Stufe M).
@@ -219,8 +225,11 @@ der Woche mindestens 24 px), 1024 px (ab hier passen Modul- und Werkzeugleiste i
 sonst 24 px. Über 2 400 px Inhaltsbreite wächst der Inhalt nicht weiter und steht mittig.
 
 **Die Woche nur, wenn sie passt.** Bekäme in einem Fenster ab 768 px eine Spur des dichtesten
-Blocks weniger als 24 px (mehr parallele Gruppen als in WI 1. FS), zeigt die Seite dort das
-Handy-Layout mit Tagesreitern. Kacheln werden nie schmaler als 24 px.
+Blocks weniger als 24 px (mehr parallele Gruppen als in WI 1. FS), zeigt die Seite dort einen Tag
+mit Tagesreitern. Kacheln werden nie schmaler als 24 px. *Gebaut (V-0220):* Nur das Raster wechselt
+auf einen Tag, Kopf, Modul- und Werkzeugleiste und Fuß bleiben im Layout ihrer Breite, denn sie
+passen dort; eng sind nur die Spuren. Die Grenze rechnet `wochenBreite()` aus der dichtesten
+Stelle des Plans, die Seite fragt sie über `matchMedia` ab, ohne `resize`-Hörer.
 
 **Was immer ohne Scrollen sichtbar sein muss:** alle Bestandteile (Chips), der ganze Zeitraum der
 Zeitachse, die Kopfzeile mit „Teilen“, die Fußzeile mit dem Hinweis auf das inoffizielle Angebot,
@@ -342,8 +351,11 @@ Feste Zeilen am Rechner: 12 px Rand oben, Kopfzeile 48, Modulleiste 40, Werkzeug
 Tageskopf 32, Fußzeile 24, vier Abstände zu 8 px, 12 px Rand unten, zusammen **240 px**
 (ab 860 px Fensterhöhe 16 px Rand, 248 px). Unter 1280 px ist die Fußzeile zweizeilig (+16 px),
 unter 1024 px kommen 48 px je zusätzlicher Leistenzeile dazu. Am Handy: Ränder 2 × 8, Kopfzeile
-48, Chips 4 × 44 + 3 × 4, Tagesreiter 44, Fußzeile 48, Abstände 8 + 8 + 4 + 8, zusammen
-**372 px** bei vier Chipzeilen.
+44, Chips 4 × 44 + 3 × 4, Tagesreiter 44, Fußzeile 48, Abstände 8 + 8 + 4 + 8, zusammen
+**368 px** bei vier Chipzeilen. *Gebaut (V-0220):* Die Kopfzeile am Handy ist 44 statt 48 px (ihre
+Knöpfe sind ohnehin 44 px hoch); sonst wäre bei 360 × 640 mit der Luft über der Kachel die
+2-h-Kachel unter 44 px gefallen. Gemessen mit dem Bau: 360 × 640 hat 272 px Raster, 22,7 px je
+Stunde; die übrigen Zeilen der Tabelle stimmen auf ±2 px.
 
 | Fenster | Raster­höhe | je Stunde | 2-h-Kachel | Tagesbreite | dichtester Fall (5 Spuren) | gefiltert (3 Spuren) |
 |---|---|---|---|---|---|---|
@@ -370,14 +382,14 @@ Tablets haben je zwei Zeilen Modul- und Werkzeugleiste (768, 865) bzw. zwei Zeil
 
 | Ebene | ab 768 px | unter 768 px | Inhalt |
 |---|---|---|---|
-| **Gruppenkarte** | Karte, 320 px breit, neben der Kachel (rechts, sonst links), nie über ihr, im Fenster gehalten | Blatt von unten, höchstens 70 % der Höhe | §4.2 |
+| **Gruppenkarte** | Karte, 320 px breit, neben der Kachel (rechts, sonst links; ist die Kachel so breit wie das Fenster, darunter oder darüber), nie über ihr, im Fenster gehalten | Blatt von unten, höchstens 70 % der Höhe | §4.2 |
 | **Modulkarte** | Karte an der Modulbeschriftung | Blatt | voller Titel, Nummer, Version, Gültigkeit, geprüft am, mehrere gültige Versionen, Links zu MOSES und zur ISIS-Kurssuche, je Bestandteil Typ, Titel, SWS, Pflicht-/Wahlbereich, Links zu VVZ und ISIS, die Hinweise des Moduls (je Abschnitt aufklappbar), Abruffehler |
 | **Hinweise** | Karte an der Marke in der Werkzeugleiste | Teil von „Mehr“ | Überschneidungen (Paare, Zahl gemeinsamer Termine, erster Termin), geänderte Gruppen („Änderung geprüft“), nicht mehr angebotene Gruppen („Auswahl lösen“), Bestandteile ohne Termine, Abruffehler, veraltete Daten, „alle eingeplant“ |
 | **Datenstand** | Karte am Datenstand | Teil von „Mehr“ | Quelle MOSES (öffentlich), Abrufzeit, Status, Zahl der Module, Bestandteile, Gruppen, Einzeltermine, „Neu laden“ |
 | **Ansicht** | — (liegt in der Werkzeugleiste) | Blatt | Ansicht, Modulfilter, Zeitraum, A/B |
 | **Hilfe** | Dialog, höchstens 66 Zeichen je Zeile | Blatt | „So funktioniert die Planung“ (§4.3) |
 | **Rückfrage** | Dialog | Blatt | „Auswahl zurücksetzen“ und „Übernehmen“ über eine vorhandene Auswahl: sagt, was verloren geht („Deine Auswahl (6 Gruppen) wird gelöscht.“), Hauptaktion mit dem Verb („Zurücksetzen“, „Ersetzen“), daneben „Abbrechen“ |
-| **Meldung** | unten mittig, 3 s, schließt sich selbst | gleich | „Link kopiert“, „Alle 11 Bestandteile eingeplant“ |
+| **Meldung** | unten mittig über dem Fuß, 3 s, schließt sich selbst oder auf Klick | gleich | „Link kopiert“, „Alle 11 Bestandteile eingeplant“. Sichtbar fängt sie Klicks, damit niemand aus Versehen die Kachel darunter trifft |
 
 Karten und Blätter schließen mit Esc, mit dem Schließknopf und mit einem Klick daneben. Es ist
 immer höchstens eine offen. Lesetext darin darf scrollen (Modulhinweise, Terminliste), die Seite
@@ -436,7 +448,10 @@ Was das Raster zeigt:
    ```
 
    Die Hauptaktion heißt „Einplanen“, „Gruppe wechseln“ (der Bestandteil hat schon eine Wahl)
-   oder „Auswahl lösen“ (diese Gruppe ist gewählt). Die Überschneidung steht **vor** der Wahl in
+   oder „Auswahl lösen“ (diese Gruppe ist gewählt). Am Rechner (feiner Zeiger, ab 768 px) tragen
+   Kacheln ab Stufe L und 76 px Höhe dieselbe Aktion kurz als Knopf: „Einplanen“, „Wechseln“,
+   „Lösen“ (Silas, 05.10.2026, §9). Ein Klick daneben öffnet weiter die Karte. Braucht der Knopf
+   den Platz (Kachel unter 104 px hoch), entfällt dort die Raumzeile. Die Überschneidung steht **vor** der Wahl in
    der Karte, gerechnet gegen alle echten Termine des Semesters. „15 Termine“ klappt die Liste
    mit Datum, Uhrzeit, Raum und Anmerkung auf. Hat die Gruppe mehrere Wochentermine, nennt die
    Karte alle („Gewählt wird die ganze Gruppe“).
@@ -678,6 +693,8 @@ gelten für Werbeseiten, nicht für dieses Werkzeug.
 - **Radien:** 4 px (Kacheln), 8 px (Chips, Knöpfe, Segmente, Auswahlfelder, Meldung), 12 px
   (Karten, Dialog, obere Ecken des Blatts), rund (Farbpunkt, Zahl am Knopf). Verschachtelt gilt:
   innen = außen − Innenabstand (Segment in einer Schiene mit 8 px und 2 px Rand: 6 px).
+- **Ringe** (Überschneidung rot, Hinweis Bernstein, Gruppe beim Zeigen Tinte) sind `outline` mit
+  1 px Abstand, kein Schatten: Schatten gehören nur den schwebenden Ebenen.
 - **Tiefe:** Die Seite ist flach. Schatten haben nur schwebende Ebenen (Karte, Blatt, Dialog,
   Meldung), zweilagig aus einer Lichtquelle: `0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12)`,
   dazu 1 px Rand `--grau-5`. Dunkel: kein Schatten, Höhe über `--grau-1` und den hellen 1-px-Rand.
@@ -714,10 +731,14 @@ Die Überlagen liegen auf einem Pseudo-Element, damit nur dessen Deckkraft animi
 
 ### 5.11 Ziele
 
-- Jedes Bedienelement mindestens **24 × 24 px**, am Rechner Knöpfe und Chips 32 px hoch.
+- Jedes Bedienelement mindestens **24 × 24 px**, am Rechner Knöpfe und Chips 32 px hoch. Der
+  Knopf direkt auf einer Kachel ist 24 px hoch, damit er in eine 2-h-Kachel ab 76 px passt.
 - Auf Touch-Geräten (`pointer: coarse`) mindestens **44 × 44 px**: Chips, Reiter, Segmente,
   Knöpfe, ‹ ›, Schließen. Knöpfe in Blättern 48 px hoch, volle Breite. Mindestens 8 px zwischen
-  Zielen.
+  Zielen. **Links** (Impressum, Datenschutz in der dreizeiligen Fußzeile) sind 24 × 24 px: Die
+  Liste oben nennt sie nicht, und eine 44-px-Zeile passte bei 360 × 640 nicht mehr ohne Scrollen
+  (V-0220; `ops/sicht.py` misst Links gegen 24 px). Die Tagesreiter am Handy liegen ohne Lücke
+  in ihrer Schiene, damit fünf zu 44 px neben „Ansicht“ in 328 px passen.
 - Kacheln: mindestens 44 px hoch auf Touch (dafür die 22 px je Stunde), mindestens 24 px breit.
   Unter 44 px Breite liegt eine Kachel nur im dichtesten Fall auf dem Tablet (§3.4). Weil Tippen
   erst die Karte öffnet, kostet ein Fehltipp dort nichts.
@@ -727,7 +748,8 @@ Die Überlagen liegen auf einem Pseudo-Element, damit nur dessen Deckkraft animi
 Ein Satz, eigene Inline-SVG (kein Symbolfont, keine Bibliothek), Raster 24 px, Strich 2 px, runde
 Enden, gezeichnet bei 16 px (in Kacheln 12 px). Eine Farbe je Symbol. Genau diese: Haken
 (gewählt), Warndreieck (Überschneidung), Kreispfeil (geändert), Ausrufekreis (Hinweis, veraltet),
-i-Kreis (Info), Kreuz (schließen), Winkel links/rechts (Woche), Teilen, externer Link (öffnet
+i-Kreis (Info), Kreuz (schließen), Winkel links/rechts (Woche), Winkel unten (Auswahlfelder und
+„Ansicht“, statt des Zeichens ▾; im Bau dazugekommen), Teilen, externer Link (öffnet
 MOSES/ISIS/VVZ in neuem Tab). Neben jedem Symbol steht ein Wort, außer an Schließen und ‹ ›,
 die einen zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als Symbole
 (✓ ○ ↻ ↗ des Vorbilds werden SVG).
@@ -771,6 +793,38 @@ die einen zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als 
 
 Die Seite lässt sich auf den Home-Bildschirm legen (Scope §3, Punkt 7): Manifest und Symbol
 gehören zum Rahmen, nicht zum Budget der Daten.
+
+**Gebaut (V-0220), gemessen mit `ops/sicht.py` (V-0221) am 05.10.2026:** Die Ergebnisse halten das
+Budget, die Bytes und Anfragen nicht.
+
+| | Budget | gebaut |
+|---|---|---|
+| LCP, gedrosselt (390 × 844, CPU 4×, 150 ms, 1,6 Mbit/s) | ≤ 1,5 s | 0,87 s |
+| CLS | ≤ 0,02 | 0,002 |
+| TBT, gedrosselt | ≤ 50 ms | 0 ms |
+| Wahl bis neues Bild, CPU 4× | ≤ 100 ms | 40–80 ms |
+| DOM-Knoten bei 65 Kacheln | ≤ 1 200 | 821 |
+| HTML | ≤ 10 KB | 7,9 KB |
+| CSS | ≤ 15 KB | 25,9 KB |
+| JavaScript | ≤ 35 KB in ≤ 6 Dateien | 73,5 KB in 5 Dateien |
+| Code zusammen, gzip | ≤ 20 KB | 36,4 KB (Brotli, wie Cloudflare ausliefert: etwa 32 KB) |
+| Anfragen bis zur ersten Kachel | ≤ 6 | 9 |
+
+Warum: **Ohne Build-Schritt** bleibt jedes Modul eine eigene Datei und eine eigene Anfrage (HTML,
+CSS, fünf Module, `index.json`, Plan = 9). Die Zeile widerspricht sich selbst: „höchstens 6
+JS-Dateien“ und „höchstens 6 Anfragen“ gehen nur mit einer einzigen JS-Datei. `modulepreload` im
+HTML holt alle Module sofort und parallel zum CSS, es gibt keine Kaskade. **Die Bytes** sind
+Kommentare, die das Warum tragen (ohne sie wären es etwa 27 KB gzip), und die Bedienung, die das
+Vorbild nicht hatte: Karten, Blätter, Dialoge, Tastatur im Raster, Teilen-Leiste mit Vergleich,
+Hinweise, zwei Layouts. Das Vorbild-Budget (15 KB JS, 7 KB CSS) maß eine Seite ohne all das. Was
+zählt, ist das Ergebnis auf einem langsamen Handy, und das hält das Budget mit Abstand. Ob die
+Byte-Grenzen bleiben (dann braucht es einen Schritt, der beim Ausliefern Kommentare entfernt und
+die Module zusammenfasst) oder auf die gebauten Werte steigen, entscheidet Silas (§9, Punkt 4).
+
+Zwei Dinge, die die Blockierzeit gedrückt haben und so bleiben müssen: **kein `Intl`** (ein
+`Intl.Collator` und ein `Intl.DateTimeFormat` mit Zeitzone kosteten beim Laden zusammen 90 ms im
+längsten Block; `raster.mjs` vergleicht Namen selbst, `text.mjs` rechnet die Berliner Zeit nach
+der EU-Regel) und **das Raster in einer eigenen Aufgabe** nach Kopf, Modulen und Werkzeug.
 
 ---
 
@@ -846,13 +900,46 @@ Danach testet Silas die Bedienung selbst. Was er ändert, wird hier eingetragen,
 
 ## 9. Was Silas entscheidet
 
-Grundentscheidungen, die dieser Entwurf trifft, damit gebaut werden kann, und die Silas bestätigen
-oder umwerfen soll:
+Die Grundentscheidungen, die der Entwurf vorschlug. **Silas hat sie am 05.10.2026 entschieden**,
+so ist es gebaut (V-0220):
 
-1. **Keine Markenfarbe.** Der Akzent ist die Tinte, Farbe gehört den Modulen (§5.1). Will Silas
-   eine Farbe, die den Stundenplanner wiedererkennbar macht, ändert sich §5 an einer Stelle.
-2. **Voreingestellte Ansicht „Noch offen“, und gewählte Gruppen bleiben darin sichtbar** (§4.1).
-   Das Vorbild startete mit „Alle Möglichkeiten“ und blendete in „Noch offen“ das Gewählte aus.
-3. **Tippen öffnet erst die Karte, gewählt wird dort** (§4.2, Schritt 3–4). Das ist ein Klick
-   mehr als ein direkter Klick auf die Kachel, zeigt dafür die Überschneidung vor der Wahl und
-   macht Fehltipps auf kleinen Kacheln folgenlos. Ob das schnell genug ist, zeigt Silas' Test.
+1. **Keine Markenfarbe.** Der Akzent ist nur die Tinte, Farbe tragen nur die Module, Rot steht für
+   Überschneidungen, Bernstein für Hinweise (§5.1).
+2. **Startansicht „Noch offen“, und die gewählten Gruppen bleiben darin sichtbar** (§4.1). Das
+   Vorbild startete mit „Alle Möglichkeiten“ und blendete in „Noch offen“ das Gewählte aus.
+3. **Wählen auf beiden Wegen.** Auf breiten Kacheln am Rechner direkt „Einplanen“ bzw.
+   „Wechseln“/„Lösen“ wie im Study OS. Auf schmalen Kacheln und am Handy öffnet Antippen die
+   Gruppenkarte (am Handy als Blatt von unten), dort wird gewählt. Die Gruppenkarte gibt es auf
+   jeder Breite (§4.2, Schritt 3–4). Gebaut: der Knopf ab Stufe L und 76 px Höhe, nur mit feinem
+   Zeiger (Maus, Trackpad) und ab 768 px.
+
+Offen, vorgelegt mit dem Bau:
+
+4. **Das Byte-Budget** (§6). Die Ergebnisse (LCP, CLS, TBT, Wahl bis Bild) hält die Seite mit
+   Abstand, die Bytes (CSS 25,9 statt 15 KB, JS 73,5 statt 35 KB, gzip 36,4 statt 20 KB) und die
+   Anfragen (9 statt 6) nicht. Entweder steigen die Grenzen auf die gebauten Werte, oder es kommt
+   ein Schritt beim Ausliefern dazu, der Kommentare entfernt und die Module zusammenfasst; der
+   widerspricht „kein Build“ aus §0.
+
+---
+
+## 10. Was der Bau anders macht als oben, gesammelt
+
+Jede Abweichung steht mit ihrem Grund an ihrer Stelle; hier nur die Liste, damit Silas' Test sie
+findet.
+
+- **Luft über jeder Kachel, 1 px, nur oben** (§3.2), statt oben und unten an anschließenden.
+- **Mindesthöhe 20,5 und 22,5 px je Stunde** (§3.2), damit die Luft die 2-h-Kachel nicht unter
+  40 bzw. 44 px drückt.
+- **Kopfzeile am Handy 44 px** (§3.4), Höhenbudget am Handy 368 statt 372 px.
+- **Wenn die Woche nicht passt, wechselt nur das Raster** auf einen Tag mit Reitern (§3.3).
+- **Gruppenkarte unter oder über der Kachel**, wenn diese so breit wie das Fenster ist (§3.5).
+- **Die Meldung schließt sich auch auf Klick** und fängt Klicks, solange sie zu sehen ist (§3.5).
+- **Knopf auf der Kachel** am Rechner (§4.2, Silas' Entscheidung 3), 24 px hoch (§5.11).
+- **Links 24 × 24 px** auch auf Touch (§5.11), Tagesreiter am Handy ohne Lücke in der Schiene.
+- **Winkel unten** als zusätzliches Symbol (§5.12).
+- **Eine leise Marke „Hinweise“** (i-Kreis) in der Werkzeugleiste, wenn es nur Informationen gibt
+  (Bestandteile ohne Termine, alles eingeplant): So bleibt die Karte „Hinweise“ auch ohne
+  Überschneidung und Änderung erreichbar (§3.1, §3.5).
+- **Ringe als `outline`**, nicht als Schatten (§5.8).
+- **Bytes und Anfragen über dem Budget** (§6, offen in §9, Punkt 4).
