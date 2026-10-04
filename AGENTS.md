@@ -74,14 +74,16 @@ des TOWER (Block oben).
 
 | | |
 |---|---|
-| Test | `sh ops/test.sh`: heute nur die Regeln eines öffentlichen Repos (§2 ①) und die Haustür. Wer Code bringt, hängt seine Tests dort an |
-| Bau, Vorschau, Dev | noch keine. Der erste Bau trägt sie in `.tower/airfield.json` (`befehle`) und hier ein |
+| Test | `sh ops/test.sh`: die Regeln eines öffentlichen Repos (§2 ①), die Haustür und jede Datei `abruf/tests/test_*.py` und `web/tests/*.test.mjs`. Neue Tests legst du dorthin, `ops/test.sh` findet sie |
+| Abruf, Bauen, Ansehen | `python3 abruf/abruf.py` · `python3 abruf/bauen.py` · `python3 -m http.server -d web 8000` (docs/ARCHITEKTUR.md §7) |
+| Bau, Vorschau, Dev im TOWER | noch keine. Der Betrieb trägt sie in `.tower/airfield.json` (`befehle`) und hier ein |
 
 ## 4. Wohin du weiterliest
 
 | Thema | Datei |
 |---|---|
 | Was das Werkzeug ist, für alle | [`README.md`](README.md) |
+| **Wie es gebaut ist**: Teile, Ordner, Datenformate, Befehle | [`docs/ARCHITEKTUR.md`](docs/ARCHITEKTUR.md) |
 | Was wann passiert ist | [`CHRONIK.md`](CHRONIK.md) |
 | **Was es können soll und was nicht**: zuerst lesen | [`docs/SCOPE.md`](docs/SCOPE.md) |
 

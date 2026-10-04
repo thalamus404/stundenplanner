@@ -20,3 +20,9 @@ node_modules/
 dist/
 .DS_Store
 *.swp
+
+# Erzeugt (docs/ARCHITEKTUR.md §7): Rohstände des Abrufs und das Lesemodell der Seite. Auf GitHub
+# erzeugt sie der tägliche Lauf neu; Tests nehmen ihre Daten aus abruf/tests/fixtures und
+# web/tests/fixtures.
+/daten/
+/web/daten/
