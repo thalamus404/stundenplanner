@@ -121,6 +121,14 @@ Grenzen — was dieses Werkzeug NICHT sagt
 - Die AI tells aus §7 sind nur so weit geprüft wie oben genannt; Sprache, Hilfstexte und
   Kommentare im Quelltext liest kein Skript.
 
+Selbsttest
+----------
+    python3 -m unittest discover -s ops/tests_sicht
+Prüfseiten mit bekannten Werten (Kontrast auf durchscheinendem Grund, Verlauf, verdeckte und
+teilweise verdeckte Zeilen, Scrollen, außerhalb, abgeschnitten, gekürzt, Ziele, Haken, Stressfall).
+Wer meldet, das Werkzeug messe falsch, bekommt erst eine Prüfseite, die den Fall nachstellt, dann
+die Behebung (so geschehen mit den Meldungen von triebwerk am 05.10.2026).
+
 Exit: 0 alles erfüllt · 1 etwas nicht erfüllt oder unbestimmt · 2 Aufruf, Daten oder Playwright fehlen.
 """
 
