@@ -1,14 +1,16 @@
 # Probe: Antwortet MOSES auf Anfragen von GitHubs Servern? (docs/SCOPE.md §3, „Erster Test“)
-# Davon hängt der ganze Betrieb ohne eigenen Server ab: Der tägliche Abruf läuft auf einem Runner
-# von GitHub, nicht in der Werkstatt. Die Probe holt dieselben drei öffentlichen Seiten wie der
-# Abruf (Versionsliste eines Moduls, Modulbeschreibung, Vorlesungsverzeichnis) und prüft je Seite
-# Status, Größe und einen Marker, an dem der Abruf die Seite erkennt. Nur von Hand startbar —
-# sie ist ein Werkzeug für den Fall, dass der tägliche Lauf scheitert und die Frage wieder offen ist.
+# Die Frage für den Rückfall: Fällt der tägliche Lauf auf dem NAS aus, könnte ein Runner von GitHub
+# den Abruf übernehmen. Die Probe holt dieselben drei öffentlichen Seiten wie der Abruf
+# (Versionsliste eines Moduls, Modulbeschreibung, Vorlesungsverzeichnis) und prüft je Seite
+# Status, Größe und einen Marker, an dem der Abruf die Seite erkennt.
+# Ergebnis am 05.10.2026 (V-0217, Lauf 37238439456): ja, alle drei Seiten mit 200 und Marker.
+# Geprüft sind nur die GET-Seiten, nicht der CSV-Export (JSF-POST). Der tägliche Lauf läuft
+# trotzdem auf dem NAS (docs/BETRIEB.md): GitHub-Runner kommen aus Azure-Adressen, die eine
+# Hochschule jederzeit sperren kann. Die Probe bleibt als Werkzeug für den Rückfall, nur von Hand:
+#   gh workflow run probe-moses.yml --repo thalamus404/stundenplanner
 name: probe-moses
 on:
   workflow_dispatch:
-  push:
-    branches: [vorgang/v-0217]   # nur für den ersten Lauf in V-0217; danach entfernt
 permissions:
   contents: read
 jobs:
@@ -28,7 +30,7 @@ jobs:
             code=$(curl -sS -L --max-time 45 -A "$ua" -o "/tmp/$1.html" -w '%{http_code}' "$2" 2>"/tmp/$1.err") || code="curl-$?"
             groesse=$(wc -c < "/tmp/$1.html" 2>/dev/null || echo 0)
             treffer=$(grep -c -- "$3" "/tmp/$1.html" 2>/dev/null || true)
-            zeile "| $1 | $code | $groesse B | „$3“: ${treffer:-0} |"
+            zeile "| $1 | $code | $groesse B | '$3': ${treffer:-0} |"
             if [ "$code" != 200 ] || [ "${treffer:-0}" -eq 0 ]; then
               fehler=$((fehler + 1)); sed 's/^/    /' "/tmp/$1.err" | head -3
             fi
