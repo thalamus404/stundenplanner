@@ -68,16 +68,20 @@ die „für viele statt für einen“ verlangt, und nicht mehr:
    Anmeldungen dort“
 9. **Impressum und Datenschutzhinweis**
 
-**Wie die Daten kommen** (E5): Das Repo bekommt **einen eigenen Abruf**. Er übernimmt nur die
-MOSES-Logik des Vorbilds, liest nur öffentliche Seiten und nimmt die Modulliste aus einer Datei
-im Repo, nicht aus einer Datenbank. Ein **geplanter Lauf auf GitHub** holt die Termine einmal am
-Tag, und das Ergebnis liegt als **Datendatei neben der Website**. Die Daten fließen nur in eine
-Richtung: MOSES → Abruf → Website. Es gibt keinen Schlüssel, keinen Empfangs-Endpunkt und
-keinen Weg zum NAS oder zu einem anderen System von Silas. **Erster Test:** ob MOSES Anfragen
-von GitHubs Servern annimmt. Wenn nicht, entscheidet Silas über den Ersatz.
+**Wie die Daten kommen** (E5, geändert am 05.10.2026): Das Repo hat **einen eigenen Abruf**. Er
+übernimmt nur die MOSES-Logik des Vorbilds, liest nur öffentliche Seiten und nimmt die Modulliste
+aus einer Datei im Repo, nicht aus einer Datenbank. Er läuft einmal am Tag auf dem NAS, aber **in
+einem eigenen Container**, der mit Silas' anderen Systemen nichts teilt: kein Abruf, keine
+Datenbank, kein Netz von dort. Das Ergebnis lädt er als fertige Seite mit Datendateien zu
+Cloudflare hoch. Die Daten fließen nur in eine Richtung: MOSES → Abruf → Website. Der NAS baut nur
+ausgehende Verbindungen auf und ist nie ein Webserver. Fällt er aus, bleibt die Seite von gestern
+online. Antworten würde MOSES auch GitHubs Servern (geprüft am 05.10.2026, nur die normalen Seiten,
+nicht der CSV-Export); das bleibt der Ersatzweg.
 
-**Wo:** zuerst unter `thalamus404.github.io/stundenplanner` (GitHub Pages) zum Testen. Eine
-eigene Domain kommt später (E7).
+**Wo** (E7, geändert am 05.10.2026): auf **Cloudflare Pages** (Free) unter **`stundenplanner.de`**.
+Silas hat die Domain am 05.10.2026 gekauft. Bis sie zeigt, gilt die Adresse von Cloudflare
+(`*.pages.dev`). GitHub Pages scheidet aus, weil es ein „online business“ verbietet und Werbung
+später möglich bleiben soll.
 
 **Kurz nach dem Start, noch vor dem 12.10.2026** (E9, eigener Schritt): **anonym mitzählen.**
 Silas zählt das „mit zu den wichtigsten Sachen: das Verhalten der User kennenlernen“. Gezählt
@@ -130,7 +134,7 @@ mit Blick auf den nächsten Jahrgang:
 ## 6. Die Entscheidungen — wer, wann, was
 
 E1–E5 und E9 hat `sichter` gefragt, E6–E8 anflug. Silas hat alle am 04.10.2026 entschieden, bis auf
-den Feinschnitt E10.
+den Feinschnitt E10. E5 und E7 hat er am 05.10.2026 nach seiner Hosting-Recherche geändert.
 
 | | Frage | Entscheidung |
 |---|---|---|
@@ -138,9 +142,9 @@ den Feinschnitt E10.
 | **E2** | Konto und Abgleich zwischen Geräten? | **Grundbedienung ohne Konto.** Später ein freiwilliges Konto zum Abgleich. Bis dahin Browser plus Teilen-Link |
 | **E3** | Website oder App? | **Erst eine Website**, damit niemand erst etwas herunterladen muss. Langfristig vermutlich eine App |
 | **E4** | Selbst klicken oder Vorschläge? | **Selbst zusammenstellen** wie im Vorbild. Vorschläge später, gute Vorschläge mit den gezählten Daten |
-| **E5** | Woher kommen die Daten? | **Nicht vom NAS.** Ein eigener öffentlicher Abruf im Repo, täglich auf GitHub, Datendatei neben der Website. Silas überließ die Technik dem Agenten und wollte ausdrücklich nichts, was Persönliches mitliefern könnte |
+| **E5** | Woher kommen die Daten? | **Der eigene öffentliche Abruf aus dem Repo, täglich in einem eigenen Container auf dem NAS, Auslieferung über Cloudflare** (Silas' Hosting-Recherche, 05.10.2026). Nie der Abruf des Study OS: Silas wollte ausdrücklich nichts, was Persönliches mitliefern könnte. Zuerst, am 04.10., hieß es „nicht vom NAS, täglich auf GitHub“ |
 | **E6** | Impressum | **Silas, mit Name und Anschrift.** Die Anschrift steht erst im Impressum der Seite (Online-Vorgang), nicht in den Planungsdokumenten |
-| **E7** | Adresse | **Erst `thalamus404.github.io/stundenplanner`** zum Testen, eine eigene Domain später |
+| **E7** | Adresse | **`stundenplanner.de` auf Cloudflare Pages**, gekauft am 05.10.2026. Zuerst, am 04.10., hieß es GitHub Pages zum Testen |
 | **E8** | Lizenz | **Später.** Bis dahin öffentlich lesbar, nicht frei nutzbar |
 | **E9** | Anonym mitzählen? | **Ja, noch in der Fassung vor dem 12.10.**, als eigener Schritt kurz nach dem Start: nur Summen, keine Kennungen, Datenschutzhinweis. Silas will das Verhalten der Nutzer kennenlernen |
 | **E10** | Was genau wird gezählt? | **Vorschlag in §3**, Silas bestätigt ihn vor dem Bau von Schritt 5 |
@@ -150,9 +154,9 @@ den Feinschnitt E10.
 | | Vorgang | Ergebnis |
 |---|---|---|
 | 1 | **Scope** (V-0210) | diese Datei |
-| 2 | **Datenweg** | Abruf aus dem Study OS übernommen, Modulliste als Datei je Studiengang, Ergebnis als JSON, täglicher Lauf auf GitHub. Zuerst der Test, ob MOSES von dort antwortet |
+| 2 | **Datenweg** | Abruf aus dem Study OS übernommen, Modulliste als Datei je Studiengang, Ergebnis als JSON, täglicher Lauf. Erledigt (V-0214, V-0215): alle 5 Module wie im Study OS |
 | 3 | **Oberfläche nachbauen** | die Seite aus §3 mit Auswahl im Browser und Teilen-Link. `ops/test.sh` rechnet die Fälle des Vorbilds nach (Jahreswechsel, Ferienlücke, A/B, direkt anschließende Termine, Nachttermin) |
-| 4 | **Online** | GitHub Pages (E7), Impressum (E6), Datenschutzhinweis, „kein offizielles Angebot“, Befehle in `.tower/airfield.json` |
+| 4 | **Online** | Container auf dem NAS, Cloudflare Pages unter stundenplanner.de (E7), Impressum (E6), Datenschutzhinweis, „kein offizielles Angebot“, Befehle in `.tower/airfield.json` |
 | 5 | **Mitzählen** | E10 bestätigen lassen, dann der Zähldienst aus §3 (E9) und der Datenschutzhinweis dazu |
 | 6 | **Schöner** | der Ausbau des Aussehens, danach das Zielbild in Silas' Reihenfolge |
 

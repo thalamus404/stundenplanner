@@ -5,6 +5,23 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 05.10.2026 — Der Nachbau steht, der Betrieb zieht um (P-0006)
+
+- **Viele Agenten zugleich (Silas):** Der Leit-Agent legt das Programm P-0006 im TOWER an (sieben Phasen,
+  jeder Schritt ein Punkt) und das Gerüst `docs/ARCHITEKTUR.md` als Vertrag zwischen den Teilen. Danach
+  bauen fünf Agenten parallel: Abruf, Lesemodell, Seite, Betrieb, Design-Brief.
+- **Gleich wie im Study OS:** Abruf und Lesemodell liefern für alle fünf Module von WI im 1. Semester
+  dieselben Daten wie der Stundenplan des Study OS, Gruppe für Gruppe: 11 Bestandteile, 65 Gruppen,
+  949 Einzeltermine. Die Seite ist funktionsgleich nachgebaut, die Auswahl bleibt im Browser.
+- **Statistik I:** MOSES führt im Tutorium eine Gruppe mit einer Buchung, die „SoSe 2026“ trägt. Die
+  strenge Prüfung verwarf deshalb das ganze Modul, im Study OS schon seit dem 29.09. Jetzt wird eine
+  Gruppe, deren Buchungen alle ein anderes Semester tragen, ausgelassen und vermerkt (`ausgelassen`).
+  Gemischte Gruppen bleiben ein Fehler. Der Fund ging als Punkt an das Airfield `studyos`.
+- **Hosting (Silas' Recherche):** Der NAS crawlt in einem eigenen Container, Cloudflare Pages liefert
+  aus. GitHub Pages fällt weg, weil es ein „online business“ verbietet. Silas kauft `stundenplanner.de`.
+  Die Auswahl im Browser folgt der Orientierungshilfe der Datenschutzkonferenz: erst nach der ersten
+  Wahl gespeichert, nur Kennungen, zurücksetzbar, deshalb ohne Einwilligungsbanner.
+
 ## 04.10.2026 — Der Scope steht (V-0210)
 
 Silas entscheidet die Fragen von sichter (E1–E5, E9) und anflug (E6–E8), festgehalten in

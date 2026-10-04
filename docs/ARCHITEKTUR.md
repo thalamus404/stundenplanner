@@ -8,7 +8,15 @@
 ```
 katalog/ ──► abruf/abruf.py ──► daten/roh/ ──► abruf/bauen.py ──► web/daten/ ──► web/ (Browser)
  (von Hand)    (MOSES, öffentlich)  (Rohstand)    (Lesemodell)      (JSON)        (Auswahl lokal)
+ └───────────── täglich im Container stundenplanner-abruf auf dem NAS ─────────────┘ ──► Cloudflare Pages
 ```
+
+**Der NAS crawlt, Cloudflare liefert aus** (Silas, 05.10.2026, nach seiner Hosting-Recherche). Ein
+eigener Container rechnet einmal am Tag alles bis `web/` und lädt die fertige Seite mit `wrangler`
+nach Cloudflare Pages hoch. Er baut nur ausgehende Verbindungen auf, der NAS ist nie ein Webserver.
+Fällt er aus, bleibt die Seite von gestern online. GitHub Pages scheidet aus, weil es ein „online
+business“ verbietet (Werbung ist später möglich). GitHub prüft nur: Tests bei jedem Push und eine
+tägliche Frischeprüfung von außen.
 
 | Teil | Ordner | Was | Bauteil |
 |---|---|---|---|
@@ -16,7 +24,7 @@ katalog/ ──► abruf/abruf.py ──► daten/roh/ ──► abruf/bauen.py 
 | **Abruf** | `abruf/abruf.py`, `abruf/moses.py` | holt je Modul die öffentlichen MOSES-Seiten und den CSV-Export der Einzelbuchungen und schreibt einen **Rohstand** je Modul | `stundenplanner-abruf` |
 | **Lesemodell** | `abruf/plan.py`, `abruf/bauen.py` | rechnet aus Rohständen und Katalog die Daten, die die Seite liest: Termin-Slots, 14-Tage-Rhythmus, Fingerabdruck je Gruppe, Zählungen | `stundenplanner-abruf` |
 | **Seite** | `web/` | statisches HTML, CSS und JS, **ohne Build-Schritt**. Liest `web/daten/`, hält die Auswahl im Browser und rechnet die Konflikte der Auswahl | `stundenplanner-oberflaeche` |
-| **Betrieb** | `.github/workflows/` | auf GitHub: Test bei jedem Push, täglich Abruf → Bauen → GitHub Pages | `stundenplanner-betrieb` |
+| **Betrieb** | `betrieb/`, `ops/bauen.sh`, `.github/workflows/` | auf dem NAS der Container `stundenplanner-abruf`: täglich Abruf → Bauen → Test → Cloudflare Pages, Stand `main` (live = main). Auf GitHub: Test bei jedem Push, Frischeprüfung. Einzelheiten: [`docs/BETRIEB.md`](BETRIEB.md) | `stundenplanner-betrieb` |
 
 **Herkunft:** Abruf und Lesemodell sind aus dem Study OS übernommen (`thalamus404/studyOS`:
 `stundenplan/moses.py`, `stundenplan/runner.py`, `app/stundenplan.py`), die Seite aus
@@ -130,7 +138,7 @@ Seite dieselben Namen benutzt:
       "components": [ { "…": "wie im Rohstand",
           "groups": [ { "…": "wie im Rohstand",
               "key": "70123:12345:678", "digest": "<sha256>", "slots": [ "… siehe unten" ] } ] } ] } ],
-  "has_fortnightly": false, "group_count": 64, "booking_count": 949,
+  "has_fortnightly": false, "group_count": 65, "booking_count": 949,
   "last_run": { "finished_at": "…", "status": "ok|partial|error", "modules": 5, "bookings": 949, "errors": [] } }
 ```
 
@@ -141,37 +149,53 @@ Seite dieselben Namen benutzt:
   `dates`, `rooms`, `occurrences`, `fortnightly`, `parity`, `rhythm`
 - **Nicht** im Lesemodell steht, was vom Betrachter abhängt: `selected`, `changed`, `revision`,
   `selection`, `missing`, `selected_count`, `conflicts` und `stale`. Das rechnet die Seite: `stale`
-  aus `success_at` (älter als 36 Stunden), den Rest aus der lokalen Auswahl
+  aus `success_at` (älter als 36 Stunden oder `null`), den Rest aus der lokalen Auswahl
+- `checked_at`, `success_at` und `error` kommen aus `abruf.geprueft_am`, `abruf.erfolg_am` und
+  `abruf.fehler` des Rohstands. `semester` und `abruf` stehen nicht im Modul. `last_run` kommt aus
+  `_lauf.json` (`finished_at` = `beendet_am`) und ist `null`, wenn es die Datei nicht gibt
+- Ein Modul ohne (lesbaren) Rohstand steht trotzdem im Plan: `components: []`, `error` gesetzt,
+  `title`, `version`, `url`, `isis_url`, `checked_at` und `success_at` sind `null`,
+  `valid_versions: []`, `notes: {}`. Die Seite zeigt dann `short`
+- `ausgelassen` an einem Bestandteil geht unverändert durch (§4)
+- In `index.json` stehen die Pläne nach Studiengang-`id`, dann `anker` des Semesters, dann
+  Fachsemester. Pläne, die aus dem Katalog verschwinden, entfernt der nächste Bau. Gelöscht wird nur,
+  was das alte `index.json` nannte
 
 ## 6. Die Auswahl — nur im Browser
 
 - **Speicher:** `localStorage["stundenplanner:v1:<studiengang>:<semester>:fs<n>"]` =
-  `{ "<component_id>": { "group": "<group_id>", "digest": "<digest bei der Wahl>", "name": "<Gruppenname>", "at": "<ISO>" } }`.
+  `{ "<component_id>": { "group": "<group_id>", "digest": "<digest bei der Wahl>", "name": "<Gruppenname>" } }`.
   Jeder Zugriff in `try/catch`, denn ohne Speicher (privates Fenster) funktioniert die Seite
   trotzdem, sie vergisst nur beim Neuladen
+- **So, dass es ohne Einwilligungsbanner geht** (Silas' Recherche, 05.10.2026, nach der
+  Orientierungshilfe der Datenschutzkonferenz zu Web Storage): Geschrieben wird erst, wenn jemand
+  aktiv die erste Gruppe wählt; Laden schreibt nichts. Gespeichert werden nur Kennungen und was die
+  Funktion braucht: kein Zeitstempel, keine Nutzer-ID. Sichtbar steht „Deine Auswahl wird nur in
+  diesem Browser gespeichert.“, und „Auswahl zurücksetzen“ löscht den Schlüssel nach Rückfrage
 - **Eine Gruppe je Bestandteil.** Eine neue Wahl ersetzt die alte
 - **Geändert seit deiner Wahl:** gewählt, aber `digest` der Auswahl ≠ `digest` der Gruppe.
   „Änderung geprüft“ übernimmt den neuen Digest
 - **Nicht mehr im Angebot:** eine gespeicherte Gruppe, die es im Lesemodell nicht mehr gibt.
   Sie bleibt sichtbar (Name aus der Auswahl), bis man sie löst
-- **Teilen-Link:** trägt Studiengang, Semester, Fachsemester und die Auswahl (Paare
-  Bestandteil → Gruppe) in der Adresse. Wer ihn öffnet, sieht den Plan und kann ihn übernehmen.
-  Eine vorhandene Auswahl wird nie ohne Rückfrage überschrieben
+- **Teilen-Link:** trägt die Auswahl im Fragment hinter `#`, das nie an den Server geht:
+  `#studiengang=<id>&semester=<id>&fs=<n>&w=<component_id>~<group_id>,…`. Wer ihn öffnet, sieht den
+  Plan als Vorschau neben der eigenen Auswahl und übernimmt ihn erst auf Knopfdruck. Eine vorhandene
+  Auswahl wird nie ohne Rückfrage überschrieben (`web/README.md`)
 
 ## 7. Befehle
 
 | Befehl | Was |
 |---|---|
 | `python3 abruf/abruf.py [--semester wise-2026-27] [--nur <modulnummer>] [--roh <ordner>]` | Rohstände nach `daten/roh/` oder `--roh` (Vorbestand dort wird nur je erfolgreichem Modul ersetzt). Läuft aus jedem Arbeitsverzeichnis: Der Katalog hängt an der Lage von `abruf.py`, ein relatives `--roh` am Arbeitsverzeichnis. Exit 0 nur, wenn jedes Semester `ok` ist; 1 bei `partial`/`error`; 2 bei falschem Aufruf oder ungültigem Katalog |
-| `python3 abruf/bauen.py` | Lesemodell nach `web/daten/` aus `katalog/` und `daten/roh/` |
+| `python3 abruf/bauen.py [--katalog <ordner>] [--roh <ordner>] [--aus <ordner>]` | Lesemodell nach `web/daten/` aus `katalog/` und `daten/roh/`. Die Vorgaben hängen an der Repo-Wurzel, nicht am Arbeitsverzeichnis. Ein widersprüchlicher Katalog endet mit 2 und schreibt nichts |
 | `python3 -m http.server -d web 8000` | die Seite lokal ansehen |
 | `sh ops/test.sh` | alle Tests: Regeln des öffentlichen Repos, `abruf/tests/test_*.py` (unittest), `web/tests/*.test.mjs` (`node --test`) |
 
-`daten/` und `web/daten/` sind erzeugt und stehen in `.gitignore`. Auf GitHub erzeugt sie der
-tägliche Lauf neu. Tests nehmen ihre Daten aus `abruf/tests/fixtures/` bzw. `web/tests/fixtures/`.
+`daten/` und `web/daten/` sind erzeugt und stehen in `.gitignore`. Erzeugt werden sie täglich im
+Container auf dem NAS (`docs/BETRIEB.md`). Tests nehmen ihre Daten aus `abruf/tests/fixtures/` bzw. `web/tests/fixtures/`.
 
 ## 8. Laufzeit
 
-Python ≥ 3.11 mit `beautifulsoup4` (`abruf/requirements.txt`). Node ≥ 20 nur für die Tests der
-Seite. Die Seite selbst braucht nichts außer einem Browser: kein Framework, keine Schrift von einem
+Python ≥ 3.11 mit `beautifulsoup4` (`abruf/requirements.txt`). Node ≥ 20 für die Tests der Seite und
+im Container für `wrangler`. Die Seite selbst braucht nichts außer einem Browser: kein Framework, keine Schrift von einem
 fremden Server, nichts von einem CDN. Sie muss schnell sein und auch auf alten Handys laufen.
