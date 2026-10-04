@@ -1,0 +1,15 @@
+/* Bekannte Werte (WCAG 2): 767676 auf Weiß 4,54:1, 777777 auf Weiß 4,48:1. Weiß auf
+   rgba(0,0,0,.5) über Weiß = Weiß auf 808080: 3,95:1. Schwarz bei Deckkraft .4 auf Weiß = 999999 auf
+   Weiß: 2,85:1. Der Verlauf läuft von Weiß nach 555555: Schwarz fällt erst unter 4,5:1, wo der Grund
+   dunkler als etwa 757575 ist, also auf einem Fünftel der Textbreite, ohne vorherrschenden Grund. */
+html { background: #fff; }
+body { margin: 0; padding: 8px; font: 16px/24px system-ui, sans-serif; color: #000; }
+p { margin: 0 0 8px; }
+.a { color: #767676; }
+.b { color: #777777; }
+.halb { background: rgba(0, 0, 0, .5); }
+.halb p { color: #fff; }
+.blass { opacity: .4; }
+.verlauf { display: inline-block; background: linear-gradient(to right, #fff, #555); }
+.linie { color: #595959; background: linear-gradient(transparent 11px, #333 11px, #333 13px, transparent 13px); }
+.aus { color: #bbb; background: #fff; border: 1px solid #ddd; font: inherit; }
