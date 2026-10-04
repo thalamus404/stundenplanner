@@ -23,7 +23,7 @@ tägliche Frischeprüfung von außen.
 | **Katalog** | `katalog/` | Semester, Studiengänge und welche Module in welchem Fachsemester dran sind. Von Hand, versioniert | `stundenplanner-abruf` |
 | **Abruf** | `abruf/abruf.py`, `abruf/moses.py` | holt je Modul die öffentlichen MOSES-Seiten und den CSV-Export der Einzelbuchungen und schreibt einen **Rohstand** je Modul | `stundenplanner-abruf` |
 | **Lesemodell** | `abruf/plan.py`, `abruf/bauen.py` | rechnet aus Rohständen und Katalog die Daten, die die Seite liest: Termin-Slots, 14-Tage-Rhythmus, Fingerabdruck je Gruppe, Zählungen | `stundenplanner-abruf` |
-| **Seite** | `web/` | statisches HTML, CSS und JS, **ohne Build-Schritt**. Liest `web/daten/`, hält die Auswahl im Browser und rechnet die Konflikte der Auswahl | `stundenplanner-oberflaeche` |
+| **Seite** | `web/` | statisches HTML, CSS und JS, **ohne Build-Schritt**. Liest `web/daten/`, hält die Auswahl im Browser und rechnet die Konflikte der Auswahl. Wie sie aussieht und sich bedient: [`docs/DESIGN.md`](DESIGN.md) | `stundenplanner-oberflaeche` |
 | **Betrieb** | `betrieb/`, `ops/bauen.sh`, `.github/workflows/` | auf dem NAS der Container `stundenplanner-abruf`: täglich Abruf → Bauen → Test → Cloudflare Pages, Stand `main` (live = main). Auf GitHub: Test bei jedem Push, Frischeprüfung. Einzelheiten: [`docs/BETRIEB.md`](BETRIEB.md) | `stundenplanner-betrieb` |
 
 **Herkunft:** Abruf und Lesemodell sind aus dem Study OS übernommen (`thalamus404/studyOS`:
