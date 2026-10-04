@@ -81,6 +81,9 @@ Felder, die dort aus Silas' Datenbank kamen (`short`, `studyos_version`):
 
 **Ein Modul wird nur ersetzt, wenn alle seine Bestandteile gelungen sind.** Scheitert eines, bleibt
 der letzte erfolgreiche Rohstand stehen. Nur `abruf.geprueft_am` und `abruf.fehler` ändern sich.
+Ein Bestandteil kann `ausgelassen` tragen: `[ { "id", "name", "semester", "bookings": n } ]`, die
+Gruppen, die die Seite des Zielsemesters listet, deren Buchungen aber alle ein anderes Semester
+tragen (Regel und Anlass: `abruf/README.md`, „Was schiefgehen kann“). Sie stehen nicht in `groups`.
 Ohne Vorbestand entsteht ein Rohstand ohne Bestandteile:
 `{ "number", "semester", "components": [], "abruf": { "geprueft_am", "erfolg_am": null, "fehler" } }`.
 Jede Datei wird atomar geschrieben (tmp im selben Ordner + rename): Ein Leser sieht den alten oder

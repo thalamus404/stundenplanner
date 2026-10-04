@@ -224,7 +224,9 @@ class Client:
                 gid=parse_qs(urlsplit(a['href']).query)['veranstaltung'][0]
                 series.setdefault(gid,[]).append(form_groups(wrap))
         raw=self.export(url,page)
-        bookings=parse_export(raw,target,group_ids)
+        # Gruppen, deren Buchungen alle ein anderes Semester tragen, fallen heraus (parse_export).
+        foreign={}
+        bookings=parse_export(raw,target,group_ids,foreign)
         groups={}
         for b in bookings:
             gid=b.pop('group_id')
@@ -233,24 +235,46 @@ class Client:
                          'series':series.get(gid,[]),'bookings':[]})
             b.pop('group_name',None)
             group['bookings'].append(b)
-        for gid in group_ids-groups.keys():
+        for gid in group_ids-groups.keys()-foreign.keys():
             # The source has a group but no bookings: show it as unplanned, never erase it.
             a=page.select_one(f'a[href*="veranstaltung={gid}"]')
             groups[gid]={'id':gid,'name':clean(a),'url':public_url(a['href']),
                          'series':series.get(gid,[]),'bookings':[]}
-        return {**part,'vvz_url':url,'semester_id':sid,'groups':list(groups.values()),
-                'status':'ok' if bookings else 'unplanned'},raw
+        result={**part,'vvz_url':url,'semester_id':sid,'groups':list(groups.values()),
+                'status':'ok' if bookings else 'unplanned'}
+        if foreign:
+            # Ausgelassen, aber nicht still: Der Rohstand nennt jede Gruppe mit ihrem Semester.
+            result['ausgelassen']=sorted(foreign.values(),key=lambda g:g['id'])
+        return result,raw
 
-def parse_export(raw,target,group_ids):
+def parse_export(raw,target,group_ids,foreign=None):
+    """Die Buchungen des Zielsemesters. Jede Zeile wird geprüft; es gibt keinen Rückgriff auf ein
+    anderes Semester.
+
+    Genau eine Ausnahme, und nur mit `foreign` (ein dict): Eine Gruppe, die die Seite des
+    Zielsemesters listet, deren Zeilen aber ALLE ein anderes Semester tragen, wird ausgelassen und
+    in `foreign` vermerkt (id, name, semester, bookings). Anlass: Seit dem 29.09.2026 listet MOSES
+    im Tutorium von 70450 (WiSe 2026/27) eine Gruppe mit einer einzigen Buchung des SoSe 2026, und
+    die alte Regel kippte deshalb das ganze Modul. Freigegeben vom Leit-Agenten am 05.10.2026.
+    Weiter ein Fehler: eine Gruppe, die Semester mischt, und ein Export ohne eine einzige Zeile
+    des Zielsemesters. Ohne `foreign` gilt die alte, strenge Regel.
+    """
     reader=csv.DictReader(io.StringIO(raw),delimiter=';')
     if not reader.fieldnames or set(COLUMNS)-set(reader.fieldnames):
         raise SourceError('CSV-Header unvollständig')
-    out=[];seen={}
+    out=[];seen={};other={}
     for row in reader:
-        if row['Veranstaltung Semester'] != target: raise SourceError('Falsches Semester im Export')
+        # Die Semesterprüfung je Zeile. Fremde Zeilen werden mit `foreign` erst gesammelt und am
+        # Ende entschieden: nur ganze Gruppen eines fremden Semesters fallen heraus (Docstring).
+        if row['Veranstaltung Semester'] != target and foreign is None:
+            raise SourceError('Falsches Semester im Export')
         gid=row['Veranstaltung ID'];bid=row['Buchung ID']
         if gid not in group_ids or not gid.isdigit() or not bid.isdigit():
             raise SourceError('Export enthält unbekannte Gruppe/Buchung')
+        if row['Veranstaltung Semester'] != target:
+            g=other.setdefault(gid,{'id':gid,'name':row['Gruppe/ Planungsgruppe'],'semester':set(),'bookings':set()})
+            g['semester'].add(row['Veranstaltung Semester']);g['bookings'].add(bid)
+            continue
         try:
             start=datetime.fromisoformat(row['ISO Beginn (Studierende)'])
             end=datetime.fromisoformat(row['ISO Ende (Studierende)'])
@@ -265,4 +289,11 @@ def parse_export(raw,target,group_ids):
             if seen[bid] != b: raise SourceError('Widersprüchliche doppelte Buchung')
             continue
         seen[bid]=b;out.append(b)
+    if other:
+        # Kein Zielsemester im ganzen Export, oder eine Gruppe mit Zeilen beider Semester: Fehler.
+        if not out or other.keys() & {b['group_id'] for b in out}:
+            raise SourceError('Falsches Semester im Export')
+        for gid,g in other.items():
+            foreign[gid]={'id':gid,'name':g['name'],'semester':', '.join(sorted(g['semester'])),
+                          'bookings':len(g['bookings'])}
     return sorted(out,key=lambda b:(b['start'],b['group_id'],b['id']))

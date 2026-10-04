@@ -43,14 +43,26 @@ MOSES-Sitzung (`fehlertext()` in `abruf.py`).
 |---|---|---|
 | `Unbekanntes Modulbestandteile-Layout`, `Semesterwahl fehlt`, `VVZ-Formular fehlt`, `VVZ-Export fehlt`, `Exportspalten fehlen`, `CSV-Header unvollständig`, `CSV-Export fehlt` | MOSES hat sein **Layout** geändert. Der Parser rät nicht, er hört auf | `moses.py` an die neue Seite anpassen, mit einem Test in `tests/test_moses.py`, der das neue Layout belegt |
 | `… ist im VVZ noch gesperrt`, `… fehlt in der Semesterwahl`, `keine gültige Version für …` | Das **Semester** ist in MOSES noch nicht freigegeben, oder es gibt keine im Semester gültige Modulversion | Warten. Es gibt absichtlich keinen Rückgriff auf ein anderes Semester oder eine abgelaufene Version |
-| `VVZ zeigt trotz Auswahl ein anderes Semester`, `Falsches Semester im Export` | MOSES liefert Termine eines anderen Semesters | Nachsehen, welche Gruppe es ist (siehe unten). Nie die Prüfung abschalten: Ein Sommerplan im Winter ist schlimmer als ein fehlendes Modul |
+| `VVZ zeigt trotz Auswahl ein anderes Semester`, `Falsches Semester im Export` | MOSES liefert Termine eines anderen Semesters, und zwar so, dass die enge Ausnahme (unten) nicht greift: eine Gruppe mischt Semester, oder der Export hat keine einzige Zeile des Zielsemesters | Den Export von Hand ansehen. Nie die Prüfung abschalten: Ein Sommerplan im Winter ist schlimmer als ein fehlendes Modul |
 | `Export enthält unbekannte Gruppe/Buchung`, `Widersprüchliche doppelte Buchung`, `Ungültige ISO-Zeit`, `Terminende liegt vor dem Beginn` | Der Export passt nicht zur Seite, die ihn angeboten hat | Einen Tag abwarten; bleibt es, den Export von Hand ansehen |
 | `HTTPError: HTTP Error 429/503 …`, `URLError …`, `TimeoutError` | MOSES ist nicht erreichbar oder bremst | Nichts. Nicht sofort wiederholen (Höflichkeit, unten) |
 | `Unerwarteter MOSES-Host`, `Unerwartete Weiterleitung` | Eine Adresse oder Weiterleitung führt weg von MOSES | Nicht folgen. `moses.py` holt nur von MOSES selbst |
 
-**Bekannt seit dem 29.09.2026:** Statistik I (70450) scheitert mit `Falsches Semester im Export`.
-Im Tutorium listet MOSES auf der Seite des WiSe 2026/27 eine Gruppe, deren einzige Buchung als
-`SoSe 2026` gekennzeichnet ist. Weil `parse_export()` jede Zeile prüft, fällt der ganze Export.
+**Die eine Ausnahme der Semesterprüfung: ganze Gruppen eines fremden Semesters.** Jede Zeile des
+Exports muss das Zielsemester tragen, bis auf diesen Fall: Eine Gruppe, die die Seite des
+Zielsemesters listet, deren Buchungen aber **alle** ein anderes Semester tragen, wird ausgelassen
+und im Bestandteil vermerkt, damit nichts still verschwindet:
+
+```json
+"ausgelassen": [ { "id": "367131", "name": "(Tutorium)", "semester": "SoSe 2026", "bookings": 1 } ]
+```
+
+Weiter ein Fehler bleiben eine Gruppe mit Buchungen beider Semester und ein Export ohne eine
+einzige Zeile des Zielsemesters. Anlass: Seit dem 29.09.2026 listet MOSES im Tutorium von
+Statistik I (70450) für das WiSe 2026/27 genau so eine Gruppe mit einer Buchung des SoSe 2026, und
+die strenge Regel kippte das ganze Modul (19 Gruppen, 277 Termine). Freigegeben vom Leit-Agenten am
+05.10.2026; die Regel steht als Docstring an `parse_export()` in `moses.py`, die Tests in
+`tests/test_moses.py`.
 
 ### Höflichkeit
 
