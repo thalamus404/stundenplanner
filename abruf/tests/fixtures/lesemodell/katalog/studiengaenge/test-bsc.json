@@ -1,0 +1,42 @@
+{
+ "id": "test-bsc",
+ "name": "Testlehre",
+ "abschluss": "B.Sc.",
+ "hochschule": "Testhochschule",
+ "plaene": [
+  {
+   "semester": "ws-2030-31",
+   "fachsemester": 3,
+   "quelle": "erfunden",
+   "module": [
+    {
+     "nummer": "90003",
+     "kurz": "Mod C"
+    },
+    {
+     "nummer": "90001",
+     "kurz": "Mod A"
+    }
+   ]
+  },
+  {
+   "semester": "ws-2030-31",
+   "fachsemester": 1,
+   "quelle": "erfunden",
+   "module": [
+    {
+     "nummer": "90001",
+     "kurz": "Mod A"
+    },
+    {
+     "nummer": "90002",
+     "kurz": "Mod B"
+    },
+    {
+     "nummer": "90009",
+     "kurz": "Fehlt"
+    }
+   ]
+  }
+ ]
+}

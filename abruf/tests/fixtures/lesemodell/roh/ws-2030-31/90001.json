@@ -1,0 +1,285 @@
+{
+ "number": "90001",
+ "title": "Testmodul A",
+ "version": 3,
+ "valid_from": "WS 2029/30",
+ "valid_to": "offen",
+ "valid_versions": [
+  3
+ ],
+ "url": "https://example.org/modul/90001",
+ "isis_url": "https://example.org/isis/m90001",
+ "notes": {
+  "Sonstiges": "Erfundenes Modul für Tests."
+ },
+ "semester": "WS 2030/31",
+ "components": [
+  {
+   "id": "90001:500",
+   "lvvid": "500",
+   "title": "Testmodul A",
+   "type": "Vorlesung",
+   "number": "T 500",
+   "sws": 2.0,
+   "cycle": "jedes Semester",
+   "language": "Deutsch",
+   "section": "Pflichtbereich",
+   "required": true,
+   "vvz_url": "https://example.org/vvz/500",
+   "isis_url": "https://example.org/isis/500",
+   "semester_id": "77",
+   "status": "ok",
+   "groups": [
+    {
+     "id": "601",
+     "name": "Termingruppe 1",
+     "url": "https://example.org/gruppe/601",
+     "series": [
+      {
+       "Datum/Uhrzeit": "Mo. wöchentlich, Do. wöchentlich"
+      }
+     ],
+     "bookings": [
+      {
+       "id": "1001",
+       "start": "2030-10-14T10:00:00",
+       "end": "2030-10-14T12:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1002",
+       "start": "2030-10-21T10:00:00",
+       "end": "2030-10-21T12:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1003",
+       "start": "2030-10-28T10:00:00",
+       "end": "2030-10-28T12:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1004",
+       "start": "2030-11-04T10:00:00",
+       "end": "2030-11-04T12:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1005",
+       "start": "2030-11-11T10:00:00",
+       "end": "2030-11-11T12:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1006",
+       "start": "2030-10-17T14:00:00",
+       "end": "2030-10-17T16:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1007",
+       "start": "2030-10-24T14:00:00",
+       "end": "2030-10-24T16:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1008",
+       "start": "2030-10-31T14:00:00",
+       "end": "2030-10-31T16:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1009",
+       "start": "2030-11-07T14:00:00",
+       "end": "2030-11-07T16:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1010",
+       "start": "2030-11-14T14:00:00",
+       "end": "2030-11-14T16:00:00",
+       "room": "Raum 1",
+       "title": "Testmodul A (Vorlesung)",
+       "format": "Vorlesung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "90001:510",
+   "lvvid": "510",
+   "title": "Testmodul A",
+   "type": "Übung",
+   "number": "T 510",
+   "sws": 2.0,
+   "cycle": "jedes Semester",
+   "language": "Deutsch",
+   "section": "Pflichtbereich",
+   "required": true,
+   "vvz_url": "https://example.org/vvz/510",
+   "isis_url": "https://example.org/isis/510",
+   "semester_id": "77",
+   "status": "ok",
+   "groups": [
+    {
+     "id": "602",
+     "name": "Gruppe A",
+     "url": "https://example.org/gruppe/602",
+     "series": [],
+     "bookings": [
+      {
+       "id": "1011",
+       "start": "2030-10-15T12:00:00",
+       "end": "2030-10-15T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1012",
+       "start": "2030-10-29T12:00:00",
+       "end": "2030-10-29T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1013",
+       "start": "2030-11-12T12:00:00",
+       "end": "2030-11-12T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1014",
+       "start": "2030-11-26T12:00:00",
+       "end": "2030-11-26T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      }
+     ]
+    },
+    {
+     "id": "603",
+     "name": "Gruppe B",
+     "url": "https://example.org/gruppe/603",
+     "series": [],
+     "bookings": [
+      {
+       "id": "1015",
+       "start": "2030-10-22T12:00:00",
+       "end": "2030-10-22T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1016",
+       "start": "2030-11-05T12:00:00",
+       "end": "2030-11-05T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1017",
+       "start": "2030-11-19T12:00:00",
+       "end": "2030-11-19T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1018",
+       "start": "2030-12-03T12:00:00",
+       "end": "2030-12-03T14:00:00",
+       "room": "Raum 2",
+       "title": "Testmodul A (Übung)",
+       "format": "Übung",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "abruf": {
+  "geprueft_am": "2030-10-01T05:20:00+02:00",
+  "erfolg_am": "2030-10-01T05:20:00+02:00",
+  "fehler": null
+ }
+}
