@@ -70,7 +70,12 @@ case "${1:-}" in
       exit 0
     fi
     echo "  ── docker build ($BILD:live aus git archive $KURZ) ──"
-    docker image inspect "$BILD:live" >/dev/null 2>&1 && docker image tag "$BILD:live" "$BILD:vorher"
+    # Genau zwei Images: live und vorher (für rueckweg). Das alte vorher wird erst entfernt, sonst
+    # bliebe es beim Umhängen des Tags als namenloses Image liegen, eins je Bau (~600 MB).
+    if docker image inspect "$BILD:live" >/dev/null 2>&1; then
+      docker image rm "$BILD:vorher" >/dev/null 2>&1 || true
+      docker image tag "$BILD:live" "$BILD:vorher"
+    fi
     git -C "$WURZEL" archive --format=tar "$SHA" \
       | docker build -q -f betrieb/Dockerfile --build-arg "STAND=$KURZ" -t "$BILD:live" -
     echo "  ── Container neu starten ──"
