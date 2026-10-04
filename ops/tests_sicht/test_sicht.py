@@ -60,6 +60,9 @@ class Messung(unittest.TestCase):
         # eine 2-px-Linie hinter der Zeile ist kein Grund: 595959 auf Weiß erfüllt
         self.assertNotIn('Grau mit Linie dahinter', fehler)
         self.assertNotIn('Grau mit Linie dahinter', unbestimmt)
+        # verdeckt (eine feste Meldung liegt darüber): nicht gemessen, gezählt
+        self.assertNotIn('Unter der Meldung', fehler)
+        self.assertEqual(k['verdeckt'], 1)
         # gesperrte Elemente sind ausgenommen (WCAG)
         self.assertEqual(k['gesperrt'], 1)
         self.assertNotIn('Gesperrt', fehler)
@@ -85,6 +88,11 @@ class Messung(unittest.TestCase):
         self.assertEqual(m['log']['resize'], 1)
         self.assertTrue(m['pflicht']['impressum']['ok'])
         self.assertFalse(m['pflicht']['speicher']['ok'])
+
+    def test_abgeschnitten(self):
+        z = sicht.lauf_zoom({'fenster': (400, 300), 'touch': False, 'schema': 'light', 'url': self.url + 'layout.html'})
+        self.assertTrue(any('Ein sehr langer' in x and 'gekürzt' in x for x in z['abgeschnitten']))
+        self.assertFalse(any('Luft' in x for x in z['abgeschnitten']), z['abgeschnitten'])
 
     def test_bewertung_kacheln(self):
         m = self.messen('layout.html', 400, 300)

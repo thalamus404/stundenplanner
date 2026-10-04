@@ -1,6 +1,7 @@
 /* Fenster 400 × 300. Bekannt: die Seite ist 700 px hoch, ein Absatz ragt rechts hinaus, ein Bereich
    scrollt innen, der Knopf „x“ ist 20 × 20, der Chip „TUT“ liegt halb außerhalb, die Kacheln VL und
-   UE überlappen, die Kachel IV schneidet ein overflow: hidden ab (halb sichtbar). */
+   UE überlappen, die Kachel IV schneidet ein overflow: hidden ab (halb sichtbar). Der lange Satz
+   wird mit … gekürzt (abgeschnitten); „Luft“ verliert nur die Luft über der Schrift (nicht). */
 html { background: #fff; }
 body { margin: 0; font: 14px/20px system-ui, sans-serif; color: #000; position: relative; }
 button { font: inherit; margin: 0; }
@@ -21,3 +22,5 @@ button { font: inherit; margin: 0; }
 .innen { height: 40px; overflow: auto; }
 .rechts { position: absolute; left: 380px; top: 200px; margin: 0; white-space: nowrap; }
 .hoch { height: 400px; }
+.kurz { width: 80px; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.luft { display: block; height: 14px; line-height: 14px; font-size: 14px; overflow: hidden; }

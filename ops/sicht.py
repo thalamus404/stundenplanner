@@ -329,11 +329,34 @@ const kinderClip = (el, hart = false) => {
   cache.set(el, c); return c;
 };
 const ganz = (b) => b.l >= -0.5 && b.t >= -0.5 && b.r <= W + 0.5 && b.b <= H + 0.5;
-const verdeckt = (el, b) => {
-  const x = (b.l + b.r) / 2, y = (b.t + b.b) / 2;
+// Verdeckt an einem Punkt: Liegt über dem Element etwas, das dort MALT (Fläche, Bild)? Der Stapel
+// aus elementsFromPoint, von oben; durchsichtige Hüllen und unsichtbare Elemente zählen nicht.
+// Damit Meldungen mit pointer-events: none nicht unsichtbar bleiben, schaltet zeigbar(true) für die
+// Dauer der Messung alle Elemente treffbar (gesehen am 05.10.2026: die Meldung beim ersten Laden).
+const malt = (e) => {
+  if (/^(IMG|SVG|VIDEO|CANVAS|IFRAME)$/i.test(e.tagName)) return true;
+  const s = cs(e), c = farbe(s.backgroundColor);
+  return (c && c[3] > 0.1) || s.backgroundImage !== 'none';
+};
+const verdecktAn = (el, x, y) => {
   if (x < 0 || y < 0 || x >= W || y >= H) return true;
-  const e = document.elementFromPoint(x, y);
-  return !(e && (e === el || el.contains(e) || e.contains(el)));
+  for (const e of document.elementsFromPoint(x, y)) {
+    if (e === el || el.contains(e) || e.contains(el)) return false;
+    if (!vis(e)) continue;
+    if (malt(e)) return true;
+  }
+  return false;
+};
+const verdeckt = (el, b) => verdecktAn(el, (b.l + b.r) / 2, (b.t + b.b) / 2);
+const zeigbar = (an) => {
+  if (an) {
+    try {
+      const sh = new CSSStyleSheet(); sh.replaceSync('*, *::before, *::after { pointer-events: auto !important; }');
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sh]; window.__sichtZeig = sh;
+    } catch (e) {}
+  } else if (window.__sichtZeig) {
+    document.adoptedStyleSheets = document.adoptedStyleSheets.filter((x) => x !== window.__sichtZeig); window.__sichtZeig = null;
+  }
 };
 const hatText = (el) => { for (const n of el.childNodes) if (n.nodeType === 3 && n.nodeValue.trim()) return true; return false; };
 const gesperrt = (el) => !!el.closest('[disabled], [aria-disabled="true"], [inert]') || (el.matches && el.matches(':disabled'));
@@ -362,23 +385,40 @@ const texteSammeln = () => {
   const rg = document.createRange();
   const eintrag = (el, text, roh) => {
     const c = kinderClip(el), ch = kinderClip(el, true);
-    const rects = []; let fr = 0, fc = 0;
+    const fs = parseFloat(cs(el).fontSize) || 16;
+    const rects = []; let fr = 0, fc = 0, ab = false;
     for (const b of roh) {
       if (b.r - b.l < 0.5 || b.b - b.t < 0.5) continue;
       fr += flaeche(b);
-      const xh = schnitt(b, ch); if (xh) fc += flaeche(xh);
+      const xh = schnitt(b, ch);
+      if (xh) fc += flaeche(xh);
+      // Abgeschnitten heißt: seitlich mehr als 1 px weg, oder oben/unten mehr als der Rand, den
+      // die Zeilenbox über die Schriftgröße hinaus hat. Die Box eines Textes ist höher als seine
+      // Buchstaben (Ober- und Unterlänge des Fonts); eine Zeilenhöhe von 16 px bei 14-px-Schrift
+      // schneidet nur Luft ab (gesehen an „Noch offen“, 05.10.2026).
+      const luft = Math.max(0, ((b.b - b.t) - fs) / 2) + 0.5;
+      if (!xh || (b.r - b.l) - (xh.r - xh.l) > 1 || xh.t - b.t > luft || b.b - xh.b > luft) ab = true;
       const x = schnitt(b, c);
       if (x && x.r - x.l >= 1.5 && x.b - x.t >= 1.5) rects.push(x);
     }
+    // „…“ durch text-overflow: Die Zeilenbox endet am Rand, der Rest des Textes fehlt trotzdem.
+    const gekuerzt = [el, el.parentElement].some((e) => e && e.nodeType === 1 && cs(e).textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 0.5);
     // Ein Clip unter 4 px² ist „nur für Screenreader“ (sr-only), kein sichtbarer Text.
     if (!rects.length || (c && !c.leer && flaeche(c) < 4)) return;
+    // Verdeckt: Liegt über der Mitte jeder Zeile ein fremdes Element (eine Meldung, ein Blatt),
+    // sieht man den Text nicht. Sein Kontrast gegen das, was darüber liegt, wäre Unsinn (gesehen an
+    // der Meldung beim ersten Laden: Kachelschrift „gegen“ die Tinte der Meldung, 1:1).
+    const verdeckt = rects.every((b) => {
+      const x = (b.l + b.r) / 2, y = (b.t + b.b) / 2;
+      return x >= 0 && y >= 0 && x < W && y < H && verdecktAn(el, x, y);
+    });
     const s = cs(el);
     out.push({ el, text: kurz(text, 60), name: name(el), groesse: parseFloat(s.fontSize),
       gewicht: parseInt(s.fontWeight, 10), familie: s.fontFamily, trans: s.textTransform,
       laufweite: s.letterSpacing,
       farbe: farbe(s.getPropertyValue('-webkit-text-fill-color')) || farbe(s.color),
-      deck: deckkraft(el), gesperrt: gesperrt(el), dialog: !!el.closest(DIALOG),
-      rects, anteil: fr ? fc / fr : 1 });
+      deck: deckkraft(el), gesperrt: gesperrt(el), dialog: !!el.closest(DIALOG), verdeckt,
+      rects, anteil: fr ? fc / fr : 1, abgeschnitten: ab || gekuerzt, gekuerzt });
   };
   for (let n = tw.nextNode(); n; n = tw.nextNode()) {
     const t = n.nodeValue; if (!t || !t.trim()) continue;
@@ -403,6 +443,7 @@ const texteSammeln = () => {
 # Die Messung eines Laufs: alles, was ohne Klick zu sehen ist.
 MESSEN_JS = "(opt) => {\n" + HELFER_JS + r"""
 const seite = document.scrollingElement || de;
+zeigbar(true);
 const texte = texteSammeln();
 const alle = [...body.querySelectorAll('*')];
 
@@ -491,6 +532,12 @@ for (const t of texte) {
   if (/\s[·•]\s/.test(t.el.textContent || '')) tell('Mittelpunkt-Kette', t.el);
   if (FLOSKEL.test(t.text)) tell('Floskel', t.el, t.text);
 }
+for (const el of document.querySelectorAll('button, a[href], [role=button]')) {
+  if (!vis(el)) continue;
+  let eigen = ''; for (const n of el.childNodes) if (n.nodeType === 3) eigen += n.nodeValue;
+  eigen = eigen.trim();
+  if (eigen.length === 1 && !/[\p{L}\p{N}]/u.test(eigen)) tell('Zeichen als Symbol', el, eigen);
+}
 for (const el of document.querySelectorAll('[aria-label], button, a')) {
   if (!vis(el)) continue;
   const t = (el.getAttribute('aria-label') || '') + ' ' + (el.textContent || '');
@@ -560,6 +607,7 @@ for (const nd of opt.pflicht) {
 const tok = {};
 for (const n of opt.tokens) { const v = getComputedStyle(de).getPropertyValue(n).trim(); tok[n] = v ? farbe(v) : null; }
 const log = window.__sicht || null;
+zeigbar(false);
 return {
   W, H, seite: { h: seite.scrollHeight, b: seite.scrollWidth }, scroll: [scrollX, scrollY],
   coarse: matchMedia('(pointer: coarse)').matches, dunkel: matchMedia('(prefers-color-scheme: dark)').matches,
@@ -682,7 +730,7 @@ return out;
 ZOOM_JS = "() => {\n" + HELFER_JS + r"""
 const texte = texteSammeln().filter((t) => !t.dialog);
 const ab = [];
-for (const t of texte) if (t.anteil < 0.95) ab.push(t.name + ' (' + Math.round(100 * t.anteil) + ' % sichtbar)');
+for (const t of texte) if (t.abgeschnitten) ab.push(t.name + (t.gekuerzt ? ' (mit … gekürzt)' : ' (' + Math.round(100 * t.anteil) + ' % sichtbar)'));
 const boxen = [];
 texte.forEach((t, i) => { for (const r of t.rects) boxen.push([i, r]); });
 const ueber = [];
@@ -931,17 +979,22 @@ def _arbeiter_start():
     _PW.update(pw=pw, browser=browser, helfer=helfer)
 
 
-def _warten(page, offen, frist=12.0, sel_ok=True):
-    """Bis keine Anfrage mehr läuft und das DOM 300 ms ruhig ist (oder die Frist um ist)."""
+def _warten(page, offen, frist=12.0, ruhe_ms=300, mindest_ms=1500, kachel=False):
+    """Bis keine Anfrage mehr läuft und das DOM ruhe_ms still ist — frühestens mindest_ms nach dem
+    Start der Navigation, außer es steht schon eine Kachel. Ohne die Mindestzeit galt eine Seite
+    als „ruhig“, bevor ihr Skript die Daten überhaupt anfragte (gedrosselt gesehen, 05.10.2026).
+    kachel=True wartet, bis eine Kachel da ist (oder die Frist um ist)."""
     ende = time.monotonic() + frist
     ruhig = False
     while time.monotonic() < ende:
         if offen[0] <= 0:
             try:
-                ruhe = page.evaluate('() => performance.now() - (window.__sicht ? window.__sicht.letzte : 0)')
+                z = page.evaluate("""() => [performance.now(), performance.now() - (window.__sicht ? window.__sicht.letzte : 0),
+                                           !!document.querySelector('[data-sicht="kachel"]')]""")
             except Exception:
-                ruhe = 1e9
-            if ruhe >= 300:
+                z = [1e9, 1e9, False]
+            jetzt, ruhe, hat = z
+            if ruhe >= ruhe_ms and (hat or (not kachel and jetzt >= mindest_ms)):
                 ruhig = True
                 break
         page.wait_for_timeout(50)
@@ -1044,10 +1097,13 @@ def _kontrast(page, mess, zoom_ok=True):
         items.append({'f': [f[0], f[1], f[2], f[3] * t['deck']], 'r': rects, 'soll': 3.0 if gross else 4.5})
         zu.append(t)
     erg = _PW['helfer'].evaluate(PIXEL_JS, {'png': base64.b64encode(png).decode(), 'items': items}) if items else []
-    gemessen, fehler, unbestimmt, ausgenommen, ungemessen = 0, [], [], 0, 0
+    gemessen, fehler, unbestimmt, ausgenommen, ungemessen, verdeckt = 0, [], [], 0, 0, []
     werte = []
     for t, e in zip(zu, erg):
         if t['dialog']:
+            continue
+        if t.get('verdeckt'):
+            verdeckt.append(t['name'])
             continue
         if not e:
             ungemessen += 1
@@ -1084,7 +1140,8 @@ def _kontrast(page, mess, zoom_ok=True):
         else:
             unbestimmt.append({**eintrag, 'wert': None, 'p02': round(e['p02'], 2)})
     return {'gemessen': gemessen, 'min': round(min(werte), 2) if werte else None, 'fehler': fehler,
-            'unbestimmt': unbestimmt, 'gesperrt': ausgenommen, 'ungemessen': ungemessen}
+            'unbestimmt': unbestimmt, 'gesperrt': ausgenommen, 'ungemessen': ungemessen,
+            'verdeckt': len(verdeckt), 'verdeckt_bsp': verdeckt[:5]}
 
 
 def lauf(spec: dict) -> dict:
@@ -1120,7 +1177,7 @@ def lauf_leistung(spec: dict) -> dict:
                                                       'downloadThroughput': 1.6e6 / 8, 'uploadThroughput': 750e3 / 8})
         cdp.send('Emulation.setCPUThrottlingRate', {'rate': 4})
         page.goto(spec['url'], wait_until='load', timeout=60000)
-        _warten(page, offen, frist=30)
+        _warten(page, offen, frist=45, ruhe_ms=1000, kachel=bool(spec.get('kachel')))
         page.wait_for_timeout(1000)
         perf = page.evaluate("""() => {
           const s = window.__sicht || {};
@@ -1145,9 +1202,11 @@ def lauf_leistung(spec: dict) -> dict:
         fcp = perf['fcp'] or 0
         tbt = sum(max(0, d - 50) for s, d in perf['lang'] if s + d > fcp)
         bis = perf['kachel']
-        anfragen_bis = None if bis is None else 1 + sum(1 for _, s in perf['res'] if s <= bis)
+        bis_liste = [kuerzen(u) for u, s in perf['res'] if bis is not None and s <= bis]
+        anfragen_bis = None if bis is None else 1 + len(bis_liste)
         return {'lcp': perf['lcp'], 'cls': perf['cls'], 'tbt': tbt, 'fcp': perf['fcp'], 'kachel': bis,
                 'ruhig': perf['ruhig'], 'anfragen_bis_kachel': anfragen_bis, 'anfragen': len(ereignis['anfragen']),
+                'anfragen_liste': ['(Dokument)'] + bis_liste if bis is not None else [kuerzen(a['url']) for a in ereignis['anfragen']],
                 'fremd': sorted({a['url'][:120] for a in ereignis['anfragen'] if not a['url'].startswith(('data:', 'blob:', eigen))}),
                 'dateien': dateien, 'fehler': ereignis['fehler']}
     finally:
@@ -1484,7 +1543,8 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
         bf.add('8b', UNBESTIMMT, 'kein Text gemessen', wo)
     else:
         bf.add('8b', OK, f"{kt['gemessen']} Texte, kleinster Kontrast {zahl(kt['min'], 2)}:1"
-               + (f", {kt['ungemessen']} außerhalb des Fotos" if kt['ungemessen'] else ''), wo, kt['min'])
+               + (f", {kt['ungemessen']} außerhalb des Fotos" if kt['ungemessen'] else '')
+               + (f", {kt['verdeckt']} verdeckt (z. B. {kt['verdeckt_bsp'][0]})" if kt.get('verdeckt') else ''), wo, kt['min'])
 
     # §8 #9
     gr = sorted({round(t['groesse'], 2) for t in m['texte']})
@@ -1672,8 +1732,10 @@ def bewerten_leistung(bf: Befund, p: dict):
     if p['anfragen_bis_kachel'] is None:
         bf.add('12b', UNBESTIMMT, f"Anfragen bis zur ersten Kachel: keine Kachel (Haken fehlt); bis ruhig {p['anfragen']}", wo)
     else:
-        bf.add('12b', OK if p['anfragen_bis_kachel'] <= BUDGET['anfragen'] else FEHLER,
-               f"{p['anfragen_bis_kachel']} Anfragen bis zur ersten Kachel nach {zahl(p['kachel'], 0)} ms (Budget 6)", wo, p['anfragen_bis_kachel'])
+        zu_viel = p['anfragen_bis_kachel'] > BUDGET['anfragen']
+        bf.add('12b', FEHLER if zu_viel else OK,
+               f"{p['anfragen_bis_kachel']} Anfragen bis zur ersten Kachel nach {zahl(p['kachel'], 0)} ms (Budget 6)"
+               + (': ' + ', '.join(p.get('anfragen_liste', [])) if zu_viel else ''), wo, p['anfragen_bis_kachel'])
     bf.add('12c', FEHLER if p['fremd'] else OK, ('fremd: ' + ', '.join(p['fremd'][:3])) if p['fremd'] else 'nur eigene Anfragen', wo)
     # Inline-Stil und -Skript im ausgelieferten HTML (§6, CSP)
     funde = []
@@ -2002,8 +2064,10 @@ def main(argv=None) -> int:
     # Die Leistung misst ein Browser ALLEIN, nachdem die anderen fertig sind: Parallele Browser
     # teilen sich die CPU und machen TBT und LCP schlechter, als die Seite ist.
     fortschritt('  … Leistung gedrosselt, allein', still)
+    hat_kacheln = any(isinstance(m, dict) and m.get('kacheln') for m in ergebnisse[:len(specs)])
     with cf.ProcessPoolExecutor(max_workers=1) as ex:
-        leistung = ex.submit(ausfuehren, ('leistung', {**basis, 'fenster': (390, 844), 'touch': True})).result()
+        leistung = ex.submit(ausfuehren, ('leistung', {**basis, 'fenster': (390, 844), 'touch': True,
+                                                       'kachel': hat_kacheln})).result()
     if srv:
         srv.shutdown()
 
@@ -2071,6 +2135,7 @@ def lauf_kurz(spec, m):
                                                      if not z['gesperrt'] and not z['dialog'] and min(z['b'], z['h']) < (44 if spec['touch'] and not z['link'] else 24) - 0.01][:20],
         'kontrast_min': m['kontrast']['min'], 'kontrast_fehler': m['kontrast']['fehler'][:20],
         'kontrast_unbestimmt': m['kontrast']['unbestimmt'][:10], 'texte': m['kontrast']['gemessen'],
+        'texte_verdeckt': m['kontrast'].get('verdeckt_bsp', []),
         'schriftgroessen': sorted({round(t['groesse'], 2) for t in m['texte']}),
         'gewichte': sorted({t['gewicht'] for t in m['texte']}),
         'chips': len(m['chips']), 'kacheln': len(m['kacheln']), 'stunden': len(m['stunden']), 'tage': len(m['tage']),
@@ -2120,14 +2185,15 @@ def menschlich(aus, laeufe, bf: Befund):
         kach = {len(m['kacheln']) for m in ms}
         fehler = max(len(m['fehler']) for m in ms)
         zeiten = [m['log']['ersteKachel'] if m['log'].get('ersteKachel') is not None else m['log'].get('letzte') for m in ms if m.get('log')]
-        raster = f"{zahl(max(zeiten), 0)} ms" if zeiten else '—'
+        zeiten.sort()
+        raster = f"{zahl(zeiten[len(zeiten) // 2], 0)} ms" if zeiten else '—'
         kont = f"{zahl(kmin, 2)}" + (' ✗' if kfehl else (' ?' if kun else ' ✓'))
         print(f"  {f'{w}×{h}':<11}{'Touch' if touch else 'Maus':<7}{seite + ' ' + ok_seite:>15}  {aussen:>6}  {klein:>11}  {kont:>9}  "
               f"{str(gr) + (' ✗' if gr_falsch else ' ✓'):>9}  {'/'.join(map(str, sorted(chips))):>5}  {'/'.join(map(str, sorted(kach))):>7}  {fehler:>6}  {raster:>8}")
     print()
     print('  Seite = höchste Seite durch Fensterhöhe über hell/dunkel und leer/halb/voll (1,0× heißt: scrollt nicht).')
     print('  außen = sichtbare Elemente außerhalb des Fensters · Ziele klein = unter 24 px (Touch: 44 px)')
-    print('  Kontrast = kleinster gemessener Text · Schrift = Zahl der Schriftgrößen · Raster = bis zur ersten Kachel, sonst bis ruhig')
+    print('  Kontrast = kleinster gemessener Text · Schrift = Zahl der Schriftgrößen · Raster = Median bis zur ersten Kachel, sonst bis ruhig')
     print()
     zeichen = {OK: '✓', FEHLER: '✗', UNBESTIMMT: '?'}
     for p in aus['pruefungen']:
@@ -2144,9 +2210,11 @@ def menschlich(aus, laeufe, bf: Befund):
         if detail:
             print(f"      {detail[:220]}")
         if p['id'] in ('12a', '12b', '8a', '15') and len(bef) > 1:
-            for b in bef:
-                if b['status'] != OK or p['id'] in ('12a', '12b'):
-                    print(f"        {zeichen[b['status']]} {b['detail'][:200]}")
+            zeilen = [b for b in bef if b['status'] != OK or p['id'] in ('12a', '12b')]
+            for b in zeilen[:12]:
+                print(f"        {zeichen[b['status']]} {(b['wo'] + ': ') if p['id'] == '8a' else ''}{b['detail'][:200]}")
+            if len(zeilen) > 12:
+                print(f"        … {len(zeilen) - 12} weitere (--json)")
     print()
     print('  Nicht gemessen (von Hand): ' + '; '.join(aus['nicht_gemessen']))
     e = aus['ergebnis']
