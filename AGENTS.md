@@ -1,0 +1,84 @@
+# Hier anfangen — der Stundenplanner
+
+> **Dieses Repo wird im TOWER gebaut.** Melde dich an, bevor du liest, planst oder eine Datei anfasst:
+> `tower anmelden <rufzeichen> "<deine Rolle>"` — die Antwort ist die Lage, und sie ist aktueller als jede Datei.
+> Das Protokoll (Vorgang, Arbeitsbaum, Punkte, Sichtung, Bericht, dev) liefert dein TOWER: `/tower/doku/PROTOKOLL.md`.
+> Ohne `tower` im PATH: `sh ~/.tower/kit/<pin>/tower anmelden …` (Pin: `kit` in `.tower/airfield.json`) — `tower kit verteiler` legt `tower` in den PATH, `tower hilfe` nennt jeden Befehl.
+> Ist der TOWER stumm, warnt der Hook und merkt vor; gesperrt wird nur, wenn er antwortet und ablehnt.
+> Was DIESES Airfield ist, steht darunter. Was der TOWER ist, steht dort.
+
+Dies ist der **einzige** Einstieg in `stundenplanner`, für Menschen und für Agenten.
+`CLAUDE.md` ist ein Symlink auf diese Datei. Wer nur das Werkzeug benutzen oder verstehen will,
+liest die [`README.md`](README.md).
+
+---
+
+## 1. Wo du bist
+
+**Das Airfield `stundenplanner`**: ein öffentliches Werkzeug, mit dem Studierende ihren
+Stundenplan zusammenstellen, schneller, einfacher und übersichtlicher als in den Systemen der
+Hochschule. Das Repo `thalamus404/stundenplanner` ist **öffentlich** und wurde am 04.10.2026
+gegründet. Es ist ein eigenes Airfield, kein Kind eines anderen: Es steht auf keinem fremden
+Fundament.
+
+**Das Vorbild** ist der Stundenplan des Study OS (Airfield `studyos`, Repo `thalamus404/studyOS`:
+`stundenplan/` holt die Daten, `app/stundenplan.py` und `app/static/stundenplan.*` bilden den
+Wochenbaukasten). Dort ist er für **einen** Studenten und **ein** Semester gebaut. Hier wird er
+für viele gebaut. **Lesen darfst du dort, gebaut wird hier.** Was du übernimmst, kopierst du
+bewusst und nennst die Herkunft im Commit. Eine Abhängigkeit auf das andere Repo gibt es nicht.
+
+**Stand:** Gründung. Was das Werkzeug können soll und was nicht, legt der erste Vorgang fest
+(der Scope, `docs/SCOPE.md`). Bis er steht, gibt es keinen Produktcode.
+
+## 2. Die Regeln
+
+**① Das Repo ist öffentlich.** Alles, was du committest, liest die ganze Welt, auch alte
+Commits. Deshalb gehört nichts davon hinein, weder in Code noch in Commits, Issues, Testdaten
+oder Pull Requests:
+- ein Geheimnis (Token, Passwort, Schlüssel, `.env`)
+- eine Adresse oder ein Pfad der Werkstatt (Host, Port, IP des Heimnetzes, Gerätepfad)
+- persönliche Daten: keine echte Auswahl eines Menschen, keine Matrikelnummer, keine Sitzung
+  eines Hochschulsystems
+
+Testdaten sind erfunden oder stammen aus öffentlich abrufbaren Quellen. `sh ops/test.sh` prüft
+das Muster. Rutscht trotzdem etwas durch, ist es öffentlich: Sag es Silas sofort. Ein
+Folgecommit macht es nicht ungeschehen.
+
+**② Jeder Commit geht nach GitHub.** Ein Commit, der nur auf einer Platte liegt, ist für alle
+anderen unsichtbar, und der Klon selbst ist nicht die Wahrheit. GitHub ist es.
+
+**③ Nichts wird still gelöscht, und nichts bleibt still liegen.** Was du abschaltest, entfernst
+du ganz, mit den Sätzen, die es beschreiben.
+
+**④ Bedeutung, Prioritäten und Grundentscheidungen entscheidet Silas**, die technische Umsetzung
+der Agent. Was in den Scope gehört, gehört dazu: Funktionen, Hochschulen, Lizenz, Betrieb,
+Geld.
+
+**⑤ Axiom 0: reparieren, dokumentieren, unmöglich machen.** Geht etwas kaputt, schuldest du
+drei Dinge: Es soll wieder gehen. Der Grund steht dort, wo der Nächste denselben Fehler machen
+würde. Und eine Änderung sorgt dafür, dass diese Klasse Fehler nicht wiederkommt. Geht das
+nicht, sag laut, warum.
+
+Dass jede Änderung ein Vorgang ist (Arbeitsbaum `.arbeit/v-00NN`, Punkte, Bericht, Weg über
+`dev`, nach `main` nur mit Silas' Freigabe), ist keine Regel dieses Repos. Es ist das Protokoll
+des TOWER (Block oben).
+
+## 3. Befehle
+
+| | |
+|---|---|
+| Test | `sh ops/test.sh`: heute nur die Regeln eines öffentlichen Repos (§2 ①) und die Haustür. Wer Code bringt, hängt seine Tests dort an |
+| Bau, Vorschau, Dev | noch keine. Der erste Bau trägt sie in `.tower/airfield.json` (`befehle`) und hier ein |
+
+## 4. Wohin du weiterliest
+
+| Thema | Datei |
+|---|---|
+| Was das Werkzeug ist, für alle | [`README.md`](README.md) |
+| Was wann passiert ist | [`CHRONIK.md`](CHRONIK.md) |
+| Was es können soll und was nicht (ab dem Scope-Vorgang) | `docs/SCOPE.md` |
+
+---
+
+*Diese Datei ist absichtlich kurz. Was hier nicht steht, kommt aus der Anmeldung oder aus dem
+Protokoll des TOWER.*

@@ -1,0 +1,22 @@
+# Die Arbeitsbäume der Vorgänge (tower vorgang start legt sie unter .arbeit/ an). git blendet
+# einen registrierten Arbeitsbaum aus, aber nicht den Ordner, der sie sammelt — ohne diese
+# Zeile wäre er der nächste Kandidat für ein versehentliches `git add -A`.
+.arbeit/
+
+# Was Hook und Anmeldung des TOWER ablegen, gehört der Maschine, nicht dem Repo.
+# Ein Muster statt einer Aufzählung: Eine Aufzählung veraltet.
+.tower-*
+
+# Geheimnisse und lokale Umgebung — das Repo ist öffentlich (AGENTS.md §2 ①).
+.env
+.env.*
+!.env.example
+
+# Werkzeuge
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+.DS_Store
+*.swp

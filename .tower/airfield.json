@@ -1,0 +1,14 @@
+{
+  "_": "Die Airfield-Datei des Stundenplanners (Airfield stundenplanner, gegründet 04.10.2026): was der TOWER-Client über DIESES Repo wissen muss. Keine Hub-Adresse, keine Gerätepfade, keine Geheimnisse — das Repo ist öffentlich. Noch ohne bau_* und vorschau*: Es gibt keinen Produktcode und nichts zu bauen; der erste Bau trägt sie nach (und AGENTS.md §3).",
+  "airfield": "stundenplanner",
+  "repo": "stundenplanner",
+  "name": "Stundenplanner",
+  "befehle": {
+    "test": "sh ops/test.sh"
+  },
+  "anleitungen": [
+    "AGENTS.md"
+  ],
+  "frei_von_vorgang": [],
+  "kit": "0.6.0"
+}
