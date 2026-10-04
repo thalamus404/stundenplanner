@@ -164,19 +164,22 @@ export function veraltet(successAt, jetzt = Date.now()) {
 // Fragment schickt der Browser nie an den Server. Wer einen Link öffnet, verrät die Auswahl darin
 // also auch nicht dem Hoster (ARCHITEKTUR §6, SCOPE §5 „keine persönlichen Daten auf einem Server“).
 // Form: #studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=<component_id>~<group_id>&w=…
-// `~` trennt, weil component_id selbst einen Doppelpunkt trägt (Modulnummer:LV-ID).
+// `~` trennt, weil component_id selbst einen Doppelpunkt trägt (Modulnummer:LV-ID); getrennt wird
+// am LETZTEN `~` (Gruppen-IDs aus MOSES sind Zahlen und tragen keins).
 
 const MAX_PAARE = 200;
 const MAX_LAENGE = 120;
 
+// Von Hand statt URLSearchParams.toString(): Das kodiert `:` und `~` als %3A/%7E und macht den
+// Link doppelt so lang und unlesbar. Im Fragment sind beide erlaubt (RFC 3986, pchar); gelesen
+// wird mit URLSearchParams, das beide Formen versteht.
+const kodiere = (s) => encodeURIComponent(String(s)).replace(/%3A/gi, ':');
+
 export function teilenFragment(plan, auswahl) {
-  const p = new URLSearchParams();
   const sg = typeof plan.studiengang === 'object' && plan.studiengang ? plan.studiengang.id : plan.studiengang;
-  p.set('studiengang', sg);
-  p.set('semester', plan.semester);
-  p.set('fs', String(plan.fachsemester));
-  for (const cid of Object.keys(auswahl).sort()) p.append('w', cid + '~' + auswahl[cid].group);
-  return '#' + p.toString();
+  const teile = [`studiengang=${kodiere(sg)}`, `semester=${kodiere(plan.semester)}`, `fs=${kodiere(plan.fachsemester)}`];
+  for (const cid of Object.keys(auswahl).sort()) teile.push(`w=${kodiere(cid)}~${kodiere(auswahl[cid].group)}`);
+  return '#' + teile.join('&');
 }
 
 /** Liest ein Fragment; null, wenn es kein Teilen-Link ist. Kaputte Paare fallen still weg. */

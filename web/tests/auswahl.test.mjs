@@ -149,7 +149,8 @@ test('Teilen-Link hin und zurück: Studiengang, Semester, Fachsemester, Paare', 
   const { p, gruppe } = geladen();
   const a = A.waehle(A.waehle({}, '10001:100', gruppe('10001:100:11')), '10002:500', gruppe('10002:500:52'));
   const frag = A.teilenFragment(p, a);
-  assert.match(frag, /^#studiengang=test-bsc&semester=wise-2026-27&fs=1&w=/);
+  // Lesbar und kurz: `:` und `~` bleiben im Fragment unkodiert.
+  assert.equal(frag, '#studiengang=test-bsc&semester=wise-2026-27&fs=1&w=10001:100~11&w=10002:500~52');
   // Nur Paare, kein Fingerabdruck, kein Name im Link.
   assert.doesNotMatch(frag, new RegExp(gruppe('10001:100:11').digest));
   assert.doesNotMatch(frag, /Termingruppe/);
