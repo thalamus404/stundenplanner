@@ -1,0 +1,47 @@
+# Probe: Antwortet MOSES auf Anfragen von GitHubs Servern? (docs/SCOPE.md §3, „Erster Test“)
+# Die Frage für den Rückfall: Fällt der tägliche Lauf auf dem NAS aus, könnte ein Runner von GitHub
+# den Abruf übernehmen. Die Probe holt dieselben drei öffentlichen Seiten wie der Abruf
+# (Versionsliste eines Moduls, Modulbeschreibung, Vorlesungsverzeichnis) und prüft je Seite
+# Status, Größe und einen Marker, an dem der Abruf die Seite erkennt.
+# Ergebnis am 05.10.2026 (V-0217, Lauf 37238439456): ja, alle drei Seiten mit 200 und Marker.
+# Geprüft sind nur die GET-Seiten, nicht der CSV-Export (JSF-POST). Der tägliche Lauf läuft
+# trotzdem auf dem NAS (docs/BETRIEB.md): GitHub-Runner kommen aus Azure-Adressen, die eine
+# Hochschule jederzeit sperren kann. Die Probe bleibt als Werkzeug für den Rückfall, nur von Hand:
+#   gh workflow run probe-moses.yml --repo thalamus404/stundenplanner
+name: probe-moses
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: MOSES von GitHub aus
+        shell: bash
+        run: |
+          set -u
+          ua='Stundenplanner-Probe (github.com/thalamus404/stundenplanner)'
+          mts='https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule'
+          fehler=0
+          zeile() { echo "$1" | tee -a "$GITHUB_STEP_SUMMARY"; }
+          hole() {  # hole <name> <url> <marker> -> Datei /tmp/<name>.html
+            code=$(curl -sS -L --max-time 45 -A "$ua" -o "/tmp/$1.html" -w '%{http_code}' "$2" 2>"/tmp/$1.err") || code="curl-$?"
+            groesse=$(wc -c < "/tmp/$1.html" 2>/dev/null || echo 0)
+            treffer=$(grep -c -- "$3" "/tmp/$1.html" 2>/dev/null || true)
+            zeile "| $1 | $code | $groesse B | '$3': ${treffer:-0} |"
+            if [ "$code" != 200 ] || [ "${treffer:-0}" -eq 0 ]; then
+              fehler=$((fehler + 1)); sed 's/^/    /' "/tmp/$1.err" | head -3
+            fi
+            sleep 2   # höflich: wie der Abruf eine Pause zwischen zwei Anfragen
+          }
+          zeile "| Seite | Status | Größe | Marker |"
+          zeile "|---|---|---|---|"
+          hole versionen "$mts/ansehen.html?number=70123" 'Gültig ab'
+          version=$(grep -o 'anzeigen.html?nummer=70123&amp;version=[0-9]*' /tmp/versionen.html | sed 's/.*version=//' | sort -n | tail -1)
+          hole beschreibung "$mts/beschreibung/anzeigen.html?nummer=70123&version=${version:-11}" 'veranstaltungsvorlage='
+          vvz=$(grep -o 'https://moseskonto.tu-berlin.de/moses/verzeichnis/veranstaltungen/vorlage.html?veranstaltungsvorlage=[0-9]*' /tmp/beschreibung.html | head -1)
+          hole vvz "${vvz:-https://moseskonto.tu-berlin.de/moses/verzeichnis/veranstaltungen/vorlage.html?veranstaltungsvorlage=287}" 'semester-picker'
+          zeile ""
+          if [ "$fehler" -eq 0 ]; then zeile "MOSES antwortet GitHub: ja"; else zeile "MOSES antwortet GitHub: NEIN ($fehler Seite(n) ohne 200 oder Marker)"; exit 1; fi

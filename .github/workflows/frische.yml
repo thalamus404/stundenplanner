@@ -1,0 +1,61 @@
+# Frische der ausgelieferten Daten — der Alarm von außen (docs/BETRIEB.md).
+# Der tägliche Lauf steht auf dem NAS. Scheitert er still (Container gestoppt, NAS aus, Token
+# abgelaufen), bleibt online der letzte gelungene Stand stehen und altert. Die Seite zeigt das
+# selbst (stale nach 36 Stunden, docs/ARCHITEKTUR.md §5), aber niemand bekommt Bescheid.
+# Dieser Job liest täglich <SEITE_URL>/daten/index.json und schlägt fehl, wenn `erzeugt_am`
+# älter als 36 Stunden ist oder die Datei nicht zu lesen ist. Ein gescheiterter geplanter Lauf
+# schickt GitHub als Mail.
+#
+# SEITE_URL ist eine Repo-Variable (Settings → Secrets and variables → Actions → Variables),
+# https://stundenplanner.de (bis die Domain zeigt: die pages.dev-Adresse). Erst setzen, wenn die
+# Seite dort wirklich antwortet. Ist sie nicht gesetzt, überspringt der Job mit einem Hinweis,
+# statt rot zu werden.
+name: frische
+on:
+  schedule:
+    - cron: "17 9 * * *"   # täglich 09:17 UTC — Stunden nach dem Lauf um 05:20 Berlin
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frische:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SEITE_URL: ${{ vars.SEITE_URL }}
+      GRENZE_STUNDEN: "36"
+    steps:
+      - name: Daten nicht älter als 36 Stunden
+        shell: bash
+        run: |
+          set -u
+          if [ -z "${SEITE_URL:-}" ]; then
+            echo "::notice::Repo-Variable SEITE_URL ist nicht gesetzt — keine Frischeprüfung (docs/BETRIEB.md)."
+            exit 0
+          fi
+          url="${SEITE_URL%/}/daten/index.json"
+          code=$(curl -sS -L --max-time 30 -o index.json -w '%{http_code}' "$url") || code="curl-$?"
+          if [ "$code" != 200 ]; then
+            echo "::error::$url antwortet mit $code"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, os, sys
+          from datetime import datetime, timezone
+          grenze = float(os.environ['GRENZE_STUNDEN'])
+          try:
+              erzeugt = datetime.fromisoformat(json.load(open('index.json'))['erzeugt_am'])
+          except Exception as exc:
+              print(f'::error::index.json ohne lesbares erzeugt_am ({type(exc).__name__})')
+              sys.exit(1)
+          if erzeugt.tzinfo is None:
+              erzeugt = erzeugt.replace(tzinfo=timezone.utc)
+          alter = (datetime.now(timezone.utc) - erzeugt).total_seconds() / 3600
+          zeile = f'erzeugt_am {erzeugt.isoformat()} · {alter:.1f} Stunden alt (Grenze {grenze:.0f})'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write(zeile + '\n')
+          if alter > grenze:
+              print(f'::error::Die ausgelieferten Daten sind veraltet: {zeile}. Der Lauf auf dem NAS ist gescheitert oder steht (docs/BETRIEB.md).')
+              sys.exit(1)
+          print(zeile)
+          PY

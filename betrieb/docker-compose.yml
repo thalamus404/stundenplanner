@@ -1,0 +1,31 @@
+# Der Stundenplanner auf dem NAS (docs/BETRIEB.md): ein Container, der täglich crawlt und an
+# Cloudflare Pages ausliefert. Er ist nie ein Webserver: kein Port, nur ausgehende Verbindungen.
+#
+# Eigene Infrastruktur (AGENTS.md §2 ④): ein eigenes Compose-Projekt mit eigenem Netz
+# (stundenplanner_default), ein eigenes benanntes Volume, keine Datenbank, kein fremder Dienst.
+# KEINE Bind-Mounts: Docker löst Host-Pfade auf dem Host auf, nicht dort, wo compose aufgerufen
+# wird — ein Pfad aus einem Container heraus zeigte auf dem Host ins Leere oder in fremde Ordner.
+#
+# Gebaut und gestartet wird mit `sh ops/bauen.sh live [stand]`, nicht mit `docker compose up`
+# allein: Das Skript baut das Image aus einem git-Stand und nimmt die .env aus dem Hauptklon.
+name: stundenplanner
+services:
+  abruf:
+    image: stundenplanner-abruf:live
+    pull_policy: never          # nur das selbst gebaute Image, nie eines aus einer Registry
+    container_name: stundenplanner-abruf
+    restart: unless-stopped
+    env_file:
+      # Ohne .env läuft alles außer dem Ausliefern („kein Token, nicht ausgeliefert“).
+      - path: ${STUNDENPLANNER_ENV:-.env}
+        required: false
+    volumes:
+      - stundenplanner-daten:/daten
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+volumes:
+  stundenplanner-daten:
+    name: stundenplanner-daten
