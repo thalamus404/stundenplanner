@@ -27,8 +27,9 @@ Wochenbaukasten). Dort ist er für **einen** Studenten und **ein** Semester geba
 für viele gebaut. **Lesen darfst du dort, gebaut wird hier.** Was du übernimmst, kopierst du
 bewusst und nennst die Herkunft im Commit. Eine Abhängigkeit auf das andere Repo gibt es nicht.
 
-**Stand:** Gründung. Was das Werkzeug können soll und was nicht, legt der erste Vorgang fest
-(der Scope, `docs/SCOPE.md`). Bis er steht, gibt es keinen Produktcode.
+**Was es können soll und was nicht, steht im Scope: [`docs/SCOPE.md`](docs/SCOPE.md)**
+(festgelegt am 04.10.2026). Lies ihn, bevor du etwas baust. Ein Wunsch, der dort nicht steht oder
+§5 dort widerspricht, geht erst an Silas.
 
 ## 2. Die Regeln
 
@@ -50,11 +51,17 @@ anderen unsichtbar, und der Klon selbst ist nicht die Wahrheit. GitHub ist es.
 **③ Nichts wird still gelöscht, und nichts bleibt still liegen.** Was du abschaltest, entfernst
 du ganz, mit den Sätzen, die es beschreiben.
 
-**④ Bedeutung, Prioritäten und Grundentscheidungen entscheidet Silas**, die technische Umsetzung
+**④ Getrennt von allem anderen.** Der Stundenplanner ist eine eigene Infrastruktur. Er hat
+nichts mit SILAS.OS, dem Study OS oder dem TOWER gemein: kein Abruf, keine Datenbank, kein
+Dienst, kein Schlüssel und keine Datei von dort. Er wird höchstens im TOWER gebaut und liegt
+vielleicht am selben Ort (Silas, 04.10.2026: „da darf niemals irgendwas vermischt werden“). Was
+du aus dem Vorbild übernimmst, kopierst du und nennst die Herkunft (§1). Die Wahrheit ist git.
+
+**⑤ Bedeutung, Prioritäten und Grundentscheidungen entscheidet Silas**, die technische Umsetzung
 der Agent. Was in den Scope gehört, gehört dazu: Funktionen, Hochschulen, Lizenz, Betrieb,
 Geld.
 
-**⑤ Axiom 0: reparieren, dokumentieren, unmöglich machen.** Geht etwas kaputt, schuldest du
+**⑥ Axiom 0: reparieren, dokumentieren, unmöglich machen.** Geht etwas kaputt, schuldest du
 drei Dinge: Es soll wieder gehen. Der Grund steht dort, wo der Nächste denselben Fehler machen
 würde. Und eine Änderung sorgt dafür, dass diese Klasse Fehler nicht wiederkommt. Geht das
 nicht, sag laut, warum.
@@ -76,7 +83,7 @@ des TOWER (Block oben).
 |---|---|
 | Was das Werkzeug ist, für alle | [`README.md`](README.md) |
 | Was wann passiert ist | [`CHRONIK.md`](CHRONIK.md) |
-| Was es können soll und was nicht (ab dem Scope-Vorgang) | `docs/SCOPE.md` |
+| **Was es können soll und was nicht**: zuerst lesen | [`docs/SCOPE.md`](docs/SCOPE.md) |
 
 ---
 
