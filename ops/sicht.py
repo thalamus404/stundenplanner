@@ -46,6 +46,9 @@ stehen als Variablen auf :root: `--grau-1` … `--grau-10`, `--m1-hauch|rand|fla
 
 Was gemessen wird (je Lauf = Fenster × Schema × Auswahl, Standardansicht ohne Klick)
 -------------------------------------------------------------------------------------
+Die Fenster (§8) und das Budget (§6) liest das Werkzeug aus docs/DESIGN.md. Ändert sich dort eine
+Zahl, misst es gegen die neue; was es dort nicht lesen kann, nimmt es aus FENSTER/BUDGET unten und
+sagt es in der Ausgabe. Die Token-Paare (§5.5) und die Stressfall-Fenster (§8 #2) stehen hier.
 §8 #1   `scrollHeight ≤ innerHeight` und `scrollWidth ≤ innerWidth` des Dokuments; dazu: kein
         sichtbares Element ragt aus dem Fenster, kein innerer Bereich scrollt (außer in Dialogen),
         kein Chip, keine Kachel, kein Bedienelement wird von einem Vorfahren abgeschnitten.
@@ -158,6 +161,48 @@ BUDGET = {                                       # §6
     'code_gz': 20 * KB, 'daten': 600 * KB, 'daten_gz': 60 * KB, 'anfragen': 6,
     'lcp_ms': 1500, 'cls': 0.02, 'tbt_ms': 50, 'dom': 1200,
 }
+
+
+def aus_design(pfad: Path | None = None) -> tuple[list, dict, list]:
+    """Fenster (§8) und Budget (§6) aus docs/DESIGN.md — dort stehen sie, und nur dort. Ändert
+    jemand eine Zahl im Brief, misst das Werkzeug ohne Zutun gegen die neue (eine Quelle statt zwei,
+    Axiom 0). Was sich nicht lesen lässt, bleibt bei der Vorgabe oben und wird gemeldet."""
+    import re
+    fenster, budget, fehlt = list(FENSTER), dict(BUDGET), []
+    try:
+        text = (pfad or WURZEL / 'docs' / 'DESIGN.md').read_text('utf-8')
+    except OSError:
+        return fenster, budget, ['docs/DESIGN.md nicht lesbar: Fenster und Budget aus ops/sicht.py']
+    m = re.search(r'\*\*Fenster:\*\*(.*?)\. Jedes', text, re.S)
+    gefunden = re.findall(r'(\d{3,4})\s*×\s*(\d{3,4})', m.group(1)) if m else []
+    if gefunden:
+        fenster = [(int(b), int(h)) for b, h in gefunden]
+    else:
+        fehlt.append('§8 „Fenster:“')
+    teil = text.split('\n## 6.', 1)[1].split('\n## ', 1)[0] if '\n## 6.' in text else ''
+    z = r'([\d][\d \u00a0\u202f]*(?:,\d+)?)'
+    regeln = {
+        'html': (r'^\| HTML \| ≤ ' + z + r' KB', KB), 'css': (r'^\| CSS \| ≤ ' + z + r' KB', KB),
+        'js': (r'^\| JavaScript \| ≤ ' + z + r' KB', KB), 'js_dateien': (r'^\| JavaScript \|[^|\n]*höchstens (\d+) Dateien', 1),
+        'code_gz': (r'^\| Code zusammen, komprimiert \| \**≤ ' + z + r' KB', KB),
+        'daten': (r'^\| Datendatei des Plans \| ≤ ' + z + r' KB', KB),
+        'daten_gz': (r'^\| Datendatei des Plans \|[^|\n]*komprimiert ≤ ' + z + r' KB', KB),
+        'anfragen': (r'^\| Anfragen bis zum fertigen Raster \| ≤ (\d+)', 1),
+        'cls': (r'^\| Layout-Verschiebung \(CLS\) \| ≤ ' + z, 1),
+        'lcp_ms': (r'^\| Größter Inhalt \(LCP\)[^|\n]*\| ≤ ' + z + r' s', 1000),
+        'tbt_ms': (r'^\| Blockierzeit \(TBT\) \| ≤ ' + z + r' ms', 1),
+        'dom': (r'^\| DOM-Knoten[^|\n]*\| ≤ ' + z, 1),
+    }
+    for k, (muster, faktor) in regeln.items():
+        t = re.search(muster, teil, re.M)
+        if t:
+            wert = float(re.sub(r'[ \u00a0\u202f]', '', t.group(1)).replace(',', '.')) * faktor
+            budget[k] = int(wert) if float(wert).is_integer() else wert
+        else:
+            fehlt.append(f'§6 {k}')
+    return fenster, budget, fehlt
+
+
 STRESS_PFLICHT = {(1280, 720), (1280, 800), (1440, 900), (1920, 1080), (2560, 1440), (390, 844)}  # §8 #2
 ZOOM_FENSTER = ((1280, 800), (1920, 1080))       # §8 #14
 
@@ -1973,7 +2018,9 @@ def main(argv=None) -> int:
         print('Playwright fehlt: pip install playwright && python3 -m playwright install chromium', file=sys.stderr)
         return 2
 
-    fenster = FENSTER
+    alle_fenster, budget, nicht_gelesen = aus_design()
+    BUDGET.update(budget)
+    fenster = alle_fenster
     if a.fenster:
         try:
             fenster = [tuple(int(x) for x in f.lower().split('x')) for f in a.fenster.split(',')]
@@ -2117,6 +2164,7 @@ def main(argv=None) -> int:
         'plan': {'studiengang': plan['studiengang']['id'], 'semester': plan['semester'], 'fachsemester': plan['fachsemester'],
                  'bestandteile': erw0['bestandteile'], 'kacheln_leer': erw0['gesamt'], 'achse': erw0['achse'], 'tage': erw0['tage']},
         'fenster': [f'{w}×{h}' for w, h in fenster],
+        'budget': dict(BUDGET), 'aus_design_nicht_gelesen': nicht_gelesen,
         'ergebnis': {'gruen': gruen, 'erfuellt': sum(s == OK for s in gemessen.values()),
                      'nicht_erfuellt': sum(s == FEHLER for s in gemessen.values()),
                      'unbestimmt': sum(s == UNBESTIMMT for s in gemessen.values())},
@@ -2232,6 +2280,8 @@ def menschlich(aus, laeufe, bf: Befund):
                 print(f"        … {len(zeilen) - 12} weitere (--json)")
     print()
     print('  Nicht gemessen (von Hand): ' + '; '.join(aus['nicht_gemessen']))
+    if aus['aus_design_nicht_gelesen']:
+        print('  Aus docs/DESIGN.md nicht lesbar, Vorgabe aus ops/sicht.py benutzt: ' + ', '.join(aus['aus_design_nicht_gelesen']))
     e = aus['ergebnis']
     farbe = 'GRÜN' if e['gruen'] else 'ROT'
     print(f"  Ergebnis: {farbe}{' (TEILMESSUNG, keine Abnahme)' if aus['teilmessung'] else ''} — "
