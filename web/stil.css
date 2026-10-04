@@ -1,91 +1,353 @@
-/* Der Stundenplanner — getreuer Nachbau von app/static/stundenplan.css des Study OS, mit den
-   Farben aus dessen app/static/os.css. Neues Aussehen kommt erst mit dem Neubau (docs/DESIGN.md);
-   bis dahin bleibt es beim Vorbild. Neu gegenüber dem Vorbild sind nur, was die Seite allein
-   tragen muss (Seitenrand, Fuß) und die Teile für „ohne Server“ (Speicherhinweis, Teilen-Link). */
+/* Der Stundenplanner als One-Pager — docs/DESIGN.md ist der Brief, die Werte stehen dort in §5.
+   Die Seite füllt genau das Fenster: Kopf, Module, Werkzeug und Fuß sind so hoch wie ihr Inhalt,
+   das Raster bekommt den Rest, und die Stunde teilt sich die Höhe (Prozent, kein Skript beim
+   Größerziehen). Die Beschriftung der Kacheln wählen Container-Abfragen. Farbe trägt Bedeutung:
+   Grau für das Gerüst, die Tinte für das eine, das gilt, Modulfarben, Rot, Bernstein. */
 
 :root {
-  color-scheme: dark;
-  --neon: #A06BFF;
-  --neon-hell: #C29BFF;
-  --neon-weich: rgba(160, 107, 255, .14);
-  --neon-rand: rgba(160, 107, 255, .34);
-  --neon-tief: rgba(160, 107, 255, .07);
-  --e0: #06070A;
-  --e1: rgba(13, 15, 21, .70);
-  --e2: rgba(19, 22, 30, .84);
-  --e2-hoch: rgba(25, 29, 39, .92);
-  --kante: rgba(255, 255, 255, .055);
-  --kante-2: rgba(255, 255, 255, .10);
-  --kante-3: rgba(255, 255, 255, .16);
-  --raster: rgba(255, 255, 255, .019);
-  --text: #E9ECF2;
-  --text-2: #9AA2B4;
-  --text-4: #3D4352;
-  --tiefe-1: 0 1px 2px rgba(0, 0, 0, .45);
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "JetBrains Mono", monospace;
-  --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  color-scheme: light dark;
+  --grau-1: #fdfdff; --grau-2: #f7f8fb; --grau-3: #eef0f3; --grau-4: #e5e6e9; --grau-5: #d7d9dc;
+  --grau-6: #bcbec0; --grau-7: #7f8083; --grau-8: #6d6f71; --grau-9: #545557; --grau-10: #1d1e20;
+  --konflikt: #cc2827; --konflikt-text: #a51f1e; --konflikt-flaeche: #ffebe8;
+  --hinweis: #c17a00; --hinweis-text: #7b4c00; --hinweis-flaeche: #fef0d4;
+  --rand-ebene: var(--grau-5);
+  --schatten: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12);
+  --ein: cubic-bezier(.2, 0, 0, 1);
+  --aus: cubic-bezier(.3, 0, 1, 1);
+  --h-min: 20.5px;
+  --ziel: 32px;
+  --rand-x: 24px;
+  --m1-hauch: #ebf5ff; --m1-rand: #488acb; --m1-flaeche: #b4d8ff; --m1-tinte: #0e375c;
+  --m2-hauch: #fbf2e3; --m2-rand: #ac7d1b; --m2-flaeche: #eecf9c; --m2-tinte: #483000;
+  --m3-hauch: #eaf8ec; --m3-rand: #4a9a5e; --m3-flaeche: #b2e3bb; --m3-tinte: #0d401e;
+  --m4-hauch: #ffeef5; --m4-rand: #bb6690; --m4-flaeche: #fbc1db; --m4-tinte: #53223b;
+  --m5-hauch: #e3f8f9; --m5-rand: #03999f; --m5-flaeche: #98e4e8; --m5-tinte: #003e41;
+  --m6-hauch: #f5f1ff; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
+  --m7-hauch: #fff0e8; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
+  --m8-hauch: #f3f6e5; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
+  font: 14px/20px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grau-1: #292a2c; --grau-2: #111213; --grau-3: #1b1c1e; --grau-4: #202224; --grau-5: #2d2e30;
+    --grau-6: #414244; --grau-7: #737477; --grau-8: #8b8c8f; --grau-9: #b6b7ba; --grau-10: #e9ebee;
+    --konflikt: #ef675c; --konflikt-text: #f8a59b; --konflikt-flaeche: #3b1c19;
+    --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
+    --rand-ebene: rgb(255 255 255 / .08);
+    --schatten: none;
+    --m1-hauch: #131f2c; --m1-rand: #619dda; --m1-flaeche: #254a6e; --m1-tinte: #e9f3ff;
+    --m2-hauch: #261c0d; --m2-rand: #bc9041; --m2-flaeche: #5d420e; --m2-tinte: #fbf0e0;
+    --m3-hauch: #142216; --m3-rand: #63ab74; --m3-flaeche: #265331; --m3-tinte: #e7f7e9;
+    --m4-hauch: #291820; --m4-rand: #cb7ba2; --m4-flaeche: #65364d; --m4-tinte: #ffecf4;
+    --m5-hauch: #0a2224; --m5-rand: #20acb3; --m5-flaeche: #005356; --m5-tinte: #dff7f8;
+    --m6-hauch: #201b2a; --m6-rand: #a388d2; --m6-flaeche: #4e3e6a; --m6-tinte: #f4efff;
+    --m7-hauch: #2a1a11; --m7-rand: #cf8358; --m7-flaeche: #683b20; --m7-tinte: #ffeee5;
+    --m8-hauch: #1e200f; --m8-rand: #96a04c; --m8-flaeche: #474c17; --m8-tinte: #f1f4e1;
+  }
+}
+/* Ein Modul bekommt seine Farbe über die Klasse m1 … m8 (Stelle im Plan, reihum, §5.3). */
+.m1 { --hauch: var(--m1-hauch); --rand: var(--m1-rand); --flaeche: var(--m1-flaeche); --tinte: var(--m1-tinte); }
+.m2 { --hauch: var(--m2-hauch); --rand: var(--m2-rand); --flaeche: var(--m2-flaeche); --tinte: var(--m2-tinte); }
+.m3 { --hauch: var(--m3-hauch); --rand: var(--m3-rand); --flaeche: var(--m3-flaeche); --tinte: var(--m3-tinte); }
+.m4 { --hauch: var(--m4-hauch); --rand: var(--m4-rand); --flaeche: var(--m4-flaeche); --tinte: var(--m4-tinte); }
+.m5 { --hauch: var(--m5-hauch); --rand: var(--m5-rand); --flaeche: var(--m5-flaeche); --tinte: var(--m5-tinte); }
+.m6 { --hauch: var(--m6-hauch); --rand: var(--m6-rand); --flaeche: var(--m6-flaeche); --tinte: var(--m6-tinte); }
+.m7 { --hauch: var(--m7-hauch); --rand: var(--m7-rand); --flaeche: var(--m7-flaeche); --tinte: var(--m7-tinte); }
+.m8 { --hauch: var(--m8-hauch); --rand: var(--m8-rand); --flaeche: var(--m8-flaeche); --tinte: var(--m8-tinte); }
+/* Mindesthöhe je Stunde 20 px, Touch 22 px (§3.2), je plus 0,5 px: Jede Kachel hat oben 1 px Luft,
+   und eine 2-h-Kachel soll trotzdem 40 bzw. 44 px hoch bleiben (§5.11). */
+@media (pointer: coarse) { :root { --h-min: 22.5px; --ziel: 44px; } }
 
-* { box-sizing: border-box; }
-/* [hidden] verliert sonst gegen display:grid/flex (Spezifität schlägt Attribut) — im Vorbild
-   steht dieselbe Zeile in os.css. Ohne sie bliebe z. B. „Tag“ im Wochenskelett sichtbar. */
+*, *::before, *::after { box-sizing: border-box; }
+/* [hidden] verliert sonst gegen display:flex der Klassen (Spezifität schlägt Attribut). */
 [hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: var(--grau-2); color: var(--grau-10); }
+body { margin: 0; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+p, h2, h3, ul { margin: 0; }
+h2, h3, b, strong { font-size: inherit; font-weight: 600; }
+button, select, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+a { color: inherit; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 2px; }
+/* Knöpfe sind positioniert (für die Überlage); ohne z-index malte der Nachbar über den Fokusring. */
+button:focus-visible { z-index: 1; }
+.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.symbole { position: fixed; top: 0; left: 0; width: 0; height: 0; overflow: hidden; }
+.nur-sr { position: fixed; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-body {
-  margin: 0;
-  background-color: var(--e0);
-  background-image: linear-gradient(var(--raster) 1px, transparent 1px), linear-gradient(90deg, var(--raster) 1px, transparent 1px);
-  background-size: 46px 46px;
-  color: var(--text);
-  font-family: var(--ui);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  padding: 26px 30px 0;
+/* Zeigen und Drücken: eine Überlage in der Schriftfarbe auf einem Pseudo-Element, damit nur
+   dessen Deckkraft animiert wird (§5.9). Nichts hebt sich, nichts skaliert. */
+button { position: relative; }
+button::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor;
+  opacity: 0; transition: opacity 100ms linear; pointer-events: none;
+}
+@media (hover: hover) { button:hover::after { opacity: .08; } }
+button:active::after { opacity: .1; }
+:disabled::after { display: none; }
+
+/* ── Die fünf Zonen ─────────────────────────────────────────────────────────────────────────── */
+.seite {
+  height: 100vh; height: 100dvh; max-width: 2448px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 8px; padding: 12px var(--rand-x);
+}
+@media (min-height: 860px) { .seite { padding-block: 16px; } }
+.kopf { flex: none; height: 48px; display: flex; align-items: center; gap: 16px; min-width: 0; }
+.name { font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap; }
+.plan, .stand { height: var(--ziel); padding: 0 8px; border-radius: 8px; color: var(--grau-9); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.plan { min-width: 0; overflow: hidden; text-overflow: ellipsis; display: block; line-height: var(--ziel); margin-left: -8px; }
+.stand { font-size: 12px; }
+.stand.alt { color: var(--hinweis-text); }
+.stand.alt .i, .warn-i { color: var(--hinweis); }
+.kopf-rechts { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+.plan:disabled, .stand:disabled { cursor: default; }
+
+.knopf {
+  height: var(--ziel); min-width: var(--ziel); padding: 0 12px; border-radius: 8px; border: 1px solid var(--grau-6);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+}
+.knopf.haupt { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); font-weight: 600; }
+.knopf.rund { padding: 0; width: var(--ziel); }
+.knopf:disabled, .chip:disabled { opacity: .38; cursor: default; }
+.zahl { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 12px; line-height: 20px; font-weight: 600; text-align: center; color: #fff; background: var(--hinweis-text); }
+.zahl.rot { background: var(--konflikt-text); }
+@media (prefers-color-scheme: dark) { .zahl { color: var(--grau-2); background: var(--hinweis); } .zahl.rot { background: var(--konflikt); } }
+.leise { display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; padding: 0 4px; border-radius: 4px; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Modulleiste: je Modul Farbpunkt und Name, dahinter die Bestandteile als Chips (§3.1). */
+.module { flex: none; display: flex; flex-wrap: wrap; align-content: flex-start; column-gap: 16px; }
+.modul { display: flex; align-items: center; gap: 4px; min-height: 40px; }
+.modul-name { display: inline-flex; align-items: center; gap: 8px; height: var(--ziel); padding: 0 8px 0 4px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+.punkt { width: 10px; height: 10px; border-radius: 50%; background: var(--rand); flex: none; }
+.chip {
+  height: var(--ziel); min-width: var(--ziel); padding: 0 10px; border-radius: 8px; border: 1px solid var(--rand);
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;
+}
+.chip .c-zahl, .chip .c-mehr { font-size: 12px; color: var(--grau-9); }
+.chip.gewaehlt { background: var(--flaeche); border-color: var(--flaeche); color: var(--tinte); }
+.chip.gewaehlt .c-zahl, .chip.gewaehlt .c-mehr { color: inherit; }
+.chip[aria-pressed="true"] { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); }
+.chip[aria-pressed="true"] :is(.c-zahl, .c-mehr) { color: inherit; }
+/* Die Ringe sind outline mit 1 px Luft, kein Schatten: Schatten haben nur schwebende Ebenen (§5.8). */
+.chip.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; }
+.chip.hinweis { outline: 2px solid var(--hinweis); outline-offset: 1px; }
+.chip:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 4px; }
+.chip .i { width: 14px; height: 14px; }
+.c-modul, .c-mehr, .tag .lang { display: none; }
+@media (min-width: 1600px) { .c-mehr { display: inline; } }
+
+/* Werkzeugleiste: Ansicht, Modulfilter, Zeitraum, A/B; rechts der Stand (§3.1). */
+.werkzeug { flex: none; display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; }
+.w-gruppe { display: flex; align-items: center; gap: 4px; min-height: 40px; }
+.w-stand { margin-left: auto; display: flex; align-items: center; gap: 12px; min-height: 40px; color: var(--grau-9); }
+.w-stand .tipp { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.segmente { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--grau-3); }
+.seg { display: flex; align-items: center; height: var(--ziel); padding: 0 12px; border-radius: 6px; border: 1px solid transparent; white-space: nowrap; }
+.seg[aria-pressed="true"] { background: var(--grau-1); border-color: var(--grau-6); font-weight: 600; }
+.wahl { position: relative; display: inline-flex; align-items: center; }
+.wahl select {
+  appearance: none; -webkit-appearance: none; height: var(--ziel); max-width: 220px; padding: 0 30px 0 10px;
+  border: 1px solid var(--grau-7); border-radius: 8px; background: var(--grau-1); cursor: pointer; text-overflow: ellipsis;
+}
+.wahl .i { position: absolute; right: 8px; pointer-events: none; color: var(--grau-8); }
+@media (pointer: coarse) { .wahl select { font-size: 16px; } }
+.marke { display: inline-flex; align-items: center; gap: 4px; height: var(--ziel); padding: 0 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+.marke.rot { color: var(--konflikt-text); }
+.marke.rot .i { color: var(--konflikt); }
+.marke.gelb { color: var(--hinweis-text); }
+.marke.gelb .i { color: var(--hinweis); }
+.marke.gut { color: var(--grau-10); font-weight: 400; }
+
+/* Teilen-Leiste, nur solange ein geteilter Plan offen ist (§4.2, Schritt 10). */
+.leiste { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 44px; padding: 4px 4px 4px 12px; border-radius: 8px; background: var(--grau-3); }
+.leiste p { flex: 1 1 280px; }
+.leiste .knoepfe { display: flex; gap: 8px; }
+
+/* ── Raster ─────────────────────────────────────────────────────────────────────────────────── */
+.raster {
+  flex: 1 1 0; min-height: calc(32px + var(--stunden, 12) * var(--h-min));
+  display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: 32px minmax(0, 1fr);
+}
+.tage { grid-column: 2; display: grid; grid-template-columns: repeat(var(--tage, 5), minmax(0, 1fr)); min-width: 0; }
+.tag { display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
+.tag .datum, .tag .zaehl { font-size: 12px; font-weight: 400; color: var(--grau-9); }
+.ein-tag .tage { padding: 2px; border-radius: 8px; background: var(--grau-3); }
+.ein-tag .tag { border: 1px solid transparent; border-radius: 6px; }
+.ein-tag .tag[aria-pressed="true"] { background: var(--grau-1); border-color: var(--grau-6); }
+@media (min-width: 1280px) { .tag .kurz { display: none; } .tag .lang { display: inline; } .ein-tag .tag .kurz { display: inline; } .ein-tag .tag .lang { display: none; } }
+.koerper { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: repeat(var(--spalten, 5), minmax(0, 1fr)); padding-left: 32px; min-height: 0; }
+.stunden { position: absolute; inset: 0 0 0 32px; pointer-events: none; }
+.stunde { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grau-4); }
+.stunde span { position: absolute; right: calc(100% + 6px); top: -8px; font-size: 12px; line-height: 16px; color: var(--grau-9); }
+.spalte { position: relative; border-left: 1px solid var(--grau-4); }
+.spalte:last-child { border-right: 1px solid var(--grau-4); }
+.innen { position: absolute; inset: 0 2px 0 3px; }
+.raster-text { grid-column: 1 / -1; align-self: center; justify-self: center; max-width: 40ch; padding: 16px; text-align: center; color: var(--grau-9); display: grid; gap: 12px; justify-items: center; }
+/* Erst nach 300 ms ohne Daten erscheint „wird geladen“ — ohne Skript und ohne Einblenden (§5.9). */
+.spaet { visibility: hidden; animation: zeigen 0s 300ms forwards; }
+@keyframes zeigen { to { visibility: visible; } }
+
+/* Kacheln. Die Kachel ist der Container, ihre Beschriftung richtet sich nach ihrer Größe (§3.2):
+   ohne Abfragen Stufe M (Typ, Nummer), L ab 112 px (Modul, Typ und Gruppe, ab 72 px Höhe der Raum),
+   S unter 44 px (nur der Typ). Lage und Größe setzt app.js über element.style. */
+.kachel { position: absolute; container: kachel / size; color: var(--grau-10); }
+.kachel.gewaehlt { color: var(--tinte); }
+.kachel.kontext { color: var(--grau-9); }
+.kachel:focus-within, .kachel.zeigen { z-index: 2; }
+.k-flaeche {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden;
+  padding: 2px 4px; border: 1px solid var(--rand); border-radius: 4px; background: var(--hauch);
+  font-size: 12px; line-height: 16px; text-align: left;
+}
+.k-flaeche:focus-visible { outline-offset: 4px; }
+.gewaehlt > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); }
+.kontext > .k-flaeche { background: var(--grau-3); border-color: var(--grau-5); }
+.kachel.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; border-radius: 4px; }
+.kachel.zeigen { outline: 2px solid var(--grau-10); outline-offset: 1px; border-radius: 4px; }
+.k-flaeche > span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mit-sym > .k-flaeche > span { max-width: calc(100% - 14px); }
+.k-typ, .k-mod, .k-name { font-weight: 600; }
+.k-mod, .k-lang, .k-name, .k-ort, .k-akt { display: none; }
+.teil .k-typ { display: none; }
+.teil .k-ort { display: block; }
+.k-sym { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; }
+.k-akt {
+  position: absolute; left: 4px; bottom: 4px; height: 24px; padding: 0 8px; border: 1px solid currentColor; border-radius: 6px;
+  font-size: 12px; line-height: 16px; align-items: center; white-space: nowrap;
+}
+@container kachel (min-width: 112px) {
+  .k-flaeche { padding: 6px 8px; }
+  .k-typ, .k-nr { display: none; }
+  .k-mod, .k-lang { display: block; }
+  .k-mod { font-size: 14px; line-height: 20px; }
+  .teil .k-mod, .teil .k-lang { display: none; }
+  .teil .k-name { display: block; font-size: 14px; line-height: 20px; }
+  .k-sym { top: 8px; right: 8px; }
+}
+/* Eine breite, aber niedrige Kachel (unter 52 px, kleine Fenster, Zoom) behält beide Zeilen,
+   die erste in 12 px statt abgeschnitten (§4.4: bei 200 % wird nichts abgeschnitten). */
+@container kachel (min-width: 112px) and (max-height: 51.9px) {
+  .k-flaeche { padding-block: 2px; }
+  .k-mod, .teil .k-name { font-size: 12px; line-height: 16px; }
+}
+@container kachel (min-width: 112px) and (min-height: 72px) { .k-ort { display: block; } }
+@container kachel (min-width: 112px) and (min-height: 76px) { .aktionen .k-akt { display: inline-flex; } }
+@container kachel (min-width: 112px) and (min-height: 72px) and (max-height: 103.9px) { .aktionen .k-ort { display: none; } }
+@container kachel (max-width: 43.9px) {
+  .k-flaeche { padding: 3px 2px; }
+  .k-nr, .k-sym, .teil .k-ort { display: none; }
+  .teil .k-nr { display: block; }
+  .k-flaeche span { text-overflow: clip; }
 }
 
-/* Modulfarben als Klassen statt style-Attribut: Die Content-Security-Policy erlaubt keinen Inline-Stil. */
-.sp-c0 { --module-color: #bd94ff; }
-.sp-c1 { --module-color: #68b5eb; }
-.sp-c2 { --module-color: #e5b86f; }
-.sp-c3 { --module-color: #77c5b4; }
-.sp-c4 { --module-color: #d394b8; }
+/* ── Fußzeile ───────────────────────────────────────────────────────────────────────────────── */
+.fuss {
+  flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "a c" "b b";
+  column-gap: 16px; row-gap: 8px; font-size: 12px; line-height: 16px; color: var(--grau-9);
+}
+.fuss-a { grid-area: a; }
+.fuss-b { grid-area: b; display: flex; flex-wrap: wrap; gap: 0 12px; }
+.fuss-c { grid-area: c; display: flex; gap: 12px; justify-content: flex-end; }
+.fuss a { display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; padding: 0 4px; border-radius: 4px; }
+.fuss .alt { color: var(--hinweis-text); }
+@media (min-width: 1280px) {
+  .fuss { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "a b c"; align-items: center; min-height: 24px; }
+}
+@media (pointer: coarse) and (min-width: 768px) { .fuss { row-gap: 0; } .fuss > p { min-height: 44px; align-items: center; display: flex; } .fuss a, .fuss .leise { min-height: 44px; margin: 0; } }
 
-/* ── aus dem Vorbild ─────────────────────────────────────────────────────── */
-.sp{max-width:1600px;margin:auto;padding:4px 0 32px}.sp h1{font-size:clamp(26px,3vw,40px);line-height:1.16;letter-spacing:-1.2px;margin:6px 0 12px}.sp h2{font-size:19px;margin:0}.sp p{margin:6px 0}.sp-head{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}.sp-eyebrow{font:11px var(--mono);color:var(--neon-hell);letter-spacing:1.3px;text-transform:uppercase}.sp-intro,.sp-help,.sp-calendar header p{color:var(--text-2)}.sp button,.sp select,.sp input{font:inherit;color:var(--text);border:1px solid var(--kante-3);border-radius:7px;background:var(--e2-hoch);padding:8px 11px;cursor:pointer}.sp button:hover:not(:disabled){border-color:var(--neon);background:var(--neon-tief)}.sp button:focus-visible,.sp select:focus-visible,.sp summary:focus-visible,.sp input:focus-visible,.sp a:focus-visible,.sp-table-wrap:focus-visible{outline:2px solid var(--neon);outline-offset:3px}.sp button:disabled{opacity:.5;cursor:not-allowed}.sp select:disabled{opacity:.6;cursor:not-allowed}.sp a,.sp-foot a{color:var(--neon-hell);text-decoration:none}.sp a:hover,.sp-foot a:hover{text-decoration:underline}.sp-status{display:flex;flex-wrap:wrap;gap:10px 22px;color:var(--text-2);font-size:12px;margin:0 0 6px}.sp-status b{color:var(--text)}#sp-error{background:var(--e2);border:1px solid var(--neon);border-radius:8px;padding:12px;margin:12px 0}.sp-modules{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:20px}.sp-module{background:var(--e2);border:1px solid var(--kante-2);border-radius:12px;padding:15px;box-shadow:var(--tiefe-1);min-width:0;border-top:2px solid var(--module-color)}.sp-module h2{font-size:17px;line-height:1.3}.sp-module .sp-module-title{font-size:11px;color:var(--text-2);min-height:34px;margin:6px 0 9px;line-height:1.45}.sp-meta{font:10px var(--mono);color:var(--text-2);margin:8px 0 12px}.sp-parts{display:grid;gap:7px;padding:0;margin:0;list-style:none}.sp-part{border-top:1px solid var(--kante-2);padding:9px 0 0}.sp-part-top{display:flex;align-items:center;gap:6px}.sp .sp-part-top button{padding:0;background:transparent;border:0;text-align:left;font-size:12px;line-height:1.5;flex:1}.sp-part.done .sp-part-label{text-decoration:line-through;color:var(--text-2)}.sp-check{font-size:13px;color:var(--text-2);margin-right:5px}.sp-part.done .sp-check{color:var(--neon-hell)}.sp-sws{white-space:nowrap;font:11px var(--mono);color:var(--text-2)}.sp-part select{width:100%;font-size:11px;padding:7px 5px;margin-top:7px;text-overflow:ellipsis}.sp-links{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;font-size:11px}.sp-source{font-size:11px;color:var(--text-2);margin-top:10px}.sp-source summary{cursor:pointer}.sp-source p{white-space:pre-line;overflow-wrap:anywhere}.sp-notice{font-size:12px;background:var(--neon-tief);border:1px solid var(--neon-rand);border-radius:8px;padding:10px 13px;margin:10px 0}.sp-notice ul{margin:6px 0;padding-left:18px}.sp-notice button{padding:3px 7px;margin-left:8px;font-size:11px}.sp-calendar{background:var(--e1);border:1px solid var(--kante-2);border-radius:12px;padding:18px;margin-top:20px}.sp-toolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}.sp-controls{display:flex;gap:10px;flex-wrap:wrap}.sp-controls label{display:grid;gap:4px;color:var(--text-2);font-size:10px}.sp-controls select{font-size:12px;max-width:250px}.sp-help{font-size:12px;margin:16px 0!important}.sp-table-wrap{overflow:auto;border:1px solid var(--kante-2);border-radius:9px;margin-top:14px}.sp-table{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed;min-width:850px}.sp-table th{background:#11141d;text-align:left;padding:12px 9px;font-size:12px;color:var(--text-2);border-bottom:1px solid var(--kante-2)}.sp-table th:first-child{width:66px}.sp-table td{vertical-align:top;border-left:1px solid var(--kante);border-bottom:1px solid var(--kante-2);padding:7px;min-height:55px}.sp-table tbody th{font:11px var(--mono);vertical-align:top;padding-top:18px}.sp-table caption{text-align:left;padding:12px 14px;font-weight:600;background:var(--e2)}.sp-event{border:1px solid var(--kante-2);border-left:3px solid var(--module-color);border-radius:7px;background:var(--e2);padding:10px;margin-bottom:7px;font-size:11px;overflow-wrap:anywhere}.sp-event.selected{border-color:var(--neon-rand);border-left-color:var(--module-color);background:var(--neon-tief)}.sp-event h3{font-size:12px;margin:0 0 3px}.sp-event .sp-time{font:11px var(--mono);color:var(--text);margin:6px 0}.sp-event .sp-room{color:var(--text-2);line-height:1.45}.sp-event button{width:100%;font-size:11px;margin-top:8px;padding:6px}.sp-event.selected .sp-select{background:var(--neon-weich)}.sp-event details{margin-top:7px;color:var(--text-2)}.sp-event summary{cursor:pointer;font-size:10px}.sp-date-list{max-height:170px;overflow:auto;padding-left:14px;font:10px var(--mono)}.sp-date-list li{margin:6px 0}.sp-more summary{color:var(--neon-hell);padding:6px 1px;cursor:pointer;font-size:11px}.sp-more[open]>summary{margin-bottom:7px}.sp-empty{padding:25px;text-align:center;color:var(--text-2)}.sp-rules{margin-top:18px;color:var(--text-2);font-size:12px;border-top:1px solid var(--kante-2);padding-top:14px}.sp-rules summary{cursor:pointer;color:var(--text);font-size:13px}.sp-rules p{max-width:1000px;margin:12px 0}.sp-badge{font-size:10px;color:var(--neon-hell);display:block;margin-top:6px}.sp-conflict{border-style:dashed}
-@media(max-width:1250px){.sp-modules{grid-template-columns:repeat(3,minmax(0,1fr))}.sp-toolbar{flex-direction:column}.sp-module .sp-module-title{min-height:0}}
-@media(max-width:700px){.sp-head{align-items:flex-start;flex-direction:column}.sp-modules{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.sp-module{padding:11px}.sp-module h2{font-size:15px}.sp-calendar{padding:10px}.sp-controls{gap:8px}.sp-controls select{max-width:200px}.sp-help{max-width:100%}.sp-table{min-width:850px}.sp-intro{font-size:13px}}
-@media(max-width:390px){.sp-modules{grid-template-columns:1fr}}
+/* ── Schwebende Ebenen: Karte, Blatt, Dialog, Meldung (§3.5) ───────────────────────────────── */
+.hinter { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .32); opacity: 0; transition: opacity 200ms var(--ein); }
+.hinter.leer { background: none; }
+.hinter.da { opacity: 1; }
+.ebene {
+  position: fixed; z-index: 21; width: 320px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px);
+  display: flex; flex-direction: column; background: var(--grau-1); border: 1px solid var(--rand-ebene); border-radius: 12px;
+  box-shadow: var(--schatten); opacity: 0; transform: translateY(4px); transition: opacity 100ms var(--aus), transform 100ms var(--aus);
+}
+.ebene.da { opacity: 1; transform: none; transition-duration: 150ms; transition-timing-function: var(--ein); }
+.ebene.dialog { inset: 0; margin: auto; width: min(560px, calc(100vw - 32px)); height: fit-content; }
+.ebene.blatt { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; max-height: 85dvh; border-radius: 12px 12px 0 0; transform: translateY(100%); transition-duration: 200ms; padding-bottom: env(safe-area-inset-bottom); }
+.ebene.blatt.karte-g { max-height: 70dvh; }
+.ebene.blatt.da { transform: none; transition-duration: 250ms; }
+.e-kopf { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 0 16px; }
+.e-titel { flex: 1; padding-top: 6px; font-size: 16px; line-height: 24px; font-weight: 600; }
+.e-zu { flex: none; width: var(--ziel); height: var(--ziel); display: grid; place-items: center; border-radius: 8px; position: relative; }
+.e-inhalt { padding: 4px 16px 16px; overflow: auto; overscroll-behavior: contain; display: grid; gap: 12px; }
+.e-inhalt.lesen { max-width: 66ch; font-size: 16px; line-height: 24px; }
+.e-inhalt section { display: grid; gap: 8px; }
+.e-inhalt h3 { margin-top: 4px; }
+.feld { width: 100%; height: var(--ziel); padding: 0 8px; border: 1px solid var(--grau-7); border-radius: 8px; background: var(--grau-1); }
+.e-inhalt .klein, .klein { font-size: 12px; line-height: 16px; color: var(--grau-9); }
+.e-aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.blatt .e-aktionen .knopf { flex: 1 1 100%; height: 48px; }
+.zeile { display: flex; gap: 8px; align-items: flex-start; }
+.zeile > .i { margin-top: 2px; }
+.signal { padding: 8px 12px; border-radius: 8px; display: grid; gap: 8px; }
+.signal.rot { background: var(--konflikt-flaeche); color: var(--konflikt-text); }
+.signal.gelb { background: var(--hinweis-flaeche); color: var(--hinweis-text); }
+.signal .knopf { justify-self: start; border-color: currentColor; }
+.termine { max-height: 200px; overflow: auto; font-size: 12px; line-height: 16px; display: grid; gap: 6px; padding-left: 0; list-style: none; }
+details > summary { cursor: pointer; min-height: 24px; display: flex; align-items: center; gap: 4px; font-weight: 600; list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(-45deg); margin: 0 4px 0 2px; }
+details[open] > summary::before { transform: rotate(45deg); }
+.notiz { white-space: pre-line; overflow-wrap: anywhere; margin-top: 4px; }
+.extern { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; }
+.extern .i { width: 14px; height: 14px; }
+.links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.zeile-knopf { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--ziel); padding: 0 8px; margin: 0 -8px; border-radius: 8px; width: calc(100% + 16px); }
+.ansicht-blatt { display: grid; gap: 16px; }
+.ansicht-blatt .w-gruppe { width: 100%; }
+.ansicht-blatt .segmente { display: flex; flex: 1; }
+.ansicht-blatt .seg { flex: 1; justify-content: center; }
+.ansicht-blatt .wahl, .ansicht-blatt .wahl select { flex: 1; max-width: none; width: 100%; }
+.meldung {
+  position: fixed; left: 50%; bottom: 64px; z-index: 30; max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 8px;
+  background: var(--grau-10); color: var(--grau-1); box-shadow: var(--schatten); pointer-events: none;
+  opacity: 0; transform: translate(-50%, 4px); transition: opacity 100ms var(--aus), transform 100ms var(--aus);
+}
+/* Sichtbar fängt die Meldung Klicks und schließt sich darauf: Was sie verdeckt, gilt als verdeckt
+   und wird nicht aus Versehen angetippt. */
+.meldung.da { opacity: 1; transform: translate(-50%, 0); transition-duration: 150ms; transition-timing-function: var(--ein); pointer-events: auto; cursor: pointer; }
+.ohne-js { position: fixed; inset: auto 16px 16px; padding: 12px; border-radius: 8px; background: var(--hinweis-flaeche); color: var(--hinweis-text); }
+@media (prefers-reduced-motion: reduce) {
+  .ebene, .ebene.blatt, .meldung, .hinter { transform: none !important; transition: opacity 100ms linear !important; }
+  .meldung, .meldung.da { transform: translateX(-50%) !important; }
+}
 
-/* ── Tagesansicht ───────────────────────────────────────────────────────────
-   Eine Spalte statt sieben. Die Wochentabelle ist auf einem Handy sieben
-   Spalten breit und laesst sich nur seitlich schieben; die Frage „was habe
-   ich heute" beantwortet ohnehin ein einzelner Tag. Deshalb darf die Spalte
-   hier die ganze Breite nehmen.
-   ────────────────────────────────────────────────────────────────────────── */
-.sp-tag .sp-table { min-width: 0; }
-.sp-tag .sp-table td { width: auto; }
-.sp-leer { color: var(--text-4); font-size: 12px; padding: 18px 12px; text-align: center; }
+/* Solange die Daten fehlen, halten die Leisten ihren Platz, damit das Raster nicht springt (CLS, §6). */
+.laedt .module, .laedt .werkzeug { min-height: 40px; }
 
-/* ── Neu: was die Seite ohne das Study OS selbst tragen muss ─────────────── */
-.sp-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.sp-plan { margin: 0 0 16px; }
-.sp-plan label { display: grid; gap: 4px; color: var(--text-2); font-size: 10px; max-width: 420px; }
-.sp-plan select { font-size: 13px; width: 100%; }
-/* Der Speicherhinweis steht sichtbar unter dem Status (Vorgabe aus Silas' Hosting-Recherche). */
-.sp-local { color: var(--text-2); font-size: 12px; margin: 0 0 20px !important; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.sp .sp-local button { padding: 3px 8px; font-size: 11px; }
-.sp-sharebox label { display: block; margin-bottom: 8px; }
-.sp-share-row { display: flex; gap: 8px; }
-.sp .sp-share-row input { flex: 1; min-width: 0; font: 11px var(--mono); padding: 7px 9px; cursor: text; }
-.sp .sp-share-row button { margin: 0; font-size: 12px; padding: 6px 12px; }
-.sp-share-done { color: var(--neon-hell); }
-.sp-shared-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px !important; }
-.sp .sp-shared-actions button { margin: 0; font-size: 12px; padding: 6px 12px; }
-.sp-foot { max-width: 1600px; margin: 0 auto; border-top: 1px solid var(--kante-2); padding: 16px 0 28px; color: var(--text-2); font-size: 12px; }
-.sp-foot p { margin: 4px 0; }
-.sp-foot b { color: var(--text); font-weight: 600; }
+/* ── Tablet, unter 1024 px: Leisten dürfen zweizeilig sein ─────────────────────────────────── */
+@media (max-width: 1023.98px) {
+  .laedt .module, .laedt .werkzeug { min-height: 80px; }
+}
 
-/* Im Vorbild gab die Bühne des Study OS den Rand vor (26px 30px, unter 700px 18px 14px). */
-@media (max-width: 700px) { body { padding: 18px 14px 0; } }
+/* ── Handy, unter 768 px: ein Tag mit Reitern, Chips mit Modulnamen, „Ansicht“ und „Mehr“ ──── */
+@media (min-width: 768px) { .nur-handy { display: none !important; } }
+@media (max-width: 767.98px) {
+  :root { --rand-x: 16px; }
+  .nur-breit { display: none !important; }
+  .seite { gap: 0; padding: 8px var(--rand-x); }
+  .kopf { gap: 8px; height: 44px; }
+  .meldung { bottom: 76px; }
+  .module { margin-top: 8px; column-gap: 8px; row-gap: 4px; }
+  .laedt .module { min-height: 188px; }
+  .modul { display: contents; }
+  .modul-name { display: none; }
+  .c-modul { display: inline; }
+  .chip { padding: 0 8px; }
+  .raster { margin: 8px 0; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-rows: 44px minmax(0, 1fr); row-gap: 4px; min-height: calc(48px + var(--stunden, 12) * var(--h-min)); }
+  .tage { grid-column: 1 / 3; }
+  /* Fünf Reiter zu je 44 px und „Ansicht“ passen in 328 px nur ohne Innenrand der Schiene. */
+  .ein-tag .tage { margin-right: 4px; padding: 0; }
+  .ein-tag .tag { border-radius: 8px; min-width: 44px; }
+  .tag { flex-direction: column; gap: 0; line-height: 16px; }
+  /* Fünf Reiter zu 44 px (220 px) und 4 px Abstand bleiben, den Rest darf „Ansicht“ nehmen. */
+  .ansicht { grid-column: 3; grid-row: 1; height: 44px; padding: 0 6px 0 8px; gap: 2px; max-width: min(168px, calc(100vw - 2 * var(--rand-x) - 224px)); }
+  .ansicht-text { display: grid; text-align: left; line-height: 20px; min-width: 0; }
+  .ansicht-text span { overflow: hidden; text-overflow: ellipsis; }
+  .ansicht-b { font-size: 12px; line-height: 16px; color: var(--grau-9); }
+  .fuss { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b" "c"; row-gap: 0; }
+  .fuss-c { justify-content: flex-start; gap: 16px; }
+}

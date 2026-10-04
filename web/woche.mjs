@@ -105,7 +105,8 @@ export function termineDerKarte(g, s, week, parity, anchor) {
 
 /** Reihenfolge in einer Zelle: Gewähltes zuerst, dann nach Modul. */
 export function zellenOrdnung(a, b) {
-  return Number(b.g.selected) - Number(a.g.selected) || String(a.g.module_short).localeCompare(String(b.g.module_short));
+  const x = String(a.g.module_short), y = String(b.g.module_short);
+  return Number(b.g.selected) - Number(a.g.selected) || (x < y ? -1 : x > y ? 1 : 0);
 }
 
 /** Bestandteile, für die (noch) Termine fehlen: ohne Gruppe oder mit einer Gruppe ohne Buchung. */
