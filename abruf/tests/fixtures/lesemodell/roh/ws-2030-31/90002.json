@@ -1,0 +1,8 @@
+{
+ "number": "90002",
+ "abruf": {
+  "geprueft_am": "2030-10-01T05:20:30+02:00",
+  "erfolg_am": null,
+  "fehler": "SourceError: erfundener Testfehler"
+ }
+}

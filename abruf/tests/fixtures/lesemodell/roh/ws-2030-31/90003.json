@@ -1,0 +1,148 @@
+{
+ "number": "90003",
+ "title": "Testmodul C",
+ "version": 3,
+ "valid_from": "WS 2029/30",
+ "valid_to": "offen",
+ "valid_versions": [
+  3
+ ],
+ "url": "https://example.org/modul/90003",
+ "isis_url": "https://example.org/isis/m90003",
+ "notes": {
+  "Sonstiges": "Erfundenes Modul für Tests."
+ },
+ "semester": "WS 2030/31",
+ "components": [
+  {
+   "id": "90003:520",
+   "lvvid": "520",
+   "title": "Testmodul C",
+   "type": "Seminar",
+   "number": "T 520",
+   "sws": 2.0,
+   "cycle": "jedes Semester",
+   "language": "Deutsch",
+   "section": "Pflichtbereich",
+   "required": true,
+   "vvz_url": "https://example.org/vvz/520",
+   "isis_url": "https://example.org/isis/520",
+   "semester_id": "77",
+   "status": "ok",
+   "groups": [
+    {
+     "id": "611",
+     "name": "Seminar 1",
+     "url": "https://example.org/gruppe/611",
+     "series": [],
+     "bookings": [
+      {
+       "id": "1020",
+       "start": "2030-10-16T08:00:00",
+       "end": "2030-10-16T10:00:00",
+       "room": "Raum 3",
+       "title": "Testmodul C",
+       "format": "Seminar",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1021",
+       "start": "2030-10-23T08:00:00",
+       "end": "2030-10-23T10:00:00",
+       "room": "Raum 3",
+       "title": "Testmodul C",
+       "format": "Seminar",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1022",
+       "start": "2030-10-30T08:00:00",
+       "end": "2030-10-30T10:00:00",
+       "room": "Raum 4",
+       "title": "Testmodul C",
+       "format": "Seminar",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1023",
+       "start": "2030-11-06T08:00:00",
+       "end": "2030-11-06T10:00:00",
+       "room": "Raum 3",
+       "title": "Testmodul C",
+       "format": "Seminar",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "1024",
+       "start": "2030-11-13T08:00:00",
+       "end": "2030-11-13T10:00:00",
+       "room": "Raum 3",
+       "title": "Testmodul C",
+       "format": "Seminar",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      }
+     ]
+    },
+    {
+     "id": "612",
+     "name": "Seminar 2",
+     "url": "https://example.org/gruppe/612",
+     "series": [],
+     "bookings": []
+    }
+   ]
+  },
+  {
+   "id": "90003:530",
+   "lvvid": "530",
+   "title": "Testmodul C",
+   "type": "Praktikum",
+   "number": "T 530",
+   "sws": 2.0,
+   "cycle": "jedes Semester",
+   "language": "Deutsch",
+   "section": "Pflichtbereich",
+   "required": true,
+   "vvz_url": "https://example.org/vvz/530",
+   "isis_url": "https://example.org/isis/530",
+   "semester_id": "77",
+   "status": "ok",
+   "groups": [
+    {
+     "id": "613",
+     "name": "Nachtbeobachtung",
+     "url": "https://example.org/gruppe/613",
+     "series": [],
+     "bookings": [
+      {
+       "id": "1019",
+       "start": "2030-10-18T23:00:00",
+       "end": "2030-10-19T01:00:00",
+       "room": "Sternwarte",
+       "title": "Testmodul C",
+       "format": "Praktikum",
+       "number": "T 0",
+       "note": "",
+       "info": ""
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "abruf": {
+  "geprueft_am": "2030-10-01T05:20:00+02:00",
+  "erfolg_am": "2030-10-01T05:20:00+02:00",
+  "fehler": null
+ }
+}
