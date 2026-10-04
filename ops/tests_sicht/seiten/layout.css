@@ -1,0 +1,26 @@
+/* Fenster 400 × 300. Bekannt: die Seite ist 700 px hoch, ein Absatz ragt rechts hinaus, ein Bereich
+   scrollt innen, der Knopf „x“ ist 20 × 20, der Chip „TUT“ liegt halb außerhalb, die Kacheln VL und
+   UE überlappen, die Kachel IV schneidet ein overflow: hidden ab (halb sichtbar). Der lange Satz
+   wird mit … gekürzt (abgeschnitten); „Luft“ verliert nur die Luft über der Schrift (nicht). */
+html { background: #fff; }
+body { margin: 0; font: 14px/20px system-ui, sans-serif; color: #000; position: relative; }
+button { font: inherit; margin: 0; }
+.klein { width: 20px; height: 20px; padding: 0; }
+.gross { width: 60px; height: 30px; }
+[data-sicht="chip"] { width: 50px; height: 30px; }
+.draussen { position: absolute; left: 375px; top: 30px; }
+.raster { position: relative; height: 120px; }
+.raster > * { position: absolute; }
+.s8 { left: 0; top: 0; }
+.s12 { left: 0; top: 100px; }
+.mo { left: 40px; top: 0; }
+.k1 { left: 40px; top: 20px; width: 60px; height: 40px; background: #eee; }
+.k2 { left: 70px; top: 40px; width: 60px; height: 40px; background: #ddd; }
+.k3 { left: 140px; top: 60px; width: 20px; height: 40px; background: #ccc; }
+.kappe { left: 200px; top: 20px; width: 60px; height: 20px; overflow: hidden; }
+.k4 { position: static; width: 60px; height: 40px; background: #bbb; }
+.innen { height: 40px; overflow: auto; }
+.rechts { position: absolute; left: 380px; top: 200px; margin: 0; white-space: nowrap; }
+.hoch { height: 400px; }
+.kurz { width: 80px; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.luft { display: block; height: 14px; line-height: 14px; font-size: 14px; overflow: hidden; }

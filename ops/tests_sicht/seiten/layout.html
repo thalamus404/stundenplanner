@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prüfseite Layout</title>
+<link rel="stylesheet" href="layout.css">
+<script src="layout.js"></script>
+</head>
+<body>
+<header data-sicht="kopf">Kopf <button type="button" class="klein">x</button> <button type="button" class="gross">Teilen</button></header>
+<div data-sicht="module">
+  <button type="button" data-sicht="chip">VL</button>
+  <button type="button" data-sicht="chip">UE</button>
+  <button type="button" data-sicht="chip" class="draussen">TUT</button>
+</div>
+<div data-sicht="raster" class="raster">
+  <span data-sicht="stunde" class="s8">08</span>
+  <span data-sicht="stunde" class="s12">12</span>
+  <span data-sicht="tag" data-tag="0" class="mo">Mo</span>
+  <div data-sicht="kachel" data-tag="0" data-start="08:00" data-ende="10:00" class="k1">VL</div>
+  <div data-sicht="kachel" data-tag="0" data-start="09:00" data-ende="11:00" class="k2">UE</div>
+  <div data-sicht="kachel" data-tag="1" data-start="10:00" data-ende="12:00" class="k3">TUT</div>
+  <div class="kappe"><div data-sicht="kachel" data-tag="1" data-start="08:00" data-ende="10:00" class="k4">IV</div></div>
+</div>
+<div class="innen"><p>Ein Bereich, der innen scrollt.</p><p>Zweite Zeile.</p><p>Dritte Zeile.</p></div>
+<p class="rechts">Ragt rechts hinaus</p>
+<p class="leer"></p>
+<footer data-sicht="fuss">Kein offizielles Angebot. <a href="#i">Impressum</a> <a href="#d">Datenschutz</a></footer>
+<p class="kurz">Ein sehr langer Satz, der gekürzt wird</p>
+<span class="luft">Luft</span>
+<div class="hoch"></div>
+</body>
+</html>
