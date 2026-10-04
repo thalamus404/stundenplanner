@@ -3,7 +3,8 @@
    Weiß: 2,85:1. Der Verlauf läuft von Weiß nach 555555: Schwarz fällt erst unter 4,5:1, wo der Grund
    dunkler als etwa 757575 ist, also auf einem Fünftel der Textbreite, ohne vorherrschenden Grund.
    „Unter der Meldung“ liegt unter einer festen Fläche (pointer-events: none wie eine Meldung):
-   verdeckt, nicht gemessen. */
+   verdeckt, nicht gemessen. „Teilweise unter der Meldung“: das rechte Ende liegt unter einer
+   Fläche ohne pointer-events: none (wie die Meldung des Neubaus); gemessen wird nur der freie Teil. */
 html { background: #fff; }
 body { margin: 0; padding: 8px; font: 16px/24px system-ui, sans-serif; color: #000; }
 p { margin: 0 0 8px; }
@@ -17,3 +18,5 @@ p { margin: 0 0 8px; }
 .aus { color: #bbb; background: #fff; border: 1px solid #ddd; font: inherit; }
 .drunter { color: #1d1e20; position: absolute; top: 268px; left: 8px; margin: 0; }
 .meldung { pointer-events: none; position: fixed; left: 0; right: 0; top: 260px; height: 40px; background: #1d1e20; }
+.halbdrunter { color: #1d1e20; position: absolute; top: 320px; left: 8px; margin: 0; }
+.meldung2 { position: fixed; top: 318px; left: 150px; width: 400px; height: 28px; background: #1d1e20; }

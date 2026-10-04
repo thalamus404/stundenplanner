@@ -405,19 +405,34 @@ const texteSammeln = () => {
     const gekuerzt = [el, el.parentElement].some((e) => e && e.nodeType === 1 && cs(e).textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 0.5);
     // Ein Clip unter 4 px² ist „nur für Screenreader“ (sr-only), kein sichtbarer Text.
     if (!rects.length || (c && !c.leer && flaeche(c) < 4)) return;
-    // Verdeckt: Liegt über der Mitte jeder Zeile ein fremdes Element (eine Meldung, ein Blatt),
-    // sieht man den Text nicht. Sein Kontrast gegen das, was darüber liegt, wäre Unsinn (gesehen an
-    // der Meldung beim ersten Laden: Kachelschrift „gegen“ die Tinte der Meldung, 1:1).
-    const verdeckt = rects.every((b) => {
-      const x = (b.l + b.r) / 2, y = (b.t + b.b) / 2;
-      return x >= 0 && y >= 0 && x < W && y < H && verdecktAn(el, x, y);
-    });
+    // Verdeckt: Was ein fremdes Element (eine Meldung, ein Blatt) überdeckt, sieht man nicht; sein
+    // Kontrast gegen das, was darüber liegt, wäre Unsinn (gesehen an der Meldung beim ersten Laden:
+    // Kachelschrift „gegen“ die Tinte der Meldung, 1:1). Erst fünf Punkte je Zeile; ist einer davon
+    // verdeckt, wird die Zeile in Zellen (bis 16 × 4) zerlegt, und gemessen wird nur der Kern der
+    // freien Zellen. Auch eine TEILWEISE verdeckte Zeile mischt so keine fremden Pixel bei
+    // (triebwerk, 05.10.2026: die Meldung deckte nur den Rand einer Zeile).
+    const inFenster = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+    const frei = []; let gedeckt = false;
+    for (const b of rects) {
+      const pkt = [[b.l + 1, b.t + 1], [b.r - 1, b.t + 1], [(b.l + b.r) / 2, (b.t + b.b) / 2], [b.l + 1, b.b - 1], [b.r - 1, b.b - 1]];
+      if (!pkt.some(([x, y]) => inFenster(x, y) && verdecktAn(el, x, y))) { frei.push(b); continue; }
+      gedeckt = true;
+      const n = Math.max(1, Math.min(16, Math.round((b.r - b.l) / 8))), z = 4;
+      const w = (b.r - b.l) / n, h = (b.b - b.t) / z;
+      for (let i = 0; i < n; i++) for (let j = 0; j < z; j++) {
+        const x = b.l + (i + 0.5) * w, y = b.t + (j + 0.5) * h;
+        if (inFenster(x, y) && verdecktAn(el, x, y)) continue;
+        frei.push({ l: x - w / 4, t: y - h / 4, r: x + w / 4, b: y + h / 4 });
+      }
+    }
+    const verdeckt = frei.length === 0;
+    rects.splice(0, rects.length, ...frei);
     const s = cs(el);
     out.push({ el, text: kurz(text, 60), name: name(el), groesse: parseFloat(s.fontSize),
       gewicht: parseInt(s.fontWeight, 10), familie: s.fontFamily, trans: s.textTransform,
       laufweite: s.letterSpacing,
       farbe: farbe(s.getPropertyValue('-webkit-text-fill-color')) || farbe(s.color),
-      deck: deckkraft(el), gesperrt: gesperrt(el), dialog: !!el.closest(DIALOG), verdeckt,
+      deck: deckkraft(el), gesperrt: gesperrt(el), dialog: !!el.closest(DIALOG), verdeckt, teilverdeckt: gedeckt && !verdeckt,
       rects, anteil: fr ? fc / fr : 1, abgeschnitten: ab || gekuerzt, gekuerzt });
   };
   for (let n = tw.nextNode(); n; n = tw.nextNode()) {

@@ -63,6 +63,9 @@ class Messung(unittest.TestCase):
         # verdeckt (eine feste Meldung liegt darüber): nicht gemessen, gezählt
         self.assertNotIn('Unter der Meldung', fehler)
         self.assertEqual(k['verdeckt'], 1)
+        # teilweise verdeckt: nur der freie Teil zählt, die Tinte der Meldung nicht
+        self.assertNotIn('Teilweise unter der Meldung', fehler)
+        self.assertNotIn('Teilweise unter der Meldung', unbestimmt)
         # gesperrte Elemente sind ausgenommen (WCAG)
         self.assertEqual(k['gesperrt'], 1)
         self.assertNotIn('Gesperrt', fehler)
