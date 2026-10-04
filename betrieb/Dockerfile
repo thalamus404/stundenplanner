@@ -29,7 +29,7 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 # requirements.txt mit Platzhalter-Muster: Solange abruf/ sie noch nicht hat, passt das Muster auf
 # nichts, und es wird dieselbe Rückfallzeile installiert wie in .github/workflows/test.yml.
-COPY betrieb/lauf.py abruf/requirements.tx[t] /opt/stundenplanner/
+COPY betrieb/lauf.py betrieb/einrichten.py abruf/requirements.tx[t] /opt/stundenplanner/
 RUN if [ -f /opt/stundenplanner/requirements.txt ]; then \
       pip install --no-cache-dir --disable-pip-version-check -r /opt/stundenplanner/requirements.txt; \
     else pip install --no-cache-dir --disable-pip-version-check beautifulsoup4==4.12.3; fi

@@ -23,7 +23,7 @@ Aufrufe:
   python3 lauf.py --status   der Zustand des letzten Laufs (JSON)
 
 Exit-Codes von --jetzt: 0 ausgeliefert · 1 gescheitert, nichts ausgeliefert ·
-3 gelungen, aber nicht ausgeliefert (kein Token).
+3 gelungen, aber nicht ausgeliefert (kein Token, oder ein Testlauf mit STAND/REPO_URL — der lädt nie hoch).
 
 Herkunft der Zeitplan-Schleife: serve() in stundenplan/runner.py des Study OS (kopiert, nicht
 geteilt). Dort hielt eine Datenbank-Sperre den Lauf exklusiv; hier, ohne Datenbank, eine
@@ -48,7 +48,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 DATEN = Path(os.getenv('DATEN', '/daten'))
-REPO_URL = os.getenv('REPO_URL', 'https://github.com/thalamus404/stundenplanner')
+REPO_URL_LIVE = 'https://github.com/thalamus404/stundenplanner'
+REPO_URL = os.getenv('REPO_URL', REPO_URL_LIVE)
 # live = main. STAND ist ein Zweig und nur für Tests veränderbar (docs/BETRIEB.md).
 STAND = os.getenv('STAND', 'main')
 LAUF_UM = os.getenv('LAUF_UM', '05:20')
@@ -185,6 +186,12 @@ def ausliefern(commit, protokoll):
     Auslieferung und Cloudflares Fehlercodes (`code: 1234`) — genug, um in der Doku nachzusehen."""
     token = os.getenv('CLOUDFLARE_API_TOKEN', '').strip()
     konto = os.getenv('CLOUDFLARE_ACCOUNT_ID', '').strip()
+    if STAND != 'main' or REPO_URL != REPO_URL_LIVE:
+        # live = main, und zwar der von GitHub. Ein Testlauf gegen einen anderen Stand darf nie
+        # hochladen, auch nicht, wenn der Token im Container steckt.
+        log.warning('Testlauf (Stand %s), nicht ausgeliefert — ausgeliefert wird nur main von GitHub', STAND)
+        protokoll.append({'schritt': 'ausliefern', 'rc': None, 'sekunden': 0, 'hinweis': 'Testlauf'})
+        return False
     if not token or not konto:
         fehlt = ' und '.join(n for n, w in (('CLOUDFLARE_API_TOKEN', token), ('CLOUDFLARE_ACCOUNT_ID', konto)) if not w)
         log.warning('kein Token, nicht ausgeliefert (%s fehlt in betrieb/.env)', fehlt)
@@ -235,6 +242,9 @@ def lauf_innen(zustand):
         raise Abbruch(f'bauen.py rc {rc}')
     if not (REPO / 'web' / 'daten' / 'index.json').exists():
         raise Abbruch('bauen.py lief durch, aber web/daten/index.json fehlt')
+    if not (REPO / 'web' / 'index.html').exists():
+        # Eine Auslieferung ersetzt die ganze Seite. Ohne index.html stünden online nur Daten.
+        raise Abbruch('web/index.html fehlt im Stand — keine Seite, nichts auszuliefern')
 
     rc, _, dauer = schritt('test', ['sh', 'ops/test.sh'], cwd=str(REPO), env=env)
     protokoll.append({'schritt': 'test', 'rc': rc, 'sekunden': dauer})
@@ -244,6 +254,13 @@ def lauf_innen(zustand):
     # Ausgeliefert wird die Seite, nicht ihre Werkstatt: ohne Tests und Anleitungen.
     shutil.rmtree(AUSLIEFERN, ignore_errors=True)
     shutil.copytree(REPO / 'web', AUSLIEFERN, ignore=shutil.ignore_patterns('tests', '*.md'))
+    # Lücken, die Silas noch füllen muss (z. B. die Kontakt-E-Mail im Impressum), tragen
+    # data-luecke. Sie halten die Auslieferung nicht an — ob die Seite mit einer Lücke online
+    # geht, entscheidet Silas —, aber jeder Lauf sagt sie, statt sie still mitzunehmen.
+    zustand['luecken'] = sorted(f'{p.name}: {m}' for p in AUSLIEFERN.rglob('*.html')
+                                for m in re.findall(r'data-luecke="([^"]+)"', p.read_text(encoding='utf-8', errors='replace')))
+    for luecke in zustand['luecken']:
+        log.warning('Lücke in der Seite: %s', luecke)
     return ausliefern(commit, protokoll)
 
 
@@ -266,7 +283,12 @@ def lauf(warten=False):
         log.info('Lauf beginnt (Image %s, Stand %s)', zustand['image'], STAND)
         try:
             zustand['status'] = 'ausgeliefert' if lauf_innen(zustand) else 'nicht_ausgeliefert'
-            zustand['meldung'] = None if zustand['status'] == 'ausgeliefert' else 'kein Token, nicht ausgeliefert'
+            if zustand['status'] == 'ausgeliefert':
+                zustand['meldung'] = None
+            elif STAND != 'main' or REPO_URL != REPO_URL_LIVE:
+                zustand['meldung'] = f'Testlauf (Stand {STAND}), nicht ausgeliefert'
+            else:
+                zustand['meldung'] = 'kein Token, nicht ausgeliefert'
         except Abbruch as exc:
             zustand['status'] = 'fehler'
             zustand['meldung'] = str(exc)[:500]

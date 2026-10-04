@@ -7,8 +7,9 @@
 # schickt GitHub als Mail.
 #
 # SEITE_URL ist eine Repo-Variable (Settings → Secrets and variables → Actions → Variables),
-# z. B. https://stundenplanner.pages.dev — ohne Schrägstrich am Ende. Ist sie nicht gesetzt,
-# überspringt der Job mit einem Hinweis, statt rot zu werden.
+# https://stundenplanner.de (bis die Domain zeigt: die pages.dev-Adresse). Erst setzen, wenn die
+# Seite dort wirklich antwortet. Ist sie nicht gesetzt, überspringt der Job mit einem Hinweis,
+# statt rot zu werden.
 name: frische
 on:
   schedule:
