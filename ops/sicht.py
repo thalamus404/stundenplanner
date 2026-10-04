@@ -466,8 +466,12 @@ const texteSammeln = () => {
       const w = (b.r - b.l) / n, h = (b.b - b.t) / z;
       for (let i = 0; i < n; i++) for (let j = 0; j < z; j++) {
         const x = b.l + (i + 0.5) * w, y = b.t + (j + 0.5) * h;
-        if (inFenster(x, y) && verdecktAn(el, x, y)) continue;
-        frei.push({ l: x - w / 4, t: y - h / 4, r: x + w / 4, b: y + h / 4 });
+        const kern = { l: x - w / 4, t: y - h / 4, r: x + w / 4, b: y + h / 4 };
+        // Mitte UND Ecken des Kerns frei: Ein Kern, dessen Mitte knapp neben der Kante der
+        // Meldung liegt, ragte sonst mit einer Pixelreihe unter sie (triebwerk: „2“ bei 360 × 640).
+        const ecken = [[x, y], [kern.l, kern.t], [kern.r, kern.t], [kern.l, kern.b], [kern.r, kern.b]];
+        if (ecken.some(([px, py]) => inFenster(px, py) && verdecktAn(el, px, py))) continue;
+        frei.push(kern);
       }
     }
     const verdeckt = frei.length === 0;
@@ -726,8 +730,12 @@ async ({ png, items }) => {
     // Muster aus fast gleichen Farben (1 Stufe Unterschied) ist für das Auge ein Grund.
     const ks = []; const zahl = new Map();
     for (const [x, y, w, h] of it.r) {
-      const x0 = Math.max(0, Math.floor(x)), y0 = Math.max(0, Math.floor(y)), x1 = Math.min(W, Math.ceil(x + w)), y1 = Math.min(H, Math.ceil(y + h));
-      if (x1 <= x0 || y1 <= y0) continue;
+      // Nur Pixel, die GANZ in der Box liegen: Eine angeschnittene Randreihe gehört schon zum
+      // Nachbarn (einer Meldung, einer Kante). Ist die Box schmaler als ein Pixel, das mittlere.
+      let x0 = Math.max(0, Math.ceil(x - 0.01)), y0 = Math.max(0, Math.ceil(y - 0.01));
+      let x1 = Math.min(W, Math.floor(x + w + 0.01)), y1 = Math.min(H, Math.floor(y + h + 0.01));
+      if (x1 <= x0) { x0 = Math.min(W - 1, Math.max(0, Math.floor(x + w / 2))); x1 = x0 + 1; }
+      if (y1 <= y0) { y0 = Math.min(H - 1, Math.max(0, Math.floor(y + h / 2))); y1 = y0 + 1; }
       // Jedes Pixel (bis 40 000 je Zeile): Ein Raster mit Schritt trifft Linien im Hintergrund
       // (Stundenlinien, Musterlinien) über- oder unterproportional und verzerrt den Grund.
       const st = Math.max(1, Math.ceil(Math.sqrt((x1 - x0) * (y1 - y0) / 40000)));

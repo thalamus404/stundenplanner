@@ -60,12 +60,15 @@ class Messung(unittest.TestCase):
         # eine 2-px-Linie hinter der Zeile ist kein Grund: 595959 auf Weiß erfüllt
         self.assertNotIn('Grau mit Linie dahinter', fehler)
         self.assertNotIn('Grau mit Linie dahinter', unbestimmt)
-        # verdeckt (eine feste Meldung liegt darüber): nicht gemessen, gezählt
+        # verdeckt (eine feste Meldung liegt darüber): nicht gemessen, gezählt — „Unter der Meldung“
+        # ganz, „7“ bis auf eine Randreihe, deren Kern die Kante der Fläche berührt
         self.assertNotIn('Unter der Meldung', fehler)
-        self.assertEqual(k['verdeckt'], 1)
+        self.assertEqual(k['verdeckt'], 2)
         # teilweise verdeckt: nur der freie Teil zählt, die Tinte der Meldung nicht
         self.assertNotIn('Teilweise unter der Meldung', fehler)
         self.assertNotIn('Teilweise unter der Meldung', unbestimmt)
+        # ein einzelnes Zeichen an der (gebrochenen) Kante: keine Pixelreihe der Fläche im Maß
+        self.assertNotIn('7', fehler)
         # gesperrte Elemente sind ausgenommen (WCAG)
         self.assertEqual(k['gesperrt'], 1)
         self.assertNotIn('Gesperrt', fehler)

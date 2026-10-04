@@ -4,7 +4,8 @@
    dunkler als etwa 757575 ist, also auf einem Fünftel der Textbreite, ohne vorherrschenden Grund.
    „Unter der Meldung“ liegt unter einer festen Fläche (pointer-events: none wie eine Meldung):
    verdeckt, nicht gemessen. „Teilweise unter der Meldung“: das rechte Ende liegt unter einer
-   Fläche ohne pointer-events: none (wie die Meldung des Neubaus); gemessen wird nur der freie Teil. */
+   Fläche ohne pointer-events: none (wie die Meldung des Neubaus); gemessen wird nur der freie Teil.
+   „7“: ein einzelnes Zeichen, dessen obere zwei Drittel eine Fläche mit gebrochener Kante deckt. */
 html { background: #fff; }
 body { margin: 0; padding: 8px; font: 16px/24px system-ui, sans-serif; color: #000; }
 p { margin: 0 0 8px; }
@@ -20,3 +21,5 @@ p { margin: 0 0 8px; }
 .meldung { pointer-events: none; position: fixed; left: 0; right: 0; top: 260px; height: 40px; background: #1d1e20; }
 .halbdrunter { color: #1d1e20; position: absolute; top: 320px; left: 8px; margin: 0; }
 .meldung2 { position: fixed; top: 318px; left: 150px; width: 400px; height: 28px; background: #1d1e20; }
+.kante { color: #1d1e20; position: absolute; top: 356.5px; left: 300.3px; margin: 0; }
+.meldung3 { position: fixed; top: 340px; left: 280px; width: 60px; height: 35.4px; background: #1d1e20; border-radius: 8px; }
