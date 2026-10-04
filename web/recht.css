@@ -1,68 +1,45 @@
 /* Impressum und Datenschutz — eigenständig, ohne stil.css der Seite: Diese beiden Seiten müssen
-   auch dann lesbar sein, wenn die Seite selbst umgebaut wird (docs/DESIGN.md). Die Farben sind
-   die der Seite (stil.css, aus os.css des Vorbilds), nur das Nötige für Fließtext.
-   Eine eigene Datei statt <style>: Die Content-Security-Policy erlaubt keinen Inline-Stil. */
+   auch dann lesbar sein, wenn die Seite selbst umgebaut wird. Die Werte sind die Tokens aus
+   docs/DESIGN.md §5 (Grautreppe, Tinte, Bernstein), hell und dunkel nach dem System, Systemschrift,
+   drei Größen, zwei Gewichte. Eine eigene Datei statt <style>: Die Content-Security-Policy erlaubt
+   keinen Inline-Stil. (Aussehen nach dem Neubau: Vorschlag von triebwerk, V-0220, übernommen in V-0223.) */
 
 :root {
-  color-scheme: dark;
-  --e0: #06070A;
-  --e2: rgba(19, 22, 30, .84);
-  --kante-2: rgba(255, 255, 255, .10);
-  --text: #E9ECF2;
-  --text-2: #9AA2B4;
-  --neon: #A06BFF;
-  --neon-hell: #C29BFF;
-  --neon-tief: rgba(160, 107, 255, .07);
-  --warn: #FFB547;
-  --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  color-scheme: light dark;
+  --grau-2: #f7f8fb; --grau-5: #d7d9dc; --grau-9: #545557; --grau-10: #1d1e20;
+  --hinweis: #c17a00; --hinweis-text: #7b4c00; --hinweis-flaeche: #fef0d4;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grau-2: #111213; --grau-5: #2d2e30; --grau-9: #b6b7ba; --grau-10: #e9ebee;
+    --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
+  }
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: var(--grau-2); color: var(--grau-10); }
 body {
   margin: 0;
-  background: var(--e0);
-  color: var(--text);
-  font-family: var(--ui);
-  font-size: 16px;
-  line-height: 1.6;
+  font: 16px/24px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-.recht { max-width: 42rem; margin: 0 auto; padding: 28px 16px 48px; }
-.recht nav { font-size: 14px; margin-bottom: 28px; }
-.recht h1 { font-size: clamp(26px, 6vw, 34px); line-height: 1.2; letter-spacing: -.5px; margin: 0 0 6px; }
-.recht h2 { font-size: 18px; line-height: 1.35; margin: 32px 0 6px; }
+.recht { max-width: 66ch; margin: 0 auto; padding: 24px 16px 48px; }
+.recht nav { font-size: 14px; line-height: 20px; margin-bottom: 24px; }
+.recht h1 { font-size: 16px; line-height: 24px; font-weight: 600; margin: 0 0 4px; }
+.recht h2 { font-size: 16px; line-height: 24px; font-weight: 600; margin: 32px 0 4px; }
+.recht b, .recht strong { font-weight: 600; }
 .recht p, .recht ul { margin: 8px 0; }
 .recht ul { padding-left: 20px; }
 .recht li { margin: 4px 0; }
 .recht address { font-style: normal; }
-.recht .stand { color: var(--text-2); font-size: 14px; margin-bottom: 20px; }
-.recht .hinweis {
-  background: var(--neon-tief);
-  border: 1px solid var(--kante-2);
-  border-left: 3px solid var(--neon);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin: 20px 0;
-}
-.recht footer {
-  margin-top: 40px;
-  padding-top: 14px;
-  border-top: 1px solid var(--kante-2);
-  color: var(--text-2);
-  font-size: 14px;
-}
+.recht .stand { color: var(--grau-9); font-size: 14px; line-height: 20px; margin-bottom: 16px; }
+.recht .hinweis { background: var(--hinweis-flaeche); color: var(--hinweis-text); border-radius: 8px; padding: 12px 16px; margin: 16px 0; }
+.recht footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--grau-5); color: var(--grau-9); font-size: 14px; line-height: 20px; }
 
-.recht a { color: var(--neon-hell); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
-.recht a:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; border-radius: 2px; }
+.recht a { color: inherit; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.recht a:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 2px; border-radius: 2px; }
 
 /* Eine Lücke, die Silas noch füllen muss. Absichtlich laut: Sie darf nicht unbemerkt online
    bleiben. betrieb/lauf.py meldet jede Datei mit data-luecke bei jedem Lauf. */
-.luecke {
-  background: rgba(255, 181, 71, .14);
-  color: var(--warn);
-  border: 1px dashed var(--warn);
-  border-radius: 4px;
-  padding: 1px 6px;
-}
+.luecke { background: var(--hinweis-flaeche); color: var(--hinweis-text); border: 1px dashed var(--hinweis); border-radius: 4px; padding: 1px 6px; }

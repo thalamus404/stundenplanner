@@ -777,11 +777,11 @@ die einen zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als 
 |---|---|---|
 | Bibliotheken, Frameworks, Webfonts, CDN | **keine** | ARCHITEKTUR §8 |
 | HTML | ≤ 10 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline |
-| CSS | ≤ 15 KB | eine Datei, Tokens §5 |
-| JavaScript | ≤ 35 KB, in höchstens 6 Dateien | Vorbild: 15 KB JS, 7 KB CSS, dazu 144 KB gemeinsames CSS des Study OS |
-| Code zusammen, komprimiert | **≤ 20 KB** | die Auslieferung (Cloudflare Pages) komprimiert |
+| CSS | ≤ 28 KB | eine Datei, Tokens §5 (bis 05.10.2026: 15 KB, siehe unten) |
+| JavaScript | ≤ 80 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis 05.10.2026: 35 KB) |
+| Code zusammen, komprimiert | **≤ 40 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis 05.10.2026: 20 KB) |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
-| Anfragen bis zum fertigen Raster | ≤ 6, alle vom eigenen Ort | HTML, CSS, JS, `index.json`, Plan-Datei |
+| Anfragen bis zum fertigen Raster | ≤ 10, alle vom eigenen Ort und **ohne Kaskade**: Das HTML nennt CSS und jedes Modul (`modulepreload`), sie laden parallel | HTML, CSS, die Module, `index.json`, Plan-Datei (bis 05.10.2026: 6) |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
 | Layout-Verschiebung (CLS) | ≤ 0,02 | Zonen und Raster haben ihren Platz, bevor die Daten kommen |
 | Größter Inhalt (LCP), Lighthouse Mobil | ≤ 1,5 s | |
@@ -795,7 +795,8 @@ Die Seite lässt sich auf den Home-Bildschirm legen (Scope §3, Punkt 7): Manife
 gehören zum Rahmen, nicht zum Budget der Daten.
 
 **Gebaut (V-0220), gemessen mit `ops/sicht.py` (V-0221) am 05.10.2026:** Die Ergebnisse halten das
-Budget, die Bytes und Anfragen nicht.
+Budget, die Bytes und Anfragen hielten das erste Budget nicht. Entschieden am 05.10.2026 (anflug, technisch): Die
+Grenzen der **Wirkung** bleiben, die der **Bytes und Anfragen** steigen auf die gebauten Werte mit Puffer (Tabelle oben).
 
 | | Budget | gebaut |
 |---|---|---|
@@ -817,9 +818,10 @@ HTML holt alle Module sofort und parallel zum CSS, es gibt keine Kaskade. **Die 
 Kommentare, die das Warum tragen (ohne sie wären es etwa 27 KB gzip), und die Bedienung, die das
 Vorbild nicht hatte: Karten, Blätter, Dialoge, Tastatur im Raster, Teilen-Leiste mit Vergleich,
 Hinweise, zwei Layouts. Das Vorbild-Budget (15 KB JS, 7 KB CSS) maß eine Seite ohne all das. Was
-zählt, ist das Ergebnis auf einem langsamen Handy, und das hält das Budget mit Abstand. Ob die
-Byte-Grenzen bleiben (dann braucht es einen Schritt, der beim Ausliefern Kommentare entfernt und
-die Module zusammenfasst) oder auf die gebauten Werte steigen, entscheidet Silas (§9, Punkt 4).
+zählt, ist das Ergebnis auf einem langsamen Handy, und das hält das Budget mit Abstand. **Entschieden (05.10.2026):** Die Byte-Grenzen
+steigen (Tabelle oben). Ein Schritt, der beim Ausliefern Kommentare entfernt und Module bündelt,
+würde „kein Build“ brechen und eine Seite schneller machen, die schon schnell ist. Wird die Seite
+spürbar langsamer, gilt wieder: Erst die Wirkung messen, dann über einen Bau-Schritt reden.
 
 Zwei Dinge, die die Blockierzeit gedrückt haben und so bleiben müssen: **kein `Intl`** (ein
 `Intl.Collator` und ein `Intl.DateTimeFormat` mit Zeitzone kosteten beim Laden zusammen 90 ms im
@@ -887,7 +889,7 @@ Spuren, Mo–Sa, 07–21 Uhr und A/B-Rhythmus.
 | 9 | Schrift | berechnete `font-size` aller sichtbaren Texte je Ansicht | höchstens 12, 14, 16 px. Gewichte nur 400 und 600 |
 | 10 | Tastatur | Durchlauf ohne Maus: Bestandteil filtern, Gruppe wählen, wechseln, lösen, Woche wechseln, teilen | alles erreichbar, Fokus immer sichtbar (≥ 2 px, ≥ 3:1), Esc schließt, Fokus kehrt zurück |
 | 11 | Parität | jede Zeile aus §4.3 | jede Funktion an der genannten Stelle |
-| 12 | Leistung | Größen der ausgelieferten Dateien, Lighthouse Mobil | Budget §6 eingehalten: Code ≤ 20 KB komprimiert, LCP ≤ 1,5 s, CLS ≤ 0,02, TBT ≤ 50 ms, keine fremde Anfrage |
+| 12 | Leistung | Größen der ausgelieferten Dateien, Lighthouse Mobil | Budget §6 eingehalten: Code ≤ 40 KB komprimiert, LCP ≤ 1,5 s, CLS ≤ 0,02, TBT ≤ 50 ms, keine fremde Anfrage |
 | 13 | Bewegung | `prefers-reduced-motion` emuliert | keine Wege, nur Deckkraft |
 | 14 | Text 200 % | Browser-Zoom auf Text | nichts überlappt oder wird abgeschnitten (Scrollen erlaubt) |
 | 15 | AI tells | Liste §7 | keiner vorhanden |
@@ -915,11 +917,10 @@ so ist es gebaut (V-0220):
 
 Offen, vorgelegt mit dem Bau:
 
-4. **Das Byte-Budget** (§6). Die Ergebnisse (LCP, CLS, TBT, Wahl bis Bild) hält die Seite mit
-   Abstand, die Bytes (CSS 25,9 statt 15 KB, JS 73,5 statt 35 KB, gzip 36,4 statt 20 KB) und die
-   Anfragen (9 statt 6) nicht. Entweder steigen die Grenzen auf die gebauten Werte, oder es kommt
-   ein Schritt beim Ausliefern dazu, der Kommentare entfernt und die Module zusammenfasst; der
-   widerspricht „kein Build“ aus §0.
+4. **Das Byte-Budget** (§6), entschieden am 05.10.2026 (anflug, technisch; Silas kann es
+   ändern): Die Grenzen der Wirkung (LCP, CLS, TBT, Wahl bis Bild) bleiben, die Seite hält sie mit
+   Abstand. Die Grenzen der Bytes und Anfragen steigen auf CSS ≤ 28 KB, JS ≤ 80 KB, gzip ≤ 40 KB,
+   ≤ 10 Anfragen ohne Kaskade. Ein Bündel-Schritt beim Ausliefern widerspräche „kein Build“ aus §0.
 
 ---
 
