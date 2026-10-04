@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Dieselbe Richtlinie wie die Seite: nichts von fremden Servern, kein Inline-Skript, kein Inline-Stil. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070A">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<title>Impressum · Stundenplanner</title>
+<link rel="stylesheet" href="recht.css">
+</head>
+<body>
+<!-- Die Anschrift steht NUR in dieser Datei (Punkt d76a6fab, Silas 04.10.2026): Das Repo ist
+     öffentlich, und eine Anschrift in Planungsdateien, Tests oder Commits wäre nicht zurückzuholen.
+     datenschutz.html verweist für die Anschrift hierher, statt sie zu wiederholen. -->
+<main class="recht">
+  <nav><a href="./">← zum Stundenplanner</a></nav>
+
+  <h1>Impressum</h1>
+  <p class="stand">Angaben nach § 5 DDG</p>
+
+  <address>
+    Silas Heineken<br>
+    Am Wasser 13<br>
+    15537 Grünheide (Mark)<br>
+    Deutschland
+  </address>
+
+  <h2>Kontakt</h2>
+  <!-- Silas, 05.10.2026: kontakt@ der eigenen Domain, weitergeleitet über Cloudflare Email Routing
+       (docs/BETRIEB.md §5). Keine weiteren Kontaktwege. -->
+  <p>E-Mail: <a href="mailto:kontakt@stundenplanner.de">kontakt@stundenplanner.de</a></p>
+
+  <h2>Worum es geht</h2>
+  <p>Der Stundenplanner ist ein privates Projekt. Er hilft Studierenden, ihren Stundenplan aus
+    den öffentlichen Lehrveranstaltungsdaten zusammenzustellen.</p>
+  <p class="hinweis"><strong>Kein offizielles Angebot der TU Berlin.</strong> Verbindlich sind
+    immer die Angaben in <a href="https://moseskonto.tu-berlin.de/">MOSES</a> und die Anmeldungen
+    dort.</p>
+
+  <h2>Herkunft der Daten</h2>
+  <p>Die Termine stammen aus den öffentlich zugänglichen Seiten von MOSES der TU Berlin und werden
+    einmal am Tag übernommen. Sie können sich seitdem geändert haben. Der Datenstand steht auf der
+    Seite. Für Richtigkeit und Vollständigkeit der Termine wird keine Gewähr übernommen.</p>
+
+  <h2>Quellcode</h2>
+  <p>Der Quellcode ist öffentlich lesbar:
+    <a href="https://github.com/thalamus404/stundenplanner">github.com/thalamus404/stundenplanner</a>.</p>
+
+  <footer>
+    <a href="datenschutz.html">Datenschutz</a> · <a href="./">Stundenplanner</a>
+  </footer>
+</main>
+</body>
+</html>

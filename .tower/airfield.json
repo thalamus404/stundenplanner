@@ -1,10 +1,12 @@
 {
-  "_": "Die Airfield-Datei des Stundenplanners (Airfield stundenplanner, gegründet 04.10.2026): was der TOWER-Client über DIESES Repo wissen muss. Keine Hub-Adresse, keine Gerätepfade, keine Geheimnisse — das Repo ist öffentlich. Noch ohne bau_* und vorschau*: Es gibt keinen Produktcode und nichts zu bauen; der erste Bau trägt sie nach (und AGENTS.md §3).",
+  "_": "Die Airfield-Datei des Stundenplanners (Airfield stundenplanner, gegründet 04.10.2026): was der TOWER-Client über DIESES Repo wissen muss. Keine Hub-Adresse, keine Gerätepfade, keine Geheimnisse — das Repo ist öffentlich. bau_live baut den Container des täglichen Laufs aus dem Stand, der nach main ging, startet ihn neu und liefert sofort aus (docs/BETRIEB.md, V-0217); bau_probe ist derselbe Befehl bis vor docker build. Kein bau_dev und keine vorschau: Live ist main, eine zweite Umgebung gibt es nicht.",
   "airfield": "stundenplanner",
   "repo": "stundenplanner",
   "name": "Stundenplanner",
   "befehle": {
-    "test": "sh ops/test.sh"
+    "test": "sh ops/test.sh",
+    "bau_live": "sh ops/bauen.sh live {stand}",
+    "bau_probe": "sh ops/bauen.sh live {stand} --probe"
   },
   "anleitungen": [
     "AGENTS.md"
