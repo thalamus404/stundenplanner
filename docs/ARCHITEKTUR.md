@@ -81,7 +81,26 @@ Felder, die dort aus Silas' Datenbank kamen (`short`, `studyos_version`):
 
 **Ein Modul wird nur ersetzt, wenn alle seine Bestandteile gelungen sind.** Scheitert eines, bleibt
 der letzte erfolgreiche Rohstand stehen. Nur `abruf.geprueft_am` und `abruf.fehler` ändern sich.
-Ohne Vorbestand entsteht ein Rohstand ohne `components` mit `fehler`.
+Ohne Vorbestand entsteht ein Rohstand ohne Bestandteile:
+`{ "number", "semester", "components": [], "abruf": { "geprueft_am", "erfolg_am": null, "fehler" } }`.
+Jede Datei wird atomar geschrieben (tmp im selben Ordner + rename): Ein Leser sieht den alten oder
+den neuen Stand, nie eine halbe Datei. `fehler` ist die erste Zeile von `Typ: Meldung`, höchstens
+300 Zeichen, nie ein Antwortkörper von MOSES und nie eine `jsessionid`, denn er wird veröffentlicht.
+
+**Der Lauf — `daten/roh/<semester-id>/_lauf.json`.** Am Ende jedes Laufs eines Semesters, auch eines
+gescheiterten. Das Lesemodell übernimmt ihn als `last_run`:
+
+```json
+{ "gestartet_am": "2026-10-05T05:20:00+02:00", "beendet_am": "2026-10-05T05:21:10+02:00",
+  "status": "ok", "modules": 5, "bookings": 949, "errors": [ { "module": "70450", "message": "SourceError: …" } ] }
+```
+
+- `status`: `ok` ohne Fehler, `partial` wenn mindestens ein Modul gelang und eines scheiterte,
+  `error` wenn keines gelang oder der Lauf als Ganzes scheiterte (dann `module: null`)
+- `modules` und `bookings` zählen nur die in diesem Lauf **gelungenen** Module, nicht die
+  stehengebliebenen Vorbestände
+- Ein Nachabruf mit `--nur` schreibt **kein** `_lauf.json`: Er ist kein Lauf des Semesters, und
+  `last_run` soll nicht „1 Modul“ melden, wo der Plan fünf hat
 
 ## 5. Das Lesemodell — `web/daten/`
 
@@ -140,7 +159,7 @@ Seite dieselben Namen benutzt:
 
 | Befehl | Was |
 |---|---|
-| `python3 abruf/abruf.py [--semester wise-2026-27] [--nur <modulnummer>]` | Rohstände nach `daten/roh/` (Vorbestand dort wird nur je erfolgreichem Modul ersetzt) |
+| `python3 abruf/abruf.py [--semester wise-2026-27] [--nur <modulnummer>] [--roh <ordner>]` | Rohstände nach `daten/roh/` oder `--roh` (Vorbestand dort wird nur je erfolgreichem Modul ersetzt). Läuft aus jedem Arbeitsverzeichnis: Der Katalog hängt an der Lage von `abruf.py`, ein relatives `--roh` am Arbeitsverzeichnis. Exit 0 nur, wenn jedes Semester `ok` ist; 1 bei `partial`/`error`; 2 bei falschem Aufruf oder ungültigem Katalog |
 | `python3 abruf/bauen.py` | Lesemodell nach `web/daten/` aus `katalog/` und `daten/roh/` |
 | `python3 -m http.server -d web 8000` | die Seite lokal ansehen |
 | `sh ops/test.sh` | alle Tests: Regeln des öffentlichen Repos, `abruf/tests/test_*.py` (unittest), `web/tests/*.test.mjs` (`node --test`) |
