@@ -1,0 +1,13 @@
+{
+ "gestartet_am": "2030-10-01T05:20:00+02:00",
+ "beendet_am": "2030-10-01T05:21:00+02:00",
+ "status": "partial",
+ "modules": 2,
+ "bookings": 24,
+ "errors": [
+  {
+   "module": "90002",
+   "message": "SourceError: erfundener Testfehler"
+  }
+ ]
+}
