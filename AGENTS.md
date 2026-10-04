@@ -28,7 +28,7 @@ für viele gebaut. **Lesen darfst du dort, gebaut wird hier.** Was du übernimms
 bewusst und nennst die Herkunft im Commit. Eine Abhängigkeit auf das andere Repo gibt es nicht.
 
 **Stand:** Gründung. Was das Werkzeug können soll und was nicht, legt der erste Vorgang fest
-(der Scope, `docs/SCOPE.md`). Bis er steht, gibt es keinen Produktcode.
+(der Scope, [`docs/SCOPE.md`](docs/SCOPE.md)). Bis er steht, gibt es keinen Produktcode.
 
 ## 2. Die Regeln
 
@@ -76,7 +76,7 @@ des TOWER (Block oben).
 |---|---|
 | Was das Werkzeug ist, für alle | [`README.md`](README.md) |
 | Was wann passiert ist | [`CHRONIK.md`](CHRONIK.md) |
-| Was es können soll und was nicht (ab dem Scope-Vorgang) | `docs/SCOPE.md` |
+| Was es können soll und was nicht (Entwurf, bis Silas die offenen Fragen entschieden hat) | [`docs/SCOPE.md`](docs/SCOPE.md) |
 
 ---
 
