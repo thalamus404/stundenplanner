@@ -1,0 +1,19 @@
+{
+ "id": "probe-msc",
+ "name": "Probekunde",
+ "abschluss": "M.Sc.",
+ "hochschule": "Testhochschule",
+ "plaene": [
+  {
+   "semester": "ss-2031",
+   "fachsemester": 2,
+   "quelle": "erfunden",
+   "module": [
+    {
+     "nummer": "90001",
+     "kurz": "Mod A"
+    }
+   ]
+  }
+ ]
+}
