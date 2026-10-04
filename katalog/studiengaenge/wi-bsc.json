@@ -1,0 +1,20 @@
+{
+  "id": "wi-bsc",
+  "name": "Wirtschaftsinformatik",
+  "abschluss": "B.Sc.",
+  "hochschule": "TU Berlin",
+  "plaene": [
+    {
+      "semester": "wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Studienverlaufsplan der Studien- und Prüfungsordnung, 1. Fachsemester; von Hand übernommen (Stand 16.09.2026)",
+      "module": [
+        { "nummer": "70123", "kurz": "Einf. WI" },
+        { "nummer": "41077", "kurz": "Prog I" },
+        { "nummer": "40271", "kurz": "TechGI" },
+        { "nummer": "70450", "kurz": "Statistik I" },
+        { "nummer": "70112", "kurz": "BuK" }
+      ]
+    }
+  ]
+}

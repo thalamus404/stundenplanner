@@ -1,13 +1,16 @@
 #!/bin/sh
 # Der Test des Airfields stundenplanner — befehle.test in .tower/airfield.json.
 #
-# Heute gibt es keinen Produktcode. Geprüft wird, was es zu prüfen gibt: die Haustür und die
-# Regel eines ÖFFENTLICHEN Repos (AGENTS.md §2 ①) — keine Adresse oder kein Pfad der Werkstatt,
-# kein Geheimnis, keine .env. Ein öffentlicher Commit lässt sich nicht zurückholen; deshalb steht
-# die Regel als Prüfung hier und nicht nur als Satz (Axiom 0, Schritt 3). Die Muster sind
-# allgemein gehalten, damit diese Datei selbst nichts über die Werkstatt verrät.
+# Geprüft wird zuerst die Haustür und die Regel eines ÖFFENTLICHEN Repos (AGENTS.md §2 ①): keine
+# Adresse oder kein Pfad der Werkstatt, kein Geheimnis, keine .env. Ein öffentlicher Commit lässt
+# sich nicht zurückholen; deshalb steht die Regel als Prüfung hier und nicht nur als Satz (Axiom 0,
+# Schritt 3). Die Muster sind allgemein gehalten, damit diese Datei selbst nichts über die Werkstatt
+# verrät.
 #
-# Wer Code dazubringt, hängt seine Tests unten an. Aufruf aus einem Klon oder Arbeitsbaum:
+# Danach die Tests der Teile — GEFUNDEN, nicht aufgezählt (docs/ARCHITEKTUR.md §7): jede Datei
+# abruf/tests/test_*.py (unittest) und web/tests/*.test.mjs (node --test). Wer Code bringt, legt
+# seine Tests dorthin und fasst diese Datei nicht an — so arbeiten mehrere Vorgänge zugleich, ohne
+# sich hier zu überschreiben. Aufruf aus einem Klon oder Arbeitsbaum:
 #   sh ops/test.sh
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 2
@@ -53,6 +56,28 @@ if [ -z "$envs" ]; then
   ok "keine .env verfolgt"
 else
   nein "eine .env ist verfolgt: $envs"
+fi
+
+# 3 · Die Tests der Teile
+if [ -d abruf/tests ] && ls abruf/tests/test_*.py >/dev/null 2>&1; then
+  if ! python3 -c 'import bs4' 2>/dev/null; then
+    nein "abruf/tests: beautifulsoup4 fehlt — pip install -r abruf/requirements.txt (nicht gemessen ist nicht bestanden)"
+  elif aus=$(cd abruf && python3 -m unittest discover -s tests -p 'test_*.py' 2>&1); then
+    ok "abruf/tests: $(printf '%s\n' "$aus" | grep -E '^Ran [0-9]+ test' | head -1)"
+  else
+    nein "abruf/tests rot:"
+    printf '%s\n' "$aus" | tail -25 | sed 's/^/      /'
+  fi
+fi
+if [ -d web/tests ] && ls web/tests/*.test.mjs >/dev/null 2>&1; then
+  if ! command -v node >/dev/null 2>&1; then
+    nein "web/tests: node fehlt (nicht gemessen ist nicht bestanden)"
+  elif aus=$(node --test web/tests/*.test.mjs 2>&1); then
+    ok "web/tests: $(printf '%s\n' "$aus" | grep -E '^# (pass|tests)' | tr '\n' ' ')"
+  else
+    nein "web/tests rot:"
+    printf '%s\n' "$aus" | grep -E 'not ok|Error|expected|actual' | head -25 | sed 's/^/      /'
+  fi
 fi
 
 echo
