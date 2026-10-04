@@ -83,6 +83,15 @@ Silas hat die Domain am 05.10.2026 gekauft. Bis sie zeigt, gilt die Adresse von 
 (`*.pages.dev`). GitHub Pages scheidet aus, weil es ein „online business“ verbietet und Werbung
 später möglich bleiben soll.
 
+**Das Aussehen** (Silas, 04.10.2026, E11): Nach dem funktionsgleichen Nachbau wird die Oberfläche
+**noch vor dem Start** von Grund auf neu gebaut, nach seinen Designprinzipien. Die Bedienlogik
+bleibt: oben die Module mit ihren Bestandteilen, darunter die Woche, Gruppen wählen und wechseln,
+offene sehen, nach Modulen filtern. Neu ist: „Die Standardansicht, dass man sich den Stundenplan
+zusammenstellt, [muss] wirklich auf einer Seite möglich [sein], ohne dass man scrollen muss“, auf
+dem Handy wie auf dem breiten Schirm, schnell und responsiv. Der Bauplan ist
+[`docs/DESIGN.md`](DESIGN.md), die Messung `ops/sicht.py`. Danach testet Silas die Bedienung
+selbst.
+
 **Kurz nach dem Start, noch vor dem 12.10.2026** (E9, eigener Schritt): **anonym mitzählen.**
 Silas zählt das „mit zu den wichtigsten Sachen: das Verhalten der User kennenlernen“. Gezählt
 werden nur **Summen**, ohne Konten, Cookies oder Kennungen, und keine IP-Adresse wird
@@ -100,8 +109,8 @@ Gruppe gewählt, Plan vollständig, Plan geteilt).
 Nicht vor dem 12.10.2026. Die Reihenfolge entscheidet Silas nach der ersten Fassung, das meiste
 mit Blick auf den nächsten Jahrgang:
 
-- **Schöner:** deutlich schöner als das Vorbild (Silas: „vor allem von der Appearance“). Das
-  ist der erste Ausbau nach dem Nachbau
+- ~~**Schöner**~~ ist kein Zielbild mehr, sondern Teil der ersten Fassung (siehe §3, „Das
+  Aussehen“)
 - **Vorschläge:** automatisch konfliktfreie Kombinationen. Dafür braucht es nur die Termine.
   *Gute* Vorschläge, etwa beliebte oder volle Gruppen, brauchen die gezählten Daten aus §3
 - **Ein freiwilliges Konto**, um den Plan zwischen Geräten abzugleichen. Die Grundbedienung
@@ -148,6 +157,7 @@ den Feinschnitt E10. E5 und E7 hat er am 05.10.2026 nach seiner Hosting-Recherch
 | **E8** | Lizenz | **Später.** Bis dahin öffentlich lesbar, nicht frei nutzbar |
 | **E9** | Anonym mitzählen? | **Ja, noch in der Fassung vor dem 12.10.**, als eigener Schritt kurz nach dem Start: nur Summen, keine Kennungen, Datenschutzhinweis. Silas will das Verhalten der Nutzer kennenlernen |
 | **E10** | Was genau wird gezählt? | **Vorschlag in §3**, Silas bestätigt ihn vor dem Bau von Schritt 5 |
+| **E11** | Wann wird das Aussehen neu gebaut? | **Vor dem Start**, als One-Pager ohne Scrollen nach den Designprinzipien (04.10.2026). Am 05.10. entschieden (DESIGN.md §9): keine Markenfarbe; Start mit „Noch offen“, das Gewählte bleibt sichtbar; gewählt wird direkt auf breiten Kacheln und über die Gruppenkarte auf schmalen Kacheln und am Handy |
 
 ## 7. Der Weg — als Vorgänge
 
@@ -157,8 +167,9 @@ den Feinschnitt E10. E5 und E7 hat er am 05.10.2026 nach seiner Hosting-Recherch
 | 2 | **Datenweg** | Abruf aus dem Study OS übernommen, Modulliste als Datei je Studiengang, Ergebnis als JSON, täglicher Lauf. Erledigt (V-0214, V-0215): alle 5 Module wie im Study OS |
 | 3 | **Oberfläche nachbauen** | die Seite aus §3 mit Auswahl im Browser und Teilen-Link. `ops/test.sh` rechnet die Fälle des Vorbilds nach (Jahreswechsel, Ferienlücke, A/B, direkt anschließende Termine, Nachttermin) |
 | 4 | **Online** | Container auf dem NAS, Cloudflare Pages unter stundenplanner.de (E7), Impressum (E6), Datenschutzhinweis, „kein offizielles Angebot“, Befehle in `.tower/airfield.json` |
-| 5 | **Mitzählen** | E10 bestätigen lassen, dann der Zähldienst aus §3 (E9) und der Datenschutzhinweis dazu |
-| 6 | **Schöner** | der Ausbau des Aussehens, danach das Zielbild in Silas' Reihenfolge |
+| 5 | **Neubau der Oberfläche** | der One-Pager nach docs/DESIGN.md (E11), gemessen mit `ops/sicht.py` |
+| 6 | **Mitzählen** | E10 bestätigen lassen, dann der Zähldienst aus §3 (E9) und der Datenschutzhinweis dazu |
+| 7 | **Danach** | Silas testet die Bedienung, dann das Zielbild in seiner Reihenfolge |
 
-2–5 gehören vor den 12.10.2026: 2–4 so früh in der Einführungswoche wie möglich, 5 wenige
+2–6 gehören vor den 12.10.2026: 2–5 so früh in der Einführungswoche wie möglich, 6 wenige
 Tage danach.

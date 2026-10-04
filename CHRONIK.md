@@ -5,6 +5,18 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 05.10.2026 — Der Brief für den One-Pager und drei Entscheidungen
+
+- `docs/DESIGN.md` (leitwerk, V-0218) misst das Vorbild: 4 bis 8 Bildschirme hoch, das Raster beginnt
+  überall unter dem sichtbaren Bereich, 13 „+N weitere“ verstecken 15 der 65 Gruppen. Der Brief legt die
+  geschlossene Menge an Entscheidungen fest: eine Seite, die das Fenster füllt und nicht scrollt, eine
+  Modulleiste statt Modulkarten, jede Gruppe als eigene Kachel in Spuren, Farbe nur mit Bedeutung.
+- Silas entscheidet die offenen Fragen des Briefs: keine Markenfarbe; Start mit „Noch offen“, das Gewählte
+  bleibt sichtbar; gewählt wird direkt auf breiten Kacheln und über die Gruppenkarte auf schmalen Kacheln
+  und am Handy, nah an der heutigen Bedienung.
+- Der Neubau gehört noch vor den Start (E11 im Scope). Gemessen wird er mit `ops/sicht.py`, nicht mit
+  Augenmaß.
+
 ## 05.10.2026 — Der Nachbau steht, der Betrieb zieht um (P-0006)
 
 - **Viele Agenten zugleich (Silas):** Der Leit-Agent legt das Programm P-0006 im TOWER an (sieben Phasen,
