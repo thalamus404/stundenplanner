@@ -343,12 +343,11 @@ details[open] > summary::before { transform: rotate(45deg); }
   .ein-tag .tage { margin-right: 4px; padding: 0; }
   .ein-tag .tag { border-radius: 8px; min-width: 44px; }
   .tag { flex-direction: column; gap: 0; line-height: 16px; }
-  .ansicht { grid-column: 3; grid-row: 1; height: 44px; padding: 0 6px 0 8px; gap: 2px; max-width: 168px; }
+  /* Fünf Reiter zu 44 px (220 px) und 4 px Abstand bleiben, den Rest darf „Ansicht“ nehmen. */
+  .ansicht { grid-column: 3; grid-row: 1; height: 44px; padding: 0 6px 0 8px; gap: 2px; max-width: min(168px, calc(100vw - 2 * var(--rand-x) - 224px)); }
   .ansicht-text { display: grid; text-align: left; line-height: 20px; min-width: 0; }
   .ansicht-text span { overflow: hidden; text-overflow: ellipsis; }
   .ansicht-b { font-size: 12px; line-height: 16px; color: var(--grau-9); }
   .fuss { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b" "c"; row-gap: 0; }
   .fuss-c { justify-content: flex-start; gap: 16px; }
 }
-/* Unter 400 px passen fünf Reiter zu 44 px nur, wenn „Ansicht“ höchstens 100 px breit ist. */
-@media (max-width: 399.98px) { .ansicht { max-width: 100px; } }
