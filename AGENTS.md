@@ -76,7 +76,9 @@ des TOWER (Block oben).
 |---|---|
 | Test | `sh ops/test.sh`: die Regeln eines öffentlichen Repos (§2 ①), die Haustür und jede Datei `abruf/tests/test_*.py` und `web/tests/*.test.mjs`. Neue Tests legst du dorthin, `ops/test.sh` findet sie |
 | Abruf, Bauen, Ansehen | `python3 abruf/abruf.py` · `python3 abruf/bauen.py` · `python3 -m http.server -d web 8000` (docs/ARCHITEKTUR.md §7) |
-| Bau, Vorschau, Dev im TOWER | noch keine. Der Betrieb trägt sie in `.tower/airfield.json` (`befehle`) und hier ein |
+| Oberfläche messen | `python3 ops/sicht.py --web web`: alle Fenstergrößen aus docs/DESIGN.md §8, hell und dunkel, kein Scrollen der Standardansicht, Kontrast, Tippziele, Bytes (braucht Playwright) |
+| Ausliefern | `sh ops/bauen.sh live [<stand>]`: der Container `stundenplanner-abruf` auf dem NAS baut aus `main` und lädt zu Cloudflare hoch (`befehle.bau_live`, so ruft es die Freigabe). Alles Weitere, auch `zugang`, `einrichten`, `status`, `rueckweg`: docs/BETRIEB.md §4 |
+| Vorschau, Dev-Hub im TOWER | keine: Es gibt keinen Server. Den Stand eines Zweigs siehst du lokal mit dem Befehl oben. `tower vorgang fertig` braucht deshalb `TOWER_PRUEFZIEL=arbeitsbaum` (Punkt dcd0ebbd) |
 
 ## 4. Wohin du weiterliest
 
@@ -84,6 +86,8 @@ des TOWER (Block oben).
 |---|---|
 | Was das Werkzeug ist, für alle | [`README.md`](README.md) |
 | **Wie es gebaut ist**: Teile, Ordner, Datenformate, Befehle | [`docs/ARCHITEKTUR.md`](docs/ARCHITEKTUR.md) |
+| **Wie es aussieht und sich bedient**: Layout je Breite, Tokens, Abnahmekriterien. Vor jeder Arbeit an `web/` lesen | [`docs/DESIGN.md`](docs/DESIGN.md) |
+| Wie es online bleibt: Container, Cloudflare, was bei Fehlern passiert | [`docs/BETRIEB.md`](docs/BETRIEB.md) |
 | Was wann passiert ist | [`CHRONIK.md`](CHRONIK.md) |
 | **Was es können soll und was nicht**: zuerst lesen | [`docs/SCOPE.md`](docs/SCOPE.md) |
 
