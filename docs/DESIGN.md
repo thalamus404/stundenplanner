@@ -5,7 +5,8 @@
 > gebaut wird. Was hier nicht steht, wird nicht erfunden. Wer abweichen will, ändert zuerst diese
 > Datei, mit Vorgang und Grund.
 > **Was** die Seite kann, steht im [Scope](SCOPE.md) §3. **Welche Daten** sie hat, steht in der
-> [Architektur](ARCHITEKTUR.md) §5 und §6. Diese Datei regelt nur, **wie es aussieht und sich
+> [Architektur](ARCHITEKTUR.md) §5 und §6 (dort auch die Speicherregeln und der Teilen-Link).
+> Diese Datei regelt nur, **wie es aussieht und sich
 > bedient**. Grundlage sind Silas' Anforderungen vom 04.10.2026 (§1.1) und die Designprinzipien
 > aus seiner Recherche vom selben Tag (20 Regeln mit Werten, dazu die Liste der „AI tells“).
 
@@ -125,7 +126,7 @@ ersatzweise `100vh`). Die Zonen 1–3 und 5 sind so hoch wie ihr Inhalt, die Zon
 | 2 | **Modulleiste** | je Modul: Farbpunkt und Kurzname (öffnet die Modulkarte), dahinter je Bestandteil ein **Chip** in Studienordnungs-Reihenfolge | 40 px je Zeile. Bricht um, so oft nötig: für WI 1. FS ab 1024 px eine Zeile, ab 768 px zwei |
 | 3 | **Werkzeugleiste** | Ansicht, Modulfilter, Zeitraum, A/B. Rechts der Stand: „3 von 11 gewählt“ und die Hinweismarken (Überschneidung, Änderung) | 40 px, unter 1024 px bis zu 2 Zeilen |
 | 4 | **Raster** | Tageskopf, Zeitachse, Kacheln | der Rest |
-| 5 | **Fußzeile** | „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“, rechts „Hilfe“, „Impressum“, „Datenschutz“ | 24 px, Handy 32 px (zwei Zeilen) |
+| 5 | **Fußzeile** | „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ Daneben immer der Speicherhinweis „Deine Auswahl wird nur in diesem Browser gespeichert.“ (ARCHITEKTUR §6) und, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“. Rechts „Hilfe“, „Impressum“, „Datenschutz“ | 24 px ab 1280 px, darunter 40 px (zwei Zeilen), Handy 48 px (drei Zeilen) |
 
 Dazu bei Bedarf, nur solange es gilt, zwischen Zone 3 und 4: die **Teilen-Leiste** (ein geteilter
 Plan ist geöffnet, §4.2) mit 44 px. Das Raster wird entsprechend niedriger, die Seite scrollt nicht.
@@ -243,8 +244,9 @@ Impressum und Datenschutz. Ab 768 px zusätzlich alle Wochentage und die Werkzeu
 │ 10 └──────────────┘└───────┘└───────┘    │
 │ …                                        │
 │ 20                                       │
-│ Stand 05.10., 05:20. Kein offizielles    │ 32  Fußzeile
-│ Angebot der TU Berlin. Impressum Datens. │
+│ Kein offizielles Angebot der TU Berlin.  │ 48  Fußzeile, drei Zeilen
+│ Deine Auswahl wird nur in diesem Brow…   │
+│ Stand 05.10., 05:20  Impressum  Datens.  │
 └──────────────────────────────────────────┘
 ```
 
@@ -254,13 +256,18 @@ Impressum und Datenschutz. Ab 768 px zusätzlich alle Wochentage und die Werkzeu
   wie viele seiner Gruppen an diesem Tag liegen. In der Kalenderwoche steht dort das Datum.
 - **Chips mit Modulnamen** („BuK TUT“), weil eine eigene Modulspalte auf 358 px zu viele Zeilen
   bräuchte. Reihenfolge und Farbe halten die Module zusammen. Für WI 1. FS sind das bei 360 und
-  390 px vier Zeilen, mit 8 px zwischen den Chips.
+  390 px vier Zeilen, 8 px zwischen Chips einer Zeile, 4 px zwischen den Zeilen.
+- **Die Fußzeile hat drei Zeilen:** „Kein offizielles Angebot der TU Berlin.“, der
+  Speicherhinweis, dann „Stand 05.10., 05:20“ mit „Impressum“ und „Datenschutz“. Der Datenstand
+  steht am Handy hier, nicht in der Kopfzeile. Der zweite Satz („Verbindlich sind MOSES und die
+  Anmeldungen dort.“) passt auf 328 px nicht mehr dazu, er steht oben im Blatt „Mehr“ und in der
+  Hilfe.
 - **„Ansicht“** öffnet ein Blatt mit Ansicht, Modulfilter, Zeitraum und A/B. Die Knopfbeschriftung
   nennt die aktuelle Ansicht, darunter klein, was davon abweicht („BuK, Woche ab 19.10.“).
 - **„Mehr“** öffnet ein Blatt mit: Hinweise (Überschneidungen, Änderungen, mit ihren Knöpfen),
-  Plan wechseln (nur wenn es mehrere gibt), Datenstand und Quelle, Modul-Infos, Hilfe, Impressum,
-  Datenschutz. Gibt es Hinweise, trägt der Knopf eine Zahl (rot bei Überschneidung, sonst
-  Bernstein). Sie pulsiert nicht.
+  Plan wechseln (nur wenn es mehrere gibt), Datenstand und Quelle, Modul-Infos, „Auswahl
+  zurücksetzen“, Hilfe, Impressum, Datenschutz. Gibt es Hinweise, trägt der Knopf eine Zahl
+  (rot bei Überschneidung, sonst Bernstein). Sie pulsiert nicht.
 - Der **Fortschritt** ist die Chipreihe selbst. Wird der letzte Bestandteil gewählt, meldet das
   eine kurze Meldung („Alle 11 Bestandteile eingeplant. Keine Überschneidung.“).
 - Die **Karte** ist ein Blatt von unten (§3.5), mit den Knöpfen im Daumenbereich.
@@ -276,17 +283,19 @@ Impressum und Datenschutz. Ab 768 px zusätzlich alle Wochentage und die Werkzeu
 │                                    3 von 11 gewählt  ⚠ 1     │
 │      Mo        Di        Mi        Do        Fr              │ 32
 │ 08 ┌────┐   ┌──┬──┬──┐   …                                   │ Raster: ganze Woche,
-│    │TUT │   │T │U │T │                                       │ 57 px je Stunde
+│    │TUT │   │T │U │T │                                       │ 55 px je Stunde
 │ …                                                            │
 │ 20                                                           │
-│ Kein offizielles Angebot der TU Berlin …  Hilfe Impr. Dat.   │ 24
+│ Kein offizielles Angebot der TU Berlin …  Hilfe Impr. Dat.   │ 40, zwei Zeilen
+│ Deine Auswahl wird nur in diesem Browser gespeichert.        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 - **Die ganze Woche**, wie am Laptop. Die Tagesansicht über den Tageskopf gibt einem Tag die
   volle Breite. Modulleiste und Werkzeugleiste dürfen je zwei Zeilen haben, Höhe ist hier genug.
-- Der Datenstand steht ab 768 px in der Kopfzeile. Wird es dort zu eng, kürzt sich der Plan auf
-  Studiengang und Fachsemester, das Semester steht dann in der Karte des Datenstands.
+- Der Datenstand steht ab 768 px in der Kopfzeile (am Handy in der Fußzeile). Wird es dort zu
+  eng, kürzt sich der Plan auf Studiengang und Fachsemester, das Semester steht dann in der Karte
+  des Datenstands.
 - Die Karte ist eine schwebende Karte am Kachelrand (§3.5).
 
 #### Laptop, 1024–1439 px (1280 × 720, 1280 × 800, 1366 × 657)
@@ -305,7 +314,7 @@ Impressum und Datenschutz. Ab 768 px zusätzlich alle Wochentage und die Werkzeu
 │ 10  └──────────┘   … 5 Spuren am Freitagnachmittag, je 47 px breit: Stufe M …          │ je Stunde
 │ …                                                                                      │
 │ 20                                                                                     │
-│ Kein offizielles Angebot der TU Berlin. Verbindlich …     Hilfe  Impressum  Datenschutz│ 24
+│ Kein offizielles Angebot …  Deine Auswahl wird nur in …   Hilfe  Impressum  Datenschutz│ 24
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -331,9 +340,10 @@ bis zu 2 Spuren je Tag passt Stufe L mit Raum.
 
 Feste Zeilen am Rechner: 12 px Rand oben, Kopfzeile 48, Modulleiste 40, Werkzeugleiste 40,
 Tageskopf 32, Fußzeile 24, vier Abstände zu 8 px, 12 px Rand unten, zusammen **240 px**
-(ab 860 px Fensterhöhe 16 px Rand, 248 px). Unter 1024 px kommen bis zu 48 px je zusätzlicher
-Leistenzeile dazu. Am Handy: Kopfzeile 48, Chips 4 × 44 + 3 × 8, Tagesreiter 44, Fußzeile 32,
-fünf Abstände zu 8 px und zwei Ränder zu 8 px, zusammen **372 px** bei vier Chipzeilen.
+(ab 860 px Fensterhöhe 16 px Rand, 248 px). Unter 1280 px ist die Fußzeile zweizeilig (+16 px),
+unter 1024 px kommen 48 px je zusätzlicher Leistenzeile dazu. Am Handy: Ränder 2 × 8, Kopfzeile
+48, Chips 4 × 44 + 3 × 4, Tagesreiter 44, Fußzeile 48, Abstände 8 + 8 + 4 + 8, zusammen
+**372 px** bei vier Chipzeilen.
 
 | Fenster | Raster­höhe | je Stunde | 2-h-Kachel | Tagesbreite | dichtester Fall (5 Spuren) | gefiltert (3 Spuren) |
 |---|---|---|---|---|---|---|
@@ -341,9 +351,9 @@ fünf Abstände zu 8 px und zwei Ränder zu 8 px, zusammen **372 px** bei vier C
 | 375 × 667 | 295 px | 24,6 px | 49 px | 307 px | 61 px, M | 102 px, M |
 | 390 × 844 | 472 px | 39,3 px | 79 px | 322 px | 64 px, M | 107 px, M |
 | 430 × 932 | 560 px | 46,7 px | 93 px | 362 px | 72 px, M | 120 px, L |
-| 768 × 1024 | 680 px | 56,7 px | 113 px | 136 px | 27 px, S | 45 px, M |
-| 865 × 1021 | 677 px | 56,4 px | 113 px | 155 px | 31 px, S | 52 px, M |
-| 1024 × 768 | 480 px | 40,0 px | 80 px | 187 px | 37 px, S | 62 px, M |
+| 768 × 1024 | 664 px | 55,3 px | 111 px | 136 px | 27 px, S | 45 px, M |
+| 865 × 1021 | 661 px | 55,1 px | 110 px | 155 px | 31 px, S | 52 px, M |
+| 1024 × 768 | 464 px | 38,7 px | 77 px | 187 px | 37 px, S | 62 px, M |
 | 1280 × 720 | 480 px | 40,0 px | 80 px | 238 px | 47 px, M | 79 px, M |
 | 1280 × 800 | 560 px | 46,7 px | 93 px | 238 px | 47 px, M | 79 px, M |
 | 1366 × 657 | 417 px | 34,8 px | 70 px | 256 px | 51 px, M | 85 px, M |
@@ -362,10 +372,11 @@ Tablets haben je zwei Zeilen Modul- und Werkzeugleiste (768, 865) bzw. zwei Zeil
 |---|---|---|---|
 | **Gruppenkarte** | Karte, 320 px breit, neben der Kachel (rechts, sonst links), nie über ihr, im Fenster gehalten | Blatt von unten, höchstens 70 % der Höhe | §4.2 |
 | **Modulkarte** | Karte an der Modulbeschriftung | Blatt | voller Titel, Nummer, Version, Gültigkeit, geprüft am, mehrere gültige Versionen, Links zu MOSES und zur ISIS-Kurssuche, je Bestandteil Typ, Titel, SWS, Pflicht-/Wahlbereich, Links zu VVZ und ISIS, die Hinweise des Moduls (je Abschnitt aufklappbar), Abruffehler |
-| **Hinweise** | Karte an der Marke in der Werkzeugleiste | Teil von „Mehr“ | Überschneidungen (Paare, Zahl gemeinsamer Termine, erster Termin), geänderte Gruppen („Änderung geprüft“), nicht mehr angebotene Gruppen („Auswahl lösen“), Bestandteile ohne Termine, Abruffehler, veraltete Daten, „dein Browser speichert die Auswahl nicht“, „alle eingeplant“ |
+| **Hinweise** | Karte an der Marke in der Werkzeugleiste | Teil von „Mehr“ | Überschneidungen (Paare, Zahl gemeinsamer Termine, erster Termin), geänderte Gruppen („Änderung geprüft“), nicht mehr angebotene Gruppen („Auswahl lösen“), Bestandteile ohne Termine, Abruffehler, veraltete Daten, „alle eingeplant“ |
 | **Datenstand** | Karte am Datenstand | Teil von „Mehr“ | Quelle MOSES (öffentlich), Abrufzeit, Status, Zahl der Module, Bestandteile, Gruppen, Einzeltermine, „Neu laden“ |
 | **Ansicht** | — (liegt in der Werkzeugleiste) | Blatt | Ansicht, Modulfilter, Zeitraum, A/B |
 | **Hilfe** | Dialog, höchstens 66 Zeichen je Zeile | Blatt | „So funktioniert die Planung“ (§4.3) |
+| **Rückfrage** | Dialog | Blatt | „Auswahl zurücksetzen“ und „Übernehmen“ über eine vorhandene Auswahl: sagt, was verloren geht („Deine Auswahl (6 Gruppen) wird gelöscht.“), Hauptaktion mit dem Verb („Zurücksetzen“, „Ersetzen“), daneben „Abbrechen“ |
 | **Meldung** | unten mittig, 3 s, schließt sich selbst | gleich | „Link kopiert“, „Alle 11 Bestandteile eingeplant“ |
 
 Karten und Blätter schließen mit Esc, mit dem Schließknopf und mit einem Klick daneben. Es ist
@@ -445,13 +456,19 @@ Was das Raster zeigt:
 9. **Eine echte Woche ansehen.** Zeitraum „Woche ab 19.10.“ oder ‹ ›: Das Raster zeigt nur die
    Termine dieser Woche, mit den Räumen dieser Woche, Einzeltermine nur in ihrer Woche.
 10. **Teilen.** „Teilen“ öffnet auf dem Handy das Teilen-Menü des Systems, sonst kopiert es den
-    Link („Link kopiert“). Wer einen geteilten Link öffnet, sieht den Plan darin und darüber die
-    **Teilen-Leiste**: „Du siehst einen geteilten Plan (9 von 11 gewählt).“ mit [Übernehmen]
-    (Hauptaktion) und [Meinen Plan zeigen]. Solange sie steht, öffnen Kacheln nur ihre Karte,
-    und statt „Einplanen“ steht dort „Erst den Plan übernehmen“. Hat das Gerät schon eine
-    Auswahl, fragt „Übernehmen“ nach: „Ersetzt deine Auswahl (6 Gruppen).“ Überschrieben wird
-    nie ohne Rückfrage.
-11. **Fertig.** Sind alle Bestandteile gewählt, steht in der Werkzeugleiste „Alle 11 eingeplant“
+    Link („Link kopiert“). Wer einen geteilten Link öffnet, sieht ihn als **Vorschau neben der
+    eigenen Auswahl** (ARCHITEKTUR §6): Die Gruppen des Links sind die gewählten Kacheln, wo die
+    eigene Auswahl abweicht, steht sie als graue Kontextkachel daneben. Darüber die
+    **Teilen-Leiste**: „Geteilter Plan, 9 von 11 gewählt. 4 Gruppen weichen von deiner Auswahl
+    ab (grau).“ Gruppen aus dem Link, die es nicht mehr gibt, nennt sie hier. Knöpfe:
+    [Übernehmen] (Hauptaktion) und [Verwerfen]. Solange sie steht, öffnen Kacheln nur ihre
+    Karte, und statt „Einplanen“ steht dort „Erst den Plan übernehmen“. Hat das Gerät schon eine
+    Auswahl, fragt „Übernehmen“ nach (Rückfrage, §3.5). Überschrieben wird nie ohne Rückfrage.
+11. **Zurücksetzen.** „Auswahl zurücksetzen“ neben dem Speicherhinweis (Handy: in „Mehr“)
+    löscht nach Rückfrage die ganze Auswahl dieses Plans. Den Speicherhinweis sieht man immer.
+    Speichert der Browser nicht (privates Fenster), steht an seiner Stelle in Bernstein: „Dein
+    Browser speichert die Auswahl nicht. Nimm den Teilen-Link mit.“
+12. **Fertig.** Sind alle Bestandteile gewählt, steht in der Werkzeugleiste „Alle 11 eingeplant“
     mit Haken, die Hinweise sagen dazu „Anmeldung und Kursvorgaben bitte in MOSES und ISIS prüfen“.
 
 ### 4.3 Alt → neu: jede Funktion des Vorbilds
@@ -465,7 +482,7 @@ Was das Raster zeigt:
 | Statuszeile: „x/y eingeplant“ | Werkzeugleiste „3 von 11 gewählt“, Handy: die Chipreihe |
 | Statuszeile: MOSES-Abrufzeit und -status | Kopfzeile „Stand 05.10., 05:20“, bei mehr als 36 h mit Hinweissymbol und „veraltet“. Handy: Fußzeile |
 | „Täglich 05:20 · auf dem NAS gespeichert“, „Speichert …“, Testbestand-Hinweis | **entfällt:** Das gab es nur im Study OS. Gespeichert wird im Browser, sofort |
-| Fehlerkasten (Laden/Speichern) | Laden: Text im Raster „Die Termine konnten nicht geladen werden.“ mit [Erneut versuchen]. Speichern im Browser misslingt: Hinweis „dein Browser speichert die Auswahl nicht, nimm den Teilen-Link mit“ |
+| Fehlerkasten (Laden/Speichern) | Laden: Text im Raster „Die Termine konnten nicht geladen werden.“ mit [Erneut versuchen]. Speichern im Browser misslingt: Text an der Stelle des Speicherhinweises (§4.2, Schritt 11) |
 | Modulkarte: Kurzname, Titel, Nummer, Version | Modulleiste (Kurzname, Farbe) und Modulkarte (alles andere) |
 | Modulkarte: „Abruf fehlgeschlagen“, „Daten älter als 36 h“ | Hinweissymbol an der Modulbeschriftung, Text in Modulkarte und Hinweisen |
 | Modulkarte: „MOSES-Version weicht vom Modul im StudyOS ab“ | **entfällt:** Es gibt kein Study OS als Gegenstück (ARCHITEKTUR §4) |
@@ -494,6 +511,7 @@ Was das Raster zeigt:
 | „So funktioniert die Planung“ (drei Absätze) | Hilfe (Fußzeile, Handy: „Mehr“), sinngemäß übernommen, ohne den Satz über das NAS |
 | „Für Agenten · Daten und Schnittstellen“ | **entfällt:** Schnittstelle und Speicherweg des Study OS gibt es hier nicht. Die Hilfe nennt stattdessen die Quelle und dass die Datendatei öffentlich neben der Seite liegt |
 | — (neu, Scope §3) | Planwahl, Teilen-Link mit Teilen-Leiste, Datenstand mit Warnung, „Kein offizielles Angebot“, Impressum, Datenschutz, auf den Home-Bildschirm legbar |
+| — (neu, ARCHITEKTUR §6) | Speicherhinweis und „Auswahl zurücksetzen“ in der Fußzeile, Vorschau eines geteilten Plans mit Vergleich |
 
 Nichts aus dem Vorbild fällt weg, ohne dass die Tabelle den Grund nennt.
 
@@ -739,7 +757,7 @@ die einen zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als 
 | HTML | ≤ 10 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline |
 | CSS | ≤ 15 KB | eine Datei, Tokens §5 |
 | JavaScript | ≤ 35 KB, in höchstens 6 Dateien | Vorbild: 15 KB JS, 7 KB CSS, dazu 144 KB gemeinsames CSS des Study OS |
-| Code zusammen, komprimiert | **≤ 20 KB** | GitHub Pages liefert gzip |
+| Code zusammen, komprimiert | **≤ 20 KB** | die Auslieferung (Cloudflare Pages) komprimiert |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
 | Anfragen bis zum fertigen Raster | ≤ 6, alle vom eigenen Ort | HTML, CSS, JS, `index.json`, Plan-Datei |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
@@ -749,6 +767,7 @@ die einen zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als 
 | Wahl bis neues Bild (INP), 4-fach gedrosselte CPU | ≤ 100 ms | |
 | DOM-Knoten bei 65 Kacheln | ≤ 1 200 | etwa 10 je Kachel |
 | Größe ändern | kein Skript | Höhe aus CSS, Beschriftungsstufe aus Container-Abfragen |
+| Inline-Stil und -Skript | keine | Die Seite hat eine Content-Security-Policy (`web/README.md`). Modulfarben kommen über Klassen, die Lage einer Kachel setzt das Skript über `element.style` oder Klassen, nie über ein `style`-Attribut im HTML |
 
 Die Seite lässt sich auf den Home-Bildschirm legen (Scope §3, Punkt 7): Manifest und Symbol
 gehören zum Rahmen, nicht zum Budget der Daten.
@@ -818,7 +837,8 @@ Spuren, Mo–Sa, 07–21 Uhr und A/B-Rhythmus.
 | 13 | Bewegung | `prefers-reduced-motion` emuliert | keine Wege, nur Deckkraft |
 | 14 | Text 200 % | Browser-Zoom auf Text | nichts überlappt oder wird abgeschnitten (Scrollen erlaubt) |
 | 15 | AI tells | Liste §7 | keiner vorhanden |
-| 16 | ohne Speicher | privates Fenster, `localStorage` wirft | Seite funktioniert, Hinweis erscheint (§3.5) |
+| 16 | ohne Speicher | privates Fenster, `localStorage` wirft | Seite funktioniert, der Text an der Stelle des Speicherhinweises erscheint (§4.2, Schritt 11) |
+| 17 | Speicherregeln | Laden ohne Wahl, dann eine Wahl | Laden schreibt nichts in den Speicher. Der Speicherhinweis ist in jedem Fenster ohne Scrollen sichtbar |
 
 Danach testet Silas die Bedienung selbst. Was er ändert, wird hier eingetragen, bevor es gebaut wird.
 
