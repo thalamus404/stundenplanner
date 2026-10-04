@@ -141,7 +141,11 @@ def git_umgebung():
 
 def stand_holen(protokoll):
     env = git_umgebung()
-    if (REPO / '.git').is_dir():
+    # Ein Klon, der woandershin zeigt (ein Testlauf mit REPO_URL), wird neu angelegt: Sonst holte
+    # der nächste reguläre Lauf von einer Quelle, die es nicht mehr gibt.
+    herkunft = subprocess.run(['git', '-C', str(REPO), 'remote', 'get-url', 'origin'], env=env,
+                              capture_output=True, text=True).stdout.strip() if (REPO / '.git').is_dir() else ''
+    if herkunft == REPO_URL:
         befehle = [['git', '-C', str(REPO), 'fetch', '-q', '--depth', '1', 'origin', STAND],
                    ['git', '-C', str(REPO), 'checkout', '-q', '-f', '--detach', 'FETCH_HEAD'],
                    # clean -x nimmt auch das Lesemodell von gestern mit: bauen.py schreibt es neu,
