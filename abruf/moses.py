@@ -216,6 +216,8 @@ class Client:
         page=BS(self.get(url),'html.parser');semester_picker(page,target,True)
         group_ids={parse_qs(urlsplit(a['href']).query)['veranstaltung'][0]
                    for a in page.select('a[href*="veranstaltung.html?veranstaltung="]')}
+        if not group_ids:
+            return empty_component(part,page,url,sid),''
         # Retain recurrence labels as source evidence; exact dates always from CSV.
         series={}
         for wrap in page.select('.moses-calendar-event-wrapper'):
@@ -246,6 +248,27 @@ class Client:
             # Ausgelassen, aber nicht still: Der Rohstand nennt jede Gruppe mit ihrem Semester.
             result['ausgelassen']=sorted(foreign.values(),key=lambda g:g['id'])
         return result,raw
+
+def empty_component(part,page,url,sid):
+    """Ein Bestandteil, für den das VVZ im Zielsemester KEINE Termingruppe listet: ohne Gruppen,
+    Status `unplanned`, ohne Export.
+
+    Anlass (V-0228, 05.10.2026): Die Übung von „Analysis I und Lineare Algebra“ (20122), die Übung
+    von „Einführung in die Informatik“ (40013) und das Labor von „Grundlagen der Elektrotechnik“
+    (40774) haben im WiSe 2026/27 noch keine Gruppe. MOSES zeigt dann nur den leeren Kalender; die
+    Liste mit „Liste als Excel-Datei exportieren“ fehlt, weil es nichts zu listen gibt. Die alte
+    Regel meldete „VVZ-Export fehlt“ und verwarf das GANZE Modul, auch die geplante Vorlesung.
+
+    Eng gehalten: Leer ist ein Bestandteil nur, wenn die Seite das Zielsemester als gewählt zeigt
+    (semester_picker, vorher), keinen Link auf eine Gruppe, KEIN Ereignis im Kalender und den
+    Kalender selbst enthält. Fehlt der Kalender oder steht ein Ereignis darin, ist das ein
+    unbekanntes Layout und bleibt ein Fehler. Listet die Seite Gruppen, aber keinen Export, bleibt
+    es „VVZ-Export fehlt“ (export()). Erfunden wird nichts: Die Seite zeigt den Bestandteil ohne
+    Termine (Hinweis „ohne Termine“), der nächste Lauf holt Gruppen, sobald MOSES sie listet.
+    """
+    if page.select('.moses-calendar-event-wrapper') or not page.select_one('[id="main-form:tab-calendar:calendar"]'):
+        raise SourceError('VVZ ohne Gruppen in unbekanntem Layout')
+    return {**part,'vvz_url':url,'semester_id':sid,'groups':[],'status':'unplanned'}
 
 def parse_export(raw,target,group_ids,foreign=None):
     """Die Buchungen des Zielsemesters. Jede Zeile wird geprüft; es gibt keinen Rückgriff auf ein

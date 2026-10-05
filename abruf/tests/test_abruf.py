@@ -124,6 +124,8 @@ class LaufTests(unittest.TestCase):
         self._t.cleanup()
 
     def laufe(self, welt, start=0, **kw):
+        # Die Pause zwischen Modulen wird nur aufgezeichnet, nicht abgewartet.
+        kw.setdefault('schlaf', lambda s: welt.abrufe.append(('pause', s)))
         return abruf.lauf(katalog=KATALOG, roh=self.roh, client_fabrik=welt.client,
                           uhr=uhr(start), log=still, **kw)
 
@@ -133,9 +135,20 @@ class LaufTests(unittest.TestCase):
     def test_jedes_modul_wird_einmal_geholt(self):
         welt = Welt()
         self.laufe(welt)
-        versionsseiten = [u for u in welt.abrufe if 'ansehen.html?number=' in u]
+        versionsseiten = [u for u in welt.abrufe if isinstance(u, str) and 'ansehen.html?number=' in u]
         self.assertEqual(sorted(versionsseiten), sorted(
             moses.MTS + 'ansehen.html?number=' + n for n in ('99901', '99902', '99903')))
+
+    def test_pause_zwischen_modulen_nicht_davor_und_auch_nach_fehler(self):
+        # Punkt aed3e76c: Der Abstand in moses.Client gilt nur innerhalb eines Moduls. Zwischen zwei
+        # Modulen wartet der Lauf mindestens 2 s, vor dem ersten nicht, und nacheinander, nie parallel.
+        self.assertGreaterEqual(abruf.PAUSE_MODULE, 2.0)
+        welt = Welt(scheitert={'99901:901'})
+        self.laufe(welt)
+        folge = ['pause' if isinstance(u, tuple) else u.rsplit('=', 1)[1]
+                 for u in welt.abrufe if isinstance(u, tuple) or 'ansehen.html?number=' in u]
+        self.assertEqual(folge, ['99901', 'pause', '99902', 'pause', '99903'])
+        self.assertEqual({u[1] for u in welt.abrufe if isinstance(u, tuple)}, {abruf.PAUSE_MODULE})
 
     def test_rohstand_im_format_der_architektur(self):
         ergebnis = self.laufe(Welt())
@@ -206,7 +219,7 @@ class LaufTests(unittest.TestCase):
 
     def test_main_exit_code_und_roh_von_anderswo(self):
         def main(*argv, welt):
-            with mock.patch.object(moses, 'Client', welt.client), \
+            with mock.patch.object(moses, 'Client', welt.client), mock.patch.object(abruf.time, 'sleep'), \
                     contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                 return abruf.main(['--katalog', str(KATALOG), '--roh', str(self.roh), *argv])
         self.assertEqual(main(welt=Welt()), 0)
