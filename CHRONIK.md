@@ -12,6 +12,12 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 05.10.2026 abends — Der Schriftzug in Sora (V-0250)
+
+- Silas: „Sora 2 Gewichte. Mit Stunden schwer, Planner leicht, Name zerfällt in seine zwei Worte ohne
+  Leerzeichen.“ Der Schriftzug ist jetzt „stundenplanner“ in Sora 800 und 300 als Pfad, gesetzt aus der
+  variablen Schrift (SIL OFL). Er löst Barlow Condensed ab (V-0248, am selben Tag gewählt).
+
 ## 05.10.2026 — Silas' dritter Blick: Schriftzug, Startbildschirm, Luft (V-0243)
 
 - Silas: Bis der API-Token da ist, ändert sich am Umfang nichts; jetzt zählt, dass die Bedienung
