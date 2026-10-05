@@ -164,3 +164,38 @@ Die Tabelle alt → neu steht in DESIGN §4.3. Dazu, was schon der Nachbau ände
 - **Reihenfolge der Module:** wie im Lesemodell (Katalog), nicht nach Modulnummer.
 - **`ausgelassen`** (Gruppen, die nur Termine eines anderen Semesters haben) nennt die Modulkarte
   leise beim Bestandteil; das Vorbild kannte es nicht.
+
+## Kalender-Export
+
+`ics.mjs` (V-0231) macht aus der wirksamen Auswahl eine iCalendar-Datei (RFC 5545), die Apple-,
+Google- und Outlook-Kalender übernehmen. Die Datei entsteht nur im Browser; nichts geht an einen
+Server. Deshalb gibt es kein Abo (`webcal://`), das sich selbst aktualisiert: Dafür müsste ein
+Server die Auswahl kennen.
+
+- **Ein VEVENT je echtem Einzeltermin** (`bookings`) der gewählten Gruppen, keine RRULE: So stimmen
+  Ferien, Ausfälle und Raumwechsel. `SUMMARY` „Modul · Art“, `LOCATION` der Raum, `DESCRIPTION`
+  Modultitel, Art und Gruppe, LV-Nummer, Notiz, Link zu MOSES und „Kein offizielles Angebot“.
+  `DTSTART`/`DTEND` in Berliner Ortszeit mit `TZID=Europe/Berlin` und eigenem `VTIMEZONE`.
+- **UID = Buchungs-ID@stundenplanner.de**, stabil über Abrufe: Ein zweiter Import ersetzt, statt zu
+  verdoppeln, soweit der Kalender das kann. Am iPhone kann er es nicht (ein zweites „Alle
+  hinzufügen“ mit denselben UIDs tut nichts); deshalb rät `ICS_TEXTE.abzug` zu einem eigenen
+  Kalender, den man ersetzt.
+- `group: null` in der Auswahl ist eine bewusste Abwahl und liefert nichts, ebenso eine Gruppe
+  ohne Termine. Zeilen mit CRLF, gefaltet bei 75 Oktetten (nie mitten in einem Umlaut).
+- Die Seite ruft `icsHerunterladen(plan, auswahl)` → `{ blob, name, termine, text }`, dann im
+  Klick-Handler `icsAnstossen(datei)` → Gerät, und zeigt `ICS_TEXTE[gerät]`: den einen Satz, was
+  jetzt passiert oder was nicht mit einem Klick geht.
+
+**Was ein Klick auf welchem Gerät tut** (Recherche 05.10.2026):
+
+| Gerät | Ein Klick? | Was passiert |
+|---|---|---|
+| iPhone/iPad, Safari | ja | Kalender-Vorschau mit „Alle hinzufügen“, dann den Kalender wählen. Geladen über eine `data:`-Adresse: `blob:` mit `download` kam in WebKit-Ansichten nicht beim Kalender an ([WebKit 216918](https://bugs.webkit.org/show_bug.cgi?id=216918)) |
+| iPhone, Chrome, Firefox, Instagram & Co. | nein | geben die Datei nicht an den Kalender; der Satz schickt zum Teilen-Link in Safari |
+| Android | halb | Download, dann öffnen; Kalender-Apps wie Samsung Kalender übernehmen sie. Die Google-Kalender-App importiert keine Dateien ([Google: nur am Computer](https://support.google.com/calendar/answer/37118?co=GENIE.Platform%3DAndroid)) |
+| Mac | halb | Download, öffnen, Kalender fragt nach dem Ziel ([Apple](https://support.apple.com/guide/calendar/import-or-export-calendars-icl1023/mac)) |
+| Windows | halb | Download, mit Outlook öffnen; neues Outlook und Outlook im Web: „Kalender hinzufügen“, „Aus Datei hochladen“ ([Microsoft](https://support.microsoft.com/office/cff1429c-5af6-41ec-a5b4-74f2c278e98c)) |
+| Google Kalender im Web | nein | nur Einstellungen, „Importieren & exportieren“ ([Google](https://support.google.com/calendar/answer/37118)) |
+
+Teilen mit `navigator.share` und der Datei geht nicht: Chromium lässt `.ics` und `text/calendar`
+nicht teilen (Liste in `chrome/browser/webshare/share_service_impl.cc`).
