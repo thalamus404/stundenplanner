@@ -1,0 +1,5 @@
+# Cloudflare Pages: Kopfzeilen je Pfad (V-0230). /api/stand ist eine Datei ohne Endung, die der
+# tägliche Lauf schreibt (betrieb/lauf.py); ohne diese Zeile käme sie als application/octet-stream.
+/api/stand
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: no-store

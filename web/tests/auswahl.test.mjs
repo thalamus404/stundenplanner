@@ -204,3 +204,14 @@ test('bestand(): Bestandteile und Gruppen flach, mit Modul, Typ und Farbe', () =
   assert.equal(g.component.module.number, '10002');
   assert.equal(g.farbe, 1);
 });
+
+test('Teilen ist nie stumm: ohne Wahl und in der Vorschau sagt der Knopf, was fehlt', () => {
+  // Silas, erster Live-Test am Handy: Der gesperrte Knopf tat nichts, der Grund stand nur im Tooltip.
+  assert.equal(A.teilenWeg({ anzahl: 0 }), 'leer');
+  assert.equal(A.teilenWeg({ anzahl: 0, share: true, grob: true }), 'leer');
+  assert.equal(A.teilenWeg({ anzahl: 3, vorschau: true, share: true, grob: true }), 'vorschau');
+  assert.equal(A.teilenWeg({ anzahl: 3, share: true, grob: true }), 'system');
+  // Teilen-Menü nur am Handy; am Rechner und ohne navigator.share (Firefox) wird kopiert.
+  assert.equal(A.teilenWeg({ anzahl: 3, share: true, grob: false }), 'kopieren');
+  assert.equal(A.teilenWeg({ anzahl: 3, share: false, grob: true }), 'kopieren');
+});
