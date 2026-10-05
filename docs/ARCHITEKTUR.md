@@ -146,6 +146,34 @@ Kennungen (`id`) sind Datei- und Speichernamen: nur `a–z`, `0–9`, `-`, gleic
 - **Erstes Format** (ohne `ordnungen` und `vertiefungen`, `hochschule` als Kurzname wie „TU Berlin“)
   gilt weiter und ergibt dieselben Dateinamen wie vorher
 
+`katalog/formate.json` — **die Lehrveranstaltungsformate in drei Kategorien** (V-0238; Silas,
+05.10.2026: die Seite unterscheidet sie an der Sättigung, Vorlesung 100 %, Übung 70 %, der Rest 50 %).
+Recherche, Tabellen je Hochschule und Gründe: [`docs/forschung/formate.md`](forschung/formate.md).
+
+```json
+{ "stand": "2026-10-05", "bericht": "docs/forschung/formate.md",
+  "kategorien": { "vorlesung": "…", "uebung": "…", "sonstige": "…" },
+  "formate": {
+    "IV": { "lang": "Integrierte Veranstaltung", "kategorie": "vorlesung", "hochschulen": ["tu"],
+            "namen": ["Integrierte Veranstaltung"], "quelle": "TU: MOSES-Art „IV“, CSV …", "grund": "Silas: IV 100 %. …" },
+    "SE": { "lang": "Seminar", "kategorie": "sonstige", "hochschulen": ["tu", "hu", "fu"],
+            "namen": ["SEM", "Seminar", "Praxisseminar"], "quelle": "…", "grund": "…" },
+    "KU": { "lang": "Kurs", "…": "…", "vermutung": "MOSES liefert zu „KU“ keinen Langnamen …" } } }
+```
+
+- Der Schlüssel ist das **Kürzel**, das die Seite zeigt (ein Wort, höchstens 20 Zeichen, auch
+  `P-PR`, `VL/UE`). Wo zwei Hochschulen verschieden kürzen, gilt eines; die anderen Schreibweisen
+  stehen in `namen` (MOSES „SEM“, AGNES „SE“ → `SE`). `kuerzel_eigen: true`, wo keine gelesene
+  Quelle ein Kürzel kennt (`PJ`, `SU`, `BP`)
+- `kategorie`: `vorlesung` (Präsenz im Stil einer Vorlesung), `uebung` (gemeinsam Aufgaben unter
+  Anleitung lösen), `sonstige` (alles andere). Die drei Namen sind der Vertrag mit der Seite
+  (`katalog.KATEGORIEN`); `kategorien` in der Datei beschreibt sie und muss genau sie nennen
+- `lang`, `quelle` und `grund` sind Pflicht, `hochschulen` (Kennungen, heute `tu`, `hu`, `fu`) nennt,
+  wo das Format belegt ist. `vermutung` sagt, was keine Quelle belegt (ein Langname, ein Kürzel)
+- **Ein Name gehört zu genau einem Format** (Kürzel, `lang` und `namen`, ohne Groß- und
+  Kleinschreibung, Leerzeichen zusammengefasst). Sonst Katalogfehler
+- Fehlt die Datei, ist jedes Format unbekannt (Kategorie `sonstige`); so laufen alte Kataloge weiter
+
 **Sichtbarkeit: Live und Vorschau aus demselben Katalog** (Silas, 05.10.2026: alle Studiengänge der
 Forschung unter dem Dev-Link, live nur WI 1. FS). `"sichtbar": "vorschau"` an Hochschule, Studiengang
 oder Plan, der nähere gewinnt; ohne Angabe `live`. Ohne Schalter bauen und holen `bauen.py` und
@@ -266,7 +294,8 @@ Seite (Schlüssel wie in Schema 1), bis die Seite umgestellt ist.
   "modules": [ { "number": "…", "short": "Einf. WI", "title": "…", "version": 11, "valid_from": "…",
       "valid_to": "…", "valid_versions": [11], "url": "…", "isis_url": "…", "notes": {},
       "checked_at": "…", "success_at": "…", "error": null,
-      "components": [ { "…": "wie im Rohstand",
+      "components": [ { "…": "wie im Rohstand", "type": "IV",
+          "format": { "kuerzel": "IV", "lang": "Integrierte Veranstaltung", "kategorie": "vorlesung" },
           "groups": [ { "…": "wie im Rohstand",
               "key": "70123:12345:678", "digest": "<sha256>", "slots": [ "… siehe unten" ] } ] } ] } ],
   "has_fortnightly": false, "group_count": 65, "booking_count": 949,
@@ -289,6 +318,15 @@ Seite (Schlüssel wie in Schema 1), bis die Seite umgestellt ist.
   `null` (Katalog im ersten Format)
 - Ein Bestandteil mit Eintrag in `katalog/bestandteile.json` trägt dazu `gruppen` (`alle`, `keine`,
   `unklar`, `eine`) und `gruppen_grund`; ohne Eintrag fehlen beide, und es gilt `eine`
+- **Jeder Bestandteil trägt `format`** (V-0238): `{ "kuerzel": "IV", "lang": "Integrierte Veranstaltung",
+  "kategorie": "vorlesung" }` aus `katalog/formate.json` (§3). Gesucht wird erst mit `type` (MOSES:
+  Spalte „Art“), dann mit dem `format` der Buchungen (MOSES-CSV „Veranstaltungsformat“), wenn alle
+  dasselbe bekannte Format nennen. Kennt der Katalog es nicht: `kuerzel` und `lang`, wie die Quelle
+  sie schreibt, `kategorie: "sonstige"` und `"unbekannt": true`; `bauen.py` nennt es dann in seiner
+  Ausgabe („Format unbekannt“). `kategorie` ist eine von `vorlesung`, `uebung`, `sonstige`, und die
+  Seite macht daraus die Sättigung. `type` bleibt daneben, wie die Quelle es schreibt (MOSES „SEM“,
+  `format.kuerzel` „SE“). Nicht verwechseln: Eine **Buchung** hat ihr eigenes `format`, einen Text
+  aus der Quelle (§4)
 - **`kombinationen`** = `plan.kombination` über alle Bestandteile der Pflichtmodule: Gibt es je
   Bestandteil eine Gruppe, sodass sich keine zwei gewählten an irgendeinem Einzeltermin
   überschneiden (`conflicts`, direkt anschließend ist keine)? Bestandteile ohne Gruppe zählen nicht

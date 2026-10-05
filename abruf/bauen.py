@@ -40,6 +40,11 @@ Regeln, an denen etwas hängt:
   die Antwort nein, nennt die Ausgabe des Befehls den Plan, damit ein Mensch nachsieht, ob der
   Katalog stimmt oder die Hochschule so plant (Informatik, 05.10.2026). Gerechnet über die
   Pflichtmodule; Wahlpflicht wählt erst der Mensch.
+- **Je Bestandteil `format`** (V-0238): `{kuerzel, lang, kategorie}` aus `katalog/formate.json`
+  (`katalog.format_von`), damit die Seite Vorlesung, Übung und den Rest an der Sättigung
+  unterscheidet, ohne selbst Kürzel zu kennen. `type` bleibt daneben, wie die Quelle es schreibt.
+  Ein Format, das der Katalog nicht kennt, wird `sonstige` mit `unbekannt: true`, und die Ausgabe des
+  Befehls nennt es: Ein Mensch trägt es mit Quelle und Grund ein (docs/forschung/formate.md).
 
 **Wahlpflicht (V-0227, steigflug; übernommen in V-0233):** Ein Plan darf `wahlpflicht` (Bereiche
 aus einer MTS-Modulliste, `katalog/modullisten/`) und `frei` (Wahlbereich, Bachelorarbeit: nur
@@ -76,12 +81,13 @@ def _lies(pfad):
     return json.loads(Path(pfad).read_text(encoding='utf-8'))
 
 
-def modul(eintrag, roh_ordner, sem, regeln=None):
+def modul(eintrag, roh_ordner, sem, regeln=None, formate=None):
     """Ein Modul des Lesemodells aus dem Katalogeintrag und seinem Rohstand (oder ohne).
 
     Die Felder des Moduls sind eine feste Liste (docs/ARCHITEKTUR.md §5), nicht „alles aus dem
     Rohstand“: Was der Abruf zusätzlich schreibt (`semester`, `abruf`), gelangt nicht unbemerkt in
-    den Vertrag mit der Seite. Bestandteile und Gruppen tragen alles aus dem Rohstand weiter.
+    den Vertrag mit der Seite. Bestandteile und Gruppen tragen alles aus dem Rohstand weiter, jeder
+    Bestandteil dazu `format` (`katalog.format_von`; `formate` aus `katalog.lesen`).
     """
     nummer = eintrag['nummer']
     pfad = Path(roh_ordner) / f'{nummer}.json'
@@ -104,6 +110,8 @@ def modul(eintrag, roh_ordner, sem, regeln=None):
          'success_at': abruf.get('erfolg_am'), 'error': fehler or abruf.get('fehler'), 'components': []}
     for comp in roh.get('components') or []:
         c = dict(comp)
+        c['format'] = K.format_von(formate, comp.get('type'),
+                                   [b.get('format') for g in comp.get('groups') or [] for b in g.get('bookings') or []])
         if comp.get('id') in (regeln or {}):
             # Aus katalog/bestandteile.json: wie die Gruppen zu belegen sind, wo nicht „wähle eine“.
             c['gruppen'] = regeln[comp['id']]['gruppen']
@@ -132,14 +140,15 @@ def _kopf_vertiefung(plan):
     return None if v is None else {**v, 'heisst': plan['studiengang']['vertiefung_heisst']}
 
 
-def plan_bauen(plan, roh, erzeugt_am, module_aus=None, regeln=None):
+def plan_bauen(plan, roh, erzeugt_am, module_aus=None, regeln=None, formate=None):
     """Die Plandatei (docs/ARCHITEKTUR.md §5) für einen aufgelösten Plan aus `katalog.lesen`.
 
-    `module_aus` (dict) sammelt die Moduldateien der Wahlpflicht-Kandidaten (Pfad → Modul)."""
+    `module_aus` (dict) sammelt die Moduldateien der Wahlpflicht-Kandidaten (Pfad → Modul).
+    `formate` ist `katalog.lesen(…)['formate']`; ohne sie ist jedes Format unbekannt."""
     module_aus = {} if module_aus is None else module_aus
     studiengang, sem = plan['studiengang'], plan['semester']
     roh_ordner = Path(roh) / sem['id']
-    module = [modul(e, roh_ordner, sem, regeln) for e in plan['module']]
+    module = [modul(e, roh_ordner, sem, regeln, formate) for e in plan['module']]
     gruppen = [g for m in module for c in m['components'] for g in c['groups']]
     lauf = None
     lauf_pfad = roh_ordner / '_lauf.json'
@@ -169,7 +178,7 @@ def plan_bauen(plan, roh, erzeugt_am, module_aus=None, regeln=None):
         out['ersatz_fuer'] = sem['ersatz_fuer']
     if plan['wahlpflicht']:
         pflicht = {m['number'] for m in module}
-        out['wahlpflicht'] = [wahlpflicht_bauen(wp, roh_ordner, sem, pflicht, module_aus, regeln)
+        out['wahlpflicht'] = [wahlpflicht_bauen(wp, roh_ordner, sem, pflicht, module_aus, regeln, formate)
                               for wp in plan['wahlpflicht']]
     if plan['roh'].get('frei'):
         out['frei'] = [{k: f.get(k) for k in ('name', 'anteil', 'hinweis')} for f in plan['roh']['frei']]
@@ -199,7 +208,7 @@ def kurzname(titel, laenge=22):
     return (schnitt if len(schnitt) >= laenge * 3 // 4 else t[:laenge - 1].rstrip()) + '…'
 
 
-def wahlpflicht_bauen(wp, roh_ordner, sem, pflicht, module_aus, regeln=None):
+def wahlpflicht_bauen(wp, roh_ordner, sem, pflicht, module_aus, regeln=None, formate=None):
     """Ein Wahlpflichtbereich eines Plans: Regeln aus der Modulliste, Angebot mit Terminen im
     Semester (Module dazu in `module_aus`), und was ohne Termine bleibt, mit Grund (V-0227)."""
     liste, b = wp['liste'], wp['bereich_daten']
@@ -213,7 +222,7 @@ def wahlpflicht_bauen(wp, roh_ordner, sem, pflicht, module_aus, regeln=None):
         if not pfad.exists():
             ohne.append({**kopf, 'grund': f'nicht abgerufen (Turnus laut MOSES: {k["turnus"] or "k. A."})'})
             continue
-        m = modul({'nummer': k['nummer'], 'kurz': kurzname(k['titel'])}, roh_ordner, sem, regeln)
+        m = modul({'nummer': k['nummer'], 'kurz': kurzname(k['titel'])}, roh_ordner, sem, regeln, formate)
         termine = sum(len(g['bookings']) for c in m['components'] for g in c['groups'])
         if not termine:
             if m['error']:
@@ -354,7 +363,8 @@ def bauen(katalog, roh, aus, erzeugt_am=None, mit_vorschau=False):
     aus = Path(aus)
     dateien, eintraege, module_aus = {}, [], {}
     for plan in K.zur_wahl(kat, mit_vorschau):
-        inhalt = plan_bauen(plan, roh, erzeugt_am, module_aus, K.bestandteile_im_semester(kat, plan['semester']['id']))
+        inhalt = plan_bauen(plan, roh, erzeugt_am, module_aus, K.bestandteile_im_semester(kat, plan['semester']['id']),
+                            kat['formate'])
         dateien[plan['datei']] = inhalt
         eintraege.append((plan, {'id': plan['id'], 'datei': plan['datei'], 'kombinationen': inhalt['kombinationen']}))
     index = {'schema': SCHEMA, 'erzeugt_am': erzeugt_am,
@@ -439,7 +449,28 @@ def main(argv=None):
         for v in k.get('verdacht', []):
             # Ein Mensch sieht nach und trägt den Bestandteil in katalog/bestandteile.json ein.
             print(f"    ? nicht sicher, {v['component']}: {v['grund']}")
+    for (kuerzel, lang), ids in sorted(unbekannte_formate(a.aus, index).items(), key=lambda kv: str(kv[0])):
+        # Laut, nicht still: Ein unbekanntes Format sähe auf der Seite aus wie ein Tutorium. Ein
+        # Mensch trägt es mit Quelle und Grund in katalog/formate.json ein (V-0238).
+        name = f'„{kuerzel}“' + (f' ({lang})' if lang and lang != kuerzel else '') if kuerzel or lang else '(ohne Angabe)'
+        print(f"  ! Format unbekannt: {name} in {len(ids)} Bestandteil{'en' if len(ids) != 1 else ''}, "
+              f"z. B. {sorted(ids)[0]}; zählt als sonstige, gehört in katalog/formate.json")
     return 0
+
+
+def unbekannte_formate(aus, index):
+    """{(kuerzel, lang): {component_id, …}} über alle Plan- und Moduldateien, die `index` nennt.
+    Gelesen wird das Geschriebene, nicht der Katalog: gemeldet wird, was die Seite wirklich bekommt."""
+    out = {}
+    for datei in [p['datei'] for p in index['plaene']] + list(index.get('module') or []):
+        inhalt = _lies(Path(aus) / datei)
+        module = inhalt.get('modules') or ([inhalt['module']] if inhalt.get('module') else [])
+        for m in module:
+            for c in m['components']:
+                f = c.get('format') or {}
+                if f.get('unbekannt'):
+                    out.setdefault((f.get('kuerzel'), f.get('lang')), set()).add(c.get('id'))
+    return out
 
 
 if __name__ == '__main__':

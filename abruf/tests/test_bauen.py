@@ -39,6 +39,8 @@ MODULE_KEYS = {'number', 'short', 'title', 'version', 'valid_from', 'valid_to', 
                'notes', 'checked_at', 'success_at', 'error', 'components'}
 LAST_RUN_KEYS = {'finished_at', 'status', 'modules', 'bookings', 'errors'}
 GROUP_EXTRA = {'key', 'digest', 'slots'}
+COMPONENT_EXTRA = {'format'}  # V-0238: {kuerzel, lang, kategorie} aus katalog/formate.json
+FORMAT_KEYS = {'kuerzel', 'lang', 'kategorie'}  # dazu `unbekannt: true`, wenn der Katalog es nicht kennt
 SLOT_KEYS = {'day', 'start', 'end', 'dates', 'rooms', 'occurrences', 'fortnightly', 'parity', 'rhythm'}
 # Was vom Betrachter abhängt, rechnet die Seite — es darf nirgends im Lesemodell stehen.
 VIEWER_KEYS = {'selected', 'changed', 'revision', 'selection', 'missing', 'selected_count', 'conflicts', 'stale'}
@@ -126,8 +128,9 @@ class LesemodellTests(unittest.TestCase):
         self.assertEqual((m['checked_at'], m['success_at'], m['error']),
                          (roh['abruf']['geprueft_am'], roh['abruf']['erfolg_am'], None))
         for rc, c in zip(roh['components'], m['components']):
-            self.assertEqual(set(c), set(rc))
-            self.assertEqual({k: v for k, v in c.items() if k != 'groups'}, {k: v for k, v in rc.items() if k != 'groups'})
+            self.assertEqual(set(c), set(rc) | COMPONENT_EXTRA)
+            self.assertEqual({k: v for k, v in c.items() if k not in {'groups'} | COMPONENT_EXTRA},
+                             {k: v for k, v in rc.items() if k != 'groups'})
             for rg, g in zip(rc['groups'], c['groups']):
                 self.assertEqual(set(g), set(rg) | GROUP_EXTRA)
                 self.assertEqual({k: g[k] for k in rg}, rg)
@@ -182,6 +185,41 @@ class LesemodellTests(unittest.TestCase):
         self.assertEqual(self.fs1['last_run'], {'finished_at': lauf['beendet_am'], 'status': lauf['status'],
                                                 'modules': lauf['modules'], 'bookings': lauf['bookings'],
                                                 'errors': lauf['errors']})
+
+    def test_format_je_bestandteil(self):
+        # fixtures/lesemodell/katalog/formate.json kennt VL, UE und SE, absichtlich nicht das Praktikum.
+        fs1 = [c['format'] for c in self.modul(self.fs1, '90001')['components']]
+        self.assertEqual(fs1, [{'kuerzel': 'VL', 'lang': 'Vorlesung', 'kategorie': 'vorlesung'},
+                               {'kuerzel': 'UE', 'lang': 'Übung', 'kategorie': 'uebung'}])
+        seminar, praktikum = [c['format'] for c in self.modul(self.fs3, '90003')['components']]
+        self.assertEqual(seminar, {'kuerzel': 'SE', 'lang': 'Seminar', 'kategorie': 'sonstige'})
+        self.assertEqual(praktikum, {'kuerzel': 'Praktikum', 'lang': 'Praktikum', 'kategorie': 'sonstige',
+                                     'unbekannt': True})
+        for plan in (self.fs1, self.fs3):
+            for m in plan['modules']:
+                for c in m['components']:
+                    self.assertEqual(set(c['format']) - {'unbekannt'}, FORMAT_KEYS)
+
+    def test_unbekanntes_format_steht_in_der_ausgabe(self):
+        aus = io.StringIO()
+        with contextlib.redirect_stdout(aus), contextlib.redirect_stderr(io.StringIO()):
+            rc = bauen.main(['--katalog', str(FIX / 'katalog'), '--roh', str(FIX / 'roh'), '--aus', str(self.tmp / 'main')])
+        self.assertEqual(rc, 0)
+        zeilen = [z for z in aus.getvalue().splitlines() if 'Format unbekannt' in z]
+        self.assertEqual(len(zeilen), 1, aus.getvalue())
+        self.assertIn('„Praktikum“', zeilen[0])
+        self.assertIn('90003:530', zeilen[0])
+        self.assertIn('katalog/formate.json', zeilen[0])
+
+    def test_ohne_formate_json_ist_alles_sonstige(self):
+        kat = self.tmp / 'ohne-formate'
+        shutil.copytree(FIX / 'katalog', kat)
+        (kat / 'formate.json').unlink()
+        bauen.bauen(kat, FIX / 'roh', self.tmp / 'ohne', erzeugt_am=T)
+        m = next(m for m in lies(self.tmp / 'ohne/test-bsc/ws-2030-31-fs1.json')['modules'] if m['number'] == '90001')
+        self.assertEqual([c['format'] for c in m['components']],
+                         [{'kuerzel': 'Vorlesung', 'lang': 'Vorlesung', 'kategorie': 'sonstige', 'unbekannt': True},
+                          {'kuerzel': 'Übung', 'lang': 'Übung', 'kategorie': 'sonstige', 'unbekannt': True}])
 
     def test_overnight_and_unplanned_group(self):
         c = self.modul(self.fs3, '90003')['components']

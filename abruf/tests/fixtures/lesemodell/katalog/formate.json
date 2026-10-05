@@ -1,0 +1,12 @@
+{
+  "kategorien": {
+    "vorlesung": "erfunden für den Test",
+    "uebung": "erfunden für den Test",
+    "sonstige": "erfunden für den Test; Praktikum fehlt absichtlich (unbekanntes Format)"
+  },
+  "formate": {
+    "VL": { "lang": "Vorlesung", "kategorie": "vorlesung", "hochschulen": ["test"], "quelle": "Test", "grund": "Test" },
+    "UE": { "lang": "Übung", "kategorie": "uebung", "hochschulen": ["test"], "quelle": "Test", "grund": "Test" },
+    "SE": { "lang": "Seminar", "kategorie": "sonstige", "hochschulen": ["test"], "namen": ["SEM"], "quelle": "Test", "grund": "Test" }
+  }
+}
