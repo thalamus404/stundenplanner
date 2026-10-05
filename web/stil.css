@@ -439,3 +439,18 @@ details[open] > summary::before { transform: rotate(45deg); }
 }
 /* Unter 390 px bricht die dritte Pille einer Modulkachel um (WI: BuK), die Module werden höher. */
 @media (max-width: 389.98px) { .laedt .module { min-height: 342px; } }
+
+/* ── Mittlere Breite: Kopfzeile ohne Überlappung (V-0235, Punkt 42489c1a) ──────────────────────
+   Zwischen 768 und 1099 px reichte die Zeile nicht für Name, Studiengang-Reiter (zweite Zeile
+   nowrap), Stand und zwei Knöpfe: „Stand 05.10., 00:14“ lag über „WiSe 2026/27“ (gesehen bei
+   865 × 1021). Der Reiter darf jetzt schrumpfen und kürzt mit „…“, und der Stand wandert in den
+   Fuß wie am Handy — er bleibt sichtbar, nur nicht in der vollen Kopfzeile. */
+.sg-reiter { min-width: 0; }
+.sg-fs { overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 768px) and (max-width: 1099px) {
+  #stand.nur-breit { display: none !important; }
+  #stand-fuss.nur-handy { display: inline-flex !important; }
+}
+/* Unter 1280 px ist „Weitere Studiengänge folgen“ das Erste, was weicht — sonst kürzt der Reiter das
+   Semester („WiSe 202…“, gesehen bei 1100 px). */
+@media (min-width: 768px) and (max-width: 1279px) { .sg-hinweis { display: none; } }
