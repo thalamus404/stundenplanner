@@ -1,0 +1,7 @@
+/* Stundenplanner, Entwurf A „Feld“: Markenfarben. Hex für das CSS, OKLCH ist die Quelle (docs/DESIGN.md §5). */
+:root {
+  --marke-primaer: #1d5641;  /* Tafelgrün, oklch(0.41 0.07 165) */
+  --marke-primaer-dunkel: #88d0b0;  /* Tafelgrün hell, oklch(0.8 0.085 165) */
+  --marke-sekundaer: #f6e28b;  /* Kreidegelb, oklch(0.91 0.11 97) */
+  --marke-kreide: #f3f8f6;  /* Kreide, oklch(0.975 0.006 165) */
+}

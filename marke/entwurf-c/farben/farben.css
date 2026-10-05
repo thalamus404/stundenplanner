@@ -1,0 +1,8 @@
+/* Stundenplanner, Entwurf C „Kuhle“: Markenfarben. Hex für das CSS, OKLCH ist die Quelle (docs/DESIGN.md §5). */
+:root {
+  --marke-primaer: #1b4ba9;  /* Kobalt, oklch(0.44 0.16 262) */
+  --marke-primaer-dunkel: #92bdfb;  /* Kobalt hell, oklch(0.79 0.1 258) */
+  --marke-sekundaer: #e06e03;  /* Murmelorange, oklch(0.66 0.175 52) */
+  --marke-tinte: #1d1e20;  /* Tinte, oklch(0.235 0.004 264) */
+  --marke-kreideweiss: #e6e8ea;  /* Kreideweiß, oklch(0.93 0.004 250) */
+}

@@ -1,0 +1,6 @@
+/* Stundenplanner, Entwurf B „Anschluss“: Markenfarben. Hex für das CSS, OKLCH ist die Quelle (docs/DESIGN.md §5). */
+:root {
+  --marke-primaer: #1d1e20;  /* Tinte, oklch(0.235 0.004 264) */
+  --marke-primaer-dunkel: #e6e8ea;  /* Kreideweiß, oklch(0.93 0.004 250) */
+  --marke-sekundaer: #f8ee42;  /* Textmarker, oklch(0.93 0.18 106) */
+}
