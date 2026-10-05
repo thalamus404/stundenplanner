@@ -62,24 +62,66 @@ test('Dichteste Stelle des Plans und die Breite, ab der die Woche passt', () => 
   assert.ok(R.wochenBreite(6, 6) > 768);
 });
 
-test('Sichtbar „Noch offen“: offene Bestandteile möglich, Gewähltes bleibt sichtbar', () => {
+test('Sichtbar ohne Filter („Noch offen“): Formate ohne Wahl möglich, Gewähltes bleibt sichtbar', () => {
   const b = geladen({ '10001:100': { group: '11', digest: '', name: '' } });
-  const s = R.sichtbar(b.groups, { ansicht: 'open' });
+  const s = R.sichtbar(b.groups, {});
   assert.deepEqual(s.filter((x) => x.art === 'gewaehlt').map((x) => x.g.key), ['10001:100:11']);
   assert.equal(s.filter((x) => x.art === 'moeglich').length, 6);
-  assert.equal(R.sichtbar(b.groups, { ansicht: 'all' }).length, 7);
-  assert.deepEqual(R.sichtbar(b.groups, { ansicht: 'selected' }).map((x) => x.g.key), ['10001:100:11']);
+  assert.equal(s.filter((x) => x.art === 'kontext').length, 0);
 });
 
-test('Sichtbar mit Filter: Gewähltes außerhalb ist Kontext, ein gefilterter Bestandteil zeigt alle seine Gruppen', () => {
+test('Sichtbar mit Filter: ein Format zeigt alle seine Gruppen, Gewähltes außerhalb ist Kontext', () => {
   const b = geladen({ '10001:100': { group: '11', digest: '', name: '' }, '10002:500': { group: '51', digest: '', name: '' } });
-  const s = R.sichtbar(b.groups, { ansicht: 'open', teil: '10002:500' });
+  const s = R.sichtbar(b.groups, { modul: '10002', teil: '10002:500' });
   assert.deepEqual(s.map((x) => [x.g.key, x.art]), [
     ['10001:100:11', 'kontext'], ['10002:500:51', 'gewaehlt'], ['10002:500:52', 'moeglich'], ['10002:500:53', 'moeglich']]);
-  // Auch in „Mein Plan“: Wer den Bestandteil aufschlägt, will wechseln.
-  assert.equal(R.sichtbar(b.groups, { ansicht: 'selected', teil: '10002:500' }).length, 4);
-  const m = R.sichtbar(b.groups, { ansicht: 'all', modul: '10001' });
-  assert.deepEqual(m.filter((x) => x.art === 'kontext').map((x) => x.g.key), ['10002:500:51']);
+});
+
+test('Sichtbar mit Modulfilter: ALLE Gruppen des Moduls, auch die eines schon gewählten Formats (Silas, V-0225)', () => {
+  const b = geladen({ '10001:100': { group: '11', digest: '', name: '' }, '10002:500': { group: '51', digest: '', name: '' } });
+  const m = R.sichtbar(b.groups, { modul: '10001' });
+  assert.deepEqual(m.map((x) => [x.g.key, x.art]), [
+    ['10001:100:11', 'gewaehlt'], ['10001:200:21', 'moeglich'], ['10001:200:22', 'moeglich'], ['10001:200:23', 'moeglich'],
+    ['10002:500:51', 'kontext']]);
+  // Ohne Filter verschwinden die übrigen Gruppen eines gewählten Formats („Noch offen“).
+  assert.equal(R.sichtbar(b.groups, {}).filter((x) => x.g.component_id === '10002:500').length, 1);
+});
+
+test('Navigation: Modul, Format darin, nochmals tippen hebt auf, was man zuletzt gesetzt hat', () => {
+  const leer = { ...R.KEIN_FILTER };
+  // Modul an, Modul aus
+  const m = R.tippeModul(leer, '10001');
+  assert.deepEqual(m, { modul: '10001', teil: '', ueber: false });
+  assert.deepEqual(R.tippeModul(m, '10001'), leer);
+  // ein anderes Modul ersetzt das erste
+  assert.deepEqual(R.tippeModul(m, '10002'), { modul: '10002', teil: '', ueber: false });
+  // über das Modul ins Format: nochmals tippen führt zurück aufs Modul
+  const f = R.tippeFormat(m, '10001:200', '10001');
+  assert.deepEqual(f, { modul: '10001', teil: '10001:200', ueber: true });
+  assert.deepEqual(R.tippeFormat(f, '10001:200', '10001'), m);
+  // ein Nachbarformat im selben Modul behält den Weg übers Modul
+  assert.deepEqual(R.tippeFormat(f, '10001:100', '10001'), { modul: '10001', teil: '10001:100', ueber: true });
+  // direkt aufs Format: nochmals tippen, und der Filter ist ganz weg
+  const d = R.tippeFormat(leer, '10002:500', '10002');
+  assert.deepEqual(d, { modul: '10002', teil: '10002:500', ueber: false });
+  assert.deepEqual(R.tippeFormat(d, '10002:500', '10002'), leer);
+  // ein Format eines anderen Moduls: nicht „über“ dessen Modul gekommen
+  assert.equal(R.tippeFormat(f, '10002:500', '10002').ueber, false);
+  // der Modulname hebt auch einen Formatfilter darin auf
+  assert.deepEqual(R.tippeModul(f, '10001'), leer);
+  // Esc: eine Stufe zurück
+  assert.deepEqual(R.stufeZurueck(f), m);
+  assert.deepEqual(R.stufeZurueck(d), leer);
+  assert.deepEqual(R.stufeZurueck(m), leer);
+});
+
+test('Legende: jedes Format einmal, in der Reihenfolge des ersten Auftretens, ausgeschrieben', () => {
+  const b = geladen();
+  assert.deepEqual(R.legende(b.parts), [
+    { kurz: 'VL', lang: 'Vorlesung' }, { kurz: 'UE', lang: 'Übung' }, { kurz: 'TUT', lang: 'Tutorium' }]);
+  assert.deepEqual(R.legende([{ type: 'IV' }, { type: 'SE' }, { type: 'IV' }, { type: '' }]), [
+    { kurz: 'IV', lang: 'Integrierte Veranstaltung' }, { kurz: 'SE', lang: 'SE' }]);
+  assert.deepEqual(R.legende([]), []);
 });
 
 test('Gruppennummer, Typ ausgeschrieben, Rhythmus nur wenn nicht wöchentlich', () => {
@@ -94,7 +136,7 @@ test('Gruppennummer, Typ ausgeschrieben, Rhythmus nur wenn nicht wöchentlich', 
   assert.equal(R.rhythmusHinweis({ rhythm: '14-tägig', fortnightly: true, parity: [1] }), 'B-Woche');
 });
 
-test('Handy: heute zuerst, am Wochenende Montag', () => {
+test('Tagansicht: heute zuerst, am Wochenende Montag', () => {
   assert.equal(R.startTag(new Date('2026-10-14T12:00:00')), 2);   // Mittwoch
   assert.equal(R.startTag(new Date('2026-10-17T12:00:00')), 0);   // Samstag
 });
