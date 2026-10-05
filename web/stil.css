@@ -28,6 +28,18 @@
   --m6-hauch: #fdfdff; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
   --m7-hauch: #fdfdff; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
   --m8-hauch: #fdfdff; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
+  /* Eingeplant und Vorschlag je Schema (Silas, 05.10.2026, V-0251): Hell war eingeplant die Tinte, eine
+     dunkle, „matschige“ Fläche mit weißer Schrift; jetzt die Pastellfläche wie die Formate links, mit
+     Tinte als Schrift, und der Vorschlag noch heller (halb Fläche, halb Weiß). Dunkel bleibt, wie es war. */
+  --m1-wahl: var(--m1-flaeche); --m1-wahl-text: var(--m1-tinte); --m1-vor: #d9ebff;
+  --m2-wahl: var(--m2-flaeche); --m2-wahl-text: var(--m2-tinte); --m2-vor: #f6e6ce;
+  --m3-wahl: var(--m3-flaeche); --m3-wahl-text: var(--m3-tinte); --m3-vor: #d8f0dd;
+  --m4-wahl: var(--m4-flaeche); --m4-wahl-text: var(--m4-tinte); --m4-vor: #fcdfed;
+  --m5-wahl: var(--m5-flaeche); --m5-wahl-text: var(--m5-tinte); --m5-vor: #caf1f4;
+  --m6-wahl: var(--m6-flaeche); --m6-wahl-text: var(--m6-tinte); --m6-vor: #ece4ff;
+  --m7-wahl: var(--m7-flaeche); --m7-wahl-text: var(--m7-tinte); --m7-vor: #fee2d2;
+  --m8-wahl: var(--m8-flaeche); --m8-wahl-text: var(--m8-tinte); --m8-vor: #e8ecd1;
+  --lg-wahl: var(--m1-flaeche);
   font: 14px/20px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
 }
 /* Dunkel (V-0236, §5.2): vier Flächen, je höher, desto heller — Seite 0,18, eingelassen 0,225,
@@ -51,17 +63,26 @@
     --m6-hauch: #252628; --m6-rand: #a791d1; --m6-flaeche: #3f3453; --m6-tinte: #d9cdf4;
     --m7-hauch: #252628; --m7-rand: #ce8d68; --m7-flaeche: #52321f; --m7-tinte: #f3cbb5;
     --m8-hauch: #252628; --m8-rand: #9ca65f; --m8-flaeche: #3a3e1a; --m8-tinte: #d2d9b0;
+    --m1-wahl: var(--m1-tinte); --m1-wahl-text: var(--grau-1); --m1-vor: var(--m1-flaeche);
+    --m2-wahl: var(--m2-tinte); --m2-wahl-text: var(--grau-1); --m2-vor: var(--m2-flaeche);
+    --m3-wahl: var(--m3-tinte); --m3-wahl-text: var(--grau-1); --m3-vor: var(--m3-flaeche);
+    --m4-wahl: var(--m4-tinte); --m4-wahl-text: var(--grau-1); --m4-vor: var(--m4-flaeche);
+    --m5-wahl: var(--m5-tinte); --m5-wahl-text: var(--grau-1); --m5-vor: var(--m5-flaeche);
+    --m6-wahl: var(--m6-tinte); --m6-wahl-text: var(--grau-1); --m6-vor: var(--m6-flaeche);
+    --m7-wahl: var(--m7-tinte); --m7-wahl-text: var(--grau-1); --m7-vor: var(--m7-flaeche);
+    --m8-wahl: var(--m8-tinte); --m8-wahl-text: var(--grau-1); --m8-vor: var(--m8-flaeche);
+    --lg-wahl: var(--grau-10);
   }
 }
 /* Ein Modul bekommt seine Farbe über die Klasse m1 … m8 (Stelle im Plan, reihum, §5.3). */
-.m1 { --hauch: var(--m1-hauch); --rand: var(--m1-rand); --flaeche: var(--m1-flaeche); --tinte: var(--m1-tinte); }
-.m2 { --hauch: var(--m2-hauch); --rand: var(--m2-rand); --flaeche: var(--m2-flaeche); --tinte: var(--m2-tinte); }
-.m3 { --hauch: var(--m3-hauch); --rand: var(--m3-rand); --flaeche: var(--m3-flaeche); --tinte: var(--m3-tinte); }
-.m4 { --hauch: var(--m4-hauch); --rand: var(--m4-rand); --flaeche: var(--m4-flaeche); --tinte: var(--m4-tinte); }
-.m5 { --hauch: var(--m5-hauch); --rand: var(--m5-rand); --flaeche: var(--m5-flaeche); --tinte: var(--m5-tinte); }
-.m6 { --hauch: var(--m6-hauch); --rand: var(--m6-rand); --flaeche: var(--m6-flaeche); --tinte: var(--m6-tinte); }
-.m7 { --hauch: var(--m7-hauch); --rand: var(--m7-rand); --flaeche: var(--m7-flaeche); --tinte: var(--m7-tinte); }
-.m8 { --hauch: var(--m8-hauch); --rand: var(--m8-rand); --flaeche: var(--m8-flaeche); --tinte: var(--m8-tinte); }
+.m1 { --hauch: var(--m1-hauch); --rand: var(--m1-rand); --flaeche: var(--m1-flaeche); --tinte: var(--m1-tinte); --wahl: var(--m1-wahl); --wahl-text: var(--m1-wahl-text); --vor: var(--m1-vor); }
+.m2 { --hauch: var(--m2-hauch); --rand: var(--m2-rand); --flaeche: var(--m2-flaeche); --tinte: var(--m2-tinte); --wahl: var(--m2-wahl); --wahl-text: var(--m2-wahl-text); --vor: var(--m2-vor); }
+.m3 { --hauch: var(--m3-hauch); --rand: var(--m3-rand); --flaeche: var(--m3-flaeche); --tinte: var(--m3-tinte); --wahl: var(--m3-wahl); --wahl-text: var(--m3-wahl-text); --vor: var(--m3-vor); }
+.m4 { --hauch: var(--m4-hauch); --rand: var(--m4-rand); --flaeche: var(--m4-flaeche); --tinte: var(--m4-tinte); --wahl: var(--m4-wahl); --wahl-text: var(--m4-wahl-text); --vor: var(--m4-vor); }
+.m5 { --hauch: var(--m5-hauch); --rand: var(--m5-rand); --flaeche: var(--m5-flaeche); --tinte: var(--m5-tinte); --wahl: var(--m5-wahl); --wahl-text: var(--m5-wahl-text); --vor: var(--m5-vor); }
+.m6 { --hauch: var(--m6-hauch); --rand: var(--m6-rand); --flaeche: var(--m6-flaeche); --tinte: var(--m6-tinte); --wahl: var(--m6-wahl); --wahl-text: var(--m6-wahl-text); --vor: var(--m6-vor); }
+.m7 { --hauch: var(--m7-hauch); --rand: var(--m7-rand); --flaeche: var(--m7-flaeche); --tinte: var(--m7-tinte); --wahl: var(--m7-wahl); --wahl-text: var(--m7-wahl-text); --vor: var(--m7-vor); }
+.m8 { --hauch: var(--m8-hauch); --rand: var(--m8-rand); --flaeche: var(--m8-flaeche); --tinte: var(--m8-tinte); --wahl: var(--m8-wahl); --wahl-text: var(--m8-wahl-text); --vor: var(--m8-vor); }
 /* Je Stunde mindestens 20 px, Touch 22 px, plus 0,5 px für die Luft über jeder Kachel (§3.2). */
 @media (pointer: coarse) { :root { --h-min: 22.5px; --ziel: 44px; --zm: 44px; } }
 
@@ -171,6 +192,7 @@ button:active::after { opacity: .1; }
   .viele-module .mitte { grid-template-areas: "module buehne" "module legende"; }
   .viele-module .legende { align-self: start; display: flex; flex-wrap: wrap; gap: 8px 24px; }
   .viele-module .lg-zustand { display: flex; }
+  .viele-module .lg-formate { flex-direction: row; }
 }
 /* Gefiltert (Silas' zweiter Test, V-0237): kein Rahmen mehr um die Modulkachel; der Farbkreis ist ein
    Ring und füllt sich, wenn das Modul aufgeschlagen ist. */
@@ -180,6 +202,11 @@ button:active::after { opacity: .1; }
    Tinte, also hell dunkel und dunkel weiß; 2 px aus Rand und outline, ohne dass die Kachel springt. */
 .modul.aktiv { border-color: var(--grau-10); outline: 1px solid var(--grau-10); }
 .modul-name { display: flex; align-items: center; gap: 8px; min-width: 0; height: var(--zm); padding: 0 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+/* Name und Info-Symbol in einer Zeile (V-0251): Das Symbol steht nur in der aufgeschlagenen Kachel, rechts
+   oben, und öffnet die Modulkarte. Vorher hieß das „Modul-Infos“ und stand in der Lage über dem Plan. */
+.m-kopf { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.m-kopf .modul-name { flex: 1 1 auto; }
+.m-info { flex: none; width: var(--zm); height: var(--zm); display: grid; place-items: center; border-radius: 8px; color: var(--grau-10); }
 .m-kurz { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .punkt { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--rand); flex: none; }
 .formate { display: flex; flex-wrap: wrap; gap: 0 4px; padding: 0 4px; }
@@ -286,7 +313,7 @@ button:active::after { opacity: .1; }
    Die Zustände gelten in beiden Schemata mit derselben Regel (V-0236, §3.2); vorher hatte das
    Dunkle eigene, und eingeplant sah dort aus wie automatisch. */
 .kachel { position: absolute; container: kachel / size; color: var(--grau-10); }
-.kachel.gewaehlt { color: var(--grau-1); }
+.kachel.gewaehlt { color: var(--wahl-text); }
 .kachel.zurueck { color: var(--grau-9); }
 .kachel:focus-within, .kachel.zeigen { z-index: 2; }
 .k-flaeche {
@@ -295,20 +322,28 @@ button:active::after { opacity: .1; }
   font-size: 12px; line-height: 16px; text-align: left;
 }
 .k-flaeche:focus-visible { outline-offset: 4px; }
-.gewaehlt > .k-flaeche { background: var(--tinte); border-color: var(--tinte); }
+.gewaehlt > .k-flaeche { background: var(--wahl); border-color: var(--wahl); }
 /* Legende und Kachel in einer Regel: Sie können nicht auseinanderlaufen (V-0236). */
 /* Mit Filter tritt „Mein Stundenplan“ außerhalb ganz zurück (Silas: etwa 20 % Deckkraft, V-0237):
    dieselbe Kachel, nur durchscheinend. Vorher grau gefüllt. */
 .kachel.kontext, .lg-k.kontext { opacity: .2; }
 .lg-k.kontext { background: var(--grau-10); border-color: var(--grau-10); }
 .zurueck > .k-flaeche, .lg-k.zurueck { background: var(--grau-3); border-color: var(--grau-5); }
+/* Die übrigen Gruppen eines schon gewählten Formats treten ganz zurück (Silas, 05.10.2026, V-0251: „dass
+   die Plus-Symbole auch ausgegraut werden und dass auch die Schrift … an Opacity verlieren muss, sodass
+   es visuell ganz klar wird, dass jetzt diese Wahl nicht mehr möglich ist“). Vorher stand dunkel die
+   Schrift fast weiß und das Plus in voller Modulfarbe. Wechseln geht weiter: über die Karte oder das
+   Plus, das unter dem Zeiger wieder seine Farbe bekommt. */
+.zurueck > .k-flaeche > span, .zurueck .k-sym { opacity: .5; }
+.zurueck .k-akt { background: var(--grau-5); color: var(--grau-8); }
+@media (hover: hover) { .aktionen .kachel.zurueck:hover .k-akt { background: var(--tinte); color: var(--grau-1); } }
 .moeglich .k-2 { color: var(--grau-9); }
 /* Automatisch eingeplant, die einzige Gruppe eines Formats: gestrichelt (Silas, 05.10.2026). */
 /* Ein Vorschlag (V-0237, vorher „automatisch eingeplant“): die einzige Gruppe eines Formats, gestrichelt,
    noch nicht eingeplant. */
 .kachel.vorschlag { color: var(--tinte); }
 /* Der gestrichelte Rand als outline nach innen: Ein 2-px-Rand nähme schmalen Kacheln den Platz. */
-.vorschlag > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
+.vorschlag > .k-flaeche { background: var(--vor); border-color: var(--vor); outline: 2px dashed var(--tinte); outline-offset: -2px; }
 .format.vorschlag .f-pille { border: 1px dashed var(--tinte); }
 /* Der Fokus schlägt den gestrichelten Rand: Sonst blieb die automatisch eingeplante Kachel mit dem
    Fokus unverändert, der Fokus unsichtbar (gemessen am Plan der HU Biologie, §8 #10, V-0234). */
@@ -392,14 +427,24 @@ button:active::after { opacity: .1; }
 /* ── Legende und Fuß */
 /* Die Formate, die vorkommen, und was gefüllt und umrandet heißt; am Handy die Modulfarben dazu.
    Die Wörter nennen die Rolle („grau“, „blass“), keinen Farbton, der nur in einem Schema stimmt. */
-.legende { grid-area: legende; align-self: end; display: grid; gap: 8px; padding: 0 4px; font-size: 12px; line-height: 16px; color: var(--fuss-text); }
+.legende { grid-area: legende; align-self: end; display: grid; gap: 16px; padding: 0 4px; font-size: 12px; line-height: 16px; color: var(--fuss-text); }
 .lg-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+/* Die Formate stehen übereinander, als eigener Block über den Zuständen (Silas, V-0251: „übereinander
+   stacken, anstatt dass die so geknubbelt sind … ein bisschen höher setzen“). Wo die Legende eine Zeile
+   unter dem Raster ist (Tablet, ab sechs Modulen), bleiben sie nebeneinander. */
+.lg-formate { flex-direction: column; align-items: flex-start; }
+/* Bis 700 px Höhe (1366 × 657) passen fünf Module und vier gestapelte Formate nicht in die Spalte (37 px zu
+   hoch, gemessen V-0251): dort zwei Spalten, wie die Kachelarten darunter. */
+@media (max-height: 700px) and (min-width: 1024px) {
+  .lg-formate { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+  .legende { gap: 8px; }
+}
 .lg-zeile > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .lg-zeile b { color: var(--grau-9); font-weight: 600; }
 /* Am Rechner zwei Spalten in 240 px: Muster links, das Wort daneben. */
 .lg-zustand { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
 .lg-k { width: 14px; height: 10px; border-radius: 3px; border: 1px solid var(--grau-8); flex: none; }
-.lg-k.gewaehlt { background: var(--grau-10); border-color: var(--grau-10); }
+.lg-k.gewaehlt { background: var(--lg-wahl); border-color: var(--lg-wahl); }
 .lg-k.vorschlag { border-style: dashed; border-color: var(--grau-10); }
 .lg-k.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; margin-inline: 4px; }
 .lg-zeile .punkt { width: 8px; height: 8px; border: 0; background: var(--rand); }
@@ -476,7 +521,8 @@ details[open] > summary::before { transform: rotate(45deg); }
 /* Sichtbar fängt sie Klicks: Was sie verdeckt, wird nicht aus Versehen angetippt. */
 .meldung.da { opacity: 1; transform: translate(-50%, 0); transition-duration: 150ms; transition-timing-function: var(--ein); pointer-events: auto; cursor: pointer; }
 /* Der Pfeiltasten-Tipp (V-0246): eine kleine schwebende Ebene unten mittig, zwei Tasten und ein Satz.
-   Er schließt sich nach 12 s, mit dem Kreuz, mit Esc oder sobald man die Pfeile drückt. */
+   Seit V-0251 kommt er eine Minute nach dem Plan und bleibt, bis man ihn schließt: mit dem Kreuz, mit
+   Esc oder indem man die Pfeile drückt. */
 .tipp {
   position: fixed; z-index: 25; left: 50%; bottom: 24px; max-width: calc(100vw - 32px);
   display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 12px;
@@ -508,6 +554,7 @@ details[open] > summary::before { transform: rotate(45deg); }
   .module { grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); }
   .legende { align-self: start; display: flex; flex-wrap: wrap; gap: 8px 24px; }
   .lg-zustand { display: flex; }
+  .lg-formate { flex-direction: row; }
   /* Unter 1024 px zwei Zeilen: oben der Schriftzug mittig mit den Knöpfen rechts, darunter der Reiter. */
   .kopf { height: auto; grid-template-areas: ". name rechts" "sg sg sg"; row-gap: 8px; }
   /* Gemessen mit dem Bau (V-0243): zwei Reihen Modulkacheln, 865 px Maus 152, 768 px Touch 216. */
@@ -563,7 +610,8 @@ details[open] > summary::before { transform: rotate(45deg); }
   .unter { margin-top: 24px; display: grid; gap: 24px; }
   .unter:has(> .steuer:empty) { display: none; }
   .steuer:empty { display: none; }
-  .legende { margin-top: 32px; display: grid; gap: 8px; }
+  .legende { margin-top: 32px; display: grid; gap: 16px; }
+  .lg-formate { flex-direction: column; }
   /* Am Handy steht der Fuß mittig: Hinweis, Zurücksetzen, Stand und Links je eine Zeile (V-0245). */
   .fuss { margin-top: 48px; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 8px; text-align: center; }
   .fuss-links { justify-self: center; justify-content: center; gap: 0 16px; }
@@ -599,18 +647,22 @@ details[open] > summary::before { transform: rotate(45deg); }
    die Schrift darauf ist weiß (≥ 4,5:1, prüft katalog.py). Unten klein der Hinweis und die Links. */
 .hallo { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: 0 var(--rand-x); }
 .h-zum-plan { position: absolute; top: 24px; left: var(--rand-x); gap: 4px; margin: 0; min-height: var(--ziel); text-decoration: none; color: var(--grau-9); }
-.h-kopf { flex: none; display: grid; justify-items: center; gap: 24px; padding: 48px 0 32px; }
-/* Oben mehr Luft, wo die Höhe es hergibt; in Stufen, nicht in vh (§5.6: Abstände im 4-px-Raster). */
-@media (min-height: 800px) { .h-kopf { padding-top: 96px; } }
-@media (min-height: 1000px) { .h-kopf { padding-top: 128px; } }
+.h-kopf { flex: none; display: grid; justify-items: center; gap: 24px; padding: 40px 0 32px; }
+/* Oben mehr Luft, wo die Höhe es hergibt; in Stufen, nicht in vh (§5.6: Abstände im 4-px-Raster). Seit
+   V-0251 steht der Schriftzug höher (vorher 48/96/128 px): „ein kleines Stückchen nach oben, sodass da
+   mehr Platz ist“ (Silas), und der Block der Karten steht mittig im Raum darunter. */
+@media (min-height: 800px) { .h-kopf { padding-top: 64px; } }
+@media (min-height: 1000px) { .h-kopf { padding-top: 96px; } }
 .h-marke { margin: 0; color: var(--grau-10); }
 .h-marke .wortmarke { height: 34px; }
 .h-striche { display: flex; gap: 8px; }
 .h-strich { width: 28px; height: 4px; border-radius: 2px; background: var(--grau-5); transition: background-color 200ms var(--ein); }
 .h-strich.hier { background: var(--grau-7); }
 .h-strich.voll { background: var(--grau-10); }
-/* Die Spalte wächst und schiebt den Fuß nach unten; ein margin-top: auto ergäbe krumme Maße (§5.6). */
-.h-inhalt { flex: 1 0 auto; width: 100%; max-width: 440px; display: grid; align-content: start; gap: 32px; }
+/* Die Spalte wächst und schiebt den Fuß nach unten; ein margin-top: auto ergäbe krumme Maße (§5.6).
+   Der Block steht mittig in ihr (Silas, V-0251: „dieser ganze Block soll bitte zentriert werden“), vorher
+   oben, und darunter blieb leerer Raum. */
+.h-inhalt { flex: 1 0 auto; width: 100%; max-width: 440px; display: grid; align-content: center; gap: 32px; padding-bottom: 32px; }
 .h-abschnitt { display: grid; gap: 12px; }
 .h-titel { margin: 0; padding: 0 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--grau-9); }
 .h-titel:focus { outline: none; }
@@ -636,14 +688,16 @@ details[open] > summary::before { transform: rotate(45deg); }
 .h-recht a { display: inline-flex; align-items: center; min-height: 24px; padding: 0 4px; border-radius: 4px; }
 @media (max-width: 767.98px) {
   .h-zum-plan { top: 8px; }
-  .h-kopf { padding: 48px 0 32px; gap: 24px; }
+  .h-kopf { padding: 32px 0 32px; gap: 24px; }
+  /* Mit „Zurück zum Plan“ oben links (44 px hoch ab 8 px) steht der Schriftzug darunter. */
+  .mit-zurueck .h-kopf { padding-top: 64px; }
   .h-marke .wortmarke { height: 28px; }
   .h-option { min-height: 68px; }
 }
 @media (pointer: coarse) { .h-recht a { min-height: 44px; } }
 
-/* Niedrige Fenster (1366 × 657): Mit drei gewählten Stufen und „Stundenplan öffnen“ fehlten 47 px. Steht am Ende,
-   damit es die Regeln oben überschreibt. */
+/* Niedrige Fenster (1366 × 657): Mit drei gewählten Stufen und „Stundenplan öffnen“ fehlten 47 px (bis V-0251;
+   seitdem öffnet die letzte Wahl den Plan). Steht am Ende, damit es die Regeln oben überschreibt. */
 @media (max-height: 700px) and (min-width: 768px) {
   .h-inhalt { gap: 24px; }
   .h-option.gewaehlt { min-height: 56px; }

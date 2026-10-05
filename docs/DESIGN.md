@@ -52,8 +52,8 @@
    CSS, nicht JavaScript (§6).
 9. **Am Anfang der Startbildschirm** (Silas, 05.10.2026, §9; neu in V-0243): Wer noch keinen Plan
    gewählt hat, sieht oben mittig den Schriftzug, darunter eine schlanke Fortschrittslinie und eine
-   ruhige Spalte: Hochschule (die Karte in der Farbe der Hochschule), dann Studiengang, dann
-   Fachsemester, dann „Stundenplan öffnen“ (§3.6, §4.5).
+   ruhige Spalte, mittig im Raum darunter: Hochschule (die Karte in der Farbe der Hochschule), dann
+   Studiengang, dann Fachsemester; die Wahl des Fachsemesters öffnet den Plan (V-0251; §3.6, §4.5).
 10. **Kein Zeichen, nur der Schriftzug** (Silas, 05.10.2026): „stundenplanner“ in Sora, zwei Gewichte,
     „stunden“ ExtraBold (800), „planner“ Light (300), ohne Leerzeichen, Laufweite -0,03 em, als Pfad
     (V-0250, Entwurf 10 der zehn; vorher Barlow Condensed ExtraBold Italic in Versalien, V-0248, davor
@@ -159,10 +159,10 @@ bekommt den Rest. Am Handy scrollt sie (§3.3).
 |---|---|
 | **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter; am Handy steht der Schriftzug links (V-0247). Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
 | **Hinweise oben** (V-0234) | nur wenn nötig, je eine Zeile über die volle Breite: ein deutliches Schild in Bernstein, wenn die Termine Ersatz aus dem Vorjahr sind („Termine aus dem Vorjahr, Ersatz.“ mit Semester und wofür), und ein ruhiger Satz auf neutraler Fläche mit rotem Warnsymbol, wenn es keine Wahl ohne Überschneidung gibt („Mit den veröffentlichten Terminen gibt es keine Wahl ohne Überschneidung.“, unsicher mit „vermutlich“). „Warum“ öffnet eine Karte mit dem Grund aus dem Lesemodell (Zeiten, Tage), dem Verdacht und fehlenden Modulen. Der Grund steht nicht in der Zeile: Er ist bis 400 Zeichen lang und nähme der Woche am Rechner die Höhe |
-| **Module** | je Modul eine **Modulkachel**: Farbkreis und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“). Der Farbkreis ist ein Ring und füllt sich, wenn das Modul aufgeschlagen ist; dazu trägt die Kachel wieder einen Rahmen in Tinte (2 px, hell dunkel, dunkel weiß; V-0237 entfernt, V-0245 zurück: sonst sah man schlecht, welches Modul offen ist) |
-| **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Modul-Infos“ und „Filter aufheben“, sobald gefiltert ist, und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
+| **Module** | je Modul eine **Modulkachel**: Farbkreis und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“). Der Farbkreis ist ein Ring und füllt sich, wenn das Modul aufgeschlagen ist; dazu trägt die Kachel wieder einen Rahmen in Tinte (2 px, hell dunkel, dunkel weiß; V-0237 entfernt, V-0245 zurück: sonst sah man schlecht, welches Modul offen ist) und rechts oben ein **Info-Symbol**, das die Modulkarte öffnet (V-0251, statt „Modul-Infos“ in der Lage) |
+| **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Filter aufheben“, sobald gefiltert ist (bis V-0251 auch „Modul-Infos“, jetzt das Info-Symbol der Modulkachel), und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
 | **Raster** | Tagesreiter bzw. Tageskopf, Zeitachse, Kacheln (§3.2) |
-| **Legende** | klein und zurückgenommen (12 px, `--fuss-text`): die Formate, die im Plan vorkommen, ausgeschrieben („VL Vorlesung“, „IV Integrierte Veranstaltung“), und die Kachelarten als Muster mit einem Wort, was sie heißen (wählbar, eingeplant, Vorschlag, dein Plan, Format gewählt, Überschneidung; V-0243, vorher „umrandet: wählbar“ usw.). Am Rechner links unter den Modulen, die Kachelarten in zwei Spalten; ab sechs Modulen und unter 1024 px unter dem Raster. Immer dieselben Einträge, damit sie ihre Höhe nicht ändert. Am Handy davor die Modulfarben |
+| **Legende** | klein und zurückgenommen (12 px, `--fuss-text`): die Formate, die im Plan vorkommen, ausgeschrieben („VL Vorlesung“, „IV Integrierte Veranstaltung“), und die Kachelarten als Muster mit einem Wort, was sie heißen (wählbar, eingeplant, Vorschlag, dein Plan, Format gewählt, Überschneidung; V-0243, vorher „umrandet: wählbar“ usw.). Am Rechner links unter den Modulen: die Formate übereinander als eigener Block, 16 px darunter die Kachelarten in zwei Spalten (V-0251, Silas: „übereinander stacken, anstatt dass die so geknubbelt sind“); am Handy ebenso; ab sechs Modulen und unter 1024 px unter dem Raster, dort die Formate in einer Zeile. Immer dieselben Einträge, damit sie ihre Höhe nicht ändert. Am Handy davor die Modulfarben |
 | **Fuß** | aufgeräumt (V-0237): links ein Absatz, klein (12 px) und zurückgenommen (`--fuss-text`, ≥ 4,5:1): „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ (Hochschule und Quelle aus der Plandatei, V-0234, Punkt 8541d9f5; die Quelle ist ein Link auf ihre Seite, V-0243) Daneben immer der Speicherhinweis (ARCHITEKTUR §6). **In der Mitte** des Fußes, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“ (V-0245; vorher hing es unten links am Hinweis). Der ganze Fuß steht genau mittig zwischen dem Raster und dem unteren Rand: darüber und darunter gleich viel Luft (V-0246: 24 px, ab 860 px Höhe 32, bis 700 px 20). Rechts „Hilfe“, „Impressum“, „Datenschutz“ (davor der Stand, wenn er nicht im Kopf steht). Am Handy steht der Fuß mittig, je Teil eine Zeile |
 
 Es gibt **keine Kästen um die Zonen**. Abstand gliedert, nicht Rahmen. Kästen haben nur die
@@ -226,10 +226,10 @@ blasse Pastellflächen):
 | Art | wann | Aussehen |
 |---|---|---|
 | **möglich** | eine Gruppe, die man wählen kann | neutral (`--mN-hauch` = `--grau-1`, in beiden Schemata ohne Tönung, V-0236), 1 px Rand in Modulfarbe, Schrift `--grau-10` |
-| **gewählt** | die ausdrücklich gewählte Gruppe eines Formats | kräftig gefüllt: Fläche in der `tinte` des Modultons mit Schrift `--grau-1`, in beiden Schemata (hell die dunkelste, dunkel die hellste Fläche); Haken |
-| **Vorschlag** (V-0237) | die einzige Gruppe eines Formats, bei `gruppen: alle` alle (§4.1); noch **nicht** eingeplant | Fläche `flaeche`, Schrift und 2 px Rand **gestrichelt** in `tinte`, kein Haken; in Zeile 3 „Einzige Gruppe“ |
+| **gewählt** | die ausdrücklich gewählte Gruppe eines Formats | gefüllt mit `wahl`, Schrift `wahl-text`; Haken. Hell die Pastellfläche des Modultons (`flaeche`) mit Schrift in `tinte`, wie die gewählten Formate links (V-0251, Silas: „die finalen Farben … sind hässlich … müssen mehr nach Pastellfarben, leichter und nicht so matschig dunkel aussehen“; vorher hell die `tinte` mit weißer Schrift). Dunkel unverändert die `tinte`, die hellste Fläche, mit Schrift `--grau-1` |
+| **Vorschlag** (V-0237) | die einzige Gruppe eines Formats, bei `gruppen: alle` alle (§4.1); noch **nicht** eingeplant | Fläche `vor`, Schrift und 2 px Rand **gestrichelt** in `tinte`, kein Haken; in Zeile 3 „Einzige Gruppe“. Hell ist `vor` halb `flaeche`, halb Weiß, also leiser als gewählt (V-0251); dunkel `flaeche` |
 | **Kontext** | „Mein Stundenplan“ außerhalb des aktiven Filters (eingeplant und Vorschläge) | dieselbe Kachel, **durchscheinend** (Deckkraft 0,2; Silas: „ganz leichte Deckkraft“, V-0237). Sie zeigen, wo die Woche belegt ist, ohne mit der Wahl verwechselt zu werden |
-| **zurückgenommen** | die übrigen Gruppen eines schon gewählten Formats (nur mit Filter zu sehen) | blass: eingelassen `--grau-3`, Rand `--grau-5`, Schrift `--grau-9`, Knopf „Wechseln“ |
+| **zurückgenommen** | die übrigen Gruppen eines schon gewählten Formats (nur mit Filter zu sehen) | blass: eingelassen `--grau-3`, Rand `--grau-5`, Schrift `--grau-9` mit Deckkraft 0,5, Knopf „Wechseln“ grau (`--grau-5`, Plus `--grau-8`), unter dem Zeiger in Modulfarbe (V-0251, Silas: „visuell ganz klar …, dass jetzt diese Wahl nicht mehr möglich ist“; vorher waren Schrift und Plus voll). Bewusst unter 4,5:1: Die Kachel sagt „nicht mehr zu wählen“; Wechseln geht über Karte und Plus |
 | **Überschneidung** | gewählte Gruppen, die sich an mindestens einem echten Termin überschneiden | wie gewählt (bzw. Kontext), dazu ein roter Ring mit 1 px Luft und das Warnsymbol |
 | **würde sich überschneiden** | mögliche Gruppe, die mit einer eingeplanten kollidiert | wie möglich, dazu das Warnsymbol |
 | **geändert** | gewählt, aber der Fingerabdruck hat sich geändert | wie gewählt, Hinweissymbol |
@@ -363,12 +363,12 @@ Am Handy bestimmt die Bühne die Höhe des Rasters: Bei 390 × 844 rund 55 px je
 | Ebene | ab 768 px | unter 768 px | Inhalt |
 |---|---|---|---|
 | **Gruppenkarte** | Karte, 320 px breit, neben der Kachel (rechts, sonst links; ist die Kachel so breit wie das Fenster, darunter oder darüber), nie über ihr, im Fenster gehalten | Blatt von unten, höchstens 70 % der Höhe | §4.2 |
-| **Modulkarte** | Karte an der Modulkachel („Modul-Infos“ in der Lage, „Zum Modul“ in der Gruppenkarte) | Blatt | voller Titel, Nummer, Version, Gültigkeit, geprüft am, mehrere gültige Versionen, Links zu MOSES und zur ISIS-Kurssuche, je Format Typ, Titel, SWS, Pflicht-/Wahlbereich, Links zu VVZ und ISIS, die Hinweise des Moduls (je Abschnitt aufklappbar), Abruffehler |
+| **Modulkarte** | Karte an der Modulkachel (ihr Info-Symbol, seit V-0251; „Zum Modul“ in der Gruppenkarte) | Blatt | voller Titel, Nummer, Version, Gültigkeit, geprüft am, mehrere gültige Versionen, Links zu MOSES und zur ISIS-Kurssuche, je Format Typ, Titel, SWS, Pflicht-/Wahlbereich, Links zu VVZ und ISIS, die Hinweise des Moduls (je Abschnitt aufklappbar), Abruffehler |
 | **Hinweise** | Karte an der Marke in der Lage | Blatt | Überschneidungen (Paare, Zahl gemeinsamer Termine, erster Termin), geänderte Gruppen („Änderung geprüft“), nicht mehr angebotene Gruppen („Auswahl lösen“), Formate ohne Termine, Abruffehler, veraltete Daten, „alle eingeplant“ |
 | **Datenstand** | Karte am Stand im Kopf | Blatt (Stand im Fuß) | Quelle MOSES (öffentlich), Abrufzeit, Status, Zahl der Module, Formate, Gruppen, Einzeltermine, „Neu laden“ |
 | **Hilfe** | Dialog, höchstens 66 Zeichen je Zeile | Blatt | „So funktioniert die Planung“ |
 | **Rückfrage** | Dialog | Blatt | „Auswahl zurücksetzen“ und „Übernehmen“ über eine vorhandene Auswahl: sagt, was verloren geht, Hauptaktion mit dem Verb, daneben „Abbrechen“ |
-| **Pfeiltasten-Tipp** (V-0246) | unten mittig, schwebend, so breit wie sein Satz | nie (nur mit Tastatur und Maus) | zwei Tasten ← → und „Mit den Pfeiltasten springst du zurück und vor durch deine letzten Ansichten.“, ein Kreuz. Erscheint einmal je Besuch, wenn man seit 90 s Filter wählt, der Verlauf zwei Ansichten hat und die Pfeile noch nicht benutzt wurden; geht nach 12 s, mit Esc, dem Kreuz oder dem ersten Pfeil. Gespeichert wird nichts (`tippFaellig` in `raster.mjs`) |
+| **Pfeiltasten-Tipp** (V-0246) | unten mittig, schwebend, so breit wie sein Satz | nie (nur mit Tastatur und Maus) | zwei Tasten ← → und „Mit den Pfeiltasten springst du zurück und vor durch deine letzten Ansichten.“, ein Kreuz. Erscheint eine Minute, nachdem der Plan zu sehen ist, wenn die Pfeile noch nicht benutzt wurden, und bleibt, bis man ihn schließt: mit dem Kreuz, Esc oder dem ersten Pfeil (V-0251, Silas: „nicht nur kurz auftauchen und dann verschwinden“; vorher 90 s nach dem ersten Filter, zwei Ansichten im Verlauf, nach 12 s weg). Geschlossen kommt er nicht wieder: `stundenplanner:v1:tipp` = `pfeile` (`tippFaellig` in `raster.mjs`, `tippSchliessen` in `auswahl.mjs`) |
 | **Stundenplan speichern** (V-0237, bis V-0243 „Für später speichern“) | Blatt von unten, mittig, höchstens 640 px | Blatt | was der Link enthält, das Feld mit dem Link, „Kopieren“, „Lesezeichen“ (Anleitung je Gerät), „Teilen“ (`navigator.share`, wo es das gibt) |
 | **Meldung** | unten mittig, 3 s, schließt sich selbst oder auf Klick | über dem Umschalter | „Link kopiert“, „Alle 11 Formate eingeplant“, was der Kalender-Export am Gerät tut. Sichtbar fängt sie Klicks |
 
@@ -428,8 +428,12 @@ aus `index.json` (`stufen`, `wahl`, ARCHITEKTUR §5); die Seite kennt keinen Stu
   28 × 4 px, erledigt Tinte, die aktuelle `--grau-7`, offen `--grau-5`. Keine Wörter (vorher:
   Stufe, Wert, „entfällt“, „automatisch“ unter jedem Balken, eine Leiste, die unten klebte); was sie
   sagt, hört ein Screenreader („Noch 2 Angaben bis zum Stundenplan“).
-- **Ist alles gewählt**, folgt „Stundenplan öffnen“ (Tinte, volle Spaltenbreite, 52 px). Erst dieser
-  Knopf öffnet den Plan; die Zusammenfassung „Deine Angaben“ entfällt, die Karten sind sie.
+- **Die letzte Wahl öffnet den Plan** (Silas, V-0251: „sobald man das Fachsemester richtig gewählt
+  hat, soll sich automatisch der Stundenplan öffnen“). Bis V-0251 folgte „Stundenplan öffnen“; den
+  Knopf gibt es nur noch, wo niemand wählen muss (ein einziger Plan im Angebot).
+- **Der Block steht mittig** im Raum unter Schriftzug und Linie (V-0251, vorher oben), der Schriftzug
+  höher: 40 px vom Rand, ab 800 px Höhe 64, ab 1000 px 96 (vorher 48/96/128), am Handy 32 (mit
+  „Zurück zum Plan“ 64).
 - **Fuß:** „Kein offizielles Angebot der Hochschulen. Deine Wahl bleibt in diesem Browser.“,
   Impressum, Datenschutz, mittig, 12 px in `--fuss-text`.
 - **Tokens** nur aus §5.2 „Für neue Ansichten“ und die Farbe der Hochschule; im dunklen Schema
@@ -494,7 +498,8 @@ eingeplant“ nicht auf (querwind, V-0228).
 2. **Ein Modul aufschlagen.** Tipp auf den Namen „TechGI“: Der Farbkreis füllt sich, der übrige
    Plan wird durchscheinend,
    die Lage sagt „Technische Grundlagen der Informatik“ (am Rechner der Kurzname), „Alle Formate,
-   7 Gruppen, 1 von 2 gewählt“, daneben „Modul-Infos“ und „Filter aufheben“.
+   7 Gruppen, 1 von 2 gewählt“, daneben „Filter aufheben“. In der Modulkachel erscheint das
+   Info-Symbol für die Modulkarte (V-0251).
 3. **Ein Format aufschlagen.** Tipp auf „UE 6“: nur dessen sechs Gruppen, die Pille ist mit Tinte
    gefüllt, die Lage sagt „TechGI, Übung“, „6 Gruppen, noch keine gewählt“. Nochmals tippen hebt
    auf, was man zuletzt gesetzt hat: Kam man über das Modul, steht wieder das Modul, sonst kein
@@ -586,12 +591,14 @@ Nichts aus dem Vorbild fällt weg, ohne dass die Tabelle den Grund nennt.
   man öffnet („Mein Stundenplan“, ein Modul, ein Format), kommt in einen Verlauf; ← geht zurück, →
   wieder vor, wie im Browser. Wer zurückgeht und etwas Neues öffnet, schneidet den Rest dahinter ab.
   Zweck: Vorlesung und Übung schnell vergleichen. Die Pfeile gehören dem Verlauf überall, außer wo sie
-  schon etwas tun: in Feldern und Auswahllisten, im Raster (Kachel zu Kachel), in einer offenen Karte
-  und im Startbildschirm. Gemerkt wird nur der Filter, höchstens 50 Schritte, nur im offenen Fenster
+  schon etwas tun: in Feldern und Auswahllisten, in einem Dialog oder Blatt und im Startbildschirm.
+  Seit V-0251 auch nach einem Klick auf eine Kachel (Silas: „sodass die Vor- und Zurück-Pfeiltasten
+  immer funktionieren“): Eine offene Gruppenkarte schließt sich, und der Schritt geschieht. Von Kachel
+  zu Kachel gehen ← → nur, wer mit Tab ins Raster kam, bis zum nächsten Maus- oder Fingerdruck. Gemerkt wird nur der Filter, höchstens 50 Schritte, nur im offenen Fenster
   (`verlaufNeu`, `verlaufMerken`, `verlaufSchritt` in `raster.mjs`).
 - Reihenfolge: Kopf, Module, Werkzeugzeile, Raster, Legende, Fuß.
 - **Das Raster ist ein Tabulatorhalt.** Darin wandern ↑ ↓ zur vorigen/nächsten Kachel des Tages,
-  ← → zur zeitlich nächsten Kachel im Nachbartag, Pos1/Ende zur ersten/letzten Kachel des Tages.
+  ← → zur zeitlich nächsten Kachel im Nachbartag (nur nach Tab, siehe oben), Pos1/Ende zur ersten/letzten Kachel des Tages.
   Enter oder Leertaste öffnet die Karte. In der Karte ist die Hauptaktion zuerst fokussiert.
   Esc schließt sie und setzt den Fokus zurück auf die Kachel.
 - Esc ohne offene Karte geht eine Stufe im Filter zurück (Format → Modul, wenn man darüber kam → keiner).
@@ -606,20 +613,21 @@ Nichts aus dem Vorbild fällt weg, ohne dass die Tabelle den Grund nennt.
 1. **Wann er kommt.** Beim Öffnen ohne Teilen-Link, ohne gespeicherte Planwahl und ohne genau einen
    Plan mit gespeicherter Auswahl (wer vor V-0234 gewählt hat, kommt so direkt in seinen Plan). Ein
    gespeicherter Link (`#plan=<id>`) und ein alter Link (Studiengang, Semester, Fachsemester, wenn
-   eindeutig) gehen am Startbildschirm vorbei. Der Live-Fall hat je Stufe eine Option: drei Tipps und
-   „Stundenplan öffnen“.
+   eindeutig) gehen am Startbildschirm vorbei. Der Live-Fall hat je Stufe eine Option: drei Tipps,
+   und der Plan ist offen.
 2. **Wählen.** Tipp auf eine Option: Sie bleibt als Karte mit Haken stehen, darunter erscheint die
    nächste Stufe, der Fokus steht auf ihrem Titel, ein Screenreader hört „Studiengang:
    Wirtschaftsinformatik. Weiter mit Fachsemester.“ Entfällt eine Stufe oder gibt es nur eine
    Möglichkeit, geht es darüber hinweg.
 3. **Ändern.** Tipp auf eine gewählte Karte öffnet ihre Stufe wieder; Esc geht eine Stufe zurück. Auf
    der ersten Stufe führt Esc zum offenen Plan, wenn es einen gibt.
-4. **Öffnen.** „Stundenplan öffnen“ unter den Karten (der Fokus steht dort). Erst jetzt kommt die
-   Planwahl in den Speicher (`stundenplanner:v1:plan`, eine Kennung; ARCHITEKTUR §6, wie die Auswahl
+4. **Öffnen.** Die Wahl auf der letzten Stufe (meist das Fachsemester) öffnet den Plan (V-0251; bis
+   dahin „Stundenplan öffnen“ unter den Karten). Erst jetzt kommt die Planwahl in den Speicher (`stundenplanner:v1:plan`, eine Kennung; ARCHITEKTUR §6, wie die Auswahl
    erst nach einer aktiven Wahl). Die Adresse trägt danach `#plan=<id>`: So bleibt der Plan auch ohne
    Speicher beim Neuladen.
-5. **Wechseln.** Der Reiter im Plan öffnet den Startbildschirm mit allen Angaben des offenen Plans
-   (alle Karten gewählt, „Stundenplan öffnen“ darunter). Die Auswahl gehört zum Plan
+5. **Wechseln.** Der Reiter im Plan öffnet den Startbildschirm auf der letzten Stufe des offenen Plans:
+   die früheren als Karten mit Haken, darunter die Optionen, die gewählte mit Haken. Ein Tipp auf eine
+   Option öffnet deren Plan, auf eine Karte darüber ihre Stufe; „Zurück zum Plan“ oben links. Die Auswahl gehört zum Plan
    (`stundenplanner:v1:<plan.id>`) und bleibt beim Wechseln erhalten.
 
 ---
@@ -705,7 +713,9 @@ folgt dem Schema, so dass ein Modul in beiden gleich erkennbar ist.
 | `hauch` | Fläche der möglichen Kachel, **neutral**: gleich `--grau-1`, in beiden Schemata ohne Tönung (hell seit V-0225, Silas: weniger blasse Pastellflächen; dunkel seit V-0236, vorher je Modul getönt, ein Flickenteppich) | 0,995 / 0 | 0,27 / 0 |
 | `rand` | Rand der möglichen Kachel und des offenen Formats, Farbpunkt | 0,62 / ≤ 0,12 | 0,70 / 0,095 |
 | `flaeche` | Fläche des gewählten Formats und der Vorschlagskachel | 0,87 / ≤ 0,075 | 0,35 / 0,055 |
-| `tinte` | Fläche der gewählten Kachel (Schrift `--grau-1`); Schrift und Symbole auf `flaeche`, gestrichelter Rand der Vorschlagskachel, Fläche des Plus-Knopfs | 0,33 / ≤ 0,08 | 0,87 / 0,055 |
+| `tinte` | Schrift und Symbole auf `flaeche`, gestrichelter Rand der Vorschlagskachel, Fläche des Plus-Knopfs; dunkel auch die Fläche der gewählten Kachel | 0,33 / ≤ 0,08 | 0,87 / 0,055 |
+| `wahl`, `wahl-text` (V-0251) | Fläche und Schrift der gewählten Kachel | `flaeche`, `tinte` | `tinte`, `--grau-1` |
+| `vor` (V-0251) | Fläche der Vorschlagskachel | `flaeche` und `--grau-1` halb und halb (`#d9ebff`, `#f6e6ce`, `#d8f0dd`, `#fcdfed`, `#caf1f4`, `#ece4ff`, `#fee2d2`, `#e8ecd1`) | `flaeche` |
 
 | | Ton | hell `hauch` | `rand` | `flaeche` | `tinte` | dunkel `hauch` | `rand` | `flaeche` | `tinte` |
 |---|---|---|---|---|---|---|---|---|---|
@@ -725,13 +735,15 @@ Schema tauscht nur Tokens. Die Stärke ist die Entfernung zur Seite:
 | Zustand | Regel | hell | dunkel |
 |---|---|---|---|
 | wählbar | neutral `hauch`, 1 px `rand` | weiß, Rand farbig | erhöht 0,27, Rand farbig |
-| eingeplant | gefüllt `tinte`, Schrift `--grau-1` — die stärkste Fläche | dunkelste (0,33) | hellste (0,87) |
-| Vorschlag (V-0237) | gefüllt `flaeche`, Schrift und gestrichelter Rand `tinte` — eine Stufe leiser, nicht eingeplant | 0,87 | 0,35 |
+| eingeplant | gefüllt `wahl`, Schrift `wahl-text` — die stärkste Fläche | Pastell `flaeche` (0,87), Schrift `tinte` (V-0251; bis dahin die dunkelste, 0,33) | hellste `tinte` (0,87) |
+| Vorschlag (V-0237) | gefüllt `vor`, Schrift und gestrichelter Rand `tinte` — eine Stufe leiser, nicht eingeplant | halb Pastell (0,93) | 0,35 |
 | außerhalb des Filters (V-0237) | dieselbe Kachel, Deckkraft 0,2 — durchscheinend | — | — |
 | Format schon gewählt | `--grau-3`, Rand `--grau-5`, Schrift `--grau-9` — blass, eingelassen | 0,955 | 0,225 |
 
 Die Legende benennt die Zustände nach der Rolle („grau“, „blass“), nicht nach einem Farbton, und
-ihre Felder für grau und blass stehen in derselben CSS-Regel wie die Kachel.
+ihre Felder für grau und blass stehen in derselben CSS-Regel wie die Kachel. Ihr Feld „eingeplant“ ist
+`--lg-wahl`: hell die Pastellfläche des ersten Modultons (V-0251; grau wäre von „dein Plan“ nicht zu
+trennen), dunkel `--grau-10`.
 
 Farbe ist nie das einzige Merkmal: Die Kachel nennt Modul oder Typ als Text (Stufe L/M), der
 Format steht unter seinem Modulnamen, und gewählt/möglich
@@ -911,9 +923,9 @@ zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als Symbole
 |---|---|---|
 | Bibliotheken, Frameworks, Webfonts, CDN | **keine** | ARCHITEKTUR §8 |
 | HTML | ≤ 17 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms, der Schriftzug als Pfad (3,9 KB, inline statt einer eigenen Anfrage vor der ersten Kachel; V-0243), der Pfeiltasten-Tipp (V-0246). Bis V-0234: 10 KB, bis V-0243: 11 KB, bis V-0246: 16 KB |
-| CSS | ≤ 47 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, bis V-0246: 44 KB; dazu kamen Startbildschirm, Legende links, Fuß und Tipp, siehe unten) |
-| JavaScript | ≤ 128 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB, bis V-0237: 120 KB). `ics.mjs` lädt erst bei der ersten Bedienung und zählt hier nicht |
-| Code zusammen, komprimiert | **≤ 66 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB, bis V-0246: 64 KB; dazu kamen der Schriftzug, 1,9 KB, der Verlauf der Ansichten und der Tipp) |
+| CSS | ≤ 53 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, bis V-0246: 44 KB, bis V-0250: 47 KB; dazu kamen Startbildschirm, Legende links, Fuß und Tipp, in V-0251 die Tokens für eingeplant und Vorschlag je Schema, 48 Zeilen, siehe unten) |
+| JavaScript | ≤ 134 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB, bis V-0237: 120 KB). `ics.mjs` lädt erst bei der ersten Bedienung und zählt hier nicht |
+| Code zusammen, komprimiert | **≤ 70 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB, bis V-0246: 64 KB, bis V-0250: 66 KB; dazu kamen der Schriftzug, 1,9 KB, der Verlauf der Ansichten und der Tipp, in V-0251 die Farben je Schema, das Info-Symbol und die Pfeile nach einem Klick) |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
 | Anfragen bis zum fertigen Raster | ≤ 10, alle vom eigenen Ort und **ohne Kaskade**: Das HTML nennt CSS und jedes Modul (`modulepreload`), sie laden parallel | HTML, CSS, die Module, `index.json`, Plan-Datei (bis 05.10.2026: 6) |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
@@ -981,6 +993,14 @@ rund 1 KB CSS und 1 KB JS, und die Seite lag schon an den Grenzen von V-0234. Di
 steigen auf CSS ≤ 44 KB, JS ≤ 128 KB, gzip ≤ 62 KB; die Grenzen der Wirkung bleiben (gemessen: LCP
 1,1 s, CLS 0,016, TBT 0 ms). Wird es wieder eng, ist das der Zeitpunkt für die Frage aus §9 Punkt 4
 (ein Auslieferschritt, der Kommentare entfernt).
+
+**V-0251 (Silas klickt sich durch, 05.10.2026 abends), technisch; Silas kann es ändern:** Die Farben je
+Schema (eigene Tokens für eingeplant und Vorschlag, damit der dunkle Modus pixelgleich bleibt), das
+Info-Symbol, der neue Tipp und die Pfeile nach einem Klick kosten rund 4 KB CSS und 3 KB JS. Die Grenzen der
+Bytes steigen auf CSS ≤ 53 KB, JS ≤ 134 KB, gzip ≤ 70 KB; die Grenzen der Wirkung bleiben. Die nächsten
+großen Teile (Vorschau vor Kalender und Speichern, Melden, Tutorial) laden erst bei Bedarf, wie `ics.mjs`,
+und zählen nicht hierher. **Offen bei Silas (§9 Punkt 4):** ein Auslieferschritt, der Kommentare entfernt,
+spart etwa ein Drittel der Bytes, bricht aber „kein Build“.
 
 Zwei Dinge, die die Blockierzeit gedrückt haben und so bleiben müssen: **kein `Intl`** (ein
 `Intl.Collator` und ein `Intl.DateTimeFormat` mit Zeitzone kosteten beim Laden zusammen 90 ms im
@@ -1061,7 +1081,7 @@ zehn Gruppen, darunter die sechs parallelen, dazu der übrige Plan durchscheinen
 | 17 | Speicherregeln | Laden ohne Wahl, dann eine Wahl | Laden schreibt nichts in den Speicher (auch nicht die Vorschläge). Der Speicherhinweis ist am Rechner ohne Scrollen sichtbar, am Handy am Seitenende |
 | 18 | Abstände | Innen- und Außenabstände, Lücken (`ops/sicht.py`, Prüfung `abstand`) | in Stufen von 4 px, dazu 2 px (§5.6) |
 | 19 | **Startbildschirm** (V-0234, V-0243) | ohne Speicher und ohne `#plan`: der Anfang, die Stufe mit den meisten Optionen, alles gewählt vor dem ersten Plan; dazu Ziele, Kontrast, Schrift, Abstände, Tells wie oben | ab 768 px kein Scrollen; am Handy nie seitlich, die Fortschrittslinie ganz im Fenster, jede Option ins Bild gescrollt ganz und frei; „Kein offizielles Angebot“, Impressum und Datenschutz zu sehen (am Handy am Seitenende); Laden und Wählen schreiben nichts |
-| 20 | Planwahl im Speicher | „Stundenplan öffnen“ | der Plan steht (Kacheln), danach im Speicher genau `stundenplanner:v1:plan` mit der Kennung, vorher nichts |
+| 20 | Planwahl im Speicher | die letzte Wahl im Startbildschirm (V-0251; vorher „Stundenplan öffnen“) | der Plan steht (Kacheln), danach im Speicher genau `stundenplanner:v1:plan` mit der Kennung, vorher nichts |
 
 Am Handy heißt §3.3 „ohne Scrollen sichtbar“ seit V-0225: „Teilen“ oben, der Fuß (inoffiziell,
 Speicherhinweis, Impressum, Datenschutz) am Seitenende ganz und nicht unter dem Umschalter.
@@ -1204,6 +1224,20 @@ machen.“
 
 45. **Sora, zwei Gewichte** (Nr. 10 der zehn Entwürfe): „stunden“ schwer, „planner“ leicht, „Name
     zerfällt in seine zwei Worte ohne Leerzeichen“ (Silas). Löst Barlow Condensed ab (§0 Punkt 10).
+
+**Silas klickt sich durch, 05.10.2026 abends** (Punkt a06f3845, gebaut in V-0251):
+
+46. **Der Pfeiltasten-Tipp** kommt eine Minute nach dem Plan und bleibt bis zum X (§3.5).
+47. **Der Startbildschirm** steht mittig, der Schriftzug höher; die letzte Wahl öffnet den Plan, „Stundenplan
+    öffnen“ entfällt (§3.6, §4.5).
+48. **Ausgegraut heißt ausgegraut:** Schrift und Plus der übrigen Gruppen eines gewählten Formats verlieren
+    Deckkraft (§3.2).
+49. **„Modul-Infos“ wird ein Info-Symbol** in der aufgeschlagenen Modulkachel (§3.1, §3.5).
+50. **Die Legende links:** die Formate übereinander, als eigener Block über den Kachelarten (§3.1).
+51. **← → wirken immer**, auch nach einem Klick auf eine Kachel (§4.4).
+52. **Hell eingeplant in Pastell:** „Der Dark Mode sieht super aus, aber der Light Mode geht gar nicht.“ Eingeplante
+    Kacheln tragen hell die Pastellfläche wie die Formate links, Vorschläge eine noch hellere; dunkel bleibt
+    pixelgleich (§3.2, §5.3; Tokens `--mN-wahl`, `--mN-wahl-text`, `--mN-vor`).
 
 ---
 

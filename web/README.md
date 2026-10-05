@@ -99,8 +99,9 @@ Fokus kehrt zur Kachel zurück.
 `app.js` zeichnet je Stufe eine Frage mit Optionen und unten die Leiste; was er weiß, sagt
 `planwahl.mjs` (`wahlStand`): je Stufe `gewaehlt`, `automatisch`, `entfaellt` oder `offen`, auch
 vorausgesagt für Stufen, an denen man noch nicht ist (entfällt oder automatisch in jedem Zweig
-darunter). Eine Option wählt und führt zur nächsten offenen Stufe; sind alle da, kommt die
-Zusammenfassung mit „Stundenplan öffnen“. Zurück geht es über „Zurück“, die Leiste, „Ändern“ und Esc.
+darunter). Eine Option wählt und führt zur nächsten offenen Stufe; steht damit der Plan fest, öffnet
+er sich (`halloFertig`, V-0251; bis dahin kam eine Zusammenfassung mit „Stundenplan öffnen“). Zurück
+geht es über die gewählten Karten und Esc.
 Der Reiter im Plan öffnet den Startbildschirm vorbelegt mit dem offenen Plan (`wahlFuer`). Die
 Leiste klebt unten (`position: sticky`), `scroll-padding-bottom` hält fokussierte Optionen über ihr.
 Die Haken für `ops/sicht.py`: `data-sicht="hallo"`, `data-sicht="option"` mit `data-s` (Stufe) und
@@ -120,8 +121,9 @@ Die Haken für `ops/sicht.py`: `data-sicht="hallo"`, `data-sicht="option"` mit `
   den alten (`speichereUndZiehUm`); „Auswahl zurücksetzen“ löscht beide. Laden schreibt auch hier nichts.
 - **Regeln** (Silas' Hosting-Recherche, DSK-Orientierungshilfe zu Web Storage; damit kein
   Einwilligungsbanner nötig ist): geschrieben wird erst, wenn jemand aktiv eine Gruppe wählt,
-  einen geteilten Plan übernimmt, eine Änderung als geprüft markiert oder im Startbildschirm
-  „Stundenplan öffnen“ drückt (dann nur die Planwahl). Laden schreibt nichts,
+  einen geteilten Plan übernimmt, eine Änderung als geprüft markiert, im Startbildschirm die letzte
+  Stufe wählt (dann nur die Planwahl) oder den Pfeiltasten-Tipp mit dem X schließt (dann nur
+  `stundenplanner:v1:tipp` = `pfeile`, V-0251). Laden schreibt nichts,
   auch kein Probeschreiben. Kein Zeitstempel, keine Kennung. „Auswahl zurücksetzen“ (mit Rückfrage)
   löscht den Schlüssel, und eine leer gewordene Auswahl entfernt ihn ebenfalls. Die Tests in
   `tests/auswahl.test.mjs` halten jede dieser Regeln fest.

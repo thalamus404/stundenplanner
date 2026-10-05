@@ -30,8 +30,8 @@ const speicher = (() => { try { return window.localStorage; } catch { return nul
 const z = { ...R.KEIN_FILTER, zeitraum: 'skeleton', ab: 0, tag: R.startTag(new Date()), modus: null, fokus: '' };
 // Die zuletzt geöffneten Ansichten, für Pfeil links und rechts (V-0245, raster.mjs).
 let verlauf = R.verlaufNeu();
-// Der Pfeiltasten-Tipp (V-0246): einmal je Besuch, nichts wird gespeichert (raster.mjs, tippFaellig).
-const tipp = { erste: 0, gezeigt: false, benutzt: false, uhr: 0, weg: 0 };
+// Der Pfeiltasten-Tipp (V-0246, V-0251): eine Minute nach dem Plan, bis zum X (raster.mjs, tippFaellig).
+const tipp = { seit: 0, gezeigt: false, benutzt: false, uhr: 0 };
 let plan = null, bestand = { groups: [], parts: [] }, schluessel = '', eigene = {}, gespeichert = true;
 // Der Startbildschirm (V-0234): der Baum aus index.json, seine Stufen, alle Pläne flach, das Blatt
 // des offenen Plans. altSchluessel: Die Auswahl kam noch aus dem Schlüssel vor V-0234; die erste
@@ -117,6 +117,7 @@ async function planLaden(eintrag, verweis) {
   await new Promise((weiter) => setTimeout(weiter));
   render();
   $('seite').classList.remove('laedt');
+  tippPlanen();
 }
 
 function setzePlan(p) {
@@ -412,11 +413,15 @@ function format(c, m) {
   return `<button type="button" data-sicht="chip" class="format${g || fehlt ? ' gewaehlt' : ''}${vor ? ' vorschlag' : ''}${!g && c.gruppen === 'keine' ? ' frei' : ''}${katKlasse(c)}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${R.typLang(c.type)}, ${mehrzahl(n, 'Gruppe', 'Gruppen')}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}><span class="f-pille">${sym}${esc(c.type)} ${n}</span></button>`;
 }
 
+/** Die Modulkacheln. Die aufgeschlagene trägt rechts oben ein Info-Symbol, das die Modulkarte öffnet
+ *  (Silas, 05.10.2026, V-0251: statt „Modul-Infos“ in der Lage „pro Modulkachel … sobald man es
+ *  ausgewählt hat“). Es steht neben dem Namen, nicht darin: ein Knopf in einem Knopf geht nicht. */
 function renderModule() {
   $('module').innerHTML = plan.modules.map((m, i) => {
     const warn = m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : '';
     const an = z.modul === m.number;
-    return `<div class="modul m${(i % 8) + 1}${an ? ' aktiv' : ''}" role="group" aria-label="${esc(m.title || m.short)}"><button type="button" class="modul-name" data-sicht="modul" data-act="modul" data-m="${i}" aria-pressed="${an}" title="${esc(m.title || m.short)}" aria-label="${esc(`${m.title || m.short}: alle Formate zeigen${warn ? ', mit Hinweis' : ''}`)}"><span class="punkt"></span><span class="m-kurz">${esc(m.short)}</span>${warn}</button><div class="formate">${m.components.map((c) => format(c, m)).join('')}</div></div>`;
+    const info = an ? `<button type="button" class="m-info" data-act="info" data-m="${i}" aria-label="${esc(`Modul-Infos: ${m.title || m.short}`)}" title="Modul-Infos">${ic('info')}</button>` : '';
+    return `<div class="modul m${(i % 8) + 1}${an ? ' aktiv' : ''}" role="group" aria-label="${esc(m.title || m.short)}"><div class="m-kopf"><button type="button" class="modul-name" data-sicht="modul" data-act="modul" data-m="${i}" aria-pressed="${an}" title="${esc(m.title || m.short)}" aria-label="${esc(`${m.title || m.short}: alle Formate zeigen${warn ? ', mit Hinweis' : ''}`)}"><span class="punkt"></span><span class="m-kurz">${esc(m.short)}</span>${warn}</button>${info}</div><div class="formate">${m.components.map((c) => format(c, m)).join('')}</div></div>`;
   }).join('');
 }
 
@@ -461,7 +466,8 @@ function renderWerkzeug() {
     // Ohne Wahl derselbe Satz wie im HTML: Er steht vor den Daten (größter Inhalt früh, LCP §6).
     unter = k ? `${k} von ${n} Formaten eingeplant` : 'Wähle ein Modul oder ein Format, dann zeigt der Plan dessen Gruppen.';
   }
-  const knoepfe = m ? `<button type="button" class="knopf" data-act="info" data-m="${mi}">${ic('info')}Modul-Infos</button><button type="button" class="knopf" data-act="aufheben">${ic('kreuz')}Filter aufheben</button>` : '';
+  // „Modul-Infos“ stand hier bis V-0251; jetzt das Info-Symbol in der aufgeschlagenen Modulkachel (renderModule).
+  const knoepfe = m ? `<button type="button" class="knopf" data-act="aufheben">${ic('kreuz')}Filter aufheben</button>` : '';
   const rechts = knoepfe + marken(h);
   $('lage').innerHTML = `<p class="l-text"><span class="l-titel">${titel}</span> <span class="l-unter">${unter}</span></p>${rechts ? `<span class="l-knoepfe">${rechts}</span>` : ''}`;
   $(handy.matches ? 'steuer' : 'steuer-handy').innerHTML = '';
@@ -876,10 +882,22 @@ function halloWaehlen(stufe, i) {
   if (!o) return;
   hallo.wahl = P.waehleOption(stufen, hallo.wahl, stufe, o.id);
   const neu = P.wahlStand(baum, stufen, hallo.wahl);
+  // Steht damit der Plan fest, öffnet er sich (Silas, 05.10.2026, V-0251: „sobald man das Fachsemester
+  // richtig gewählt hat, soll das so kommen“). Bis V-0251 kam erst eine Zusammenfassung mit „Stundenplan öffnen“.
+  if (neu.plan) { halloFertig(neu); return; }
   hallo.sicht = P.naechsteSicht(neu);
   renderHallo(true);
   const weiter = neu.schritte.find((x) => x.id === hallo.sicht);
   sage(`${sch.label}: ${o.label}. ${weiter ? `Weiter mit ${weiter.label}.` : 'Alles gewählt.'}`);
+}
+
+/** Der Plan steht fest: Erst jetzt, mit dieser aktiven Wahl, kommt er in den Speicher (wie die Auswahl,
+ *  ARCHITEKTUR §6), dann öffnet er sich. */
+function halloFertig(st) {
+  const b = st.plan && blaetter.find((x) => x.id === st.plan.id);
+  if (!b) return;
+  A.speicherePlanwahl(speicher, b.id);
+  planOeffnen(b);
 }
 
 /** Esc: eine Stufe zurück; auf der ersten zurück zum offenen Plan, wenn es einen gibt. */
@@ -895,6 +913,7 @@ function renderHallo(fokus = false) {
   $('h-inhalt').innerHTML = halloAbschnitte(st);
   $('h-leiste').innerHTML = halloLeiste(st);
   $('h-zum-plan').hidden = !plan;
+  $('hallo').classList.toggle('mit-zurueck', !!plan);
   // Die Farbe einer Hochschule (katalog, V-0243) kommt über das CSSOM: Die CSP verbietet style-Attribute.
   for (const b of $('h-inhalt').querySelectorAll('[data-farbe]')) b.style.setProperty('--h-farbe', b.dataset.farbe);
   if (fokus) {
@@ -912,7 +931,8 @@ const optionText = (o) => (o.semester != null && o.zusatz ? `${o.label}, ${o.zus
  * wählt, ein Abschnitt; gewählte Stufen stehen als eine Karte mit Haken (ein Tipp öffnet sie wieder),
  * die Stufe, an der man gerade ist, zeigt alle Optionen, spätere noch nichts. Stufen, die entfallen
  * oder nur eine gültige Option haben (Vertiefung, Ordnung), erscheinen nicht: Silas wollte nur
- * Hochschule, Studiengang und Fachsemester sehen. Ist alles gewählt, kommt „Stundenplan öffnen“.
+ * Hochschule, Studiengang und Fachsemester sehen. Die letzte Wahl öffnet den Plan (V-0251);
+ * „Stundenplan öffnen“ steht nur noch da, wo niemand wählen muss (ein einziger Plan im Angebot).
  */
 function halloAbschnitte(st) {
   let html = '';
@@ -961,7 +981,7 @@ function halloLeiste(st) {
 /** Den Filter setzen (raster.mjs) und ansagen, was zu sehen ist. */
 function filtern(neu, ausVerlauf = false) {
   Object.assign(z, neu);
-  if (!ausVerlauf) { verlauf = R.verlaufMerken(verlauf, z); tippPlanen(); }
+  if (!ausVerlauf) verlauf = R.verlaufMerken(verlauf, z);
   const c = bestand.parts.find((x) => x.id === z.teil);
   const m = plan.modules.find((x) => x.number === z.modul);
   render();
@@ -977,17 +997,15 @@ const AKTIONEN = {
   modul: (b) => { const m = plan.modules[Number(b.dataset.m)]; if (m) filtern(R.tippeModul(z, m.number)); },
   aufheben: () => filtern(R.KEIN_FILTER),
   info: (b) => karteModul(Number(b.dataset.m), b),
-  wechseln: () => halloOeffnen(blatt ? P.wahlFuer(blaetter, blatt.id) : {}, blatt ? 'fertig' : null),
+  // Zum Wechseln steht der Startbildschirm auf der letzten Stufe, an der man gewählt hat (meist das
+  // Fachsemester), die Wahl mit Haken: ein Tipp auf eine andere öffnet deren Plan (V-0251).
+  wechseln: () => {
+    const wahl = blatt ? P.wahlFuer(blaetter, blatt.id) : {};
+    halloOeffnen(wahl, blatt ? P.vorige(P.wahlStand(baum, stufen, wahl), 'fertig') || 'fertig' : null);
+  },
   'h-option': (b) => halloWaehlen(b.dataset.s, Number(b.dataset.i)),
   'h-stufe': (b) => { hallo.sicht = b.dataset.s; renderHallo(true); },
-  'h-oeffnen': () => {
-    const st = P.wahlStand(baum, stufen, hallo.wahl);
-    const b = st.plan && blaetter.find((x) => x.id === st.plan.id);
-    if (!b) return;
-    // Die aktive Wahl: erst jetzt kommt der Plan in den Speicher (wie die Auswahl, ARCHITEKTUR §6).
-    A.speicherePlanwahl(speicher, b.id);
-    planOeffnen(b);
-  },
+  'h-oeffnen': () => halloFertig(P.wahlStand(baum, stufen, hallo.wahl)),
   'hallo-zu': () => { zeigeHallo(false); const r = $('studiengang').querySelector('button'); if (r) r.focus({ preventScroll: true }); },
   kachel: (b) => karteGruppe(b),
   umschalten: (b) => {
@@ -1090,47 +1108,63 @@ async function planOeffnen(b, verweis = null) {
   if (!verweis) adresseOhneAuswahl();
 }
 
-/** Die Uhr des Tipps beginnt mit der ersten Wahl eines Filters; danach wird alle 15 s nachgesehen, ob er
- *  fällig ist und gerade nichts im Weg steht (eine offene Karte, der Startbildschirm). */
+/** Die Uhr des Tipps beginnt, sobald der Plan zu sehen ist (V-0251); fällig nach einer Minute. Steht dann
+ *  etwas im Weg (eine offene Karte, der Startbildschirm), wird alle 5 s wieder nachgesehen. */
 function tippPlanen() {
-  if (tipp.gezeigt || tipp.benutzt || !fein.matches) return;
-  if (!tipp.erste) tipp.erste = Date.now();
-  if (!tipp.uhr) tipp.uhr = setTimeout(tippPruefen, Math.max(1000, R.TIPP_NACH_MS - (Date.now() - tipp.erste)));
+  if (tipp.gezeigt || tipp.benutzt || tipp.uhr || !fein.matches || A.tippGeschlossen(speicher)) return;
+  if (!tipp.seit) tipp.seit = Date.now();
+  tipp.uhr = setTimeout(tippPruefen, Math.max(1000, R.TIPP_NACH_MS - (Date.now() - tipp.seit)));
 }
 
 function tippPruefen() {
   tipp.uhr = 0;
-  const lage = { seit: Date.now() - tipp.erste, schritte: verlauf.liste.length, gezeigt: tipp.gezeigt, benutzt: tipp.benutzt, tastatur: fein.matches, frei: !offen && $('hallo').hidden && !!plan };
+  const lage = { seit: Date.now() - tipp.seit, gezeigt: tipp.gezeigt, benutzt: tipp.benutzt, geschlossen: A.tippGeschlossen(speicher), tastatur: fein.matches, frei: !offen && $('hallo').hidden && !!plan };
   if (R.tippFaellig(lage)) { tippZeigen(); return; }
-  if (!tipp.gezeigt && !tipp.benutzt && fein.matches) tipp.uhr = setTimeout(tippPruefen, 15000);
+  if (!lage.gezeigt && !lage.benutzt && !lage.geschlossen && fein.matches) tipp.uhr = setTimeout(tippPruefen, 5000);
 }
 
+// Er bleibt, bis man ihn schließt (Silas, V-0251: „nicht nur kurz auftauchen und dann verschwinden“).
 function tippZeigen() {
   tipp.gezeigt = true;
   const t = $('tipp');
   t.hidden = false;
   requestAnimationFrame(() => t.classList.add('da'));
-  tipp.weg = setTimeout(tippZu, 12000);
 }
 
+/** Schließen mit dem X oder Esc: Er kommt nicht wieder, auch nicht beim nächsten Besuch (auswahl.mjs). */
 function tippZu() {
-  clearTimeout(tipp.weg);
   const t = $('tipp');
   if (t.hidden) return;
+  A.tippSchliessen(speicher);
   t.classList.remove('da');
   setTimeout(() => { t.hidden = true; }, 200);
 }
 
 /**
  * Wo Pfeil links und rechts durch den Verlauf gehen (V-0245): überall auf der Seite, nur nicht dort, wo
- * die Pfeile schon etwas tun: in Feldern und Auswahllisten, im Raster (Kachel zu Kachel, §4.4), in einer
- * offenen Karte oder einem Blatt und im Startbildschirm.
+ * die Pfeile schon etwas tun: in Feldern und Auswahllisten, in einem Dialog oder Blatt und im
+ * Startbildschirm. Seit V-0251 auch nach einem Klick auf eine Kachel (Silas: „dann funktioniert das
+ * nicht … sodass die Vor- und Zurück-Pfeiltasten immer funktionieren“): Die Karte, die der Klick
+ * öffnet, schließt sich, und der Schritt geschieht. Vorher hielten die offene Karte und der Fokus im
+ * Raster die Pfeile fest. Von Kachel zu Kachel gehen sie nur noch, wer mit Tab ins Raster kam (§4.4),
+ * bis zum nächsten Maus- oder Fingerdruck. :focus-visible reichte nicht: Nach Esc auf einer Karte kehrt
+ * der Fokus mit Ring auf die Kachel zurück, auch wenn die Karte per Klick aufging (gemessen, V-0251).
  */
 function pfeileFuerVerlauf(e) {
-  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || offen || !plan || !$('hallo').hidden) return false;
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !plan || !$('hallo').hidden) return false;
+  if (offen && offen.typ !== 'karte') return false;
   const t = e.target instanceof Element ? e.target : null;
-  return !(t && (t.closest('input, select, textarea, [contenteditable], #koerper, [role="tablist"]')));
+  if (!t) return true;
+  if (t.closest('input, select, textarea, [contenteditable], [role="tablist"]')) return false;
+  return !(t.closest('#koerper') && rasterTastatur());
 }
+
+/** Kam der Fokus mit Tab ins Raster? Dann wandern die Pfeile von Kachel zu Kachel (§4.4). */
+const tasten = { zuletzt: '', raster: false };
+const rasterTastatur = () => tasten.raster;
+document.addEventListener('keydown', (e) => { tasten.zuletzt = e.key; }, true);
+document.addEventListener('pointerdown', () => { tasten.raster = false; tasten.zuletzt = ''; }, true);
+$('koerper').addEventListener('focusin', () => { if (tasten.zuletzt === 'Tab') tasten.raster = true; });
 
 document.addEventListener('keydown', (e) => {
   if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && pfeileFuerVerlauf(e)) {
@@ -1138,7 +1172,7 @@ document.addEventListener('keydown', (e) => {
     tipp.benutzt = true;
     tippZu();
     const s = R.verlaufSchritt(verlauf, e.key === 'ArrowLeft' ? -1 : 1);
-    if (s) { e.preventDefault(); verlauf = s.v; filtern(s.filter, true); }
+    if (s) { e.preventDefault(); if (offen) schliesse(true); verlauf = s.v; filtern(s.filter, true); }
     return;
   }
   if (e.key === 'Escape' && !$('tipp').hidden) { tippZu(); return; }
@@ -1159,6 +1193,8 @@ document.addEventListener('keydown', (e) => {
 $('koerper').addEventListener('keydown', (e) => {
   const b = e.target.closest('.k-flaeche');
   if (!b) return;
+  // Nach einem Mausklick gehören ← und → dem Verlauf (V-0251, pfeileFuerVerlauf).
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !rasterTastatur()) return;
   const ci = navi.findIndex((l) => l.includes(b)), ti = navi[ci].indexOf(b);
   let ziel = null;
   if (e.key === 'ArrowDown') ziel = navi[ci][ti + 1];

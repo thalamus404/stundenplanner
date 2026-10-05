@@ -52,7 +52,7 @@ Ohne Haken lässt sich nicht zählen, was ein Chip oder eine Kachel ist; dann he
                                                    Stelle im Knoten von index.json; so klickt das Werkzeug
                                                    sich durch den Baum
     data-sicht="fortschritt"                       die Leiste unten im Startbildschirm
-    [data-act="h-oeffnen"]                         „Stundenplan öffnen“ am Ende des Startbildschirms
+    [data-act="h-oeffnen"]                         „Stundenplan öffnen“, nur wo niemand wählen muss (V-0251)
 Schwebende Ebenen (Karte, Blatt, Dialog) sind `role="dialog"` oder `<dialog>`. Die Tokens aus §5
 stehen als Variablen auf :root: `--grau-1` … `--grau-10`, `--m1-hauch|rand|flaeche|tinte` …
 `--m8-…`, `--konflikt`, `--konflikt-text`, `--konflikt-flaeche`, `--hinweis`, `--hinweis-text`,
@@ -118,13 +118,14 @@ sagt es in der Ausgabe. Die Token-Paare (§5.5) und die Stressfall-Fenster (§8 
         Speicherhinweis, ab 768 px die Werkzeugleiste.
 §8 #19  der Startbildschirm (V-0234), je Fenster hell und dunkel, ohne Speicher und ohne #plan: drei
         Ansichten — der Anfang, die Stufe mit den meisten Optionen (der Weg dahin wird aus index.json
-        gerechnet und geklickt), die Zusammenfassung vor dem ersten Plan. Ab 768 px kein Scrollen; am
+        gerechnet und geklickt), die letzte Stufe vor dem ersten Plan. Ab 768 px kein Scrollen; am
         Handy nichts seitlich, die Leiste ganz im Fenster und jede Option erreichbar: ins Bild
         gescrollt ganz zu sehen und nicht unter der Leiste. „Kein offizielles Angebot“, Impressum und
         Datenschutz zu sehen (am Handy am Seitenende). Dazu wie im Plan: Ziele (#7), Kontrast (#8 b),
         Schrift (#9), Abstände (§5.6), Tells (#15), Laden schreibt nichts (#17), keine Fehler.
-§8 #20  „Stundenplan öffnen“ öffnet den Plan (eine Kachel erscheint), und erst danach steht im
-        Speicher genau die Planwahl `stundenplanner:v1:plan` mit der Kennung des Plans.
+§8 #20  Die letzte Wahl im Startbildschirm (meist das Fachsemester) öffnet den Plan (eine Kachel
+        erscheint), und erst danach steht im Speicher genau die Planwahl `stundenplanner:v1:plan` mit
+        der Kennung des Plans (V-0251; bis dahin über „Stundenplan öffnen“).
 §6      Konsolenfehler, fehlgeschlagene Anfragen und HTTP ≥ 400: keine. DOM-Knoten mit allen
         Kacheln ≤ 1 200. Kein `style=`, kein Inline-Skript, kein `on…=` im ausgelieferten HTML.
         Keine `resize`-Hörer und kein ResizeObserver. Ohne JavaScript stehen Kopf, Raster und Fuß.
@@ -1090,7 +1091,9 @@ def klicks(weg) -> list:
 
 def hallo_wege(index: dict) -> list:
     """Die drei Ansichten des Startbildschirms, die gemessen werden (§8 #19): der Anfang, die Stufe mit
-    den meisten Optionen (ihr Weg aus dem Baum) und die Zusammenfassung vor dem ersten Plan."""
+    den meisten Optionen (ihr Weg aus dem Baum) und die letzte Stufe vor dem ersten Plan, alle früheren
+    gewählt. Ihr letzter Klick öffnet den Plan (§8 #20; seit V-0251 gibt es keine Zusammenfassung mit
+    „Stundenplan öffnen“ mehr). Ein Weg ist (Name, Klicks) oder (Name, Klicks, letzter Klick)."""
     best = [None, []]
 
     def geh(k, weg):
@@ -1109,7 +1112,9 @@ def hallo_wege(index: dict) -> list:
     if best[1]:
         wege.append(('meiste', best[1]))
     erstes = blaetter_aus(index)[0]
-    wege.append(('fertig', klicks(erstes['weg'])))
+    k = klicks(erstes['weg'])
+    # Ohne eine Stufe zum Wählen (ein einziger Plan) steht am Ende weiter „Stundenplan öffnen“.
+    wege.append(('fertig', k[:-1], k[-1]) if k else ('fertig', k, None))
     return wege
 
 
@@ -1721,7 +1726,8 @@ def lauf_hallo(spec: dict) -> dict:
         page, ereignis, offen, eigen = _seite(ctx, spec)
         handy = spec['fenster'][0] < HANDY_BIS_UNTER
         ansichten, oeffnen = {}, None
-        for i, (name, weg) in enumerate(spec['wege']):
+        for i, (name, weg, *rest) in enumerate(spec['wege']):
+            letzter = rest[0] if rest else None
             page.goto(spec['url'], wait_until='load', timeout=30000)
             _warten(page, offen)
             page.wait_for_selector('[data-sicht="option"]', timeout=8000)
@@ -1743,7 +1749,9 @@ def lauf_hallo(spec: dict) -> dict:
             ansichten[name] = mess
             if name == 'fertig' and spec.get('oeffnen'):
                 vorher = page.evaluate(SPEICHER_JS)
-                knopf = page.locator('[data-act="h-oeffnen"]')
+                # Die letzte Wahl öffnet den Plan (V-0251); nur ohne Stufe zum Wählen der Knopf.
+                knopf = (page.locator(f'[data-sicht="option"][data-s="{letzter[0]}"][data-i="{letzter[1]}"]') if letzter
+                         else page.locator('[data-act="h-oeffnen"]'))
                 if knopf.count():
                     knopf.first.click(timeout=3000)
                     try:
@@ -1811,7 +1819,7 @@ PRUEFUNGEN = {
     'resize': ('§6', 'Größe ändern ohne Skript (kein resize-Hörer, kein ResizeObserver)'),
     'nojs': ('§6', 'Erstes Bild ohne JS: Kopf, Raster und Fuß stehen'),
     'h1': ('§8 #19', 'Startbildschirm: ab 768 px ohne Scrollen, am Handy nie seitlich; Leiste ganz im Fenster, jede Option erreichbar'),
-    'h2': ('§8 #20', 'Startbildschirm: „Stundenplan öffnen“ öffnet den Plan, erst dann steht die Planwahl im Speicher'),
+    'h2': ('§8 #20', 'Startbildschirm: die letzte Wahl (das Fachsemester) öffnet den Plan, erst dann steht die Planwahl im Speicher'),
 }
 OK, FEHLER, UNBESTIMMT = 'ok', 'fehler', 'unbestimmt'
 
@@ -2301,7 +2309,7 @@ def bewerten_hallo(bf: Befund, spec: dict, r: dict, plan_id):
         elif not (lst['ganz'] and lst['frei']):
             teile.append('Leiste nicht ganz im Fenster oder verdeckt')
         opts = hl.get('optionen') or []
-        if name != 'fertig' and not opts:
+        if not opts and not (name == 'fertig' and spec['wege'][-1][2:] == (None,)):
             teile.append('keine Option (data-sicht="option")')
         nicht = [o['name'] for o in opts if not (o['ganz'] and o['frei'])]
         if nicht:
@@ -2321,12 +2329,12 @@ def bewerten_hallo(bf: Befund, spec: dict, r: dict, plan_id):
     if spec.get('oeffnen'):
         wo = f'{w}×{h} {schema} Start → Plan'
         if not o or o.get('kein_knopf'):
-            bf.add('h2', FEHLER, 'kein Knopf [data-act="h-oeffnen"] in der Zusammenfassung', wo)
+            bf.add('h2', FEHLER, 'keine letzte Option (und kein Knopf [data-act="h-oeffnen"]) im Startbildschirm', wo)
         else:
             teile = []
             eigene = {k: v for k, v in o['vorher'].items() if k.startswith('stundenplanner:')}
             if eigene:
-                teile.append('vor „Stundenplan öffnen“ stand schon etwas im Speicher: ' + ', '.join(eigene))
+                teile.append('vor der letzten Wahl stand schon etwas im Speicher: ' + ', '.join(eigene))
             nach = {k: v for k, v in o['nachher'].items() if k.startswith('stundenplanner:')}
             if nach != {'stundenplanner:v1:plan': plan_id}:
                 teile.append(f'danach im Speicher {nach} (Soll: stundenplanner:v1:plan = {plan_id})')

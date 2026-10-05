@@ -397,3 +397,16 @@ test('gruppen: keine — nie vorgeschlagen, zählt nicht zum Fortschritt', () =>
   const ohne = A.fortschritt(A.bestand(plan()).parts).n;
   assert.equal(A.fortschritt(b.parts).n, ohne - 1);
 });
+
+test('Pfeiltasten-Tipp geschlossen (V-0251): ein fester Wert, geschrieben nur beim X, gelesen ohne zu schreiben', () => {
+  const s = new Speicher();
+  assert.equal(A.tippGeschlossen(s), false);
+  assert.equal(A.tippGeschlossen(null), false);
+  assert.equal(A.tippGeschlossen(gesperrt), false);
+  assert.deepEqual(s.schreibvorgaenge, []);
+  assert.equal(A.tippSchliessen(s), true);
+  assert.deepEqual(s.schreibvorgaenge, [['set', 'stundenplanner:v1:tipp', 'pfeile']]);
+  assert.equal(A.tippGeschlossen(s), true);
+  assert.equal(A.tippSchliessen(gesperrt), false);
+  assert.equal(A.tippGeschlossen(new Speicher({ 'stundenplanner:v1:tipp': 'etwas anderes' })), false);
+});
