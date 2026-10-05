@@ -110,8 +110,10 @@ button:active::after { opacity: .1; }
   grid-template-areas: "sg name rechts"; align-items: center; gap: 24px; min-width: 0;
 }
 .name { grid-area: name; display: flex; justify-content: center; color: var(--grau-10); }
-/* Der Schriftzug: Rubik 600 als Pfad (index.html, #marke), Seitenverhältnis aus der viewBox. */
-.wortmarke { display: block; height: 22px; width: auto; aspect-ratio: 2088 / 247; fill: currentColor; }
+/* Der Schriftzug: Barlow Condensed ExtraBold Italic in Versalien als Pfad (index.html, #marke, V-0248),
+   Seitenverhältnis aus der viewBox. Die Höhe ist die Versalhöhe: 20 px am Rechner (so breit wie der
+   alte Schriftzug mit 22 px), am Handy 16 px. */
+.wortmarke { display: block; height: 20px; width: auto; aspect-ratio: 6689 / 716; fill: currentColor; }
 .stand { height: var(--ziel); padding: 0 8px; border-radius: 8px; color: var(--grau-9); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
 .stand.alt { color: var(--hinweis-text); }
 .stand.alt .i, .warn-i { color: var(--hinweis); }
@@ -530,7 +532,7 @@ details[open] > summary::before { transform: rotate(45deg); }
   .nur-breit { display: none !important; }
   .seite { height: auto; min-height: 100vh; gap: 0; padding: 12px var(--rand-x) calc(var(--schalter-zone) + 16px); }
   .kopf { gap: 12px 8px; }
-  .wortmarke { height: 18px; }
+  .wortmarke { height: 16px; }
   .kopf-rechts { gap: 4px; }
   .kopf .knopf { width: var(--ziel); padding: 0; }
   .kopf .knopf .t-kurz { display: none; }
@@ -602,7 +604,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 @media (min-height: 800px) { .h-kopf { padding-top: 96px; } }
 @media (min-height: 1000px) { .h-kopf { padding-top: 128px; } }
 .h-marke { margin: 0; color: var(--grau-10); }
-.h-marke .wortmarke { height: 34px; }
+.h-marke .wortmarke { height: 30px; }
 .h-striche { display: flex; gap: 8px; }
 .h-strich { width: 28px; height: 4px; border-radius: 2px; background: var(--grau-5); transition: background-color 200ms var(--ein); }
 .h-strich.hier { background: var(--grau-7); }
@@ -635,7 +637,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 @media (max-width: 767.98px) {
   .h-zum-plan { top: 8px; }
   .h-kopf { padding: 48px 0 32px; gap: 24px; }
-  .h-marke .wortmarke { height: 28px; }
+  .h-marke .wortmarke { height: 24px; }
   .h-option { min-height: 68px; }
 }
 @media (pointer: coarse) { .h-recht a { min-height: 44px; } }
