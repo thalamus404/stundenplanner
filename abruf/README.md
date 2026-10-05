@@ -28,8 +28,9 @@ python3 abruf/abruf.py --roh /irgendwo/roh    # Rohstände anderswohin
   Aufruf oder der Katalog nicht stimmt (dann wird nichts geschrieben).
 - Je Modul eine Zeile auf stderr (`✓ 70123 v11: 2 Bestandteile, 5 Gruppen, 63 Buchungen`), am Ende
   je Semester eine auf stdout.
-- **Dauer:** je Modul 2 Seiten, je Bestandteil 5 Anfragen, mit 0,7 s Abstand. WI im 1. Fachsemester
-  (5 Module, 11 Bestandteile) dauert gut eine Minute.
+- **Dauer:** je Modul 2 Seiten, je Bestandteil 5 Anfragen, mit 0,7 s Abstand, zwischen Modulen 2 s.
+  WI im 1. Fachsemester (5 Module, 11 Bestandteile) dauert gut eine Minute; mit den
+  Wahlpflichtbereichen der höheren Fachsemester etwa 11 s je Modul (V-0227).
 
 ### Was schiefgehen kann
 
@@ -70,7 +71,8 @@ MOSES ist ein öffentlicher Dienst der TU Berlin, kein Angebot an uns. Deshalb:
 
 - **Einmal am Tag** reicht. Die Termine ändern sich selten, und die Seite sagt, wie alt sie sind.
   Kein Lauf in einer Schleife und kein sofortiges Wiederholen nach einem Fehler
-- Zwischen zwei Anfragen derselben Sitzung mindestens **0,7 s** (`Client(delay=0.7)`)
+- Zwischen zwei Anfragen derselben Sitzung mindestens **0,7 s** (`Client(delay=0.7)`), zwischen
+  zwei Modulen **2 s** (`abruf.PAUSE`, `--pause`; seit V-0227). Nie mehrere Abrufe parallel
 - Der **User-Agent** nennt das Projekt und seine Adresse (`moses.USER_AGENT`), damit MOSES einen
   auffälligen Abruf zuordnen kann, statt ihn zu sperren
 - Je Modul eine frische Sitzung **ohne Login**. Die Exporteinstellungen gelten nur für sie;
@@ -79,6 +81,50 @@ MOSES ist ein öffentlicher Dienst der TU Berlin, kein Angebot an uns. Deshalb:
 - Die Tests laufen **ohne Netz**: `tests/test_moses.py` auf einem echten, öffentlichen CSV-Export,
   `tests/test_abruf.py` mit einer Attrappe des Clients auf erfundenem HTML und einem erfundenen
   Katalog
+
+## Modullisten und Wahlpflicht (V-0227, Demo-Strang)
+
+`modulliste.py` liest den **Studiengangsaufbau** eines Studiengangs aus dem MTS von MOSES
+(öffentlich): alle Bereiche mit ihren Modulen (Nummer, Version, LP, benotet, Prüfungsform,
+Turnus, Gewicht) und den „Regeln zum Bestehen“ (daraus `lp_min`, `lp_max`). Was MOSES dort nicht
+sagt, ist das **Fachsemester**: Das steht nur im Studienverlaufsplan der StuPO und bleibt Handarbeit
+im Katalog.
+
+```sh
+# WI B.Sc. (121), StuPO 2025 (mkg 24980), Modulliste WiSe 2026/27 (semester 77)
+python3 abruf/modulliste.py --studiengang 121 --stupo 24980 --liste 77 \
+    --aus katalog/modullisten/wi-bsc-stupo2025-wise-2026-27.json
+```
+
+- Die drei Zahlen stehen in der Adresse der Studiengangsseite
+  (`modultransfersystem/studiengaenge/anzeigen.html?studiengang=…&mkg=…&semester=…`); die
+  Auswahllisten der Seite nennen alle StuPOs und Modullisten.
+- **Je Bereich zwei Anfragen**, 1 s Abstand: WI mit 26 Bereichen dauert gut eine Minute. Es gibt
+  keinen täglichen Lauf dafür; eine Liste ändert sich je Semester und wird mit dem Katalog neu
+  erzeugt und committet.
+- Der Baum wird über die **Auswahl je Zeilenschlüssel** (`0_1_4`) gelesen, der Tiefe nach, bis eine
+  Auswahl leer zurückkommt. Das Aufklappen per Ajax gibt in dieser PrimeFaces-Fassung den Baum
+  unverändert zurück. Fehlt eine Spalte der Modulzuordnungen, endet der Abruf mit
+  `Unbekanntes Layout der Modulzuordnungen` (nicht raten).
+
+**Im Katalog** nennt ein Plan seine Wahlpflichtbereiche mit `modulliste` (Datei unter
+`katalog/modullisten/`) und `bereich` (Pfad im Baum, z. B. `Wahlpflichtbereich/Vertiefung
+Informatik`). Der Abruf holt dann zusätzlich jedes Modul des Bereichs, dessen **Turnus** laut MTS
+zum Semester passt (`k.A.` zählt als ja). `--alle-kandidaten` schaltet diesen Filter ab; damit
+wurde am 05.10.2026 gemessen, wie verlässlich der Turnus ist (docs/forschung/wi-hoehere-fachsemester.md).
+
+- **Ein Kandidat ohne Angebot ist kein Fehler des Laufs.** „keine gültige Version für …“ ist für ein
+  Wahlpflichtmodul der Normalfall. Sein Scheitern steht im Rohstand und in `_lauf.json` unter
+  `kandidaten: {module, fehler: [...]}`; `status` und `errors` richten sich nur nach Pflichtmodulen.
+- **Ein Bestandteil ohne Termine im Semester** (keine Gruppenlinks und kein Listenexport auf der
+  VVZ-Seite) ergibt `status: unplanned` mit leeren `groups`, statt `VVZ-Export fehlt`. Gibt es den
+  Export, aber keine Gruppenlinks, bleibt es ein Fehler: Das kann ein geänderter Parser sein.
+- **Pause zwischen Modulen: 2 s** (`--pause`, Punkt aed3e76c). WI FS 1–6 holt je Semester 120–170
+  Module statt 5; ein Lauf dauert damit etwa eine halbe Stunde je Semester.
+
+Das Lesemodell dazu (`wahlpflicht[]`, Moduldateien unter `module/<semester>/`) beschreibt der
+Docstring von `bauen.py`, das Format im Ganzen docs/forschung/wi-hoehere-fachsemester.md. In
+docs/ARCHITEKTUR.md §3–§5 steht es erst, wenn Silas die Öffnung für Phase 2 entscheidet.
 
 ## Lesemodell
 

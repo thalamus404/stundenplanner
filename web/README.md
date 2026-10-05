@@ -164,3 +164,21 @@ Die Tabelle alt → neu steht in DESIGN §4.3. Dazu, was schon der Nachbau ände
 - **Reihenfolge der Module:** wie im Lesemodell (Katalog), nicht nach Modulnummer.
 - **`ausgelassen`** (Gruppen, die nur Termine eines anderen Semesters haben) nennt die Modulkarte
   leise beim Bestandteil; das Vorbild kannte es nicht.
+
+## Wahlpflicht (V-0227, nur auf dem Demo-Strang)
+
+Für die höheren Fachsemester trägt ein Plan `wahlpflicht[]` (abruf/bauen.py): je Bereich das
+Angebot mit Kennzahlen, die Termine je Modul in `daten/module/<semester>/<nummer>.json`.
+`wahl.mjs` (getestet in `tests/wahl.test.mjs`) entscheidet, welche Module die Seite zeichnet;
+`app.js` hat dafür nur Haken: Laden der Moduldateien (`wpLaden`), Dazunehmen und Weglassen
+(`wpUmschalten`), je Bereich ein Knopf in der Modulleiste, die Liste „Wahlpflicht“, „WP“ am
+Modulnamen, der Chip „Ersatzdaten, nicht SoSe 2027“. Das Aussehen steht in `wahl.css`, nicht in
+`stil.css`.
+
+- **Kein neuer Speicher.** Aktiv ist ein Wahlpflichtmodul, wenn die Auswahl eine Gruppe darin hat
+  (die Kennung eines Bestandteils beginnt mit der Modulnummer) oder wenn man es in dieser Sitzung
+  dazugenommen hat. Ein dazugenommenes Modul ohne gewählte Gruppe vergisst die Seite beim
+  Neuladen; der Teilen-Link bringt die Module seiner Gruppen mit.
+- **Moduldateien erst bei Wahl.** Der Plan des 5. Fachsemesters nennt über 80 angebotene Module;
+  alle Termine darin wögen mehrere Megabyte.
+- Ohne `wahlpflicht` im Plan ändert sich nichts: `WP.sicht()` gibt den Plan unverändert zurück.

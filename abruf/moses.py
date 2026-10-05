@@ -228,7 +228,9 @@ class Client:
             # Termine (V-0227). Wahlpflichtmodule werden oft nur im WiSe oder nur im SoSe angeboten;
             # ohne diese Ausnahme meldete der Abruf „VVZ-Export fehlt“ wie bei einem Layoutwechsel.
             # Beides muss fehlen: Fände der Parser nur die Gruppenlinks nicht mehr, gäbe es den
-            # Exportlink noch, und der Abruf scheiterte weiter laut statt still „keine Termine“.
+            # Exportlink noch, und der Abruf ginge weiter in den Export (dort fällt eine unbekannte
+            # Gruppe auf). Strenger ist empty_component() aus V-0228 (Kalender da, kein Ereignis):
+            # Für Phase 2 die eine Fassung übernehmen, docs/forschung/wi-hoehere-fachsemester.md.
             return {**part,'vvz_url':url,'semester_id':sid,'groups':[],'status':'unplanned'},''
         raw=self.export(url,page)
         # Gruppen, deren Buchungen alle ein anderes Semester tragen, fallen heraus (parse_export).

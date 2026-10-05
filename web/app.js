@@ -95,9 +95,10 @@ async function planLaden(eintrag, verweis) {
     rasterText('<p>Die Termine konnten nicht geladen werden.</p><button type="button" class="knopf" data-act="start">Erneut versuchen</button>');
     return;
   }
-  wpExtra = new Set();
+  // Ein Teilen-Link bringt die Wahlpflichtmodule seiner Gruppen mit (für die Vorschau und danach).
+  wpExtra = new Set(verweis ? Object.keys(verweis.paare).map(WP.modulVon) : []);
   wpGeladen = new Map();   // Moduldateien gelten je Semester: beim Planwechsel nichts mitnehmen
-  await wpLaden(p, [...Object.keys(A.ladeAuswahl(speicher, A.speicherSchluessel(p))), ...(verweis ? Object.keys(verweis.paare) : [])]);
+  await wpLaden(p, Object.keys(A.ladeAuswahl(speicher, A.speicherSchluessel(p))));
   setzePlan(p);
   vorschau = verweis ? { link: verweis, ...A.geteilteAuswahl(bestand, verweis.paare) } : null;
   // Erst Kopf, Module und Werkzeug, das Raster in einer eigenen Aufgabe danach: So blockiert keine
