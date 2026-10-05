@@ -18,7 +18,17 @@ pip install -r abruf/requirements.txt         # nur beautifulsoup4
 python3 abruf/abruf.py                        # jedes Semester des Katalogs, das Pläne hat
 python3 abruf/abruf.py --semester wise-2026-27 --nur 70450   # ein Modul nachholen
 python3 abruf/abruf.py --roh /irgendwo/roh    # Rohstände anderswohin
+python3 abruf/abruf.py --mit-vorschau --roh /irgendwo/roh   # auch Vorschau-Pläne (nie täglich)
 ```
+
+- **Nur Live-Pläne, außer mit `--mit-vorschau`.** Der Katalog kennzeichnet Pläne der Vorschau
+  (`"sichtbar": "vorschau"`, ARCHITEKTUR §3); der tägliche Lauf holt sie nicht. **Gesperrte
+  Hochschulen nie** (`"abruf": "gesperrt"`, heute die HU, Punkt 7411bed1), auch nicht mit dem
+  Schalter. Nennt `--semester` ein Semester, in dem nur Vorschau oder Gesperrtes steht, endet der
+  Aufruf mit 2 und schreibt nichts, auch kein `_lauf.json`.
+- **Den Katalog liest `katalog.py`**, für Abruf und Lesemodell gemeinsam: Hochschulen, Semester,
+  Studiengänge mit Ordnungen, Vertiefungen (die den Grundplan erben) und Plänen (ARCHITEKTUR §3).
+  Geprüft wird jeder Plan, auch Vorschau und Gesperrtes.
 
 - **Aus jedem Arbeitsverzeichnis.** Der Katalog hängt an der Lage von `abruf.py`, die Vorgabe für
   `--roh` an der Repo-Wurzel (`daten/roh`); ein ausdrücklich übergebenes `--roh` gilt relativ zum
@@ -219,14 +229,25 @@ ein Freitext selbst Termine, steht davor eine Warnung: Die Seite rechnet damit n
 
 ## Lesemodell
 
-`plan.py` und `bauen.py` (V-0215). Das Format ist der Vertrag mit der Seite und steht in
-[`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5; die Regeln dahinter stehen in den Docstrings
-der beiden Dateien.
+`plan.py` und `bauen.py` (V-0215, Schema 2 seit V-0233). Das Format ist der Vertrag mit der Seite
+und steht in [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5; die Regeln dahinter stehen in den
+Docstrings der beiden Dateien.
 
 ```sh
-python3 abruf/bauen.py                                   # katalog/ + daten/roh/ → web/daten/
+python3 abruf/bauen.py                                   # katalog/ + daten/roh/ → web/daten/, nur Live
 python3 abruf/bauen.py --roh <ordner> --aus <ordner>     # andere Rohstände, anderes Ziel
+python3 abruf/bauen.py --mit-vorschau --roh <ordner>     # dazu die Vorschau-Pläne (der Dev-Link)
 ```
+
+- **`index.json` trägt den Wahlbaum** (`wahl`): Hochschule → Studiengang → Vertiefung → Fachsemester
+  → Ordnung, je Knoten eine `regel` (`waehlen`, `ueberspringen`, `automatisch`), am Ende der Plan.
+  Daneben `plaene` wie bisher, für die heutige Seite.
+- **Je Plan `kombinationen`**: ob es je Bestandteil eine Gruppe gibt, ohne dass sich zwei an einem
+  Einzeltermin überschneiden (`plan.kombination`, Rückverfolgung mit Abschneiden, Grenze in
+  Schritten). Ist die Antwort nein, steht der Plan in der Ausgabe mit `! keine Wahl ohne
+  Überschneidung: <Grund>`: Ein Mensch sieht nach, ob der Katalog stimmt oder die Hochschule so plant.
+  Am 05.10.2026 so: Informatik B.Sc. 1. FS (Analysis-Vorlesung gegen zwei einmalige Vorlesungen) und
+  WI StuPO 2025 3. FS (Vorschau; eine Übungsgruppe mit Terminen an mehreren Tagen, V-0227 E5).
 
 - **Vorgaben hängen an der Repo-Wurzel**, nicht am Arbeitsverzeichnis; ausdrücklich übergebene
   Pfade gelten relativ zum Arbeitsverzeichnis.
@@ -234,10 +255,13 @@ python3 abruf/bauen.py --roh <ordner> --aus <ordner>     # andere Rohstände, an
   `title: null` und `error` im Plan. Die Zeile der Ausgabe nennt es unter „Fehler“. Der Befehl
   endet trotzdem mit 0, denn ein teilweiser Abruf ist ein normaler Tag.
 - **Widerspricht sich der Katalog** (Plan zeigt auf ein unbekanntes Semester, Plan doppelt, Semester
-  ohne `anker`), endet der Befehl mit 2 und schreibt nichts.
+  ohne `anker`, Ordnung gilt im Semester nicht, unbekannte Vertiefung …), endet der Befehl mit 2 und
+  schreibt nichts. Die Fälle stehen in `tests/test_katalog.py`.
 - **Gleiche Eingabe, gleiche Bytes** bis auf `erzeugt_am`. Pläne, die aus dem Katalog verschwinden,
   entfernt der nächste Lauf aus `--aus` (nur Dateien, die das alte `index.json` nannte).
 - Die Ausgabe ist kompaktes JSON; lesbar mit `python3 -m json.tool web/daten/index.json`.
-- Tests: `abruf/tests/test_plan.py` (Rhythmus, Parität, Nachttermine, Kollisionen, Fingerabdruck)
-  und `abruf/tests/test_bauen.py` (Schlüssel exakt wie §5, Determinismus, Katalogfehler) mit
-  erfundenen Daten unter `abruf/tests/fixtures/lesemodell/`.
+- Tests: `abruf/tests/test_plan.py` (Rhythmus, Parität, Nachttermine, Kollisionen, Fingerabdruck,
+  Kombinationen gegen vollständiges Durchprobieren), `abruf/tests/test_bauen.py` (Schlüssel exakt
+  wie §5, Wahlbaum und Regeln, Vorschau, Determinismus, Katalogfehler) und
+  `abruf/tests/test_katalog.py` mit erfundenen Daten unter `abruf/tests/fixtures/lesemodell/` und
+  `abruf/tests/fixtures/auswahl/`.
