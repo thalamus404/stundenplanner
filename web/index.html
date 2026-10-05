@@ -32,25 +32,39 @@
 <div class="seite laedt" id="seite">
   <header class="kopf" data-sicht="kopf">
     <p class="name">Stundenplanner</p>
-    <button type="button" class="plan nur-breit" id="plan" data-act="ebene" data-ebene="stand" disabled></button>
+    <div class="studiengang" id="studiengang" role="group" aria-label="Studiengang"></div>
     <span class="kopf-rechts">
       <button type="button" class="stand nur-breit" id="stand" data-act="ebene" data-ebene="stand" disabled></button>
+      <button type="button" class="knopf" id="kalender" data-act="kalender" aria-label="In Kalender übernehmen" disabled><svg class="i" aria-hidden="true"><use href="#i-kalender"/></svg><span class="nur-breit">In Kalender übernehmen</span><span class="nur-handy">Kalender</span></button>
       <button type="button" class="knopf" id="teilen" data-act="teilen" disabled><svg class="i" aria-hidden="true"><use href="#i-teilen"/></svg>Teilen</button>
-      <button type="button" class="knopf nur-handy" id="mehr" data-act="ebene" data-ebene="mehr">Mehr<span class="zahl" id="mehr-zahl" hidden></span></button>
     </span>
   </header>
-  <nav class="module" id="module" data-sicht="module" aria-label="Module und Bestandteile"></nav>
-  <div class="werkzeug nur-breit" id="werkzeug" data-sicht="werkzeug"></div>
-  <div class="leiste" id="leiste" role="region" aria-label="Geteilter Plan" hidden></div>
-  <main class="raster" id="raster" data-sicht="raster">
-    <div class="tage" id="tage"><span class="tag" data-sicht="tag" data-tag="0">Mo</span><span class="tag" data-sicht="tag" data-tag="1">Di</span><span class="tag" data-sicht="tag" data-tag="2">Mi</span><span class="tag" data-sicht="tag" data-tag="3">Do</span><span class="tag" data-sicht="tag" data-tag="4">Fr</span></div>
-    <button type="button" class="knopf ansicht nur-handy" id="ansicht" data-act="ebene" data-ebene="ansicht" disabled><span class="ansicht-text"><span id="ansicht-a">Noch offen</span><span class="ansicht-b" id="ansicht-b"></span></span><svg class="i" aria-hidden="true"><use href="#i-unten"/></svg></button>
-    <div class="koerper" id="koerper"><p class="raster-text spaet">Termine werden geladen …</p></div>
-  </main>
+  <div class="mitte">
+  <nav class="module" id="module" data-sicht="module" aria-label="Module und Formate"></nav>
+  <section class="buehne" aria-label="Stundenplan">
+    <div class="werkzeug" id="werkzeug" data-sicht="werkzeug">
+      <div class="lage" id="lage"><p class="l-text"><span class="l-titel">Noch offen</span> <span class="l-unter">Wähle ein Modul oder ein Format, dann zeigt der Plan nur dessen Gruppen.</span></p></div>
+      <div class="steuer nur-breit" id="steuer"></div>
+      <div class="umschalter" id="umschalter" data-sicht="umschalter" role="group" aria-label="Tag oder Woche zeigen">
+        <button type="button" class="seg" data-act="modus" data-v="tag" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-tag"/></svg>Tag</button>
+        <button type="button" class="seg" data-act="modus" data-v="woche" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-woche"/></svg>Woche</button>
+      </div>
+    </div>
+    <div class="leiste" id="leiste" role="region" aria-label="Geteilter Plan" hidden></div>
+    <main class="raster" id="raster" data-sicht="raster">
+      <div class="tage" id="tage"><span class="tag" data-sicht="tag" data-tag="0">Mo</span><span class="tag" data-sicht="tag" data-tag="1">Di</span><span class="tag" data-sicht="tag" data-tag="2">Mi</span><span class="tag" data-sicht="tag" data-tag="3">Do</span><span class="tag" data-sicht="tag" data-tag="4">Fr</span></div>
+      <div class="koerper" id="koerper"><p class="raster-text spaet">Termine werden geladen …</p></div>
+    </main>
+  </section>
+  <div class="unter" id="unter">
+    <div class="steuer nur-handy" id="steuer-handy"></div>
+    <div class="legende" id="legende" data-sicht="legende" role="group" aria-label="Legende"></div>
+  </div>
+  </div>
   <footer class="fuss" data-sicht="fuss">
-    <p class="fuss-a">Kein offizielles Angebot der TU Berlin.<span class="nur-breit"> Verbindlich sind MOSES und die Anmeldungen dort.</span></p>
-    <p class="fuss-b"><span id="speicher">Deine Auswahl wird nur in diesem Browser gespeichert.</span><button type="button" class="leise nur-breit" id="zuruecksetzen" data-act="zuruecksetzen" hidden>Auswahl zurücksetzen</button></p>
-    <p class="fuss-c"><span class="nur-handy" id="stand-fuss"></span><button type="button" class="leise nur-breit" data-act="ebene" data-ebene="hilfe">Hilfe</button><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>
+    <p class="fuss-a">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>
+    <p class="fuss-b"><span id="speicher">Deine Auswahl wird nur in diesem Browser gespeichert.</span><button type="button" class="leise" id="zuruecksetzen" data-act="zuruecksetzen" hidden>Auswahl zurücksetzen</button></p>
+    <p class="fuss-c"><button type="button" class="leise nur-handy" id="stand-fuss" data-act="ebene" data-ebene="stand" disabled></button><button type="button" class="leise" data-act="ebene" data-ebene="hilfe">Hilfe</button><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>
   </footer>
 </div>
 <div id="ebenen"></div>
@@ -58,10 +72,11 @@
 <div class="nur-sr" id="ansage" aria-live="polite"></div>
 <noscript><p class="ohne-js">Diese Seite braucht JavaScript: Die Auswahl und die Woche laufen in deinem Browser.</p></noscript>
 <template id="hilfe-text">
-  <p>Wähle je Bestandteil eines Moduls eine Termingruppe. Wähle in der Woche eine Gruppe: Ihre Karte zeigt Zeit, Raum, alle Termine und ob sie sich mit deiner Auswahl überschneidet. Dort planst du sie ein, wechselst oder löst sie; auf breiten Kacheln am Rechner geht das auch direkt. Gewählt wird immer die ganze Termingruppe, auch wenn sie an mehreren Wochentagen liegt.</p>
-  <p>Oben stehen die Module mit ihren Bestandteilen. Ein Bestandteil zeigt, ob er schon gewählt ist; wählst du ihn aus, zeigt die Woche nur seine Gruppen. „Noch offen“ zeigt die Gruppen der Bestandteile ohne Wahl, „Alle“ jede Gruppe, „Mein Plan“ nur deine Auswahl. Was du gewählt hast, bleibt in jeder Ansicht sichtbar.</p>
-  <p>Das Wochenskelett fasst alle angebotenen Termine zusammen. Wähle eine Woche, um nur ihre tatsächlichen Termine zu sehen. Eine A/B-Ansicht erscheint, sobald die Quelle einen 14-tägigen Rhythmus zeigt. Überschneidungen prüft die Seite gegen jeden einzelnen Termin des Semesters.</p>
-  <p>Deine Auswahl bleibt in diesem Browser. Es gibt kein Konto, und sie liegt auf keinem Server. Gespeichert wird erst, wenn du eine Gruppe wählst, und nur, welche Gruppe du je Bestandteil gewählt hast. „Auswahl zurücksetzen“ löscht sie. Ändern sich Zeit oder Raum einer gewählten Gruppe, sagt es die Seite, bis du die Änderung als geprüft markierst.</p>
+  <p>Wähle je Format eines Moduls (Vorlesung, Übung, Tutorium …) eine Termingruppe. Die Module stehen am Rechner links, am Handy oben, darunter je ihre Formate mit der Zahl der Gruppen: umrandet heißt noch offen, gefüllt mit Haken heißt gewählt.</p>
+  <p>Tippe auf ein Modul, und der Stundenplan zeigt alle seine Gruppen. Tippe auf ein Format darin, und er zeigt nur dessen Gruppen. Nochmals tippen oder „Filter aufheben“ führt zurück. Ohne Filter zeigt er alles, was noch offen ist; was du gewählt hast, bleibt immer sichtbar.</p>
+  <p>Tippe auf eine Gruppe: Ihre Karte zeigt Zeit, Raum, alle Termine und ob sie sich mit deiner Auswahl überschneidet. Dort planst du sie ein, wechselst oder löst sie; auf breiten Kacheln am Rechner geht das auch direkt. Gewählt wird immer die ganze Termingruppe, auch wenn sie an mehreren Wochentagen liegt.</p>
+  <p>„Tag“ zeigt einen Wochentag groß, „Woche“ die ganze Woche. „Alle Wochen“ legt alle Termine des Semesters übereinander; wähle eine Woche, um nur ihre tatsächlichen Termine zu sehen. Eine A/B-Ansicht erscheint, sobald die Quelle einen 14-tägigen Rhythmus zeigt. Überschneidungen prüft die Seite gegen jeden einzelnen Termin des Semesters.</p>
+  <p>Deine Auswahl bleibt in diesem Browser. Es gibt kein Konto, und sie liegt auf keinem Server. Gespeichert wird erst, wenn du eine Gruppe wählst, und nur, welche Gruppe du je Format gewählt hast. „Auswahl zurücksetzen“ löscht sie. Ändern sich Zeit oder Raum einer gewählten Gruppe, sagt es die Seite, bis du die Änderung als geprüft markierst.</p>
   <p>Der Teilen-Link trägt deine Auswahl in der Adresse, hinter dem #. Dieser Teil geht nicht an den Server. Wer ihn öffnet, sieht den Plan zuerst nur an; übernommen wird er erst auf Knopfdruck, und eine vorhandene Auswahl wird nie ohne Rückfrage ersetzt.</p>
   <p>Die Termine stammen aus den öffentlichen Seiten von MOSES, einmal am Tag abgerufen. Die Datendatei liegt öffentlich neben dieser Seite (<a href="daten/index.json">daten/index.json</a>). Gruppenbindungen, Anmeldung und Kursvorgaben prüfst du bitte in MOSES und ISIS: Der Stundenplanner meldet dich nirgends an und bestätigt keine Zulassung.</p>
 </template>
@@ -75,6 +90,9 @@
   <symbol id="i-links" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></symbol>
   <symbol id="i-rechts" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
   <symbol id="i-unten" viewBox="0 0 24 24"><path d="M6.5 9.5l5.5 5.5 5.5-5.5"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><rect x="6" y="3.5" width="12" height="17" rx="2"/></symbol>
+  <symbol id="i-woche" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path class="voll" d="M4.5 4.5h5v5h-5zM14.5 4.5h5v5h-5zM9.5 9.5h5v5h-5zM4.5 14.5h5v5h-5zM14.5 14.5h5v5h-5z"/></symbol>
+  <symbol id="i-kalender" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
   <symbol id="i-teilen" viewBox="0 0 24 24"><path d="M12 3.5v11M8 7.5l4-4 4 4M5.5 12v6.5a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V12"/></symbol>
   <symbol id="i-extern" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10M19.5 4.5L11 13M17.5 14v4.5a1.5 1.5 0 0 1-1.5 1.5H6a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 6 7h4.5"/></symbol>
 </svg>

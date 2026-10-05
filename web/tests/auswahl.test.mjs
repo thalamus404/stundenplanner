@@ -95,7 +95,8 @@ test('Eine Gruppe je Bestandteil: eine neue Wahl ersetzt die alte', () => {
   assert.deepEqual(Object.keys(a), ['10001:200']);
   assert.equal(a['10001:200'].group, '22');
   const r = geladen(a);
-  assert.deepEqual(r.selected.map((g) => g.key), ['10001:200:22']);
+  // 10001:100 hat nur eine Gruppe und ist ohne Eintrag automatisch eingeplant (V-0225).
+  assert.deepEqual(r.selected.map((g) => g.key), ['10001:100:11', '10001:200:22']);
   assert.equal(r.gruppe('10001:200:21').selected, false);
   assert.equal(r.gruppe('10001:200:22').component.selection, '22');
   assert.deepEqual(A.loese(a, '10001:200'), {});
@@ -214,4 +215,70 @@ test('Teilen ist nie stumm: ohne Wahl und in der Vorschau sagt der Knopf, was fe
   // Teilen-Menü nur am Handy; am Rechner und ohne navigator.share (Firefox) wird kopiert.
   assert.equal(A.teilenWeg({ anzahl: 3, share: true, grob: false }), 'kopieren');
   assert.equal(A.teilenWeg({ anzahl: 3, share: false, grob: true }), 'kopieren');
+});
+
+test('Einzige Gruppe: automatisch eingeplant, berechnet und nie gespeichert (Silas, V-0225)', () => {
+  const s = new Speicher();
+  const auswahl = A.ladeAuswahl(s, KEY);
+  const r = geladen(auswahl);
+  assert.deepEqual(r.selected.map((g) => [g.key, g.auto]), [['10001:100:11', true]]);
+  assert.equal(r.gruppe('10001:100:11').component.selection, '11');
+  assert.equal(r.gruppe('10001:100:11').changed, false);
+  assert.deepEqual(s.schreibvorgaenge, []);                              // Laden schreibt nichts
+  // Formate mit mehreren Gruppen bleiben offen; eine Gruppe ohne Termine zählt nicht mit.
+  assert.equal(A.einzige(r.gruppe('10001:200:21').component), null);
+  assert.equal(A.einzige({ groups: [{ slots: [1] }, { slots: [] }] }).slots.length, 1);
+  // ausdrücklich gewählt: kein „auto“ mehr, der Rand ist durchgezogen
+  const fest = geladen(A.waehle({}, '10001:100', r.gruppe('10001:100:11')));
+  assert.equal(fest.gruppe('10001:100:11').auto, false);
+  assert.equal(fest.gruppe('10001:100:11').selected, true);
+});
+
+test('Einzige Gruppe lösen: die Abwahl wird gespeichert (group: null), sonst käme sie wieder', () => {
+  const s = new Speicher();
+  const ab = A.loese({}, '10001:100', true);
+  assert.deepEqual(ab, { '10001:100': { group: null, digest: '', name: '' } });
+  assert.equal(A.speichereAuswahl(s, KEY, ab), true);
+  const gelesen = A.ladeAuswahl(s, KEY);
+  assert.deepEqual(gelesen, ab);
+  const r = geladen(gelesen);
+  assert.deepEqual(r.selected, []);
+  assert.equal(r.gruppe('10001:100:11').component.selection, null);      // wieder offen
+  assert.deepEqual(r.missing, []);                                        // eine Abwahl fehlt nicht
+  // Formate mit mehreren Gruppen lösen wie bisher: der Eintrag verschwindet
+  assert.deepEqual(A.loese({ '10001:200': { group: '21' } }, '10001:200'), {});
+});
+
+test('Einzige Gruppe bekommt eine zweite: nicht mehr automatisch, wieder offen', () => {
+  const p = plan();
+  const c = p.modules[0].components[0];
+  c.groups.push({ ...structuredClone(c.groups[0]), id: '12', key: undefined, name: 'Termingruppe 2' });
+  const b = A.bestand(p);
+  const { selected } = A.auswerten(p, b, {});
+  assert.deepEqual(selected.map((g) => g.key), []);
+  assert.equal(c.selection, null);
+});
+
+test('Wirksame Auswahl für den Export: ausdrücklich gewählt und automatisch, im Speicherformat', () => {
+  const { gruppe } = geladen();
+  const a = A.waehle({}, '10001:200', gruppe('10001:200:22'));
+  const r = geladen(a);
+  assert.deepEqual(A.wirksameAuswahl(r.selected), {
+    '10001:100': { group: '11', digest: r.gruppe('10001:100:11').digest, name: r.gruppe('10001:100:11').name },
+    '10001:200': { group: '22', digest: r.gruppe('10001:200:22').digest, name: r.gruppe('10001:200:22').name },
+  });
+  assert.deepEqual(A.wirksameAuswahl(geladen(A.loese({}, '10001:100', true)).selected), {});
+});
+
+test('Fortschritt: Formate ohne Termine in diesem Semester zählen nicht (querwind, db561642)', () => {
+  const p = plan();
+  p.modules[2].components = [{ id: '10003:1', type: 'SE', groups: [] }, { id: '10003:2', type: 'PJ', groups: [{ id: '1', slots: [], bookings: [] }] }];
+  const b = A.bestand(p);
+  A.auswerten(p, b, {});
+  // drei Formate mit Terminen; 10001:100 ist automatisch eingeplant
+  assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 1 });
+  const g = (key) => b.groups.find((x) => x.key === key);
+  A.auswerten(p, b, { '10001:200': { group: '21', digest: '', name: '' }, '10002:500': { group: '51', digest: '', name: '' } });
+  assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 3 });               // alle eingeplant, trotz zweier Formate ohne Termine
+  assert.equal(g('10001:200:21').selected, true);
 });

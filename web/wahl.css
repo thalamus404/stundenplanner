@@ -6,12 +6,27 @@
   padding: 2px 4px; margin-right: 4px; border-radius: 4px;
   border: 1px solid currentColor; opacity: .8;
 }
-.chip.wp-knopf { border-style: dashed; border-color: var(--grau-9); gap: 6px; }
-.chip.wp-knopf .wp-name { font-weight: 600; }
-.chip.wp-ersatz {
-  background: var(--hinweis-flaeche); border-color: var(--hinweis); color: var(--hinweis-text); font-weight: 600;
+/* Seit V-0225 gibt es keine .chip mehr: Die Knöpfe stehen als eigene Kacheln im Raster der
+   Modulliste und tragen ihr Aussehen selbst (Ziel --zm, am Touch 44 px wie .format). */
+.wp-knopf, .wp-ersatz {
+  min-height: var(--ziel); padding: 4px 12px; border-radius: 12px; border: 1px dashed var(--grau-9);
+  display: flex; align-items: center; gap: 6px; text-align: left; background: var(--grau-1);
 }
-.wp-zeile { align-items: flex-start; text-align: left; white-space: normal; gap: 8px; }
+.wp-knopf .wp-name { font-weight: 600; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-knopf .i, .wp-ersatz .i { width: 16px; height: 16px; flex: none; }
+.wp-ersatz {
+  border-style: solid; background: var(--hinweis-flaeche); border-color: var(--hinweis); color: var(--hinweis-text); font-weight: 600;
+}
+.wp-knopf:focus-visible, .wp-ersatz:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 2px; }
+/* Eine Zeile der Wahlliste: eigenes Layout, nicht von einer Klasse aus stil.css abhängig (die
+   Zeilenknöpfe dort hat V-0225 umgebaut; die Liste lag danach als Fließtext da). */
+.wp-zeile {
+  display: flex; align-items: flex-start; gap: 8px; width: 100%; min-height: var(--ziel);
+  padding: 6px 8px; margin: 0; border-radius: 8px; text-align: left; white-space: normal;
+}
+.wp-zeile:hover { background: var(--grau-3); }
+.wp-zeile:focus-visible { outline: 2px solid var(--grau-10); outline-offset: -2px; }
+.wp-lp { flex: none; white-space: nowrap; }
 .wp-box {
   flex: none; width: 18px; height: 18px; margin-top: 2px; border: 1.5px solid var(--grau-9); border-radius: 4px;
   display: inline-flex; align-items: center; justify-content: center;

@@ -56,7 +56,7 @@
         { "nummer": "40064", "kurz": "GP" }
       ],
       "wahlpflicht": [
-        { "id": "pp", "kurz": "WP Programmierpraktikum", "name": "Wahlpflicht Programmierpraktikum",
+        { "id": "pp", "kurz": "WP Prog.-Praktikum", "name": "Wahlpflicht Programmierpraktikum",
           "modulliste": "wi-bsc-stupo2025-wise-2026-27", "bereich": "Wahlpflichtbereich/Programmierpraktikum",
           "anteil": "6 LP im 4. FS" }
       ],
@@ -70,10 +70,10 @@
       "quelle": "StuPO 2025 (AMBl. TU 04/2026), Anlage 2: exemplarischer Studienverlaufsplan, 5. FS; Wahlpflichtbereiche aus der MTS-Modulliste StuPO 2025, WiSe 2026/27 (abgerufen 05.10.2026). Nach dieser Ordnung studiert im 5. FS erst der Jahrgang 2028/29 regulär",
       "module": [],
       "wahlpflicht": [
-        { "id": "vt-inf", "kurz": "WP Vertiefung Inf", "name": "Wahlpflicht Vertiefung Informatik",
+        { "id": "vt-inf", "kurz": "WP Vert. Inf", "name": "Wahlpflicht Vertiefung Informatik",
           "modulliste": "wi-bsc-stupo2025-wise-2026-27", "bereich": "Wahlpflichtbereich/Vertiefung Informatik",
           "anteil": "18–27 LP über das 5. und 6. FS; in beiden Vertiefungen zusammen mindestens ein Seminar (≥ 3 LP) und ein Projekt (≥ 6 LP)" },
-        { "id": "vt-wiwi", "kurz": "WP Vertiefung WiWi", "name": "Wahlpflicht Vertiefung Wirtschaftswissenschaften",
+        { "id": "vt-wiwi", "kurz": "WP Vert. WiWi", "name": "Wahlpflicht Vertiefung Wirtschaftswissenschaften",
           "modulliste": "wi-bsc-stupo2025-wise-2026-27", "bereich": "Wahlpflichtbereich/Vertiefung Wirtschaftswissenschaften",
           "anteil": "9–18 LP über das 5. und 6. FS" }
       ],
@@ -87,10 +87,10 @@
       "quelle": "StuPO 2025 (AMBl. TU 04/2026), Anlage 2: exemplarischer Studienverlaufsplan, 6. FS; Wahlpflichtbereiche aus der MTS-Modulliste StuPO 2025, WiSe 2026/27 (abgerufen 05.10.2026). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
       "module": [],
       "wahlpflicht": [
-        { "id": "vt-inf", "kurz": "WP Vertiefung Inf", "name": "Wahlpflicht Vertiefung Informatik",
+        { "id": "vt-inf", "kurz": "WP Vert. Inf", "name": "Wahlpflicht Vertiefung Informatik",
           "modulliste": "wi-bsc-stupo2025-wise-2026-27", "bereich": "Wahlpflichtbereich/Vertiefung Informatik",
           "anteil": "18–27 LP über das 5. und 6. FS; in beiden Vertiefungen zusammen mindestens ein Seminar (≥ 3 LP) und ein Projekt (≥ 6 LP)" },
-        { "id": "vt-wiwi", "kurz": "WP Vertiefung WiWi", "name": "Wahlpflicht Vertiefung Wirtschaftswissenschaften",
+        { "id": "vt-wiwi", "kurz": "WP Vert. WiWi", "name": "Wahlpflicht Vertiefung Wirtschaftswissenschaften",
           "modulliste": "wi-bsc-stupo2025-wise-2026-27", "bereich": "Wahlpflichtbereich/Vertiefung Wirtschaftswissenschaften",
           "anteil": "9–18 LP über das 5. und 6. FS" }
       ],

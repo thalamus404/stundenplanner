@@ -1,0 +1,18 @@
+/* Fenster 390 × 600, Touch. Bekannt: Die Seite scrollt senkrecht (erlaubt), nie seitlich. Das Raster
+   ist 400 px hoch und steht unter den Modulen; ganz oben im Fenster (8 px Luft) endet es bei 408, der
+   schwebende Umschalter beginnt bei 600 − 16 − 48 = 536: alles auf einem Schirm. Der Fuß steht am
+   Seitenende über dem Platz, den der Umschalter braucht. „?hoch“ macht das Raster 560 px hoch: Es
+   reicht dann unter den Umschalter. „Woche“ ändert nichts am Raster (die Messung braucht nur den Knopf). */
+html { background: #fff; }
+body { margin: 0; padding: 0 16px 96px; font: 16px/24px system-ui, sans-serif; color: #000; }
+button { font: inherit; margin: 0; padding: 0 12px; min-width: 44px; height: 44px; }
+.module { height: 300px; }
+.raster { position: relative; height: 400px; margin-top: 24px; }
+.hoch .raster { height: 560px; }
+.raster > * { position: absolute; }
+.mo { left: 40px; top: 0; }
+.s8 { left: 0; top: 40px; }
+.s10 { left: 0; top: 376px; }
+.k1 { left: 40px; top: 44px; width: 200px; height: 80px; background: #eee; }
+.umschalter { position: fixed; left: 100px; bottom: 16px; height: 48px; padding: 2px; background: #fff; display: flex; }
+footer { margin-top: 400px; }

@@ -28,7 +28,7 @@
         { "nummer": "70174", "kurz": "InvFin" }
       ],
       "wahlpflicht": [
-        { "id": "pp", "kurz": "WP Programmierpraktikum", "name": "Wahlpflicht Programmierpraktikum",
+        { "id": "pp", "kurz": "WP Prog.-Praktikum", "name": "Wahlpflicht Programmierpraktikum",
           "modulliste": "wi-bsc-stupo2021-sose-2026", "bereich": "Wahlpflichtbereich/Programmierpraktikum",
           "anteil": "6 LP im 4. FS" }
       ]

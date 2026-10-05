@@ -1,7 +1,8 @@
 /* Fenster 400 × 300. Bekannt: die Seite ist 700 px hoch, ein Absatz ragt rechts hinaus, ein Bereich
    scrollt innen, der Knopf „x“ ist 20 × 20, der Chip „TUT“ liegt halb außerhalb, die Kacheln VL und
    UE überlappen, die Kachel IV schneidet ein overflow: hidden ab (halb sichtbar). Der lange Satz
-   wird mit … gekürzt (abgeschnitten); „Luft“ verliert nur die Luft über der Schrift (nicht). */
+   wird mit … gekürzt (abgeschnitten); „Luft“ verliert nur die Luft über der Schrift (nicht).
+   „krumm“ hat 10 px Innenabstand (nicht im 4-px-Raster), „gerade“ 8 und 2 px (im Raster). */
 html { background: #fff; }
 body { margin: 0; font: 14px/20px system-ui, sans-serif; color: #000; position: relative; }
 button { font: inherit; margin: 0; }
@@ -24,3 +25,5 @@ button { font: inherit; margin: 0; }
 .hoch { height: 400px; }
 .kurz { width: 80px; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .luft { display: block; height: 14px; line-height: 14px; font-size: 14px; overflow: hidden; }
+.krumm { position: absolute; left: 280px; top: 0; padding: 10px; }
+.gerade { position: absolute; left: 280px; top: 64px; padding: 8px 2px; margin-top: 12px; }

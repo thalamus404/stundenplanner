@@ -69,6 +69,9 @@ class Messung(unittest.TestCase):
         self.assertNotIn('Teilweise unter der Meldung', unbestimmt)
         # ein einzelnes Zeichen an der (gebrochenen) Kante: keine Pixelreihe der Fläche im Maß
         self.assertNotIn('7', fehler)
+        # im Schatten einer schwebenden Fläche: der Schatten ist kein Grund, gemessen wird der freie Teil
+        self.assertNotIn('Im Schatten einer schwebenden Fläche', fehler)
+        self.assertNotIn('Im Schatten einer schwebenden Fläche', unbestimmt)
         # gesperrte Elemente sind ausgenommen (WCAG)
         self.assertEqual(k['gesperrt'], 1)
         self.assertNotIn('Gesperrt', fehler)
@@ -88,12 +91,34 @@ class Messung(unittest.TestCase):
         self.assertEqual(len(chips), 3)
         self.assertFalse(chips['TUT']['ganz'])
         self.assertTrue(chips['VL']['ganz'] and chips['VL']['frei'])
+        self.assertEqual(m['aussenX'], 2)                        # beide ragen seitlich hinaus
         self.assertEqual(len(m['kacheln']), 4)
         self.assertEqual([s['text'] for s in m['stunden']], ['08', '12'])
         self.assertEqual(m['log']['schreiben'][0]['schluessel'], 'pruef')
         self.assertEqual(m['log']['resize'], 1)
         self.assertTrue(m['pflicht']['impressum']['ok'])
         self.assertFalse(m['pflicht']['speicher']['ok'])
+
+    def test_handy(self):
+        # V-0225: am Handy darf die Seite senkrecht scrollen; Raster und Umschalter auf einem Schirm,
+        # der Fuß am Seitenende.
+        m = sicht.lauf({'fenster': (390, 600), 'touch': True, 'schema': 'light', 'url': self.url + 'handy.html'})
+        erw = {'je_tag': {0: 1}, 'gesamt': 1, 'achse': [8, 10], 'tage': [0, 1, 2, 3, 4], 'bestandteile': 1}
+        self.assertEqual(sicht.schirm_probleme(m['schirm'], erw, True), [])
+        self.assertIsNotNone(m['woche'])                          # der Knopf „Woche“ wurde gefunden
+        self.assertTrue(all(sicht.pflicht_ok(m, k) for k in ('inoffiziell', 'impressum', 'datenschutz', 'speicher')))
+        bf = sicht.Befund()
+        sicht.bewerten_lauf(bf, {'fenster': (390, 600), 'touch': True, 'schema': 'light', 'auswahl': 'leer'}, m, erw)
+        self.assertEqual(bf.status('1'), sicht.OK)                # scrollt nur senkrecht
+        self.assertEqual(bf.status('33'), sicht.OK)
+        self.assertEqual(bf.status('1h'), sicht.OK)
+        hoch = sicht.lauf({'fenster': (390, 600), 'touch': True, 'schema': 'light', 'url': self.url + 'handy.html?hoch'})
+        self.assertTrue(any('unter den Umschalter' in p for p in sicht.schirm_probleme(hoch['schirm'], erw, True)))
+
+    def test_abstaende_im_raster(self):
+        m = self.messen('layout.html', 400, 300)
+        self.assertTrue(any('div.krumm' in a and 'paddingTop 10 px' in a for a in m['abstand']), m['abstand'])
+        self.assertFalse(any('div.gerade' in a for a in m['abstand']), m['abstand'])
 
     def test_abgeschnitten(self):
         z = sicht.lauf_zoom({'fenster': (400, 300), 'touch': False, 'schema': 'light', 'url': self.url + 'layout.html'})
