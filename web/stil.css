@@ -538,6 +538,7 @@ details[open] > summary::before { transform: rotate(45deg); }
   .h-mitte { justify-content: flex-start; padding: 24px 0 32px; }
   .h-option { min-height: 56px; }
   .h-zeile { grid-template-columns: minmax(0, 1fr) auto; }
+  .h-zeile dt { align-self: center; }
   .h-zeile dd { grid-column: 1; }
   .h-zeile .leise { grid-row: 1; grid-column: 2; }
   .h-aktionen .knopf.haupt { flex: 1 1 100%; height: 48px; }

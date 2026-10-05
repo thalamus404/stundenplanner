@@ -1439,7 +1439,11 @@ def lauf(spec: dict) -> dict:
         page, ereignis, offen, eigen = _seite(ctx, spec)
         t0 = time.monotonic()
         page.goto(spec['url'], wait_until='load', timeout=30000)
-        ruhig = _warten(page, offen)
+        # Erwartet der Lauf Kacheln, wird auf die erste gewartet: Die Seite zeichnet das Raster in einer
+        # eigenen Aufgabe nach Kopf und Modulen (TBT, DESIGN §6). Unter Last (vier Browser, der große
+        # Stressfall) lag dazwischen mehr als die 300 ms Ruhe, und gemessen wurde ein Plan mit Modulen,
+        # aber ohne Raster („0 Kacheln, Soll 54“, 1920 × 1080, 05.10.2026, V-0234).
+        ruhig = _warten(page, offen, kachel=bool(spec.get('kachel')))
         mess = page.evaluate(MESSEN_JS, {'pflicht': PFLICHT, 'tokens': token_namen()})
         mess['ruhig'] = ruhig
         mess['dauer_s'] = round(time.monotonic() - t0, 2)
@@ -2589,13 +2593,14 @@ def main(argv=None) -> int:
         for schema in SCHEMEN:
             for aw in auswahlen:
                 sel = auswahl_bauen(plan, aw)
+                erw = erwartung(plan, sel)
                 spec = {'fenster': (w, h), 'touch': touch, 'schema': schema, 'auswahl': aw, 'url': seite,
                         'speicher': {'name': speicher_schluessel(plan), 'value': speicher_wert(sel)} if sel else None,
-                        'bilder': bildpfad(f'{w}x{h}-{schema}-{aw}')}
-                specs.append(('lauf', spec, erwartung(plan, sel)))
+                        'bilder': bildpfad(f'{w}x{h}-{schema}-{aw}'), 'kachel': erw['gesamt'] > 0}
+                specs.append(('lauf', spec, erw))
         if not a.schnell:
             spec = {'fenster': (w, h), 'touch': touch, 'schema': 'light', 'auswahl': 'stress', 'url': url + f'#plan={STRESS_ID}',
-                    'stress': stress_daten, 'bilder': bildpfad(f'{w}x{h}-stress')}
+                    'stress': stress_daten, 'bilder': bildpfad(f'{w}x{h}-stress'), 'kachel': True}
             specs.append(('lauf', spec, erw_stress))
     gross = (1280, 800) if (1280, 800) in fenster or not a.fenster else fenster[-1]
     klein = (390, 844) if (390, 844) in fenster or not a.fenster else fenster[0]
