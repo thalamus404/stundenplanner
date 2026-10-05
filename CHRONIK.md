@@ -12,6 +12,13 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 05.10.2026 abends — Der fertige Plan als Bild vor Kalender und Speichern (V-0253)
+
+- Silas: „nicht gleich der Download …, sondern der finale fertige Stundenplan … 75 % des Fullscreens …
+  Hintergrund gedimmt“. „In Kalender übernehmen“ und „Stundenplan speichern“ öffnen jetzt einen großen
+  Dialog mit dem Plan als Bild (nur das Eingeplante, ohne Knöpfe), darunter „In eigenen Kalender
+  exportieren“ bzw. der Link. Neues Modul `web/bild.mjs`, lädt erst bei Bedarf.
+
 ## 05.10.2026 abends — Silas klickt sich durch (V-0251)
 
 - **Pfeiltasten-Tipp:** Silas hatte ihn nie gesehen (90 s nach dem ersten Filter, nach 12 s weg). Jetzt

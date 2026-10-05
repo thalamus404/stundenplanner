@@ -219,16 +219,20 @@ function zuruecksetzen() {
  * mit allen Apps). Ein Lesezeichen kann keine Seite selbst setzen; solange die Fläche offen ist, steht
  * der Link deshalb in der Adresse, und die Fläche sagt, welche Taste oder welcher Tipp es anlegt.
  */
-function teilen() {
+async function teilen() {
   const weg = A.teilenWeg({ anzahl: selected.length, vorschau: !!vorschau, share: typeof navigator.share === 'function', grob: grob.matches });
   if (weg === 'vorschau') { melde('Erst den geteilten Plan übernehmen oder verwerfen.'); return; }
   if (weg === 'leer') { melde('Plane zuerst eine Gruppe ein. Dann speichert „Stundenplan speichern“ deinen Plan als Link.'); return; }
+  await bildLaden();
   const frag = A.teilenFragment(plan, teilbareAuswahl());
   const url = location.href.split('#')[0] + frag;
   history.replaceState(null, '', location.pathname + location.search + frag);
   const teilenKnopf = typeof navigator.share === 'function' ? `<button type="button" class="knopf" data-act="system-teilen">${ic('teilen')}Teilen</button>` : '';
-  oeffne('blatt', 'Stundenplan speichern', `<p>Der Link enthält deinen Stundenplan (${esc(mehrzahl(selected.length, 'eingeplante Gruppe', 'eingeplante Gruppen'))}). Wer ihn öffnet, sieht genau diese Auswahl. Er liegt auf keinem Server.</p><input class="feld" id="teilen-link" readonly value="${esc(url)}" aria-label="Link zu deinem Stundenplan"><div class="e-aktionen"><button type="button" class="knopf haupt" data-act="kopieren" data-fokus>${ic('kopieren')}Kopieren</button><button type="button" class="knopf" data-act="lesezeichen">${ic('lesezeichen')}Lesezeichen</button>${teilenKnopf}</div><p class="klein" id="lz-text" hidden></p>`,
-    { klasse: 'speichern', zurueck: () => $('teilen'), zu: adresseOhneAuswahl });
+  // Seit V-0253 mit dem Bild des fertigen Plans darüber (Silas: „damit man weiß, was man da genau
+  // exportiert“), als großer Dialog wie beim Kalender; am Handy ein Blatt von unten.
+  oeffne('dialog', 'Stundenplan speichern', `${planBild()}<p>Der Link enthält deinen Stundenplan (${esc(mehrzahl(selected.length, 'eingeplante Gruppe', 'eingeplante Gruppen'))}). Wer ihn öffnet, sieht genau diese Auswahl. Er liegt auf keinem Server.</p><input class="feld" id="teilen-link" readonly value="${esc(url)}" aria-label="Link zu deinem Stundenplan"><div class="e-aktionen"><button type="button" class="knopf haupt" data-act="kopieren" data-fokus>${ic('kopieren')}Kopieren</button><button type="button" class="knopf" data-act="lesezeichen">${ic('lesezeichen')}Lesezeichen</button>${teilenKnopf}</div><p class="klein" id="lz-text" hidden></p>`,
+    { klasse: 'speichern plan-bild', zurueck: () => $('teilen'), zu: adresseOhneAuswahl, hinter: 'tief' });
+  bildLegen();
 }
 
 async function linkKopieren() {
@@ -264,17 +268,52 @@ async function systemTeilen() {
 // langes await weiter: Ist das Modul beim Klick schon da, läuft der Export ohne Warten. Fehlt die
 // Datei oder scheitert sie, sagt eine Meldung das; die Seite bricht nicht. Exportiert wird die
 // wirksame Auswahl, also auch die automatisch eingeplanten Formate.
-let ics = null;
+let ics = null, bild = null;
 const icsLaden = () => (ics ? Promise.resolve(ics) : import('./ics.mjs').then((m) => (ics = m), () => null));
-for (const t of ['pointerdown', 'keydown']) document.addEventListener(t, icsLaden, { once: true, capture: true });
+// Das Bild des fertigen Plans (V-0253) lädt ebenso erst bei der ersten Bedienung.
+const bildLaden = () => (bild ? Promise.resolve(bild) : import('./bild.mjs').then((m) => (bild = m), () => null));
+for (const t of ['pointerdown', 'keydown']) document.addEventListener(t, () => { icsLaden(); bildLaden(); }, { once: true, capture: true });
 
+/** Das Bild des fertigen Plans für Kalender und Speichern: nur das Eingeplante, Überschneidungen mit Ring.
+ *  Fehlt bild.mjs (Netz), geht es ohne Bild weiter. */
+function planBild() {
+  if (!bild) return '';
+  const konflikt = new Set(paare.flatMap((p) => [p.a.key, p.b.key]));
+  return bild.planBildHtml({ gruppen: selected, konflikt, titel: planName(plan), module: plan.modules });
+}
+const bildLegen = () => { if (bild && offen) bild.planBildLegen(offen.el); };
+
+/**
+ * „In Kalender übernehmen“ (Silas, 05.10.2026, V-0253): nicht gleich der Download, sondern erst der
+ * fertige Plan als Bild, groß, der Hintergrund gedimmt, darunter „In eigenen Kalender exportieren“.
+ * Der Download startet erst mit diesem Knopf, also mit einer eigenen Geste (Safari, siehe oben).
+ */
 async function kalender() {
   if (!selected.length) { melde('Plane zuerst eine Gruppe ein (Vorschläge mit „Einplanen“). Dann übernimmt der Knopf deinen Plan in den Kalender.'); return; }
-  const I = ics || await icsLaden();
+  const [I] = await Promise.all([icsLaden(), bildLaden()]);
+  if (!I) { melde('Der Kalender-Export geht gerade nicht. Versuch es später noch einmal.'); return; }
+  const termine = I.icsTermine(plan, A.wirksameAuswahl(selected));
+  if (!termine.length) { melde(I.ICS_TEXTE.leer); return; }
+  const geraet = I.kalenderGeraet(navigator.userAgent, navigator.maxTouchPoints);
+  const satz = bild ? bild.kalenderSatz(selected, termine) : mehrzahl(termine.length, 'Termin', 'Termine');
+  const offenNoch = fort.n - fort.k;
+  const zusatz = [paare.length ? `<span class="pb-rot">${ic('warn')}${esc(mehrzahl(paare.length, 'Überschneidung', 'Überschneidungen'))}</span>` : '',
+    offenNoch > 0 ? esc(`Noch nicht eingeplant: ${offenNoch} von ${fort.n} Formaten. Vorschläge kommen erst nach „Einplanen“ in den Kalender.`) : ''].filter(Boolean).join(' ');
+  oeffne('dialog', 'In Kalender übernehmen', `${planBild()}<p class="pb-zeile"><b>${esc(satz)}${satz.endsWith('.') ? '' : '.'}</b>${zusatz ? ' ' + zusatz : ''}</p><div class="e-aktionen"><button type="button" class="knopf haupt" data-act="ics-los" data-fokus>${ic('kalender')}In eigenen Kalender exportieren</button></div><p class="klein">${esc(I.ICS_TEXTE[geraet] || '')} ${esc(I.ICS_TEXTE.abzug)}</p>`,
+    { klasse: 'plan-bild', zurueck: () => $('kalender'), hinter: 'tief' });
+  bildLegen();
+}
+
+/** Der Knopf im Bild: die Datei aus genau dieser Auswahl, dann zu, und die Meldung sagt, was das Gerät tut. */
+function kalenderLos() {
+  const I = ics;
+  if (!I) return;
   try {
     const datei = I.icsHerunterladen(plan, A.wirksameAuswahl(selected));
     if (!datei.termine) { melde(I.ICS_TEXTE.leer); return; }
-    melde(I.ICS_TEXTE[I.icsAnstossen(datei)] || 'Die Kalenderdatei ist erstellt.');
+    const geraet = I.icsAnstossen(datei);
+    schliesse();
+    melde(I.ICS_TEXTE[geraet] || 'Die Kalenderdatei ist erstellt.');
   } catch {
     melde('Der Kalender-Export geht gerade nicht. Versuch es später noch einmal.');
   }
@@ -742,12 +781,12 @@ const EBENEN = {
 // Eine Ebene zur Zeit (§3.5). Ab 768 px Karte an ihrem Anker oder Dialog, darunter ein Blatt von unten.
 let offen = null, ebeneNr = 0;
 
-function oeffne(art, kopf, inhalt, { anker = null, wo = 'unten', klasse = '', zurueck = null, neu = null, zu = null } = {}) {
+function oeffne(art, kopf, inhalt, { anker = null, wo = 'unten', klasse = '', zurueck = null, neu = null, zu = null, hinter = '' } = {}) {
   schliesse(true);
   const nr = ++ebeneNr;
   // Eine Karte ohne Anker (etwa „Zum Modul“ aus einer anderen Karte) wird ein Dialog in der Mitte.
   const typ = handy.matches ? 'blatt' : art === 'karte' && !anker ? 'dialog' : art;
-  $('ebenen').innerHTML = `<div class="hinter${typ === 'karte' ? ' leer' : ''}"${typ === 'karte' ? ' hidden' : ''}></div><section class="ebene ${typ} ${klasse}" role="dialog" aria-modal="${typ !== 'karte'}" aria-labelledby="e-titel"><div class="e-kopf"><h2 class="e-titel" id="e-titel">${esc(kopf)}</h2><button type="button" class="e-zu" data-act="zu" aria-label="Schließen">${ic('kreuz')}</button></div><div class="e-inhalt${klasse.includes('lesen') ? ' lesen' : ''}">${inhalt}</div></section>`;
+  $('ebenen').innerHTML = `<div class="hinter${typ === 'karte' ? ' leer' : ''}${hinter ? ' ' + hinter : ''}"${typ === 'karte' ? ' hidden' : ''}></div><section class="ebene ${typ} ${klasse}" role="dialog" aria-modal="${typ !== 'karte'}" aria-labelledby="e-titel"><div class="e-kopf"><h2 class="e-titel" id="e-titel">${esc(kopf)}</h2><button type="button" class="e-zu" data-act="zu" aria-label="Schließen">${ic('kreuz')}</button></div><div class="e-inhalt${klasse.includes('lesen') ? ' lesen' : ''}">${inhalt}</div></section>`;
   const el = $('ebenen').querySelector('.ebene');
   offen = { el, typ, anker, wo, zurueck: zurueck || (anker ? () => anker : null), neu, nr, zu };
   if (typ === 'karte' && anker) platziere();
@@ -1028,6 +1067,7 @@ const AKTIONEN = {
     if (ziel && b.closest('.ebene')) ziel.focus({ preventScroll: true });
   },
   kalender: () => kalender(),
+  'ics-los': () => kalenderLos(),
   geprueft: (b) => { const g = finde(b.dataset.key); if (g && !vorschau) aendere(A.bestaetige(eigene, g.component_id, g)); },
   loesen: (b) => { if (!vorschau) aendere(A.loese(eigene, b.dataset.teil)); },
   // Reiter, Tageskopf der Woche oder Kachel der Wochenübersicht: zeigt den Tag groß.

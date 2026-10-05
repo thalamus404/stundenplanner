@@ -520,12 +520,20 @@ eingeplant“ nicht auf (querwind, V-0228).
    „Änderung geprüft“ in den Hinweisen.
 8. **Eine echte Woche ansehen.** Zeitraum „Woche ab 19.10.“ oder ‹ ›.
 9. **Tag oder Woche.** Der Umschalter; am Handy zeigt ein Tipp in der kleinen Woche den Tag groß.
-10. **In den Kalender.** „In Kalender übernehmen“ erzeugt im Browser eine iCal-Datei der wirksamen
-    Auswahl (nur Eingeplantes, keine Vorschläge, V-0237) und stößt sie an (`web/ics.mjs`, V-0231). Eine Meldung sagt
-    in einem Satz, was am Gerät jetzt passiert. Ohne Wahl sagt sie, was fehlt.
+10. **In den Kalender.** „In Kalender übernehmen“ zeigt zuerst den fertigen Plan als Bild (V-0253, Silas:
+    „nicht gleich der Download …, sondern der finale fertige Stundenplan … als quasi Picture-in-Picture, 75 %
+    des Fullscreens, … Hintergrund gedimmt, und darunter: in eigenen Kalender exportieren“): ein großer
+    Dialog, drei Viertel der Fensterbreite, der Hintergrund tiefer gedimmt (0,48), er schiebt sich von unten
+    herauf; am Handy ein Blatt. Darin nur das Eingeplante, ohne Knöpfe und Filter, Überschneidungen mit Ring
+    (`web/bild.mjs`), darunter ein Satz („9 Termingruppen, 123 Termine vom 12.10. bis 12.02.“, dazu
+    Überschneidungen und noch offene Formate), der Knopf **„In eigenen Kalender exportieren“** und, was das
+    Gerät danach tut. Erst dieser Knopf erzeugt die iCal-Datei der wirksamen Auswahl (nur Eingeplantes, keine
+    Vorschläge, V-0237) und stößt sie an (`web/ics.mjs`, V-0231); die Meldung sagt es noch einmal. Ohne Wahl
+    sagt eine Meldung, was fehlt.
 11. **Stundenplan speichern** (V-0224 als „Teilen“, Fläche seit V-0237, Name seit V-0243): Der Knopf ist
     nie gesperrt; ohne Eingeplantes sagt eine Meldung, was fehlt. Sonst schiebt sich von unten die
-    Fläche **„Stundenplan speichern“** herein
+    Fläche **„Stundenplan speichern“** herein (seit V-0253 ein großer Dialog wie beim Kalender, oben das
+    Bild des fertigen Plans: „damit man weiß, was man da genau exportiert“; am Handy ein Blatt)
     (auf jeder Breite ein Blatt, am Rechner mittig, höchstens 640 px; bei reduzierter Bewegung nur
     Deckkraft): ein Satz, was der Link enthält, das Feld mit dem Link, „Kopieren“ (Hauptaktion),
     „Lesezeichen“ und, wo es das Teilen-Menü des Systems gibt (`navigator.share`), „Teilen“ (am
@@ -923,9 +931,9 @@ zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als Symbole
 |---|---|---|
 | Bibliotheken, Frameworks, Webfonts, CDN | **keine** | ARCHITEKTUR §8 |
 | HTML | ≤ 17 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms, der Schriftzug als Pfad (3,9 KB, inline statt einer eigenen Anfrage vor der ersten Kachel; V-0243), der Pfeiltasten-Tipp (V-0246). Bis V-0234: 10 KB, bis V-0243: 11 KB, bis V-0246: 16 KB |
-| CSS | ≤ 53 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, bis V-0246: 44 KB, bis V-0250: 47 KB; dazu kamen Startbildschirm, Legende links, Fuß und Tipp, in V-0251 die Tokens für eingeplant und Vorschlag je Schema, 48 Zeilen, siehe unten) |
-| JavaScript | ≤ 134 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB, bis V-0237: 120 KB). `ics.mjs` lädt erst bei der ersten Bedienung und zählt hier nicht |
-| Code zusammen, komprimiert | **≤ 70 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB, bis V-0246: 64 KB, bis V-0250: 66 KB; dazu kamen der Schriftzug, 1,9 KB, der Verlauf der Ansichten und der Tipp, in V-0251 die Farben je Schema, das Info-Symbol und die Pfeile nach einem Klick) |
+| CSS | ≤ 56 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, bis V-0246: 44 KB, bis V-0250: 47 KB, bis V-0251: 53 KB, dazu in V-0253 der Dialog mit dem Bild des Plans; dazu kamen Startbildschirm, Legende links, Fuß und Tipp, in V-0251 die Tokens für eingeplant und Vorschlag je Schema, 48 Zeilen, siehe unten) |
+| JavaScript | ≤ 138 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB, bis V-0237: 120 KB). `ics.mjs` und `bild.mjs` (V-0253) laden erst bei der ersten Bedienung und zählen hier nicht |
+| Code zusammen, komprimiert | **≤ 72 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB, bis V-0246: 64 KB, bis V-0250: 66 KB; dazu kamen der Schriftzug, 1,9 KB, der Verlauf der Ansichten und der Tipp, in V-0251 die Farben je Schema, das Info-Symbol und die Pfeile nach einem Klick) |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
 | Anfragen bis zum fertigen Raster | ≤ 10, alle vom eigenen Ort und **ohne Kaskade**: Das HTML nennt CSS und jedes Modul (`modulepreload`), sie laden parallel | HTML, CSS, die Module, `index.json`, Plan-Datei (bis 05.10.2026: 6) |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
@@ -1001,6 +1009,12 @@ Bytes steigen auf CSS ≤ 53 KB, JS ≤ 134 KB, gzip ≤ 70 KB; die Grenzen der 
 großen Teile (Vorschau vor Kalender und Speichern, Melden, Tutorial) laden erst bei Bedarf, wie `ics.mjs`,
 und zählen nicht hierher. **Offen bei Silas (§9 Punkt 4):** ein Auslieferschritt, der Kommentare entfernt,
 spart etwa ein Drittel der Bytes, bricht aber „kein Build“.
+
+**V-0253 (Vorschau vor Kalender und Speichern), technisch:** Das Bild selbst steht in `bild.mjs` und lädt
+bei Bedarf; der Dialog dazu kostet 1,5 KB CSS und 3 KB JS in `app.js` (Kalender in zwei Schritten, Speichern
+mit Bild). CSS ≤ 56 KB, JS ≤ 138 KB, gzip ≤ 72 KB; LCP, CLS und TBT unverändert. Die Grenzen sind seit V-0225
+sechsmal gestiegen, jedes Mal wegen Kommentaren und Bedienung, nie wegen der Wirkung: Die Frage nach dem
+Auslieferschritt (§9 Punkt 4) ist reif.
 
 Zwei Dinge, die die Blockierzeit gedrückt haben und so bleiben müssen: **kein `Intl`** (ein
 `Intl.Collator` und ein `Intl.DateTimeFormat` mit Zeitzone kosteten beim Laden zusammen 90 ms im
@@ -1238,6 +1252,9 @@ machen.“
 52. **Hell eingeplant in Pastell:** „Der Dark Mode sieht super aus, aber der Light Mode geht gar nicht.“ Eingeplante
     Kacheln tragen hell die Pastellfläche wie die Formate links, Vorschläge eine noch hellere; dunkel bleibt
     pixelgleich (§3.2, §5.3; Tokens `--mN-wahl`, `--mN-wahl-text`, `--mN-vor`).
+53. **Vorschau vor Kalender und Speichern** (Punkt 37e78bfb, gebaut in V-0253): der fertige Plan als Bild,
+    drei Viertel des Fensters, Hintergrund gedimmt, darunter „In eigenen Kalender exportieren“ bzw. der Link
+    (§4.2, Schritte 10 und 11).
 
 ---
 
