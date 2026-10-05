@@ -9,6 +9,8 @@ import { esc, link, stamp, plusTage, tagMonat } from './text.mjs';
 import * as A from './auswahl.mjs';
 import * as W from './woche.mjs';
 import * as R from './raster.mjs';
+// Wahlpflicht (V-0227, Demo-Strang): die Logik in wahl.mjs, hier nur Laden, Zeichnen, Bedienen.
+import * as WP from './wahl.mjs';
 
 const $ = (id) => document.getElementById(id);
 const TAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
@@ -31,6 +33,9 @@ let vorschau = null;      // ein geöffneter Teilen-Link: { link, auswahl, unbek
 let selected = [], missing = [], paare = [], partner = new Map(), ax = { von: 8, bis: 18 }, tageZahl = 5, wochen = [], hatAB = false;
 let wocheMq = null;       // passt die ganze Woche in dieses Fenster? (DESIGN §3.3)
 let navi = [];            // Kacheln je sichtbarer Spalte, für die Pfeiltasten
+// Wahlpflicht: der Plan, wie er geladen wurde; die geladenen Moduldateien (Nummer → Modul); die in
+// dieser Sitzung dazugenommenen Module (nicht gespeichert, wahl.mjs erklärt warum).
+let vollplan = null, wpGeladen = new Map(), wpExtra = new Set();
 
 // ── Laden ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -45,7 +50,8 @@ async function holeJson(pfad) {
 
 const planName = (p) => {
   const sg = typeof p.studiengang === 'object' && p.studiengang ? p.studiengang : { id: p.studiengang, name: p.name, abschluss: p.abschluss };
-  return `${sg.name || sg.id}${sg.abschluss ? ' ' + sg.abschluss : ''}, ${p.fachsemester}. Fachsemester, ${p.label || p.semester}`;
+  const ordnung = p.ordnung || sg.ordnung;
+  return `${sg.name || sg.id}${sg.abschluss ? ' ' + sg.abschluss : ''}${ordnung ? ` (${ordnung})` : ''}, ${p.fachsemester}. Fachsemester, ${p.label || p.semester}`;
 };
 
 function rasterText(html) {
@@ -89,6 +95,9 @@ async function planLaden(eintrag, verweis) {
     rasterText('<p>Die Termine konnten nicht geladen werden.</p><button type="button" class="knopf" data-act="start">Erneut versuchen</button>');
     return;
   }
+  wpExtra = new Set();
+  wpGeladen = new Map();   // Moduldateien gelten je Semester: beim Planwechsel nichts mitnehmen
+  await wpLaden(p, [...Object.keys(A.ladeAuswahl(speicher, A.speicherSchluessel(p))), ...(verweis ? Object.keys(verweis.paare) : [])]);
   setzePlan(p);
   vorschau = verweis ? { link: verweis, ...A.geteilteAuswahl(bestand, verweis.paare) } : null;
   // Erst Kopf, Module und Werkzeug, das Raster in einer eigenen Aufgabe danach: So blockiert keine
@@ -102,12 +111,14 @@ async function planLaden(eintrag, verweis) {
 
 function setzePlan(p) {
   const vorher = schluessel;
-  plan = p;
-  plan.modules = Array.isArray(plan.modules) ? plan.modules : [];
-  plan.studiengang = typeof plan.studiengang === 'object' && plan.studiengang ? plan.studiengang : { id: String(plan.studiengang) };
-  bestand = A.bestand(plan);
-  schluessel = A.speicherSchluessel(plan);
+  vollplan = p;
+  vollplan.modules = Array.isArray(vollplan.modules) ? vollplan.modules : [];
+  vollplan.studiengang = typeof vollplan.studiengang === 'object' && vollplan.studiengang ? vollplan.studiengang : { id: String(vollplan.studiengang) };
+  schluessel = A.speicherSchluessel(vollplan);
   eigene = A.ladeAuswahl(speicher, schluessel);
+  // Pflichtmodule und die aktiven Wahlpflichtmodule (wahl.mjs); ohne Wahlpflicht derselbe Plan.
+  plan = WP.sicht(vollplan, wpGeladen, WP.aktiv(vollplan, Object.keys(eigene), wpExtra));
+  bestand = A.bestand(plan);
   ax = R.achse(bestand.groups);
   tageZahl = R.tagesZahl(bestand.groups);
   wochen = W.wochen(bestand.groups);
@@ -118,6 +129,43 @@ function setzePlan(p) {
   if (wocheMq) wocheMq.removeEventListener('change', render);
   wocheMq = matchMedia(`(min-width: ${R.wochenBreite(R.dichteste(bestand.groups), tageZahl)}px)`);
   wocheMq.addEventListener('change', render);
+}
+
+/** Lädt die Moduldateien der Wahlpflichtmodule, die `kennungen` (Bestandteile) oder wpExtra nennen. */
+async function wpLaden(p, kennungen) {
+  if (!p.wahlpflicht) return;
+  const fehlt = WP.fehlendeDateien(p, WP.aktiv(p, kennungen, wpExtra), wpGeladen).filter((x) => SICHERER_PFAD.test(x.datei));
+  await Promise.all(fehlt.map(async (x) => {
+    try {
+      const d = await holeJson('daten/' + x.datei);
+      if (d && d.module && d.module.number === x.nummer) wpGeladen.set(x.nummer, d.module);
+    } catch { /* fehlt die Datei, bleibt das Modul ungeladen; die Auswahl darin meldet sich als „nicht mehr im Angebot“ */ }
+  }));
+}
+
+/** Ein Wahlpflichtmodul dazunehmen oder weglassen (aus der Liste „Wahlpflicht“). */
+async function wpUmschalten(nr) {
+  const an = WP.aktiv(vollplan, Object.keys(eigene), wpExtra).has(nr);
+  if (!an) {
+    wpExtra.add(nr);
+    await wpLaden(vollplan, Object.keys(eigene));
+    if (!wpGeladen.has(nr)) { wpExtra.delete(nr); melde('Das Modul konnte nicht geladen werden.'); return; }
+    setzePlan(vollplan);
+    render();
+    sage(`${(WP.angebot(vollplan).get(nr) || { eintrag: { title: nr } }).eintrag.title}: dazugenommen.`);
+    return;
+  }
+  const weg = () => {
+    wpExtra.delete(nr);
+    let neu = eigene;
+    for (const cid of Object.keys(eigene)) if (WP.modulVon(cid) === nr) neu = A.loese(neu, cid);
+    if (neu !== eigene) { eigene = neu; gespeichert = A.speichereAuswahl(speicher, schluessel, eigene); }
+    setzePlan(vollplan);
+    render();
+  };
+  const n = Object.keys(eigene).filter((cid) => WP.modulVon(cid) === nr).length;
+  if (n && !vorschau) frage('Modul weglassen?', `Deine Auswahl darin (${mehrzahl(n, 'Gruppe', 'Gruppen')}) wird gelöst.`, 'Weglassen', weg);
+  else if (!n) weg();
 }
 
 // ── Auswahl ändern — nur auf Handlung des Nutzers, nur hier wird geschrieben ───────────────────
@@ -249,7 +297,8 @@ function zeichne(mitRaster) {
   renderModule();
   renderWerkzeug();
   renderLeiste();
-  if (mitRaster) renderRaster();
+  if (mitRaster && !plan.modules.length && vollplan.wahlpflicht) rasterText(`<p>In diesem Fachsemester wählst du deine Module selbst: Nimm aus einem Wahlpflichtbereich ein Modul dazu, dann erscheinen seine Gruppen hier.</p><p class="wp-start">${wpKnoepfe()}</p>`);
+  else if (mitRaster) renderRaster();
   renderFuss();
   auffrischen();
 }
@@ -296,10 +345,44 @@ function chip(c, m) {
 }
 
 function renderModule() {
-  $('module').innerHTML = plan.modules.map((m, i) => {
+  // Ersatzdaten (V-0227) stehen vorn, auf jeder Breite sichtbar: Sie sind nicht die Termine des Plans.
+  const ersatz = plan.ersatz_fuer ? `<button type="button" class="chip wp-ersatz" data-act="ebene" data-ebene="stand" title="Termine des ${esc(plan.label || plan.semester)} als Ersatz">${ic('hinweis')}Ersatzdaten, nicht ${esc(plan.ersatz_fuer)}</button>` : '';
+  $('module').innerHTML = ersatz + plan.modules.map((m, i) => {
     const warn = m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : '';
-    return `<div class="modul m${(i % 8) + 1}"><button type="button" class="modul-name" data-act="modul" data-m="${i}" aria-label="${esc(m.short)}: Modul-Infos${warn ? ', mit Hinweis' : ''}"><span class="punkt"></span>${esc(m.short)}${warn}</button>${m.components.map((c) => chip(c, m)).join('')}</div>`;
+    const wp = m.wahl ? `<span class="wp-marke" title="Wahlpflicht: ${esc(m.wahl.join(', '))}">WP</span>` : '';
+    return `<div class="modul m${(i % 8) + 1}"><button type="button" class="modul-name" data-act="modul" data-m="${i}" aria-label="${esc(m.short)}${m.wahl ? ', Wahlpflicht' : ''}: Modul-Infos${warn ? ', mit Hinweis' : ''}"><span class="punkt"></span>${wp}${esc(m.short)}${warn}</button>${m.components.map((c) => chip(c, m)).join('')}</div>`;
+  }).join('') + wpKnoepfe();
+}
+
+/** Je Wahlpflichtbereich ein Knopf: Name und gewählte LP; öffnet die Liste zum Dazunehmen. */
+function wpKnoepfe() {
+  if (!vollplan || !vollplan.wahlpflicht) return '';
+  const aktive = WP.aktiv(vollplan, Object.keys(eigene), wpExtra);
+  return vollplan.wahlpflicht.map((wp) => {
+    const st = WP.lpStand(wp, aktive);
+    return `<button type="button" class="chip wp-knopf" data-act="wp" data-wp="${esc(wp.id)}" aria-label="${esc(wp.name || wp.kurz)}: ${st.lp} LP gewählt, ${wp.angebot.length} Module mit Terminen">${ic('unten')}<span class="wp-name">${esc(wp.kurz || wp.id)}</span>${st.lp} LP</button>`;
   }).join('');
+}
+
+function inhaltWahl(id) {
+  const aktive = WP.aktiv(vollplan, Object.keys(eigene), wpExtra);
+  const teile = [];
+  if (vollplan.ersatz_fuer) teile.push(`<div class="signal gelb"><p class="zeile">${ic('hinweis')}<span><b>Ersatzdaten:</b> Für das ${esc(vollplan.ersatz_fuer)} hat MOSES noch keine Termine. Gezeigt werden die echten Termine des ${esc(vollplan.label || vollplan.semester)}.</span></p></div>`);
+  for (const wp of vollplan.wahlpflicht.filter((x) => !id || x.id === id)) {
+    const st = WP.lpStand(wp, aktive);
+    const grenze = st.min !== null || st.max !== null ? `${st.min ?? 0}${st.max !== null && st.max !== st.min ? '–' + st.max : ''} LP im ganzen Bereich` : '';
+    teile.push(`<section><h3>${esc(wp.name || wp.kurz)}</h3><p class="klein">${esc(wp.anteil || '')}${grenze ? ` · ${grenze}` : ''} · gewählt ${st.lp} LP${st.ueber ? ' (mehr, als der Bereich zählt)' : ''}</p>`);
+    teile.push(WP.sortiert(wp, aktive).map((e) => {
+      const an = aktive.has(e.number);
+      return `<button type="button" class="zeile-knopf wp-zeile" data-act="wp-modul" data-nr="${esc(e.number)}" aria-pressed="${an}"><span class="wp-box">${an ? ic('haken') : ''}</span><span><b>${esc(e.title)}</b><br><span class="klein">${esc(e.lp)} LP${e.unterbereich ? ' · ' + esc(e.unterbereich) : ''} · ${esc(WP.lageText(e))}</span></span></button>`;
+    }).join('') || '<p>Kein Modul dieses Bereichs hat Termine in diesem Semester.</p>');
+    if ((wp.ohne_termine || []).length) teile.push(`<details><summary>${mehrzahl(wp.ohne_termine.length, 'Modul', 'Module')} ohne Termine in diesem Semester</summary><ul class="termine">${wp.ohne_termine.map((e) => `<li>${esc(e.title)} (${esc(e.lp)} LP): ${esc(e.grund)}</li>`).join('')}</ul></details>`);
+    const ml = wp.modulliste || {};
+    teile.push(`<p class="klein">Liste: MOSES, ${esc(ml.ordnung || '')}, Modulliste ${esc(ml.liste || '')}. ${link(ml.quelle, 'Studiengang in MOSES')}</p></section>`);
+  }
+  for (const f of vollplan.frei || []) teile.push(`<p class="zeile">${ic('info')}<span><b>${esc(f.name)}</b> (${esc(f.anteil || '')}): ${esc(f.hinweis || '')}</span></p>`);
+  teile.push('<p class="klein">Ob ein Modul für dich wählbar ist (Voraussetzungen, Anmeldung, Plätze), steht in MOSES. Der Stundenplanner prüft das nicht.</p>');
+  return teile.join('');
 }
 
 const filterModul = () => z.modul || (z.teil ? (bestand.parts.find((c) => c.id === z.teil) || { module: {} }).module.number || '' : '');
@@ -501,11 +584,13 @@ function inhaltHinweise() {
 function inhaltStand() {
   const run = plan.last_run;
   const lauf = !run ? 'noch kein Abruf' : run.status === 'ok' ? 'vollständig' : run.status === 'partial' ? 'mit Fehlern bei einzelnen Modulen' : 'fehlgeschlagen';
-  return `<p>${esc(planName(plan))}</p>${planWahl()}<p>Quelle: MOSES der TU Berlin, öffentliche Seiten. Abgerufen ${run ? stamp(run.finished_at) : 'noch nie'}, ${lauf}.</p><p class="klein">${mehrzahl(plan.modules.length, 'Modul', 'Module')}, ${mehrzahl(bestand.parts.length, 'Bestandteil', 'Bestandteile')}, ${mehrzahl(plan.group_count ?? bestand.groups.length, 'Termingruppe', 'Termingruppen')}, ${esc(plan.booking_count ?? '')} Einzeltermine.</p>${handy.matches ? '' : '<p class="klein">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>'}<div class="e-aktionen"><button type="button" class="knopf" data-act="neu-laden">Neu laden</button></div>`;
+  const ersatz = plan.ersatz_fuer ? `<div class="signal gelb"><p class="zeile">${ic('hinweis')}<span><b>Ersatzdaten:</b> MOSES hat für das ${esc(plan.ersatz_fuer)} noch keine Termine. Gezeigt werden die echten Termine des ${esc(plan.label || plan.semester)}. Sie zeigen, wie ein Plan aussieht, nicht wann deine Kurse im ${esc(plan.ersatz_fuer)} liegen.</span></p></div>` : '';
+  return `${ersatz}<p>${esc(planName(plan))}</p>${planWahl()}<p>Quelle: MOSES der TU Berlin, öffentliche Seiten. Abgerufen ${run ? stamp(run.finished_at) : 'noch nie'}, ${lauf}.</p><p class="klein">${mehrzahl(plan.modules.length, 'Modul', 'Module')}, ${mehrzahl(bestand.parts.length, 'Bestandteil', 'Bestandteile')}, ${mehrzahl(plan.group_count ?? bestand.groups.length, 'Termingruppe', 'Termingruppen')}, ${esc(plan.booking_count ?? '')} Einzeltermine.</p>${handy.matches ? '' : '<p class="klein">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>'}<div class="e-aktionen"><button type="button" class="knopf" data-act="neu-laden">Neu laden</button></div>`;
 }
 
 function inhaltModul(m) {
   const teile = [];
+  if (m.wahl) teile.push(`<p class="zeile">${ic('info')}<span>Wahlpflicht: ${esc(m.wahl.join(', '))}. <button type="button" class="leise" data-act="wp-modul" data-nr="${esc(m.number)}">Modul weglassen</button></span></p>`);
   teile.push(`<p class="klein">${m.number ? 'Modul ' + esc(m.number) : ''}${m.version ? ', Version ' + esc(m.version) : ''}${m.valid_from ? `, gültig ab ${esc(m.valid_from)} bis ${esc(m.valid_to)}` : ''}${m.checked_at ? `. Geprüft ${stamp(m.checked_at)}` : ''}.</p>`);
   if ((m.valid_versions || []).length > 1) teile.push(`<p class="klein">Mehrere gültige Versionen: ${esc(m.valid_versions.join(', '))}. Verwendet wird die höchste.</p>`);
   if (m.error) teile.push(`<div class="signal gelb"><p class="zeile">${ic('hinweis')}<span>Abruf fehlgeschlagen. ${m.success_at ? 'Es gilt der Stand vom ' + stamp(m.success_at) + '.' : 'Noch kein gesicherter Stundenplan.'}</span></p><p class="klein">${esc(m.error)}</p></div>`);
@@ -721,6 +806,8 @@ const AKTIONEN = {
     render();
   },
   ebene: (b) => ebene(b.dataset.ebene, b),
+  wp: (b) => { const id = b.dataset.wp; oeffne('dialog', 'Wahlpflicht', inhaltWahl(id), { zurueck: () => $('module').querySelector(`[data-wp="${CSS.escape(id)}"]`) || b, neu: () => inhaltWahl(id) }); },
+  'wp-modul': (b) => wpUmschalten(b.dataset.nr),
   zu: () => schliesse(),
   // Erst handeln, dann schließen: So sucht schliesse() den Fokus im neuen Zustand (der Auslöser kann
   // dabei verschwunden sein).
@@ -733,7 +820,10 @@ const AKTIONEN = {
     const eintrag = plaene.find((p) => A.passtZuPlan({ studiengang: plan.studiengang.id, semester: plan.semester, fachsemester: plan.fachsemester }, p));
     if (!eintrag) { start(); return; }
     try {
-      setzePlan(await holeJson('daten/' + eintrag.datei));
+      const p = await holeJson('daten/' + eintrag.datei);
+      wpGeladen = new Map();
+      await wpLaden(p, Object.keys(eigene));
+      setzePlan(p);
     } catch {
       melde('Die Termine konnten nicht geladen werden.');
       return;
@@ -834,7 +924,7 @@ fein.addEventListener('change', render);
 addEventListener('storage', (e) => {
   if (!plan || (e.key !== null && e.key !== schluessel)) return;
   eigene = A.ladeAuswahl(speicher, schluessel);
-  render();
+  wpLaden(vollplan, Object.keys(eigene)).then(() => { setzePlan(vollplan); render(); });
 });
 
 // Ein Teilen-Link, in diese offene Seite eingefügt.

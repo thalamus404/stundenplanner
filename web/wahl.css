@@ -1,0 +1,21 @@
+/* Wahlpflicht auf der Seite (V-0227, Demo-Strang „höhere Fachsemester“). Getrennt von stil.css,
+   damit der Umbau der Bedienung (V-0225) und dieser Strang sich nicht in einer Datei treffen.
+   Nur Tokens aus stil.css, keine eigenen Farben. */
+.wp-marke {
+  font-size: 10px; font-weight: 600; letter-spacing: .04em; line-height: 1;
+  padding: 2px 4px; margin-right: 4px; border-radius: 4px;
+  border: 1px solid currentColor; opacity: .8;
+}
+.chip.wp-knopf { border-style: dashed; border-color: var(--grau-9); gap: 6px; }
+.chip.wp-knopf .wp-name { font-weight: 600; }
+.chip.wp-ersatz {
+  background: var(--hinweis-flaeche); border-color: var(--hinweis); color: var(--hinweis-text); font-weight: 600;
+}
+.wp-zeile { align-items: flex-start; text-align: left; white-space: normal; gap: 8px; }
+.wp-box {
+  flex: none; width: 18px; height: 18px; margin-top: 2px; border: 1.5px solid var(--grau-9); border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.wp-zeile[aria-pressed="true"] .wp-box { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); }
+.wp-box .i { width: 14px; height: 14px; }
+.wp-start { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
