@@ -1,0 +1,22 @@
+{
+  "id": "hu-biologie-bsc",
+  "name": "Biologie",
+  "abschluss": "B.Sc.",
+  "hochschule": "HU Berlin",
+  "ordnung": "Fachspezifische Studien- und Prüfungsordnung für das Bachelorstudium im Fach Biologie, Monostudiengang; Amtliches Mitteilungsblatt der HU Berlin Nr. 27/2025 vom 18.07.2025, in Kraft seit 01.10.2025, https://doi.org/10.18452/34250",
+  "plaene": [
+    {
+      "semester": "hu-wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Studienordnung (AMB 27/2025) §6 (a) Pflichtbereich und Anlage 3.1, idealtypischer Studienverlaufsplan Monostudiengang, 1. Semester (WiSe): BioB 1 bis BioB 4, 18 SWS, 30 LP. Lehrveranstaltungen je Modul nach Anlage 1. Von Hand übernommen am 05.10.2026",
+      "bereich": "Pflichtbereich",
+      "vvz_pfad": ["Lebenswissenschaftliche Fakultät", "Institut für Biologie", "B.Sc. Biologie Monobachelor (SPO 2025)", "Pflichtbereich", "Wintersemester"],
+      "module": [
+        { "nummer": "BioB-1", "vvz": "BioB 1", "kurz": "Zellbio", "lp": 10, "lehrformen": "VL 4 SWS, SE 1 SWS, UE 1 SWS" },
+        { "nummer": "BioB-2", "vvz": "BioB 2", "kurz": "Evolution", "lp": 5, "lehrformen": "VL 2 SWS, UE 2 SWS" },
+        { "nummer": "BioB-3", "vvz": "BioB 3", "kurz": "Mathe 1", "lp": 5, "lehrformen": "VL 2 SWS, UE 2 SWS" },
+        { "nummer": "BioB-4", "vvz": "BioB 4", "kurz": "Chemie", "lp": 5, "lehrformen": "VL 3 SWS, SE 1 SWS" }
+      ]
+    }
+  ]
+}

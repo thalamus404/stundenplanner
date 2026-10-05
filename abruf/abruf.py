@@ -1,4 +1,8 @@
-"""Der Abruf: holt je Modul des Katalogs die öffentlichen MOSES-Daten und schreibt einen Rohstand.
+"""Der Abruf: holt je Modul des Katalogs die öffentlichen Daten seiner Quelle und schreibt einen Rohstand.
+
+Die Quelle nennt der Katalog je Semester (`katalog/semester/<id>.json`): MOSES (`moses.py`, TU Berlin)
+oder HIS LSF (`lsf.py`, z. B. AGNES der HU Berlin). Beide schreiben denselben Rohstand; gewählt wird
+allein in `standard_quelle()`, kein Code nennt eine Hochschule (docs/forschung/hu-biologie.md).
 
 Vertrag (Formate, Ordner, Befehle): docs/ARCHITEKTUR.md §3, §4 und §7. Ohne Datenbank, ohne
 Scheduler und ohne Lock: Ein Lauf liest `katalog/`, holt jedes Modul eines Semesters EINMAL (auch
@@ -27,6 +31,7 @@ HIER = Path(__file__).resolve().parent
 WURZEL = HIER.parent
 sys.path.insert(0, str(HIER))  # moses.py liegt daneben, egal von wo aus aufgerufen wird
 
+import lsf  # noqa: E402
 import moses  # noqa: E402
 
 KATALOG = WURZEL / 'katalog'
@@ -36,7 +41,15 @@ LAUF = '_lauf.json'
 # Eine Modulnummer landet in einer MOSES-Adresse und in einem Dateinamen. Nur Ziffern: Ein Tippfehler
 # im Katalog wie "../70123" darf weder eine fremde Datei überschreiben noch eine fremde Seite holen.
 NUMMER = re.compile(r'\d{3,8}')
+# Bei LSF ist die Nummer nur ein Schlüssel (Dateiname, Kennung in der Seite und im Teilen-Link):
+# Buchstaben, Ziffern, Bindestrich, kein Leerzeichen, kein Pfad. Was LSF anzeigt („BioB 1“), steht
+# in `vvz` und wird nur im Vorlesungsverzeichnis gesucht.
+SCHLUESSEL = re.compile(r'[A-Za-z0-9][A-Za-z0-9-]{0,39}')
 SEMESTER_ID = re.compile(r'[a-z0-9][a-z0-9-]*')
+
+# Die Quellen, die der Katalog nennen darf (`quelle.art` in katalog/semester/<id>.json). Ohne
+# `quelle` ist es MOSES (`moses` = Beschriftung der Semesterwahl), wie vor der zweiten Quelle.
+QUELLEN = ('moses', 'lsf')
 
 try:
     from zoneinfo import ZoneInfo
@@ -70,8 +83,17 @@ def lade_katalog(katalog: Path = KATALOG) -> dict:
         sid = s.get('id')
         if not isinstance(sid, str) or not SEMESTER_ID.fullmatch(sid) or pfad.stem != sid:
             raise KatalogFehler(f'{pfad.name}: "id" fehlt oder passt nicht zum Dateinamen')
-        if not isinstance(s.get('moses'), str) or not s['moses'].strip():
-            raise KatalogFehler(f'{pfad.name}: "moses" (Beschriftung der MOSES-Semesterwahl) fehlt')
+        q = quelle(s)
+        if q is None:
+            raise KatalogFehler(f'{pfad.name}: "moses" (Beschriftung der MOSES-Semesterwahl) oder "quelle" fehlt')
+        if q['art'] == 'lsf':
+            for feld in ('basis', 'semester', 'label'):
+                if not isinstance(q.get(feld), str) or not q[feld].strip():
+                    raise KatalogFehler(f'{pfad.name}: "quelle.{feld}" fehlt')
+            if not q['basis'].startswith('https://') or '?' in q['basis']:
+                raise KatalogFehler(f'{pfad.name}: "quelle.basis" ist keine https-Adresse ohne Parameter')
+            if not q['semester'].isdigit():
+                raise KatalogFehler(f'{pfad.name}: "quelle.semester" ist kein LSF-Semesterschlüssel')
         semester[sid] = s
     plaene = []
     for pfad in sorted((katalog / 'studiengaenge').glob('*.json')):
@@ -79,11 +101,51 @@ def lade_katalog(katalog: Path = KATALOG) -> dict:
         for plan in g.get('plaene', []):
             if plan.get('semester') not in semester:
                 raise KatalogFehler(f'{pfad.name}: Plan nennt unbekanntes Semester {plan.get("semester")!r}')
+            art = quelle(semester[plan['semester']])['art']
             for m in plan.get('module', []):
-                if not isinstance(m.get('nummer'), str) or not NUMMER.fullmatch(m['nummer']):
+                muster = NUMMER if art == 'moses' else SCHLUESSEL
+                if not isinstance(m.get('nummer'), str) or not muster.fullmatch(m['nummer']):
                     raise KatalogFehler(f'{pfad.name}: ungültige Modulnummer {m.get("nummer")!r}')
+                if art == 'lsf':
+                    a = lsf_angabe(plan, m)
+                    if not isinstance(a['vvz'], str) or not a['vvz'].strip():
+                        raise KatalogFehler(f'{pfad.name}: Modul {m["nummer"]} ohne "vvz" (Bezeichnung im Vorlesungsverzeichnis)')
+                    if not isinstance(a['vvz_pfad'], list) or not all(isinstance(t, str) and t for t in a['vvz_pfad']):
+                        raise KatalogFehler(f'{pfad.name}: Modul {m["nummer"]} ohne "vvz_pfad"')
             plaene.append({**plan, 'studiengang': g.get('id')})
     return {'semester': semester, 'plaene': plaene}
+
+
+def quelle(semester: dict):
+    """Die Quelle eines Semesters: `{"art", "label", …}`, oder None, wenn der Katalog keine nennt."""
+    q = semester.get('quelle')
+    if q is None:
+        m = semester.get('moses')
+        return {'art': 'moses', 'label': m} if isinstance(m, str) and m.strip() else None
+    if not isinstance(q, dict) or q.get('art') not in QUELLEN:
+        return None
+    return q
+
+
+def lsf_angabe(plan: dict, modul: dict) -> dict:
+    """Wo ein Modul im LSF-Vorlesungsverzeichnis steht: Pfad aus Titeln, Bezeichnung, Bereich.
+    Das Modul überschreibt den Plan (ein Wahlmodul kann woanders hängen als die Pflichtmodule)."""
+    return {'vvz': modul.get('vvz'), 'vvz_pfad': modul.get('vvz_pfad', plan.get('vvz_pfad')),
+            'bereich': modul.get('bereich', plan.get('bereich'))}
+
+
+def angaben_je_semester(katalog: dict) -> dict[str, dict[str, dict]]:
+    """Je Semester und Modulnummer die LSF-Angaben. Nennen zwei Pläne dasselbe Modul verschieden,
+    ist der Katalog widersprüchlich: Ein Modul wird je Semester nur einmal geholt."""
+    out: dict[str, dict[str, dict]] = {sid: {} for sid in katalog['semester']}
+    for plan in katalog['plaene']:
+        if quelle(katalog['semester'][plan['semester']])['art'] != 'lsf':
+            continue
+        for m in plan.get('module', []):
+            a = lsf_angabe(plan, m)
+            if out[plan['semester']].setdefault(m['nummer'], a) != a:
+                raise KatalogFehler(f'Modul {m["nummer"]} steht in zwei Plänen mit verschiedenen Angaben')
+    return out
 
 
 def module_je_semester(katalog: dict) -> dict[str, list[str]]:
@@ -180,11 +242,26 @@ def rohstand_fehler(vorbestand, nummer: str, ziel: str, zeit: str, meldung: str)
 
 # --- Der Lauf ----------------------------------------------------------------------------------
 
+def standard_quelle(semester: dict, angaben: dict):
+    """(client_fabrik, holer) für die Quelle, die der Katalog dem Semester gibt. Hier, und nur hier,
+    wird die Quelle gewählt; kein Code nennt eine Hochschule."""
+    q = quelle(semester)
+    if q['art'] == 'lsf':
+        fabrik = lambda: lsf.Client(q['basis'])  # noqa: E731
+        return fabrik, lambda client, nummer, ziel: lsf.hole_modul(client, nummer, q, angaben[nummer], fabrik)
+    return moses.Client, hole_modul
+
+
 def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabrik=None,
-                  holer=hole_modul, uhr=jetzt, schreibe_lauf=True, log=print) -> dict:
-    """Ein Semester: jedes Modul einmal, je Modul ein Rohstand, am Ende `_lauf.json`."""
-    client_fabrik = client_fabrik or moses.Client
-    ziel = semester['moses']
+                  holer=None, uhr=jetzt, schreibe_lauf=True, log=print, angaben=None) -> dict:
+    """Ein Semester: jedes Modul einmal, je Modul ein Rohstand, am Ende `_lauf.json`.
+
+    Die Quelle (MOSES oder LSF) kommt aus dem Katalog (`standard_quelle`); Tests reichen eine
+    Attrappe als `client_fabrik` und/oder `holer` herein."""
+    std_fabrik, std_holer = standard_quelle(semester, angaben or {})
+    client_fabrik = client_fabrik or std_fabrik
+    holer = holer or std_holer
+    ziel = quelle(semester)['label']
     ordner = roh / semester['id']
     lauf = {'gestartet_am': uhr(), 'beendet_am': None, 'status': 'error',
             'modules': 0, 'bookings': 0, 'errors': []}
@@ -207,7 +284,8 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
             schreibe_atomar(pfad, rohstand_erfolg(daten, uhr()))
             lauf['modules'] += 1
             lauf['bookings'] += n
-            log(f'  ✓ {nummer} v{daten.get("version")}: {len(daten["components"])} Bestandteile, '
+            version = f' v{daten["version"]}' if daten.get('version') is not None else ''
+            log(f'  ✓ {nummer}{version}: {len(daten["components"])} Bestandteile, '
                 f'{sum(len(c["groups"]) for c in daten["components"])} Gruppen, {n} Buchungen',
                 file=sys.stderr)
         lauf['status'] = 'ok' if not lauf['errors'] else ('partial' if lauf['modules'] else 'error')
@@ -229,6 +307,7 @@ def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, *
     """
     kat = lade_katalog(katalog)
     je = module_je_semester(kat)
+    angaben = angaben_je_semester(kat)
     gewaehlt = list(semester) if semester else [sid for sid in kat['semester'] if je[sid]]
     for sid in gewaehlt:
         if sid not in kat['semester']:
@@ -242,13 +321,13 @@ def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, *
                 raise KatalogFehler(f'{", ".join(fremd)} steht in keinem Plan von {sid}')
             nummern = [n for n in nummern if n in set(nur)]
         ergebnis[sid] = lauf_semester(kat['semester'][sid], nummern, roh,
-                                      schreibe_lauf=not nur, **kw)
+                                      schreibe_lauf=not nur, angaben=angaben[sid], **kw)
     return ergebnis
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description='Holt die öffentlichen MOSES-Daten je Modul des Katalogs '
-                                            '(docs/ARCHITEKTUR.md §4, §7).')
+    p = argparse.ArgumentParser(description='Holt je Modul des Katalogs die öffentlichen Daten aus der '
+                                            'Quelle des Semesters, MOSES oder LSF (docs/ARCHITEKTUR.md §4, §7).')
     p.add_argument('--semester', action='append', metavar='ID',
                    help='Semester-ID aus katalog/semester/ (mehrfach möglich; Vorgabe: alle mit Plänen)')
     p.add_argument('--nur', action='append', metavar='MODULNUMMER',
