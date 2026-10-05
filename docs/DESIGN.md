@@ -1,7 +1,7 @@
 # Design: der Stundenplanner als One-Pager
 
 > **Stand: 05.10.2026, nach Silas' Test am Handy und seinem Blick auf den Rechner** (V-0218,
-> gebaut in V-0220, Bedienung neu in V-0225). Diese Datei ist die geschlossene Menge an
+> gebaut in V-0220, Bedienung neu in V-0225, Startbildschirm in V-0234). Diese Datei ist die geschlossene Menge an
 > Entscheidungen, nach der die Seite (`web/`) gebaut ist. Silas' Entscheidungen stehen in §9, was
 > der Bau begründet anders macht, steht an seiner Stelle und gesammelt in §10. Was hier nicht
 > steht, wird nicht erfunden. Wer abweichen will, ändert zuerst diese Datei, mit Vorgang und Grund.
@@ -29,7 +29,7 @@
    ausgeschrieben, Gruppe mit Zeit und Raum, so viel die Größe trägt; kein „+ N weitere“ (§3.2).
 4. **Man sieht sofort, was eingeplant ist.** Wählbare Gruppen sind weiße Kacheln mit Rand in
    Modulfarbe, eingeplante kräftig gefüllt, die einzige Gruppe eines Formats ist automatisch
-   eingeplant und gestrichelt, die übrigen Gruppen eines gewählten Formats werden hellgrau (§3.2).
+   eingeplant und gestrichelt, die übrigen Gruppen eines gewählten Formats werden blass (§3.2).
 5. **Wählen auf beiden Wegen** (Silas, 05.10.2026, §9). Breite Kacheln tragen am Rechner oben
    rechts „Einplanen“, „Wechseln“ oder „Lösen“. Sonst öffnet ein Tipp die Gruppenkarte, dort wird
    gewählt; am Handy als Blatt von unten (§3.5, §4).
@@ -40,6 +40,11 @@
    (fast schwarz, im dunklen Schema fast weiß), keine Markenfarbe (§5).
 8. **Schnell auch auf alten Handys.** Keine Bibliothek, keine Webfont, kein Build. Die Höhe rechnet
    CSS, nicht JavaScript (§6).
+9. **Am Anfang der Startbildschirm** (Silas, 05.10.2026, §9): Wer noch keinen Plan gewählt hat,
+   wählt Hochschule, Studiengang, Vertiefung, Fachsemester und Studien- und Prüfungsordnung, je eine
+   Frage mit großen Optionen. Unten zeigt eine Leiste, welche Entscheidung noch fehlt. Was entfällt,
+   steht dort als „entfällt“, was nur eine Möglichkeit hat, wird gesetzt und gezeigt. Danach öffnet
+   sich der Stundenplan, und beim nächsten Besuch geht es direkt dorthin (§3.6, §4.5).
 
 ---
 
@@ -135,12 +140,13 @@ bekommt den Rest. Am Handy scrollt sie (§3.3).
 
 | Zone | Inhalt |
 |---|---|
-| **Kopf** | „Stundenplanner“, der **Studiengang-Reiter**: je Plan aus `index.json` ein Reiter, Zeile 1 Studiengang mit ausgeschriebenem Abschluss („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 „1. Fachsemester nach Studienverlaufsplan, WiSe 2026/27“, der gewählte mit einer Linie in Tinte darunter. Gibt es nur einen Plan, steht daneben klein „Weitere Studiengänge folgen“; ab fünf Plänen wird der Reiter ein Auswahlfeld. Der Code nennt keinen Studiengang. Rechts der Datenstand (am Handy im Fuß), „In Kalender übernehmen“ (am Handy „Kalender“) und „Teilen“ |
+| **Kopf** | „Stundenplanner“, der **Studiengang-Reiter**: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (am Handy im Fuß), „In Kalender übernehmen“ (am Handy „Kalender“) und „Teilen“ |
+| **Hinweise oben** (V-0234) | nur wenn nötig, je eine Zeile über die volle Breite: ein deutliches Schild in Bernstein, wenn die Termine Ersatz aus dem Vorjahr sind („Termine aus dem Vorjahr, Ersatz.“ mit Semester und wofür), und ein ruhiger Satz auf neutraler Fläche mit rotem Warnsymbol, wenn es keine Wahl ohne Überschneidung gibt („Mit den veröffentlichten Terminen gibt es keine Wahl ohne Überschneidung.“, unsicher mit „vermutlich“). „Warum“ öffnet eine Karte mit dem Grund aus dem Lesemodell (Zeiten, Tage), dem Verdacht und fehlenden Modulen. Der Grund steht nicht in der Zeile: Er ist bis 400 Zeichen lang und nähme der Woche am Rechner die Höhe |
 | **Module** | je Modul eine **Modulkachel**: Farbpunkt und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“) |
 | **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Modul-Infos“ und „Filter aufheben“, sobald gefiltert ist, und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
 | **Raster** | Tagesreiter bzw. Tageskopf, Zeitachse, Kacheln (§3.2) |
 | **Legende** | die Formate, die im Plan vorkommen, ausgeschrieben („VL Vorlesung“, „IV Integrierte Veranstaltung“), und was die Kachelarten heißen (umrandet, gefüllt, gestrichelt, grau, blass, roter Ring; nach der Rolle benannt, nicht nach einem Farbton, der nur in einem Schema stimmt, V-0236). Immer dieselben Einträge, damit sie ihre Höhe nicht ändert. Am Handy davor die Modulfarben |
-| **Fuß** | „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ Daneben immer der Speicherhinweis (ARCHITEKTUR §6) und, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“. Dann „Hilfe“, „Impressum“, „Datenschutz“ (am Handy davor der Stand) |
+| **Fuß** | „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ (Hochschule und Quelle aus der Plandatei, V-0234, Punkt 8541d9f5) Daneben immer der Speicherhinweis (ARCHITEKTUR §6) und, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“. Dann „Hilfe“, „Impressum“, „Datenschutz“ (am Handy davor der Stand) |
 
 Es gibt **keine Kästen um die Zonen**. Abstand gliedert, nicht Rahmen. Kästen haben nur die
 Modulkacheln (eine Gruppe von Bedienelementen je Modul), die Kacheln im Raster und schwebende Ebenen.
@@ -216,7 +222,7 @@ hoch, ab 160 px Breite und 52 px Höhe, „Einplanen“, „Wechseln“ oder „
 links, gequetscht (Silas, 05.10.2026). Steht er da, rückt das Symbol nach unten rechts.
 
 **Gerade gewählt:** Die gewählte Kachel setzt sich (Maßstab 0,96 → 1, 200 ms), die übrigen Gruppen
-des Formats verblassen von „möglich“ ins Hellgrau (Deckkraft, 200 ms). Nur `transform` und
+des Formats verblassen von „möglich“ ins Blasse (Deckkraft, 200 ms). Nur `transform` und
 `opacity`; bei `prefers-reduced-motion` kein Maßstab, Deckkraft 100 ms (§5.10).
 
 Hat eine Gruppe mehrere Wochentermine, erscheint sie mehrfach. Zeigt man auf eine ihrer Kacheln,
@@ -344,6 +350,72 @@ immer höchstens eine offen. Lesetext darin darf scrollen, die Seite darunter ni
 „Ansicht“ und „Mehr“ gibt es seit V-0225 nicht mehr: Was darin stand, steht in der Lage, im Fuß und
 unter dem Raster.
 
+### 3.6 Der Startbildschirm (Hello-Screen, V-0234)
+
+Silas, 05.10.2026 (§9, Punkt 19): „Die Seite soll beginnen mit Hello-Screen und dort soll man 1. Uni
+wählen, 2. Studiengang, 3. Vertiefung, 4. Semester, für das geplant werden soll, 5.
+Studienprüfungsordnung. Unten soll eine dynamische Progress-Bar sein, die visuell zeigt, welche
+Entscheidung noch fehlt für eine eindeutige Zuordnung.“ Die Stufen, ihre Optionen und Regeln kommen
+aus `index.json` (`stufen`, `wahl`, ARCHITEKTUR §5); die Seite kennt keinen Studiengang.
+
+```
+┌─ 1440 × 900 ───────────────────────────────────────────────────────────────┐
+│ Stundenplanner                                        [Zurück zum Plan]     │ 48, „Zurück“ nur mit offenem Plan
+│                                                                             │
+│            Studiengang                                                      │ Frage, 16 px 600
+│            TU Berlin                                                        │ was schon feststeht, 14 px Zweittext
+│            B.Sc.                                                            │ gemeinsamer Zusatz als Gruppe
+│            ┌ Informatik ───────┐ ┌ Nachhaltiges M… ┐ ┌ Wirtschaftsinf… ┐   │ Optionen, ab 1024 px drei, sonst zwei
+│            └───────────────────┘ └─────────────────┘ └─────────────────┘   │ Spalten, am Handy eine
+│            [Zurück]                                                         │
+│─────────────────────────────────────────────────────────────────────────────│ Linie --grau-5
+│            Noch 3 Angaben bis zum Stundenplan                               │ die Leiste, klebt unten (sticky)
+│            ━━━━━━━━━  ▭▭▭▭▭▭▭▭▭  ─────────  ▭▭▭▭▭▭▭▭▭  ┅┅┅┅┅┅┅┅┅             │
+│            Hochschule Studiengang Vertiefung Fachsemester Studien- und …    │ 12 px Zweittext
+│            TU Berlin  jetzt       entfällt   offen        StuPO 2025, autom.│ 14 px
+│            Kein offizielles Angebot der Hochschulen …   Impressum Datenschutz│ 12 px (am Handy 14 px, 44 px Ziele)
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Eine ruhige Spalte**, höchstens 720 px breit, ab 1024 px 960 px (drei Optionen nebeneinander:
+  sieben Studienrichtungen passen bei 1366 × 657 ohne Scrollen). Am Rechner steht die Frage mittig
+  im freien Raum zwischen Kopf und Leiste, am Handy oben; dort darf die Seite scrollen.
+- **Die Frage** ist die Bezeichnung der Stufe („Hochschule“, „Studienrichtung“, wenn der Knoten sie
+  so nennt). Darunter in Zweittext, was schon feststeht („TU Berlin, Wirtschaftsinformatik“, beim
+  Fachsemester mit Semester). Auf der ersten Stufe steht dort einmal, wozu das Ganze dient.
+- **Optionen** sind große Flächen (`--grau-1`, Rand `--grau-5`, Radius 12, mindestens 64 px hoch,
+  am Handy 56 px): Zeile 1 `label` in 16 px, Zeile 2 `zusatz` in Zweittext. Teilen sich mindestens
+  zwei Optionen einen Zusatz („WiSe 2026/27“, „B.Sc.“), stehen sie darunter gruppiert, der Zusatz
+  als Überschrift. Die schon gewählte Option (beim Zurückgehen) trägt einen Rand in Tinte und den
+  Haken. Ein Tipp wählt und führt sofort zur nächsten offenen Stufe; es gibt keinen „Weiter“-Knopf.
+  Hat eine Stufe nur eine Option, steht darunter „Weitere folgen.“
+- **Automatisch** (eine Ordnung oder Vertiefung): wird gesetzt, nicht eigens gefragt. Sie steht in
+  der Leiste („StuPO 2025, automatisch“, gestrichelt) und in der Zusammenfassung („Nur eine gültige,
+  automatisch gewählt.“ mit `fuer_wen`). Ein Tipp auf sie in der Leiste zeigt sie als Stufe, mit
+  „Weiter“ und „Zurück“. **Entfällt** (`ueberspringen`): erscheint nur in der Leiste als „entfällt“.
+- **Zum Schluss die Zusammenfassung** „Deine Angaben“: je Stufe, die nicht entfällt, Wert und
+  Zusatz, „Ändern“ an den gewählten, darunter die eine Hauptaktion „Stundenplan öffnen“ (Tinte, am
+  Handy volle Breite). Erst dieser Knopf öffnet den Plan.
+- **Die Leiste** klebt unten (`position: sticky`, kein Skript), Fläche `--grau-2` mit einer Linie
+  `--grau-5` darüber, über die volle Breite. Über den Balken ein Satz: am Rechner „Noch 3 Angaben bis
+  zum Stundenplan“, am Handy „Noch offen: Studiengang und Fachsemester“ (dort stehen unter den
+  Balken keine Wörter, sie passten nicht in 62 px). Je Stufe ein Balken von 4 px:
+  | Zustand | Balken | Wert darunter |
+  |---|---|---|
+  | erledigt | Tinte | die gewählte Option |
+  | automatisch | gestrichelter Rand in Tinte | „StuPO 2025, automatisch“ |
+  | entfällt | dünne Linie `--grau-6` | „entfällt“ |
+  | offen | Schiene `--grau-5` | „offen“ |
+  | hier (die Stufe, die gerade gefragt ist) | Ring in Tinte, Bezeichnung 600 | „jetzt“ |
+  **Dynamisch:** Was in jedem Zweig unter der aktuellen Wahl entfällt oder automatisch ist, zeigt die
+  Leiste schon, bevor man dort ist (wer „TU Berlin“ live wählt, sieht „Vertiefung entfällt“ und
+  „StuPO 2025, automatisch“ sofort). Erledigte und automatische Stufen sind Knöpfe (44 px hoch): Ein
+  Tipp führt zurück. Wählt man dort eine andere Option, fallen die späteren Wahlen weg.
+- **Kopf und Fuß:** „Stundenplanner“ und, wenn schon ein Plan offen ist, „Zurück zum Plan“. Unter der
+  Leiste „Kein offizielles Angebot der Hochschulen. Deine Wahl bleibt in diesem Browser.“,
+  Impressum, Datenschutz.
+- **Tokens** nur aus §5.2 „Für neue Ansichten“; im dunklen Schema dieselben Regeln.
+
 ---
 
 ## 4. Die Bedienung
@@ -352,7 +424,7 @@ unter dem Raster.
 
 | | Werte | voreingestellt | wo |
 |---|---|---|---|
-| **Studiengang** | je Plan aus `index.json` | der einzige bzw. der mit gespeicherter Auswahl | Reiter im Kopf |
+| **Plan** | je Blatt im Baum `wahl` aus `index.json` (V-0234) | aus dem Teilen-Link, sonst der zuletzt im Startbildschirm geöffnete, sonst der einzige mit gespeicherter Auswahl, sonst der Startbildschirm | Startbildschirm, Reiter im Kopf öffnet ihn |
 | **Filter** | keiner, ein Modul, ein Format (Bestandteil) darin | keiner | Modulkachel und Formate, Esc, „Filter aufheben“ |
 | **Tag/Woche** | Tag, Woche | Handy Tag, sonst Woche (wenn sie passt, §3.3) | Umschalter, Tagesreiter, Tageskopf |
 | **Tag** | Mo–Fr (Sa/So mit Daten) | heute, am Wochenende Montag | Tagesreiter |
@@ -364,8 +436,8 @@ Was das Raster zeigt:
 - **Ohne Filter („Noch offen“)** die Gruppen der Formate ohne Wahl als mögliche Kacheln, dazu jede
   eingeplante Gruppe. Das Gewählte bleibt sichtbar (Silas, 05.10.2026, §9).
 - **Ein Modul gefiltert:** alle Gruppen aller seiner Formate, auch der schon gewählten (dort
-  zurückgenommen, hellgrau): So wählt und wechselt man. Eingeplantes anderer Module als Kontext.
-- **Ein Format gefiltert:** nur seine Gruppen, die gewählte kräftig, die übrigen hellgrau.
+  zurückgenommen, blass): So wählt und wechselt man. Eingeplantes anderer Module als Kontext.
+- **Ein Format gefiltert:** nur seine Gruppen, die gewählte kräftig, die übrigen blass.
   Eingeplantes anderswo als Kontext.
 
 **Automatisch eingeplant** (Silas, 05.10.2026): Ein Format mit genau einer Gruppe, die Termine hat,
@@ -380,12 +452,22 @@ Statistik I IV, BuK VL, BuK UE.
 Semester; eines ohne Gruppe ist „noch ohne veröffentlichte Termine“ (Hinweise) und hält „alle
 eingeplant“ nicht auf (querwind, V-0228).
 
+**Wie die Gruppen zu belegen sind** (`gruppen` am Bestandteil, V-0233; gebaut in V-0234):
+- `alle`: keine Wahl. Alle Gruppen mit Terminen gelten als eingeplant, gestrichelt wie
+  „automatisch“, im Fortschritt als gewählt, im Kalender alle. Die Gruppenkarte sagt es mit dem Grund.
+  „Auswahl lösen“ nimmt alle heraus (gespeichert als `group: null`), „Alle einplanen“ stellt es wieder her.
+- `unklar`: wie „eine“, dazu ein leiser Hinweis (Gruppenkarte, Tooltip des Formats, Hinweise).
+- `keine` (offenes Angebot, etwa die Lerninsel): zählt nicht im Fortschritt, wird nie automatisch
+  eingeplant und steht nicht unter „Noch offen“, nur wenn man Modul oder Format aufschlägt. Das Format
+  ist neutral umrandet statt in Modulfarbe.
+
 ### 4.2 Schritt für Schritt
 
 1. **Ankommen.** Die Seite zeigt sofort ihren Rahmen und die Lage „Noch offen. Wähle ein Modul oder
    ein Format, dann zeigt der Plan nur dessen Gruppen.“ (der Satz steht schon im HTML). Mit den
    Daten erscheinen die Module mit ihren Formaten, die einzigen Gruppen gestrichelt eingeplant und
-   alle offenen Gruppen. Gibt es mehrere Pläne und noch keine Wahl, fragt die Seite zuerst danach.
+   alle offenen Gruppen. Wer noch keinen Plan gewählt hat, sieht statt dessen den Startbildschirm
+   (§3.6, §4.5); gedrosselt (CPU 4×, 1,6 Mbit/s) steht der Rahmen dafür höchstens 0,3 s.
 2. **Ein Modul aufschlagen.** Tipp auf den Namen „TechGI“: Die Kachel trägt einen Ring in Tinte,
    die Lage sagt „Technische Grundlagen der Informatik“ (am Rechner der Kurzname), „Alle Formate,
    7 Gruppen, 1 von 2 gewählt“, daneben „Modul-Infos“ und „Filter aufheben“.
@@ -400,10 +482,10 @@ eingeplant“ nicht auf (querwind, V-0228).
    automatisch eingeplanten Gruppe sagt die Karte das, Hauptaktion „Einplanen“, daneben „Auswahl
    lösen“. Am Rechner tragen breite Kacheln dieselbe Aktion oben rechts (§3.2).
 5. **Wählen.** Die Karte schließt sich, die Kachel ist gefüllt, die übrigen Gruppen des Formats
-   verblassen ins Hellgrau, die Pille bekommt ihren Haken, der Fortschritt zählt hoch, ein
+   verblassen ins Blasse, die Pille bekommt ihren Haken, der Fortschritt zählt hoch, ein
    Screenreader hört „TechGI, Übung: Termingruppe 6 eingeplant.“ Sind alle Formate eingeplant,
    sagt es eine Meldung.
-6. **Wechseln** über eine hellgraue Kachel („Wechseln“), **lösen** über die gewählte („Lösen“).
+6. **Wechseln** über eine blasse Kachel („Wechseln“), **lösen** über die gewählte („Lösen“).
 7. **Überschneidungen** tragen den roten Ring an Kachel und Pille; die Marke in der Lage öffnet die
    Liste. **Änderungen** (Zeit oder Raum einer gewählten Gruppe) tragen das Hinweissymbol und
    „Änderung geprüft“ in den Hinweisen.
@@ -437,7 +519,7 @@ eingeplant“ nicht auf (querwind, V-0228).
 | Modulkarte: „Abruf fehlgeschlagen“, „Daten älter als 36 h“ | Hinweissymbol am Modulnamen, Text in Modulkarte und Hinweisen |
 | Modulkarte: „MOSES-Version weicht vom Modul im StudyOS ab“ | **entfällt:** Es gibt kein Study OS als Gegenstück (ARCHITEKTUR §4) |
 | Bestandteilzeile: Haken/Kreis, durchgestrichen wenn gewählt | Format unter dem Modul: offen umrandet, gewählt gefüllt mit Haken, automatisch gestrichelt. Nichts wird durchgestrichen |
-| Bestandteilzeile: Klick zeigt diesen Bestandteil im Kalender | Klick auf das Format filtert darauf, Klick auf das Modul auf alle seine Formate. Eingeplantes anderswo bleibt dunkelgrau sichtbar |
+| Bestandteilzeile: Klick zeigt diesen Bestandteil im Kalender | Klick auf das Format filtert darauf, Klick auf das Modul auf alle seine Formate. Eingeplantes anderswo bleibt grau sichtbar |
 | Bestandteilzeile: SWS, „Pflichtbereich“ | Modulkarte, Tooltip des Formats |
 | Auswahlliste je Bestandteil („Termingruppe 3 · Di 12:00–14:00“, „ohne Termine“ gesperrt) | Format filtern, Kachel, Karte. Ohne Termine: Format gedämpft („SE 0“), in den Hinweisen genannt. Nur eine Gruppe: automatisch eingeplant (§4.1) |
 | Links „MOSES ↗“, „ISIS-Kurssuche ↗“ | Modulkarte |
@@ -463,6 +545,7 @@ eingeplant“ nicht auf (querwind, V-0228).
 | — (neu, Scope §3) | Planwahl, Teilen-Link mit Teilen-Leiste, Datenstand mit Warnung, „Kein offizielles Angebot“, Impressum, Datenschutz, auf den Home-Bildschirm legbar |
 | — (neu, ARCHITEKTUR §6) | Speicherhinweis und „Auswahl zurücksetzen“ im Fuß, Vorschau eines geteilten Plans mit Vergleich |
 | — (neu, Silas 05.10.2026) | Studiengang-Reiter, Legende, Tag/Woche, automatisch eingeplante einzige Gruppen, „In Kalender übernehmen“ (iCal, V-0231) |
+| — (neu, Silas 05.10.2026, V-0234) | Startbildschirm mit Leiste (§3.6, §4.5), Hinweis „keine Wahl ohne Überschneidung“ und Ersatz-Schild oben im Plan, Regeln `alle`/`unklar`/`keine` (§4.1) |
 
 Nichts aus dem Vorbild fällt weg, ohne dass die Tabelle den Grund nennt.
 
@@ -479,6 +562,27 @@ Nichts aus dem Vorbild fällt weg, ohne dass die Tabelle den Grund nennt.
 - Modulnamen, Formate, Studiengang-Reiter, Tag/Woche und Segmente sind Schalter mit `aria-pressed`. Wahl, Lösen und Filter
   werden in einem höflichen Live-Bereich angesagt.
 - Bei 200 % Textgröße darf die Seite scrollen, aber nichts überlappt oder wird abgeschnitten.
+
+### 4.5 Der Startbildschirm Schritt für Schritt (V-0234)
+
+1. **Wann er kommt.** Beim Öffnen ohne Teilen-Link, ohne gespeicherte Planwahl und ohne genau einen
+   Plan mit gespeicherter Auswahl (wer vor V-0234 gewählt hat, kommt so direkt in seinen Plan). Ein
+   Teilen-Link (`#plan=<id>`) und ein alter Link (Studiengang, Semester, Fachsemester, wenn eindeutig)
+   gehen am Startbildschirm vorbei. Der Live-Fall hat je Stufe eine Option: drei Tipps und „Stundenplan
+   öffnen“.
+2. **Wählen.** Tipp auf eine Option: Die Leiste zählt herunter, die nächste offene Stufe erscheint,
+   der Fokus steht auf ihrer Frage, ein Screenreader hört „Studiengang: Wirtschaftsinformatik.
+   Weiter mit Fachsemester.“ Entfällt eine Stufe oder gibt es nur eine Möglichkeit, geht es darüber
+   hinweg.
+3. **Zurück.** „Zurück“ unter den Optionen, ein Tipp auf eine erledigte Stufe in der Leiste, „Ändern“
+   in der Zusammenfassung oder Esc. Auf der ersten Stufe führt Esc zum offenen Plan, wenn es einen gibt.
+4. **Öffnen.** „Stundenplan öffnen“ in der Zusammenfassung (der Fokus steht dort). Erst jetzt kommt die
+   Planwahl in den Speicher (`stundenplanner:v1:plan`, eine Kennung; ARCHITEKTUR §6, wie die Auswahl
+   erst nach einer aktiven Wahl). Die Adresse trägt danach `#plan=<id>`: So bleibt der Plan auch ohne
+   Speicher beim Neuladen.
+5. **Wechseln.** Der Reiter im Plan öffnet den Startbildschirm mit allen Angaben des offenen Plans
+   (Zusammenfassung). Die Auswahl gehört zum Plan (`stundenplanner:v1:<plan.id>`) und bleibt beim
+   Wechseln erhalten.
 
 ---
 
@@ -713,7 +817,7 @@ Die Überlagen liegen auf einem Pseudo-Element, damit nur dessen Deckkraft animi
 - **Keine Bewegung im Raster, eine Ausnahme:** Filter, Woche und Tag wechseln sofort. 65 Kacheln
   zu animieren ruckelt auf alten Handys, und ein Wechsel soll sich wie ein Wechsel anfühlen. Die
   Ausnahme (Silas, 05.10.2026): Nach einer Wahl setzt sich die gewählte Kachel (Maßstab 0,96 → 1,
-  200 ms) und die übrigen Gruppen ihres Formats verblassen ins Hellgrau (Deckkraft, 200 ms), nur
+  200 ms) und die übrigen Gruppen ihres Formats verblassen ins Blasse (Deckkraft, 200 ms), nur
   diese Kacheln und nur einmal.
 - Keine Einblende-Animation beim Laden. Nichts ist unsichtbar, bis eine Animation läuft.
 - `prefers-reduced-motion: reduce`: keine Wege, nur Deckkraft in 100 ms.
@@ -766,10 +870,10 @@ die einen zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als 
 | | Budget | Begründung |
 |---|---|---|
 | Bibliotheken, Frameworks, Webfonts, CDN | **keine** | ARCHITEKTUR §8 |
-| HTML | ≤ 10 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline |
-| CSS | ≤ 32 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, siehe unten) |
-| JavaScript | ≤ 90 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB). `ics.mjs` lädt erst bei der ersten Bedienung und zählt hier nicht |
-| Code zusammen, komprimiert | **≤ 45 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB) |
+| HTML | ≤ 11 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms (bis V-0234: 10 KB) |
+| CSS | ≤ 40 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, siehe unten) |
+| JavaScript | ≤ 120 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB). `ics.mjs` lädt erst bei der ersten Bedienung und zählt hier nicht |
+| Code zusammen, komprimiert | **≤ 58 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB) |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
 | Anfragen bis zum fertigen Raster | ≤ 10, alle vom eigenen Ort und **ohne Kaskade**: Das HTML nennt CSS und jedes Modul (`modulepreload`), sie laden parallel | HTML, CSS, die Module, `index.json`, Plan-Datei (bis 05.10.2026: 6) |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
@@ -820,6 +924,16 @@ gzip ≤ 45 KB, die Grenzen der Wirkung bleiben. Gemessen mit `ops/sicht.py` am 
 Inhalt der Satz der Lage („Wähle ein Modul oder ein Format …“); er steht deshalb schon im HTML,
 sonst wäre er erst mit den Daten erschienen (LCP 3,5 s statt 0,9 s auf dem Prüfserver, der die
 Plandatei ungepackt ausliefert).
+
+**V-0234 (Startbildschirm, Silas, 05.10.2026), entschieden von einflug, technisch; Silas kann es
+ändern:** Der Startbildschirm (Baum, Leiste, Zusammenfassung, `planwahl.mjs`), der Umzug des
+Speicherschlüssels, die Hinweise oben im Plan und die Regeln der Gruppen kosten rund 6 KB CSS und 30 KB
+JS (gzip etwa 11 KB). Die Grenzen der Bytes steigen auf HTML ≤ 11 KB, CSS ≤ 40 KB, JS ≤ 120 KB, gzip ≤ 58 KB; die
+Grenzen der Wirkung bleiben. Die Dateien bleiben bei sechs (`planwahl.mjs` ist die sechste) und die
+Anfragen bis zur ersten Kachel bei zehn. **Kein vorgeschaltetes Skript**, das vor dem ersten Bild
+zwischen Plan und Startbildschirm entscheidet: Es wäre die siebte Datei und die elfte Anfrage, und
+gedrosselt (CPU 4×, 1,6 Mbit/s) steht der Rahmen des Plans beim ersten Besuch nur bis zu 0,3 s, bevor
+der Startbildschirm kommt. Gemessen mit `ops/sicht.py` am 05.10.2026: die Zahlen im Bericht von V-0234.
 
 Zwei Dinge, die die Blockierzeit gedrückt haben und so bleiben müssen: **kein `Intl`** (ein
 `Intl.Collator` und ein `Intl.DateTimeFormat` mit Zeitzone kosteten beim Laden zusammen 90 ms im
@@ -895,11 +1009,14 @@ Spuren, Mo–Sa, 07–21 Uhr und A/B-Rhythmus.
 | 16 | ohne Speicher | privates Fenster, `localStorage` wirft | Seite funktioniert, der Text an der Stelle des Speicherhinweises erscheint (§4.2, Schritt 12; am Handy am Seitenende) |
 | 17 | Speicherregeln | Laden ohne Wahl, dann eine Wahl | Laden schreibt nichts in den Speicher (auch nicht die automatisch eingeplanten Gruppen). Der Speicherhinweis ist am Rechner ohne Scrollen sichtbar, am Handy am Seitenende |
 | 18 | Abstände | Innen- und Außenabstände, Lücken (`ops/sicht.py`, Prüfung `abstand`) | in Stufen von 4 px, dazu 2 px (§5.6) |
+| 19 | **Startbildschirm** (V-0234) | ohne Speicher und ohne `#plan`: der Anfang, die Stufe mit den meisten Optionen, die Zusammenfassung vor dem ersten Plan; dazu Ziele, Kontrast, Schrift, Abstände, Tells wie oben | ab 768 px kein Scrollen; am Handy nie seitlich, die Leiste ganz im Fenster, jede Option ins Bild gescrollt ganz und nicht unter der Leiste; „Kein offizielles Angebot“, Impressum und Datenschutz zu sehen (am Handy am Seitenende); Laden und Wählen schreiben nichts |
+| 20 | Planwahl im Speicher | „Stundenplan öffnen“ | der Plan steht (Kacheln), danach im Speicher genau `stundenplanner:v1:plan` mit der Kennung, vorher nichts |
 
 Am Handy heißt §3.3 „ohne Scrollen sichtbar“ seit V-0225: „Teilen“ oben, der Fuß (inoffiziell,
 Speicherhinweis, Impressum, Datenschutz) am Seitenende ganz und nicht unter dem Umschalter.
 `ops/sicht.py` misst alles außer #11 und Teilen von #10; Kontrast am Handy Fenster für Fenster an
-jeder gemessenen Stelle.
+jeder gemessenen Stelle. Gemessen wird der erste Plan im Baum von `index.json` (`--plan <id>` für
+einen anderen), geöffnet über die Adresse `#plan=<id>` wie ein Teilen-Link ohne Auswahl (V-0234).
 
 Silas testet die Bedienung selbst. Was er ändert, wird hier eingetragen, bevor es gebaut wird.
 
@@ -958,6 +1075,18 @@ Navigation ergibt nicht wirklich Sinn und die Beschriftung auch nicht.“ Sein B
 **Silas, 05.10.2026, danach:** 18. **Termine, bei denen es nur EINE Gruppe gibt, stehen von Anfang
 an gestrichelt drin**; man muss sie nicht von Hand wählen (§4.1). Berechnet, nicht gespeichert.
 
+**Silas, 05.10.2026, der Startbildschirm** (V-0234, gebaut von einflug):
+
+19. *„Die Seite soll beginnen mit Hello-Screen und dort soll man 1. Uni wählen, 2. Studiengang, 3.
+    Vertiefung, 4. Semester, für das geplant werden soll, 5. Studienprüfungsordnung. Unten soll eine
+    dynamische Progress-Bar sein, die visuell zeigt, welche Entscheidung noch fehlt für eine
+    eindeutige Zuordnung. Gibt es für einen Studiengang keine Vertiefung, soll übersprungen werden;
+    gibt es für ein Semester nur eine gültige Studienprüfungsordnung, dann soll die automatisch
+    gewählt werden. Diese Auswahl soll im Browser gespeichert werden, sodass, wenn man es erneut
+    aufruft, ohne Caches zu leeren, die letzte Auswahl + Stundenplan gespeichert sind.“* (§3.6, §4.5)
+20. **Gibt es keine Kombination ohne Überschneidung, sagt die Seite das ausdrücklich** (Silas: „ja“;
+    §3.1 „Hinweise oben“). Unsicher heißt „vermutlich“, mit dem Verdacht.
+
 ---
 
 ## 10. Was der Bau anders macht als oben, gesammelt
@@ -998,6 +1127,26 @@ findet.
   benutzte Klasse `.zahl` (Zahl am Knopf, seit V-0225 ohne Markup) ist entfernt. Der Studiengang
   füllt die Kopfzeile, sonst blieb links vom Knopfpaar ein Rest außerhalb des 4-px-Rasters (53 px
   bei 865 px, §5.6).
+- **V-0234, Startbildschirm** (einflug, technisch; Silas kann es ändern):
+  - **Am Ende eine Zusammenfassung mit „Stundenplan öffnen“**, statt nach der letzten Wahl sofort zu
+    öffnen: Die automatisch gesetzte Ordnung soll man sehen (Silas: „gesetzt und gezeigt“), und der
+    Plan öffnet sich auf eine bewusste Handlung. Das ist ein Tipp mehr (live: vier statt drei).
+  - **Eine automatische Stufe wird nicht eigens gefragt**, sie steht in Leiste und Zusammenfassung;
+    ein Tipp in der Leiste zeigt sie mit „Weiter“ und „Zurück“.
+  - **Auch mit nur einem Plan kommt der Startbildschirm** (live heute: WI 1. FS), weil Silas mit ihm
+    beginnen will und Hochschule, Studiengang und Fachsemester immer gewählt werden (`waehlen`).
+    Wer vor V-0234 schon eine Auswahl hat, kommt direkt in seinen Plan.
+  - **Am Handy keine Wörter unter den Balken**, dafür nennt der Satz darüber die offenen Stufen.
+  - **„Weitere folgen.“** unter einer Stufe mit nur einer Option ersetzt „Weitere Studiengänge
+    folgen“ im Kopf.
+  - **Optionen mit gleichem Zusatz gruppiert** (Fachsemester nach Semester, Studiengänge nach
+    Abschluss), damit „WiSe 2026/27“ nicht sechsmal dasteht.
+  - **Der Grund für „keine Wahl ohne Überschneidung“ steht in einer Karte („Warum“)**, nicht in der
+    Zeile: Er ist bis 400 Zeichen lang.
+  - **`gruppen: alle`** wird nicht als Mehrfachwahl gezeigt, sondern als „alle eingeplant“
+    (ARCHITEKTUR §3: Silas entscheidet, ob Pflicht oder Mehrfachwahl; die Daten bleiben dieselben).
+  - **Reiter am Handy ohne „nach Studienverlaufsplan“**: Mit der Ordnung wäre die Zeile umgebrochen,
+    und der Kopf hätte beim Laden seine Höhe geändert (CLS).
 - **Nicht geändert (V-0236):** das helle Schema (Werte und Aussehen wie von Silas getestet) und der
   schwebende Umschalter am Handy; er bleibt dunkel auf `--grau-3` mit hellem Rand, damit das
   gewählte Segment heller ist als seine Schiene.

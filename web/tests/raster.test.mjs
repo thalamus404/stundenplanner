@@ -144,3 +144,15 @@ test('Tagansicht: heute zuerst, am Wochenende Montag', () => {
   assert.equal(R.startTag(new Date('2026-10-14T12:00:00')), 2);   // Mittwoch
   assert.equal(R.startTag(new Date('2026-10-17T12:00:00')), 0);   // Samstag
 });
+
+test('Ein offenes Angebot (`gruppen: keine`, V-0234) steht nicht unter „Noch offen“, aber mit Filter', () => {
+  const p = plan();
+  for (const c of p.modules[0].components) if (c.id === '10001:200') c.gruppen = 'keine';
+  const b = A.bestand(p);
+  A.auswerten(p, b, {});
+  assert.ok(!R.sichtbar(b.groups, {}).some((e) => e.g.component_id === '10001:200'));
+  assert.ok(R.sichtbar(b.groups, { modul: '10001' }).some((e) => e.g.component_id === '10001:200' && e.art === 'moeglich'));
+  const moeglich = R.sichtbar(b.groups, { modul: '10001', teil: '10001:200' }).filter((e) => e.art === 'moeglich');
+  assert.equal(moeglich.length, 3);
+  assert.ok(moeglich.every((e) => e.g.component_id === '10001:200'));
+});

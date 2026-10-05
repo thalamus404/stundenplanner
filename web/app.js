@@ -8,6 +8,7 @@ import { esc, link, stamp, plusTage, tagMonat, abschlussLang } from './text.mjs'
 import * as A from './auswahl.mjs';
 import * as W from './woche.mjs';
 import * as R from './raster.mjs';
+import * as P from './planwahl.mjs';
 
 const $ = (id) => document.getElementById(id);
 const TAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
@@ -25,7 +26,12 @@ const speicher = (() => { try { return window.localStorage; } catch { return nul
 // Was die Seite zeigt (nur im Speicher der Seite, DESIGN §4.1). Filter: modul, teil, ueber
 // (raster.mjs). modus: 'tag', 'woche' oder null (Vorgabe).
 const z = { ...R.KEIN_FILTER, zeitraum: 'skeleton', ab: 0, tag: R.startTag(new Date()), modus: null, fokus: '' };
-let plaene = [], plan = null, bestand = { groups: [], parts: [] }, schluessel = '', eigene = {}, gespeichert = true;
+let plan = null, bestand = { groups: [], parts: [] }, schluessel = '', eigene = {}, gespeichert = true;
+// Der Startbildschirm (V-0234): der Baum aus index.json, seine Stufen, alle Pläne flach, das Blatt
+// des offenen Plans. altSchluessel: Die Auswahl kam noch aus dem Schlüssel vor V-0234; die erste
+// aktive Änderung zieht sie um (auswahl.mjs, ladeAuswahlFuer).
+let baum = null, stufen = [], blaetter = [], blatt = null, altSchluessel = null;
+const hallo = { wahl: {}, sicht: null };
 let vorschau = null;      // ein geöffneter Teilen-Link: { link, auswahl, unbekannt }
 let fort = { n: 0, k: 0 }, selected = [], missing = [], paare = [], partner = new Map(), ax = { von: 8, bis: 18 }, tageZahl = 5, wochen = [], hatAB = false;
 let wocheMq = null;       // passt die ganze Woche in dieses Fenster? (DESIGN §3.3)
@@ -45,40 +51,49 @@ async function holeJson(pfad) {
 
 const sgVon = (p) => (typeof p.studiengang === 'object' && p.studiengang ? p.studiengang : { id: p.studiengang, name: p.name, abschluss: p.abschluss });
 const sgName = (p) => { const sg = sgVon(p); return `${sg.name || sg.id}${sg.abschluss ? ', ' + abschlussLang(sg.abschluss) : ''}`; };
-const planName = (p) => `${sgName(p)}, ${p.fachsemester}. Fachsemester, ${p.label || p.semester}`;
+// Die zweite Zeile des Reiters: Vertiefung, Fachsemester (Silas: „nach Studienverlaufsplan“), Semester, Ordnung.
+const planZeile = (p) => [p.vertiefung && p.vertiefung.name, `${p.fachsemester}. Fachsemester nach Studienverlaufsplan`, p.label || p.semester, p.ordnung && p.ordnung.label].filter(Boolean).join(', ');
+const planName = (p) => `${sgName(p)}, ${planZeile(p)}`;
+// Im Reiter am Handy ohne „nach Studienverlaufsplan“: Die Zeile bleibt eine Zeile (feste Höhe, kein Springen, CLS).
+const planZeileHtml = (p) => esc(planZeile(p)).replace(' nach Studienverlaufsplan', '<span class="nur-breit"> nach Studienverlaufsplan</span>');
 
 function rasterText(html) {
   $('koerper').innerHTML = `<div class="raster-text">${html}</div>`;
 }
 
+/**
+ * Was beim Öffnen gezeigt wird (DESIGN §4.2, Schritt 1; V-0234): ein Teilen-Link öffnet seinen Plan,
+ * sonst der zuletzt aktiv gewählte (stundenplanner:v1:plan), sonst der einzige Plan mit einer
+ * gespeicherten Auswahl (so kommen alle, die vor dem Startbildschirm gewählt haben, direkt in ihren
+ * Plan), sonst der Startbildschirm. Nur gelesen: Laden schreibt nichts.
+ */
 async function start() {
   let index;
   try {
     index = await holeJson('daten/index.json');
   } catch {
+    zeigeHallo(false);
     rasterText('<p>Die Termine konnten nicht geladen werden.</p><button type="button" class="knopf" data-act="start">Erneut versuchen</button>');
     return;
   }
-  plaene = (Array.isArray(index.plaene) ? index.plaene : []).filter((p) => p && typeof p.datei === 'string' && SICHERER_PFAD.test(p.datei));
-  if (!plaene.length) { rasterText('<p>Es ist noch kein Stundenplan veröffentlicht.</p>'); return; }
+  baum = P.wahlBaum(index, (d) => SICHERER_PFAD.test(d));
+  stufen = P.stufenVon(index, baum);
+  blaetter = P.blaetter(baum);
+  if (!blaetter.length) { zeigeHallo(false); rasterText('<p>Es ist noch kein Stundenplan veröffentlicht.</p>'); return; }
   const verweis = A.teilenLesen(location.hash);
-  let wahl = verweis ? plaene.find((p) => A.passtZuPlan(verweis, p)) : null;
-  if (verweis && !wahl) melde('Der Link gehört zu einem Studienplan, den es hier nicht mehr gibt.');
-  if (!wahl && plaene.length === 1) wahl = plaene[0];
-  if (!wahl) {
-    // Mehrere Pläne: Hat genau einer eine gespeicherte Auswahl, ist er gemeint. (Nur lesen.)
-    const mit = plaene.filter((p) => Object.keys(A.ladeAuswahl(speicher, A.speicherSchluessel(p))).length);
-    if (mit.length === 1) wahl = mit[0];
+  let ziel = P.planZumLink(blaetter, verweis);
+  if (verweis && !ziel) melde(verweis.plan ? 'Der Link gehört zu einem Studienplan, den es hier nicht mehr gibt.' : 'Der Link nennt den Studienplan nicht eindeutig. Wähle ihn hier.');
+  if (!ziel) ziel = blaetter.find((b) => b.id === A.ladePlanwahl(speicher)) || null;
+  if (!ziel) {
+    const mit = blaetter.filter((b) => Object.keys(A.ladeAuswahlFuer(speicher, b, eindeutig(b)).auswahl).length);
+    if (mit.length === 1) ziel = mit[0];
   }
-  if (!wahl) { rasterText(`<p>Wähle deinen Studiengang und dein Fachsemester.</p>${planWahl()}`); return; }
-  await planLaden(wahl, verweis && A.passtZuPlan(verweis, wahl) && Object.keys(verweis.paare).length ? verweis : null);
+  if (!ziel) { halloOeffnen({}); return; }
+  await planOeffnen(ziel, verweis && Object.keys(verweis.paare).length ? verweis : null);
 }
 
-function planWahl() {
-  if (plaene.length < 2) return '';
-  const i = plan ? plaene.findIndex((p) => A.passtZuPlan({ studiengang: plan.studiengang.id, semester: plan.semester, fachsemester: plan.fachsemester }, p)) : -1;
-  return `<span class="wahl"><select data-set="plan" aria-label="Studiengang und Fachsemester">${i < 0 ? '<option value="">Plan wählen …</option>' : ''}${plaene.map((p, j) => `<option value="${j}"${j === i ? ' selected' : ''}>${esc(planName(p))}</option>`).join('')}</select>${ic('unten')}</span>`;
-}
+/** Gehört der alte Schlüssel (<studiengang>:<semester>:fs<n>) genau einem Plan? Nur dann gilt er. */
+const eindeutig = (p) => blaetter.filter((b) => A.alterSchluessel(b) === A.alterSchluessel(p)).length === 1;
 
 async function planLaden(eintrag, verweis) {
   let p;
@@ -88,6 +103,7 @@ async function planLaden(eintrag, verweis) {
     rasterText('<p>Die Termine konnten nicht geladen werden.</p><button type="button" class="knopf" data-act="start">Erneut versuchen</button>');
     return;
   }
+  if (!P.gueltigeId(p.id)) p.id = eintrag.id;
   setzePlan(p);
   vorschau = verweis ? { link: verweis, ...A.geteilteAuswahl(bestand, verweis.paare) } : null;
   // Das Raster in einer eigenen Aufgabe: halbiert die längste Aufgabe beim Laden (TBT, DESIGN §6).
@@ -104,7 +120,7 @@ function setzePlan(p) {
   plan.studiengang = typeof plan.studiengang === 'object' && plan.studiengang ? plan.studiengang : { id: String(plan.studiengang) };
   bestand = A.bestand(plan);
   schluessel = A.speicherSchluessel(plan);
-  eigene = A.ladeAuswahl(speicher, schluessel);
+  ({ auswahl: eigene, alt: altSchluessel } = A.ladeAuswahlFuer(speicher, plan, eindeutig(plan)));
   ax = R.achse(bestand.groups);
   tageZahl = R.tagesZahl(bestand.groups);
   wochen = W.wochen(bestand.groups);
@@ -123,7 +139,8 @@ function setzePlan(p) {
 
 function aendere(neu) {
   eigene = neu;
-  gespeichert = A.speichereAuswahl(speicher, schluessel, eigene);
+  gespeichert = A.speichereUndZiehUm(speicher, schluessel, altSchluessel, eigene);
+  if (gespeichert) altSchluessel = null;
   render();
 }
 
@@ -136,6 +153,13 @@ function waehle(key, loesen = false) {
   const g = finde(key);
   if (!g || vorschau) return;
   const vorher = fort.k;
+  // `gruppen: alle` (V-0233): keine Wahl einer Gruppe. Lösen nimmt alle heraus (group: null),
+  // Einplanen stellt den Normalfall wieder her (der Eintrag fällt weg, alle gelten).
+  if (g.component.gruppen === 'alle') {
+    aendere(A.loese(eigene, g.component_id, g.selected));
+    sage(`${titel(g)}: ${g.selected ? 'alle Gruppen eingeplant' : 'Auswahl gelöst'}.`);
+    return;
+  }
   if (g.selected && (loesen || !g.auto)) {
     aendere(A.loese(eigene, g.component_id, !!A.einzige(g.component)));
     sage(`${titel(g)}: Auswahl gelöst.`);
@@ -150,9 +174,10 @@ function waehle(key, loesen = false) {
 /** Nur was es im Angebot gibt, geht in den Link — eine verschwundene Gruppe hilft niemandem. */
 const teilbareAuswahl = () => Object.fromEntries(selected.filter((g) => !g.auto).map((g) => [g.component_id, { group: g.id }]));
 
-/** Die Adresse ohne Teilen-Teil: bei mehreren Plänen der Plan, sonst nichts hinter dem #. */
+/** Die Adresse ohne Teilen-Teil: nur der Plan (#plan=<id>). So bleibt er beim Neuladen, auch wenn
+ *  der Browser nichts speichert, und ein Lesezeichen führt direkt dorthin. */
 function adresseOhneAuswahl() {
-  const frag = plaene.length > 1 && plan ? A.teilenFragment(plan, {}) : '';
+  const frag = plan ? A.teilenFragment(plan, {}) : '';
   history.replaceState(null, '', location.pathname + location.search + frag);
 }
 
@@ -176,6 +201,8 @@ function zuruecksetzen() {
   if (!n) return;
   frage('Auswahl zurücksetzen?', `Deine Auswahl (${mehrzahl(n, 'Gruppe', 'Gruppen')}) wird in diesem Browser gelöscht.`, 'Zurücksetzen', () => {
     A.loescheAuswahl(speicher, schluessel);
+    if (altSchluessel) A.loescheAuswahl(speicher, altSchluessel);
+    altSchluessel = null;
     eigene = {};
     gespeichert = true;
     render();
@@ -268,6 +295,7 @@ function zeichne(mitRaster) {
     partner.set(p.b.key, [...(partner.get(p.b.key) || []), p.a]);
   }
   renderKopf();
+  renderPlanHinweise();
   renderModule();
   renderWerkzeug();
   renderLeiste();
@@ -283,8 +311,6 @@ function standText() {
   return { alt, html: `${alt ? ic('hinweis') : ''}Stand ${t ? stamp(t) : 'unbekannt'}${alt ? ', veraltet' : ''}` };
 }
 
-const planIndex = () => (plan ? plaene.findIndex((p) => A.passtZuPlan({ studiengang: plan.studiengang.id, semester: plan.semester, fachsemester: plan.fachsemester }, p)) : -1);
-
 function renderKopf() {
   const s = standText();
   for (const el of [$('stand'), $('stand-fuss')]) {
@@ -292,16 +318,52 @@ function renderKopf() {
     el.classList.toggle('alt', s.alt);
     el.disabled = false;
   }
-  // Ein Reiter je Plan aus index.json (Silas, 05.10.2026); der Code nennt keinen Studiengang.
-  const i = planIndex();
-  const reiter = plaene.length > 4 ? planWahl() : plaene.map((p, j) => `<button type="button" class="sg-reiter" data-act="plan" data-i="${j}" aria-pressed="${j === i}"><span class="sg-name">${esc(sgName(p))}</span><span class="sg-fs">${esc(`${p.fachsemester}. Fachsemester nach Studienverlaufsplan, ${p.label || p.semester}`)}</span></button>`).join('');
-  $('studiengang').innerHTML = reiter + (plaene.length < 2 ? '<span class="sg-hinweis">Weitere Studiengänge folgen</span>' : '');
+  // Der Reiter nennt den offenen Plan (Silas, 05.10.2026) und öffnet den Startbildschirm zum
+  // Wechseln (V-0234); dort stehen alle Pläne aus index.json. Der Code nennt keinen Studiengang.
+  $('studiengang').innerHTML = `<button type="button" class="sg-reiter" data-act="wechseln" aria-label="${esc(`Studium wechseln. Offen: ${planName(plan)}`)}"><span class="sg-name">${esc(sgName(plan))}${ic('unten', 'i sg-i')}</span><span class="sg-fs">${planZeileHtml(plan)}</span></button>`;
   $('kalender').disabled = false;
   const t = $('teilen');
   // Nie gesperrt: Ohne Wahl oder in der Vorschau sagt ein Klick, was fehlt (teilenWeg in auswahl.mjs).
   t.disabled = false;
   t.title = vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : selected.length ? 'Link zu deiner Auswahl teilen' : 'Erst eine Gruppe wählen';
 }
+
+/**
+ * Oben im Plan (V-0234): ein deutliches Schild, wenn die Termine Ersatz aus dem Vorjahr sind
+ * (`ersatz_fuer`, V-0227/V-0233), und ein ruhiger, klarer Satz, wenn es keine Wahl ohne
+ * Überschneidung gibt (`kombinationen.loesbar === false`; Silas, 05.10.2026: ausdrücklich sagen).
+ * Der Grund ist lang (Zeiten, Tage); er steht in einer Karte, damit die Woche ihre Höhe behält.
+ */
+function renderPlanHinweise() {
+  const el = $('plan-hinweise');
+  const teile = [];
+  if (plan.ersatz_fuer) {
+    teile.push(`<p class="ph gelb">${ic('hinweis')}<span><b>Termine aus dem Vorjahr, Ersatz.</b> ${esc(`Sie stehen für das ${plan.ersatz_fuer}, bis die Hochschule dessen Termine veröffentlicht. Zeiten und Räume können sich noch ändern.`)}</span></p>`);
+  }
+  const o = P.ohneLoesung(plan.kombinationen);
+  if (o) teile.push(`<p class="ph">${ic('warn', 'i ph-warn')}<span><b>${esc(o.satz)}</b> <button type="button" class="leise" data-act="ebene" data-ebene="loesung">Warum</button></span></p>`);
+  el.innerHTML = teile.join('');
+  el.hidden = !teile.length;
+}
+
+function inhaltLoesung() {
+  const o = P.ohneLoesung(plan.kombinationen);
+  if (!o) return '<p>Es gibt eine Wahl ohne Überschneidung.</p>';
+  const out = [`<p>${esc(o.satz)}</p>`];
+  if (o.grund) out.push(`<p>${esc(o.grund)}</p>`);
+  if (!o.sicher && o.verdacht.length) out.push(`<p class="klein">${esc(`Vermutlich, weil die Quelle nicht eindeutig sagt, wie die Gruppen gemeint sind: ${o.verdacht.join('; ')}.`)}</p>`);
+  if (o.fehlen.length) out.push(`<p class="klein">${esc(`Ohne die Module ${o.fehlen.join(', ')}: Für sie fehlen die Termine.`)}</p>`);
+  out.push(`<p class="klein">${esc(`Gerechnet aus allen Einzelterminen in ${quelle().name}. Ändern sich die Termine, rechnet der Stundenplanner beim nächsten Abruf neu. Planen kannst du trotzdem: Die Seite zeigt jede Überschneidung an.`)}</p>`);
+  return out.join('');
+}
+
+/** Wie die Gruppen eines Bestandteils zu belegen sind, wo es nicht „wähle eine“ heißt (V-0233). */
+const GRUPPEN = {
+  alle: 'Alle Gruppen gelten als eingeplant: Du besuchst alle.',
+  unklar: 'Unklar, ob du eine oder alle Gruppen besuchst. Prüfe es in der Quelle.',
+  keine: 'Offenes Angebot, keine Wahl nötig. Es zählt nicht zum Fortschritt.',
+};
+const gruppenSatz = (c) => (GRUPPEN[c.gruppen] ? `${GRUPPEN[c.gruppen]}${c.gruppen_grund ? ' ' + c.gruppen_grund : ''}` : '');
 
 /** Ein Format: umrandet offen, gefüllt mit Haken gewählt, Tinte gefiltert. */
 function format(c, m) {
@@ -311,9 +373,10 @@ function format(c, m) {
   const kon = g && partner.has(g.key);
   const hin = (g && g.changed) || fehlt;
   const sym = kon ? ic('warn') : hin ? ic(g && g.changed ? 'neu' : 'hinweis') : g || fehlt ? ic('haken') : '';
-  const was = g ? `${g.auto ? 'einzige Gruppe, automatisch eingeplant' : 'gewählt'}: ${g.name}` : fehlt ? 'gewählte Gruppe nicht mehr im Angebot' : n ? `offen, ${mehrzahl(n, 'Gruppe', 'Gruppen')}` : 'noch ohne veröffentlichte Termine';
-  const tipp = `${m.short}, ${R.typLang(c.type)}, ${c.sws} SWS, ${c.required ? 'Pflichtbereich' : c.section || ''}${n ? '' : '. Noch ohne veröffentlichte Termine'}`;
-  return `<button type="button" data-sicht="chip" class="format${g || fehlt ? ' gewaehlt' : ''}${g && g.auto ? ' auto' : ''}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${R.typLang(c.type)}, ${mehrzahl(n, 'Gruppe', 'Gruppen')}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}><span class="f-pille">${sym}${esc(c.type)} ${n}</span></button>`;
+  const alle = c.gruppen === 'alle';
+  const was = g ? (alle ? 'alle Gruppen eingeplant' : `${g.auto ? 'einzige Gruppe, automatisch eingeplant' : 'gewählt'}: ${g.name}`) : fehlt ? 'gewählte Gruppe nicht mehr im Angebot' : c.gruppen === 'keine' ? 'offenes Angebot, keine Wahl nötig' : n ? `offen, ${mehrzahl(n, 'Gruppe', 'Gruppen')}` : 'noch ohne veröffentlichte Termine';
+  const tipp = `${m.short}, ${R.typLang(c.type)}, ${c.sws} SWS, ${c.required ? 'Pflichtbereich' : c.section || ''}${n ? '' : '. Noch ohne veröffentlichte Termine'}${gruppenSatz(c) ? '. ' + gruppenSatz(c) : ''}`;
+  return `<button type="button" data-sicht="chip" class="format${g || fehlt ? ' gewaehlt' : ''}${g && g.auto ? ' auto' : ''}${!g && c.gruppen === 'keine' ? ' frei' : ''}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${R.typLang(c.type)}, ${mehrzahl(n, 'Gruppe', 'Gruppen')}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}><span class="f-pille">${sym}${esc(c.type)} ${n}</span></button>`;
 }
 
 function renderModule() {
@@ -375,7 +438,7 @@ function marken(h) {
   let html = '';
   if (paare.length) html += `<button type="button" class="marke rot" data-act="ebene" data-ebene="hinweise">${ic('warn')}${mehrzahl(paare.length, 'Überschneidung', 'Überschneidungen')}</button>`;
   if (h.zahl) html += `<button type="button" class="marke gelb" data-act="ebene" data-ebene="hinweise">${ic('hinweis')}${mehrzahl(h.zahl, 'Hinweis', 'Hinweise')}</button>`;
-  else if (!paare.length && (h.ohne.length || fort.k === fort.n)) html += `<button type="button" class="marke" data-act="ebene" data-ebene="hinweise">${ic('info')}Hinweise</button>`;
+  else if (!paare.length && (h.ohne.length || h.regeln.length || fort.k === fort.n)) html += `<button type="button" class="marke" data-act="ebene" data-ebene="hinweise">${ic('info')}Hinweise</button>`;
   return html;
 }
 
@@ -494,11 +557,12 @@ function kachel(e, mini) {
   const nr = R.gruppenNummer(g.name);
   const raum = raeume(g, s, week).join(', ');
   const rh = R.rhythmusHinweis(s);
-  const gruppe = g.auto ? 'Einzige Gruppe' : nr ? 'Gruppe ' + nr : g.name;
-  const zustand = art === 'moeglich' ? (zurueck ? 'nicht gewählt, das Format ist schon gewählt' : 'nicht gewählt') : vorschau && art === 'kontext' ? 'deine Auswahl' : g.auto ? 'automatisch eingeplant, einzige Gruppe' : 'gewählt';
+  const alle = g.component.gruppen === 'alle';
+  const gruppe = g.auto && !alle ? 'Einzige Gruppe' : nr ? 'Gruppe ' + nr : g.name;
+  const zustand = art === 'moeglich' ? (zurueck ? 'nicht gewählt, das Format ist schon gewählt' : 'nicht gewählt') : vorschau && art === 'kontext' ? 'deine Auswahl' : alle && g.auto ? 'eingeplant, alle Gruppen dieses Formats gelten' : g.auto ? 'automatisch eingeplant, einzige Gruppe' : 'gewählt';
   const name = `${titel(g)}, ${g.name}, ${TAGE[s.day]} ${s.start} bis ${s.end}${raum ? ', Raum ' + raum : ''}${rh ? ', ' + rh : ''}, ${zustand}${neu ? ', geändert seit deiner Wahl' : ''}${mit.length ? ', überschneidet sich mit ' + mit.map((x) => `${x.module_short} ${R.typLang(x.type)}`).join(' und ') : ''}${mini ? '. Zeigt den Tag groß' : ''}`;
   const akt = g.selected && !g.auto ? ['Lösen', 'Auswahl lösen'] : g.component.selection && !g.selected ? ['Wechseln', 'Gruppe wechseln'] : ['Einplanen', 'Einplanen'];
-  const knopf = vorschau || mini || (art === 'kontext' && (g.auto || !g.selected)) ? '' : `<button type="button" class="k-akt" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${akt[0]}</button>`;
+  const knopf = vorschau || mini || alle || (art === 'kontext' && (g.auto || !g.selected)) ? '' : `<button type="button" class="k-akt" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${akt[0]}</button>`;
   const klasse = `${art === 'kontext' ? '' : 'm' + (g.farbe + 1)} ${art}${g.auto && art === 'gewaehlt' ? ' auto' : ''}${zurueck ? ' zurueck' : ''}${frisch === g.component_id ? ' frisch' : ''}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}`;
   return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${klasse}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="${mini ? 'tag' : 'kachel'}" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-titel">${esc(g.component.module.title || g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-kurz">${esc(nr ? g.type + ' ' + nr : g.type)}</span><span class="k-nr">${esc(nr || '')}</span><span class="k-lang k-2">${esc(R.typLang(g.type))}</span><span class="k-info k-2">${esc(`${gruppe}, ${s.start}–${s.end}`)}</span><span class="k-ort k-2">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
 }
@@ -515,7 +579,15 @@ function renderUnter() {
   $('legende').innerHTML = `<p class="lg-zeile nur-handy">${module}</p><p class="lg-zeile">${formate}</p><p class="lg-zeile">${zustand}</p>`;
 }
 
+/** Hochschule und Quelle der Termine aus der Plandatei (Punkt 8541d9f5: nicht „TU“ und „MOSES“ fest). */
+function quelle() {
+  const hs = (plan && plan.hochschule) || {};
+  return { kurz: hs.kurz || hs.name || 'Hochschule', name: (hs.quelle && hs.quelle.name) || 'ihr Vorlesungsverzeichnis' };
+}
+
 function renderFuss() {
+  const q = quelle();
+  $('inoffiziell').textContent = `Kein offizielles Angebot der ${q.kurz}. Verbindlich sind ${q.name} und die Anmeldungen dort.`;
   const s = $('speicher');
   const ohne = !speicher || !gespeichert;
   s.textContent = ohne ? 'Dein Browser speichert die Auswahl nicht. Nimm den Teilen-Link mit.' : 'Deine Auswahl wird nur in diesem Browser gespeichert.';
@@ -531,7 +603,7 @@ function hinweise() {
   const alt = plan.modules.filter((m) => !m.error && A.veraltet(m.success_at));
   const standAlt = A.veraltet(plan.last_run && plan.last_run.finished_at);
   const fehlt = vorschau ? [] : missing;
-  return { geaendert, fehlt, fehler, alt, standAlt, ohne: W.ohneTermine(bestand.parts), zahl: geaendert.length + fehlt.length + fehler.length + alt.length + (standAlt ? 1 : 0) };
+  return { geaendert, fehlt, fehler, alt, standAlt, ohne: W.ohneTermine(bestand.parts), regeln: bestand.parts.filter((x) => GRUPPEN[x.gruppen]), zahl: geaendert.length + fehlt.length + fehler.length + alt.length + (standAlt ? 1 : 0) };
 }
 
 function inhaltHinweise() {
@@ -550,6 +622,7 @@ function inhaltHinweise() {
   if (h.alt.length) out.push(`<div class="signal gelb"><p class="zeile">${ic('hinweis')}<span>Älter als 36 Stunden: ${esc(h.alt.map((m) => m.short).join(', '))}.</span></p></div>`);
   if (h.standAlt) out.push(`<div class="signal gelb"><p class="zeile">${ic('hinweis')}<span>Der letzte Abruf ist älter als 36 Stunden. Prüfe die Termine in MOSES.</span></p></div>`);
   if (h.ohne.length) out.push(`<p class="zeile">${ic('info')}<span>Noch ohne veröffentlichte Termine: ${esc(h.ohne.map((c) => `${c.module.short} ${c.type}`).join(', '))}.</span></p>`);
+  for (const c of h.regeln) out.push(`<p class="zeile">${ic('info')}<span><b>${esc(`${c.module.short} ${R.typLang(c.type)}:`)}</b> ${esc(gruppenSatz(c))}</span></p>`);
   if (n && fort.k === n && !vorschau) out.push(`<p class="zeile">${ic('haken')}<span>Alle ${n} Formate eingeplant. ${paare.length ? 'Die Überschneidungen oben sind noch zu prüfen.' : 'Keine Überschneidung.'} Anmeldung und Kursvorgaben bitte in MOSES und ISIS prüfen.</span></p>`);
   return out.join('') || '<p>Keine Hinweise.</p>';
 }
@@ -557,7 +630,7 @@ function inhaltHinweise() {
 function inhaltStand() {
   const run = plan.last_run;
   const lauf = !run ? 'noch kein Abruf' : run.status === 'ok' ? 'vollständig' : run.status === 'partial' ? 'mit Fehlern bei einzelnen Modulen' : 'fehlgeschlagen';
-  return `<p>${esc(planName(plan))}</p>${planWahl()}<p>Quelle: MOSES der TU Berlin, öffentliche Seiten. Abgerufen ${run ? stamp(run.finished_at) : 'noch nie'}, ${lauf}.</p><p class="klein">${mehrzahl(plan.modules.length, 'Modul', 'Module')}, ${mehrzahl(bestand.parts.length, 'Format', 'Formate')}, ${mehrzahl(plan.group_count ?? bestand.groups.length, 'Termingruppe', 'Termingruppen')}, ${esc(plan.booking_count ?? '')} Einzeltermine.</p><div class="e-aktionen"><button type="button" class="knopf" data-act="neu-laden">Neu laden</button></div>`;
+  return `<p>${esc(planName(plan))}</p><p>Quelle: ${esc(quelle().name)} der ${esc(quelle().kurz)}, öffentliche Seiten. Abgerufen ${run ? stamp(run.finished_at) : 'noch nie'}, ${lauf}.</p><p class="klein">${mehrzahl(plan.modules.length, 'Modul', 'Module')}, ${mehrzahl(bestand.parts.length, 'Format', 'Formate')}, ${mehrzahl(plan.group_count ?? bestand.groups.length, 'Termingruppe', 'Termingruppen')}, ${esc(plan.booking_count ?? '')} Einzeltermine.</p><div class="e-aktionen"><button type="button" class="knopf" data-act="neu-laden">Neu laden</button></div>`;
 }
 
 function inhaltModul(m) {
@@ -590,9 +663,11 @@ function inhaltGruppe(g, s) {
     if (p) teile.push(`<div class="signal rot"><p class="zeile">${ic('warn')}<span>Überschneidung mit ${esc(titel(x))}: ${p.dates.length === 1 ? '1 gemeinsamer Termin am' : p.dates.length + ' gemeinsame Termine, zuerst am'} ${tagMonat(p.dates[0])}</span></p></div>`);
   }
   if (g.selected && g.changed && !vorschau) teile.push(`<div class="signal gelb"><p class="zeile">${ic('neu')}<span>Zeit oder Raum haben sich seit deiner Wahl geändert.</span></p><button type="button" class="knopf" data-act="geprueft" data-key="${esc(g.key)}">Änderung geprüft</button></div>`);
-  if (g.auto) teile.push('<p class="klein">Einzige Gruppe dieses Formats: automatisch eingeplant (gestrichelt). „Einplanen“ macht es fest, „Auswahl lösen“ nimmt es heraus.</p>');
-  const verb = g.selected && !g.auto ? 'Auswahl lösen' : g.component.selection && !g.selected ? 'Gruppe wechseln' : 'Einplanen';
-  const loesen = g.auto && !vorschau ? `<button type="button" class="knopf" data-act="loesen-g" data-key="${esc(g.key)}">Auswahl lösen</button>` : '';
+  const alle = g.component.gruppen === 'alle';
+  if (gruppenSatz(g.component)) teile.push(`<p class="klein">${esc(gruppenSatz(g.component))}</p>`);
+  else if (g.auto) teile.push('<p class="klein">Einzige Gruppe dieses Formats: automatisch eingeplant (gestrichelt). „Einplanen“ macht es fest, „Auswahl lösen“ nimmt es heraus.</p>');
+  const verb = alle ? (g.selected ? 'Auswahl lösen' : 'Alle einplanen') : g.selected && !g.auto ? 'Auswahl lösen' : g.component.selection && !g.selected ? 'Gruppe wechseln' : 'Einplanen';
+  const loesen = g.auto && !alle && !vorschau ? `<button type="button" class="knopf" data-act="loesen-g" data-key="${esc(g.key)}">Auswahl lösen</button>` : '';
   teile.push(`<div class="e-aktionen">${vorschau ? '<button type="button" class="knopf" disabled>Erst den Plan übernehmen</button>' : `<button type="button" class="knopf haupt" data-act="waehlen" data-key="${esc(g.key)}" data-fokus>${verb}</button>`}${loesen}${link(g.url, 'In MOSES ansehen')}</div>`);
   const termine = g.slots.flatMap((x) => W.termineDerKarte(g, x, week, par, plan.anchor)).sort((a, b) => (a.date + a.start < b.date + b.start ? -1 : 1));
   teile.push(`<details><summary>${mehrzahl(termine.length, 'Termin', 'Termine')}</summary><ul class="termine">${termine.map((b) => `<li>${KURZ[(new Date(b.date + 'T12:00:00Z').getUTCDay() + 6) % 7]} ${tagMonat(b.date)}, ${esc(b.start)}–${esc(b.end)}, ${esc(b.room)}${b.note ? `<br>${esc(b.note)}` : ''}${b.info ? `<br>${esc(b.info)}` : ''}</li>`).join('')}</ul></details>`);
@@ -604,6 +679,7 @@ const EBENEN = {
   hinweise: () => ['karte', 'Hinweise', inhaltHinweise],
   stand: () => ['karte', 'Datenstand', inhaltStand],
   hilfe: () => ['dialog', 'So funktioniert die Planung', () => $('hilfe-text').innerHTML, 'lesen'],
+  loesung: () => ['karte', P.ohneLoesung(plan.kombinationen) && !P.ohneLoesung(plan.kombinationen).sicher ? 'Vermutlich keine Wahl ohne Überschneidung' : 'Keine Wahl ohne Überschneidung', inhaltLoesung],
 };
 
 // Eine Ebene zur Zeit (§3.5). Ab 768 px Karte an ihrem Anker oder Dialog, darunter ein Blatt von unten.
@@ -721,6 +797,113 @@ function sage(text) {
   setTimeout(() => { el.textContent = text; }, 50);
 }
 
+// ── Der Startbildschirm (Hello-Screen, V-0234; DESIGN §3.6, §4.5)
+// Je Stufe eine Frage mit großen Optionen, unten die Leiste mit allen Stufen: erledigt, automatisch,
+// entfällt, offen. Die Logik steht in planwahl.mjs; hier wird nur gezeichnet.
+
+function zeigeHallo(an) {
+  $('hallo').hidden = !an;
+  $('seite').hidden = an;
+  document.documentElement.classList.toggle('im-hallo', an);
+  scrollTo(0, 0);
+}
+
+function halloOeffnen(wahl, sicht = null) {
+  if (!baum) return;
+  schliesse(true);
+  hallo.wahl = wahl || {};
+  hallo.sicht = sicht || P.naechsteSicht(P.wahlStand(baum, stufen, hallo.wahl));
+  zeigeHallo(true);
+  renderHallo(true);
+}
+
+function halloWaehlen(stufe, i) {
+  const st = P.wahlStand(baum, stufen, hallo.wahl);
+  const sch = st.schritte.find((x) => x.id === stufe);
+  const o = sch && sch.knoten && sch.knoten.optionen[i];
+  if (!o) return;
+  hallo.wahl = P.waehleOption(stufen, hallo.wahl, stufe, o.id);
+  const neu = P.wahlStand(baum, stufen, hallo.wahl);
+  hallo.sicht = P.naechsteSicht(neu);
+  renderHallo(true);
+  const weiter = neu.schritte.find((x) => x.id === hallo.sicht);
+  sage(`${sch.label}: ${o.label}. ${weiter ? `Weiter mit ${weiter.label}.` : 'Alles gewählt.'}`);
+}
+
+/** Esc: eine Stufe zurück; auf der ersten zurück zum offenen Plan, wenn es einen gibt. */
+function halloEsc() {
+  const v = P.vorige(P.wahlStand(baum, stufen, hallo.wahl), hallo.sicht);
+  if (v) { hallo.sicht = v; renderHallo(true); } else if (plan) AKTIONEN['hallo-zu']();
+}
+
+function renderHallo(fokus = false) {
+  const st = P.wahlStand(baum, stufen, hallo.wahl);
+  const sch = st.schritte.find((x) => x.id === hallo.sicht);
+  if (hallo.sicht === 'fertig' ? !st.plan : !(sch && sch.knoten)) hallo.sicht = P.naechsteSicht(st);
+  const fertig = hallo.sicht === 'fertig';
+  $('h-inhalt').innerHTML = fertig ? halloFertig(st) : halloSchritt(st, hallo.sicht);
+  $('h-leiste').innerHTML = halloLeiste(st);
+  $('h-zum-plan').hidden = !plan;
+  if (fokus) {
+    const ziel = (fertig && $('h-inhalt').querySelector('[data-act="h-oeffnen"]')) || $('h-titel');
+    if (ziel) ziel.focus({ preventScroll: true });
+  }
+}
+
+/** Was vor einer Stufe schon feststeht, als eine Zeile: „TU Berlin, Wirtschaftsinformatik“. Beim
+ *  Fachsemester (die Option trägt `semester`) gehört das Semester dazu: Erst beides ist der Plan. */
+const optionText = (o) => (o.semester != null && o.zusatz ? `${o.label}, ${o.zusatz}` : o.label);
+const halloKontext = (st, i) => st.schritte.slice(0, i).filter((x) => x.option && x.art !== 'entfaellt').map((x) => optionText(x.option)).join(', ');
+
+function halloSchritt(st, stufe) {
+  const i = st.schritte.findIndex((x) => x.id === stufe);
+  const sch = st.schritte[i], k = sch.knoten;
+  const auto = sch.art === 'automatisch';
+  // Auf der ersten Stufe ein Satz, wozu das Ganze dient; danach steht dort, was schon feststeht.
+  const kontext = halloKontext(st, i) || 'Wähle dein Studium, dann zeigt der Stundenplanner alle Termine deines Semesters.';
+  const knopf = (o) => {
+    const j = k.optionen.indexOf(o), an = sch.option === o;
+    return `<button type="button" class="h-option" data-sicht="option" data-act="${auto ? 'h-weiter' : 'h-option'}" data-s="${esc(stufe)}" data-i="${j}"${an ? ' aria-current="true"' : ''}${gruppen ? ` aria-label="${esc(`${o.label}, ${o.zusatz}`)}"` : ''}><span class="h-o-label">${esc(o.label)}</span>${o.zusatz && !gruppen ? `<span class="h-o-zusatz">${esc(o.zusatz)}</span>` : ''}${an ? ic('haken', 'i h-o-i') : ''}</button>`;
+  };
+  const gruppen = P.gruppiert(k.optionen);
+  const optionen = gruppen
+    ? gruppen.map((g) => `<div class="h-gruppe" role="group" aria-label="${esc(g.zusatz)}"><p class="h-g-titel">${esc(g.zusatz)}</p><div class="h-optionen">${g.optionen.map(knopf).join('')}</div></div>`).join('')
+    : `<div class="h-optionen" role="group" aria-labelledby="h-titel">${k.optionen.map(knopf).join('')}</div>`;
+  const notiz = auto ? `Nur eine gültige: ${sch.option.label}. Sie ist automatisch gewählt.` : k.optionen.length === 1 ? 'Weitere folgen.' : '';
+  const zurueck = P.vorige(st, stufe) ? '<button type="button" class="knopf" data-act="h-zurueck">Zurück</button>' : '';
+  const aktionen = auto ? `<button type="button" class="knopf haupt" data-act="h-weiter">Weiter</button>${zurueck}` : zurueck;
+  return `<div class="h-frage"><h1 class="h-titel" id="h-titel" tabindex="-1">${esc(sch.label)}</h1><p class="h-kontext">${esc(kontext)}</p></div>${optionen}${notiz ? `<p class="h-notiz">${esc(notiz)}</p>` : ''}${aktionen ? `<div class="h-aktionen">${aktionen}</div>` : ''}`;
+}
+
+/** Alles gewählt: die Angaben auf einen Blick, die automatische mit ihrem Grund, „Stundenplan öffnen“. */
+function halloFertig(st) {
+  const zeilen = st.schritte.filter((x) => x.option && x.art !== 'entfaellt').map((x) => {
+    const auto = x.art === 'automatisch';
+    const aendern = auto ? '' : `<button type="button" class="leise" data-act="h-stufe" data-s="${esc(x.id)}" aria-label="${esc(`${x.label} ändern`)}">Ändern</button>`;
+    // Ein kurzer Zusatz (Abschluss, Semester) gehört in die Zeile, ein langer (für wen die Ordnung gilt)
+    // darunter: So passt die Zusammenfassung am Rechner auf einen Schirm (1366 × 657, gemessen).
+    const z = x.option.zusatz || '', lang = z.length > 40;
+    return `<div class="h-zeile"><dt>${esc(x.label)}</dt><dd><span class="h-z-wert">${esc(z && !lang ? `${x.option.label}, ${z}` : x.option.label)}</span>${auto ? '<span class="h-z-zusatz">Nur eine gültige, automatisch gewählt.</span>' : ''}${lang ? `<span class="h-z-zusatz">${esc(z)}</span>` : ''}</dd>${aendern}</div>`;
+  }).join('');
+  return `<div class="h-frage"><h1 class="h-titel" id="h-titel" tabindex="-1">Deine Angaben</h1></div><dl class="h-liste">${zeilen}</dl><div class="h-aktionen"><button type="button" class="knopf haupt" data-act="h-oeffnen">Stundenplan öffnen</button></div>`;
+}
+
+/** Die Leiste unten (Silas: „welche Entscheidung noch fehlt für eine eindeutige Zuordnung“). */
+function halloLeiste(st) {
+  const WORT = { entfaellt: 'entfällt', offen: 'offen' };
+  const teile = st.schritte.map((x) => {
+    const hier = x.id === hallo.sicht;
+    const wert = x.art === 'automatisch' ? (x.wert ? `${x.wert}, automatisch` : 'automatisch') : x.art === 'gewaehlt' ? x.wert : hier ? 'jetzt' : WORT[x.art];
+    const inhalt = `<span class="h-balken"></span><span class="h-s-label">${esc(x.label)}</span><span class="h-s-wert">${esc(wert)}</span>`;
+    const klasse = `h-stufe ${x.art}${hier ? ' hier' : ''}`;
+    const zurueck = x.knoten && x.option && x.art !== 'entfaellt';
+    const name = `${x.label}: ${wert}${x.art === 'gewaehlt' ? '. Ändern' : ''}`;
+    return `<li class="${klasse}"${hier ? ' aria-current="step"' : ''}>${zurueck ? `<button type="button" class="h-s" data-act="h-stufe" data-s="${esc(x.id)}" aria-label="${esc(name)}">${inhalt}</button>` : `<span class="h-s">${inhalt}</span>`}</li>`;
+  }).join('');
+  const t = P.leistenText(st);
+  return `<div class="h-l-innen"><p class="h-l-text"><span class="nur-breit">${esc(t.zahl)}</span><span class="nur-handy">${esc(t.namen)}</span></p><ol class="h-stufen" aria-label="Deine Angaben">${teile}</ol></div>`;
+}
+
 // ── Bedienung
 
 /** Den Filter setzen (raster.mjs) und ansagen, was zu sehen ist. */
@@ -741,7 +924,20 @@ const AKTIONEN = {
   modul: (b) => { const m = plan.modules[Number(b.dataset.m)]; if (m) filtern(R.tippeModul(z, m.number)); },
   aufheben: () => filtern(R.KEIN_FILTER),
   info: (b) => karteModul(Number(b.dataset.m), b),
-  plan: (b) => { const i = Number(b.dataset.i); if (i !== planIndex()) planWechseln(i); },
+  wechseln: () => halloOeffnen(blatt ? P.wahlFuer(blaetter, blatt.id) : {}, blatt ? 'fertig' : null),
+  'h-option': (b) => halloWaehlen(b.dataset.s, Number(b.dataset.i)),
+  'h-stufe': (b) => { hallo.sicht = b.dataset.s; renderHallo(true); },
+  'h-zurueck': () => { hallo.sicht = P.vorige(P.wahlStand(baum, stufen, hallo.wahl), hallo.sicht) || hallo.sicht; renderHallo(true); },
+  'h-weiter': () => { hallo.sicht = P.naechsteSicht(P.wahlStand(baum, stufen, hallo.wahl)); renderHallo(true); },
+  'h-oeffnen': () => {
+    const st = P.wahlStand(baum, stufen, hallo.wahl);
+    const b = st.plan && blaetter.find((x) => x.id === st.plan.id);
+    if (!b) return;
+    // Die aktive Wahl: erst jetzt kommt der Plan in den Speicher (wie die Auswahl, ARCHITEKTUR §6).
+    A.speicherePlanwahl(speicher, b.id);
+    planOeffnen(b);
+  },
+  'hallo-zu': () => { zeigeHallo(false); const r = $('studiengang').querySelector('button'); if (r) r.focus({ preventScroll: true }); },
   kachel: (b) => karteGruppe(b),
   waehlen: (b) => {
     const key = b.dataset.key;
@@ -778,7 +974,7 @@ const AKTIONEN = {
   uebernehmen: () => uebernehmen(),
   verwerfen: () => vorschauEnde(),
   'neu-laden': async () => {
-    const eintrag = plaene.find((p) => A.passtZuPlan({ studiengang: plan.studiengang.id, semester: plan.semester, fachsemester: plan.fachsemester }, p));
+    const eintrag = blatt;
     if (!eintrag) { start(); return; }
     try {
       setzePlan(await holeJson('daten/' + eintrag.datei));
@@ -811,23 +1007,25 @@ $('ebenen').addEventListener('click', (e) => { if (e.target.classList.contains('
 document.addEventListener('change', (e) => {
   const t = e.target, k = t.dataset.set;
   if (!k) return;
-  if (k === 'plan') { planWechseln(Number(t.value)); return; }
   if (k === 'zeitraum') z.zeitraum = t.value;
   render();
 });
 
-async function planWechseln(i) {
-  const p = plaene[i];
-  if (!p) return;
+/** Einen Plan öffnen (aus dem Startbildschirm, einem Link oder dem Speicher). Ist er schon offen
+ *  und kein Link im Spiel, bleibt alles, wie es ist: Filter, Tag, Auswahl. */
+async function planOeffnen(b, verweis = null) {
   schliesse(true);
+  zeigeHallo(false);
+  if (plan && blatt && blatt.id === b.id && !verweis) { vorschau = null; adresseOhneAuswahl(); render(); return; }
+  blatt = b;
   vorschau = null;
-  history.replaceState(null, '', location.pathname + location.search + A.teilenFragment(p, {}));
-  await planLaden(p, null);
+  await planLaden(b, verweis);
+  if (!verweis) adresseOhneAuswahl();
 }
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (offen) { e.preventDefault(); schliesse(); } else if (z.teil || z.modul) filtern(R.stufeZurueck(z));
+    if (offen) { e.preventDefault(); schliesse(); } else if (!$('hallo').hidden) halloEsc(); else if (z.teil || z.modul) filtern(R.stufeZurueck(z));
     return;
   }
   if (e.key === 'Tab' && offen) {
@@ -878,8 +1076,8 @@ fein.addEventListener('change', render);
 
 // Eine zweite Registerkarte ändert die Auswahl: nachziehen, statt sie beim nächsten Klick zu überschreiben.
 addEventListener('storage', (e) => {
-  if (!plan || (e.key !== null && e.key !== schluessel)) return;
-  eigene = A.ladeAuswahl(speicher, schluessel);
+  if (!plan || (e.key !== null && e.key !== schluessel && e.key !== altSchluessel)) return;
+  ({ auswahl: eigene, alt: altSchluessel } = A.ladeAuswahlFuer(speicher, plan, eindeutig(plan)));
   render();
 });
 
