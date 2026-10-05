@@ -30,6 +30,8 @@ const speicher = (() => { try { return window.localStorage; } catch { return nul
 const z = { ...R.KEIN_FILTER, zeitraum: 'skeleton', ab: 0, tag: R.startTag(new Date()), modus: null, fokus: '' };
 // Die zuletzt geöffneten Ansichten, für Pfeil links und rechts (V-0245, raster.mjs).
 let verlauf = R.verlaufNeu();
+// Der Pfeiltasten-Tipp (V-0246): einmal je Besuch, nichts wird gespeichert (raster.mjs, tippFaellig).
+const tipp = { erste: 0, gezeigt: false, benutzt: false, uhr: 0, weg: 0 };
 let plan = null, bestand = { groups: [], parts: [] }, schluessel = '', eigene = {}, gespeichert = true;
 // Der Startbildschirm (V-0234): der Baum aus index.json, seine Stufen, alle Pläne flach, das Blatt
 // des offenen Plans. altSchluessel: Die Auswahl kam noch aus dem Schlüssel vor V-0234; die erste
@@ -954,7 +956,7 @@ function halloLeiste(st) {
 /** Den Filter setzen (raster.mjs) und ansagen, was zu sehen ist. */
 function filtern(neu, ausVerlauf = false) {
   Object.assign(z, neu);
-  if (!ausVerlauf) verlauf = R.verlaufMerken(verlauf, z);
+  if (!ausVerlauf) { verlauf = R.verlaufMerken(verlauf, z); tippPlanen(); }
   const c = bestand.parts.find((x) => x.id === z.teil);
   const m = plan.modules.find((x) => x.number === z.modul);
   render();
@@ -1017,6 +1019,7 @@ const AKTIONEN = {
   lesezeichen: () => { const t = $('lz-text'); if (t) { t.textContent = lesezeichenText(); t.hidden = false; } },
   'system-teilen': () => systemTeilen(),
   zuruecksetzen: () => zuruecksetzen(),
+  'tipp-zu': () => tippZu(),
   uebernehmen: () => uebernehmen(),
   verwerfen: () => vorschauEnde(),
   'neu-laden': async () => {
@@ -1072,6 +1075,37 @@ async function planOeffnen(b, verweis = null) {
   if (!verweis) adresseOhneAuswahl();
 }
 
+/** Die Uhr des Tipps beginnt mit der ersten Wahl eines Filters; danach wird alle 15 s nachgesehen, ob er
+ *  fällig ist und gerade nichts im Weg steht (eine offene Karte, der Startbildschirm). */
+function tippPlanen() {
+  if (tipp.gezeigt || tipp.benutzt || !fein.matches) return;
+  if (!tipp.erste) tipp.erste = Date.now();
+  if (!tipp.uhr) tipp.uhr = setTimeout(tippPruefen, Math.max(1000, R.TIPP_NACH_MS - (Date.now() - tipp.erste)));
+}
+
+function tippPruefen() {
+  tipp.uhr = 0;
+  const lage = { seit: Date.now() - tipp.erste, schritte: verlauf.liste.length, gezeigt: tipp.gezeigt, benutzt: tipp.benutzt, tastatur: fein.matches, frei: !offen && $('hallo').hidden && !!plan };
+  if (R.tippFaellig(lage)) { tippZeigen(); return; }
+  if (!tipp.gezeigt && !tipp.benutzt && fein.matches) tipp.uhr = setTimeout(tippPruefen, 15000);
+}
+
+function tippZeigen() {
+  tipp.gezeigt = true;
+  const t = $('tipp');
+  t.hidden = false;
+  requestAnimationFrame(() => t.classList.add('da'));
+  tipp.weg = setTimeout(tippZu, 12000);
+}
+
+function tippZu() {
+  clearTimeout(tipp.weg);
+  const t = $('tipp');
+  if (t.hidden) return;
+  t.classList.remove('da');
+  setTimeout(() => { t.hidden = true; }, 200);
+}
+
 /**
  * Wo Pfeil links und rechts durch den Verlauf gehen (V-0245): überall auf der Seite, nur nicht dort, wo
  * die Pfeile schon etwas tun: in Feldern und Auswahllisten, im Raster (Kachel zu Kachel, §4.4), in einer
@@ -1085,10 +1119,14 @@ function pfeileFuerVerlauf(e) {
 
 document.addEventListener('keydown', (e) => {
   if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && pfeileFuerVerlauf(e)) {
+    // Wer die Pfeile benutzt, kennt sie: Der Tipp kommt nicht mehr, ein offener geht.
+    tipp.benutzt = true;
+    tippZu();
     const s = R.verlaufSchritt(verlauf, e.key === 'ArrowLeft' ? -1 : 1);
     if (s) { e.preventDefault(); verlauf = s.v; filtern(s.filter, true); }
     return;
   }
+  if (e.key === 'Escape' && !$('tipp').hidden) { tippZu(); return; }
   if (e.key === 'Escape') {
     if (offen) { e.preventDefault(); schliesse(); } else if (!$('hallo').hidden) halloEsc(); else if (z.teil || z.modul) filtern(R.stufeZurueck(z));
     return;

@@ -176,6 +176,17 @@ export function verlaufSchritt(v, richtung) {
   return { v: { liste: v.liste, i }, filter: { ...v.liste[i] } };
 }
 
+// Der Pfeiltasten-Tipp (Silas, 05.10.2026, V-0246): „sobald man ein, zwei Minuten da rumgeklickt hat,
+// soll unten so ein kleines Pop-up kommen, wo quasi die Pfeiltasten angezeigt werden“. Er kommt einmal je
+// Besuch, nur mit Tastatur und Maus, nur wenn ← schon etwas täte (zwei Ansichten im Verlauf) und nur,
+// wenn die Pfeile noch nicht benutzt wurden. Gemerkt wird nichts: Der nächste Besuch fragt neu.
+export const TIPP_NACH_MS = 90000;
+
+/** Ob der Tipp jetzt erscheinen soll. `seit`: ms seit der ersten Wahl eines Filters in diesem Besuch. */
+export function tippFaellig({ seit, schritte, gezeigt, benutzt, tastatur, frei }) {
+  return !gezeigt && !benutzt && !!tastatur && !!frei && schritte >= 2 && seit >= TIPP_NACH_MS;
+}
+
 /**
  * Die Legende unter dem Raster: jedes Format, das im Plan vorkommt, einmal, in der Reihenfolge, in
  * der es zuerst auftaucht, mit Kürzel und ausgeschrieben („nur was vorkommt“, Silas, 05.10.2026).
