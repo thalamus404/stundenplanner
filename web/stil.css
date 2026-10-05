@@ -7,8 +7,9 @@
   --grau-6: #bcbec0; --grau-7: #7f8083; --grau-8: #6d6f71; --grau-9: #545557; --grau-10: #1d1e20;
   --konflikt: #cc2827; --konflikt-text: #a51f1e; --konflikt-flaeche: #ffebe8;
   --hinweis: #c17a00; --hinweis-text: #7b4c00; --hinweis-flaeche: #fef0d4;
-  /* Rollen (V-0236, §5.2): Kachel und Legende lesen dieselben Tokens. */
-  --kontext-flaeche: var(--grau-9); --kontext-text: var(--grau-1);
+  /* Rollen (V-0236, §5.2). Der Hinweis im Fuß tritt zurück (V-0237): hell der Zweittext, dunkel eine
+     Stufe dunkler; beide ≥ 4,5:1 auf der Seite (§5.5). */
+  --fuss-text: var(--grau-9);
   --ebene: #fdfdff;
   --rand-ebene: var(--grau-5);
   --schatten: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12);
@@ -37,7 +38,7 @@
     --grau-6: #46484a; --grau-7: #737477; --grau-8: #8b8c8f; --grau-9: #bfc1c3; --grau-10: #e6e8ea;
     --konflikt: #ef675c; --konflikt-text: #f8a59b; --konflikt-flaeche: #3b1c19;
     --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
-    --kontext-flaeche: var(--grau-6); --kontext-text: var(--grau-10);
+    --fuss-text: var(--grau-8);
     --ebene: #303234;
     --rand-ebene: rgb(255 255 255 / .1);
     --schatten: none;
@@ -104,8 +105,8 @@ button:active::after { opacity: .1; }
 .stand:disabled { cursor: default; }
 .kopf-rechts { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 
-/* Der Studiengang-Reiter (Silas, 05.10.2026): ein Reiter je Plan aus index.json, der gewählte mit
-   einer Linie in Tinte darunter. */
+/* Der Studiengang-Reiter (Silas, 05.10.2026): der offene Plan mit einer Linie in Tinte darunter.
+   Seit V-0234 öffnet er den Startbildschirm zum Wechseln (Winkel unten am Namen). */
 /* Der Reiter füllt den freien Platz, sonst war der Rand links vom Knopfpaar ein Rest (53 px bei
    865 px Breite, außerhalb des 4-px-Rasters, V-0236). */
 .studiengang { flex: 1 1 auto; display: flex; align-items: center; gap: 4px 16px; min-width: 0; }
@@ -113,10 +114,10 @@ button:active::after { opacity: .1; }
   display: grid; align-content: center; min-width: 0; min-height: 44px; padding: 4px 8px;
   border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; text-align: left;
 }
-.sg-reiter[aria-pressed="true"] { border-bottom-color: var(--grau-10); cursor: default; }
-.sg-reiter[aria-pressed="true"]::after { display: none; }
-.sg-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sg-fs, .sg-hinweis { font-size: 12px; line-height: 16px; color: var(--grau-9); white-space: nowrap; }
+.sg-reiter { border-bottom-color: var(--grau-10); }
+.sg-name { display: flex; align-items: center; gap: 4px; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-i { color: var(--grau-8); }
+.sg-fs { font-size: 12px; line-height: 16px; color: var(--grau-9); white-space: nowrap; }
 
 .knopf {
   height: var(--ziel); min-width: var(--ziel); padding: 0 12px; border-radius: 8px; border: 1px solid var(--grau-6);
@@ -132,10 +133,12 @@ button:active::after { opacity: .1; }
 .mitte { flex: 1 1 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 8px 24px; }
 .module { grid-row: 1 / 3; display: grid; align-content: start; gap: 8px; }
 .modul { min-width: 0; display: flex; flex-direction: column; padding: 2px 4px; border-radius: 12px; background: var(--grau-1); border: 1px solid var(--grau-5); }
-.modul.aktiv { border-color: var(--grau-10); outline: 1px solid var(--grau-10); }
+/* Gefiltert (Silas' zweiter Test, V-0237): kein Rahmen mehr um die Modulkachel; der Farbkreis ist ein
+   Ring und füllt sich, wenn das Modul aufgeschlagen ist. */
+.modul.aktiv .punkt { background: var(--rand); }
 .modul-name { display: flex; align-items: center; gap: 8px; min-width: 0; height: var(--zm); padding: 0 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
 .m-kurz { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.punkt { width: 12px; height: 12px; border-radius: 50%; background: var(--rand); flex: none; }
+.punkt { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--rand); flex: none; }
 .formate { display: flex; flex-wrap: wrap; gap: 0 4px; padding: 0 4px; }
 /* Ein Format: das Ziel ist 28 px (Touch 44 px), sichtbar nur die Pille darin. Überlage, Zustände
    und Ringe liegen auf der Pille, der Fokusring um das Ziel. */
@@ -158,6 +161,17 @@ button:active::after { opacity: .1; }
 .format.hinweis .f-pille { outline: 2px solid var(--hinweis); outline-offset: 1px; }
 
 .buehne { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* Oben im Plan (V-0234): das Schild für Ersatztermine (Bernstein, deutlich) und der ruhige Satz, wenn
+   es keine Wahl ohne Überschneidung gibt (neutrale Fläche, nur das Symbol rot). Je eine Zeile, der
+   lange Grund steht in einer Karte („Warum“), damit die Woche am Rechner ihre Höhe behält. */
+.plan-hinweise { flex: none; display: grid; gap: 8px; }
+.ph { display: flex; align-items: flex-start; gap: 8px; min-height: 44px; padding: 12px; border-radius: 8px; border: 1px solid var(--grau-5); background: var(--grau-1); }
+.ph > .i { margin-top: 2px; }
+.ph-warn { color: var(--konflikt); }
+.ph.gelb { border-color: var(--hinweis-flaeche); background: var(--hinweis-flaeche); color: var(--hinweis-text); }
+.ph.gelb > .i { color: var(--hinweis); }
+.ph .leise { margin-left: 4px; }
 
 .werkzeug { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-height: 40px; }
 .lage { flex: 1 1 320px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
@@ -220,7 +234,6 @@ button:active::after { opacity: .1; }
    Dunkle eigene, und eingeplant sah dort aus wie automatisch. */
 .kachel { position: absolute; container: kachel / size; color: var(--grau-10); }
 .kachel.gewaehlt { color: var(--grau-1); }
-.kachel.kontext { color: var(--kontext-text); }
 .kachel.zurueck { color: var(--grau-9); }
 .kachel:focus-within, .kachel.zeigen { z-index: 2; }
 .k-flaeche {
@@ -231,14 +244,29 @@ button:active::after { opacity: .1; }
 .k-flaeche:focus-visible { outline-offset: 4px; }
 .gewaehlt > .k-flaeche { background: var(--tinte); border-color: var(--tinte); }
 /* Legende und Kachel in einer Regel: Sie können nicht auseinanderlaufen (V-0236). */
-.kontext > .k-flaeche, .lg-k.kontext { background: var(--kontext-flaeche); border-color: var(--kontext-flaeche); }
+/* Mit Filter tritt „Mein Stundenplan“ außerhalb ganz zurück (Silas: etwa 20 % Deckkraft, V-0237):
+   dieselbe Kachel, nur durchscheinend. Vorher grau gefüllt. */
+.kachel.kontext, .lg-k.kontext { opacity: .2; }
+.lg-k.kontext { background: var(--grau-10); border-color: var(--grau-10); }
 .zurueck > .k-flaeche, .lg-k.zurueck { background: var(--grau-3); border-color: var(--grau-5); }
 .moeglich .k-2 { color: var(--grau-9); }
 /* Automatisch eingeplant, die einzige Gruppe eines Formats: gestrichelt (Silas, 05.10.2026). */
-.kachel.auto { color: var(--tinte); }
+/* Ein Vorschlag (V-0237, vorher „automatisch eingeplant“): die einzige Gruppe eines Formats, gestrichelt,
+   noch nicht eingeplant. */
+.kachel.vorschlag { color: var(--tinte); }
 /* Der gestrichelte Rand als outline nach innen: Ein 2-px-Rand nähme schmalen Kacheln den Platz. */
-.auto > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
-.format.auto .f-pille { border: 1px dashed var(--tinte); }
+.vorschlag > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
+.format.vorschlag .f-pille { border: 1px dashed var(--tinte); }
+/* Der Fokus schlägt den gestrichelten Rand: Sonst blieb die automatisch eingeplante Kachel mit dem
+   Fokus unverändert, der Fokus unsichtbar (gemessen am Plan der HU Biologie, §8 #10, V-0234). */
+.vorschlag > .k-flaeche:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 4px; }
+/* Formate nach Sättigung (Silas' zweiter Test, V-0237): Vorlesung voll, Übung 70 %, alles andere 50 %.
+   saturate() hält die Helligkeit, die Kontraste aus §5.5 bleiben; Ringe (Überschneidung, Fokus) liegen
+   außerhalb und behalten ihre Farbe. */
+.kat-uebung > .k-flaeche, .format.kat-uebung .f-pille { filter: saturate(.7); }
+.kat-sonstige > .k-flaeche, .format.kat-sonstige .f-pille { filter: saturate(.5); }
+/* Ein offenes Angebot (`gruppen: keine`, V-0234) ist keine Wahl: neutral umrandet, nicht in Modulfarbe. */
+.format.frei .f-pille { border-color: var(--grau-6); color: var(--grau-9); }
 .kachel.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; border-radius: 4px; }
 .kachel.zeigen { outline: 2px solid var(--grau-10); outline-offset: 1px; border-radius: 4px; }
 .k-flaeche > span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -246,10 +274,15 @@ button:active::after { opacity: .1; }
 .k-typ, .k-mod, .k-titel { font-weight: 600; }
 .k-typ, .k-nr, .k-titel, .k-lang, .k-info, .k-ort, .k-akt { display: none; }
 .k-sym { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; }
+/* Der Knopf auf der Kachel (Silas' zweiter Test, V-0237): ein abgerundetes Quadrat in der Tinte des
+   Moduls mit einem Plus (Einplanen, Wechseln) bzw. hell mit einem Kreuz (Lösen), 24 px. Nur am Rechner
+   (feiner Zeiger, .aktionen); er passt auch auf schmale Kacheln, dort unten rechts. */
 .k-akt {
-  position: absolute; right: 4px; top: 4px; height: 24px; padding: 0 8px; border: 1px solid currentColor; border-radius: 6px;
-  font-size: 12px; line-height: 16px; align-items: center; white-space: nowrap;
+  position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border-radius: 8px;
+  place-items: center; background: var(--tinte); color: var(--grau-1);
 }
+.k-akt .i { width: 16px; height: 16px; stroke-width: 2.25; }
+.k-akt.kreuz { background: var(--grau-1); color: var(--tinte); }
 @container kachel (min-width: 96px) {
   .k-flaeche { padding: 4px 8px; }
   .k-kurz { display: none; }
@@ -266,10 +299,15 @@ button:active::after { opacity: .1; }
   .k-mod, .k-titel { font-size: 12px; line-height: 16px; }
 }
 /* Der Knopf sitzt ruhig oben rechts neben dem Titel, nur auf breiten Kacheln (Silas, V-0225). */
-@container kachel (min-width: 160px) and (min-height: 52px) {
-  .aktionen .k-akt { display: inline-flex; }
-  .aktionen .k-mod, .aktionen .k-titel { max-width: calc(100% - 80px); }
-  .aktionen .k-sym { top: auto; bottom: 8px; }
+@container kachel (min-width: 96px) and (min-height: 32px) {
+  .aktionen .k-akt { display: grid; }
+  .aktionen .mit-akt .k-mod, .aktionen .mit-akt .k-titel { max-width: calc(100% - 32px); }
+  .aktionen .mit-akt .k-sym { top: auto; bottom: 8px; }
+}
+/* Schmal, aber hoch genug (parallele Gruppen quetschen die Spur): das Plus unten rechts. */
+@container kachel (min-width: 32px) and (max-width: 95.9px) and (min-height: 52px) {
+  .aktionen .k-akt { display: grid; top: auto; bottom: 4px; right: 50%; transform: translateX(50%); }
+  .aktionen .mit-akt .k-sym { display: none; }
 }
 /* Schmaler als 80 px passt der Modulname nicht (er hieße „Stati…“): Kürzel und Nummer, fett. */
 @container kachel (max-width: 79.9px) { .k-mod, .k-kurz { display: none; } .k-typ, .k-nr { display: block; } }
@@ -283,6 +321,10 @@ button:active::after { opacity: .1; }
   .k-flaeche { padding: 0; }
   .k-flaeche > span { display: none; }
 }
+/* Niedriger als zwei Zeilen (ein 1,5-h-Termin bei 20 px je Stunde, etwa im Zoom 200 %): nur die erste
+   Zeile. Sonst teilten sich beide Zeilen die Höhe und würden beide angeschnitten (§8 #14, gemessen am
+   Plan der HU Biologie, V-0234). */
+@container kachel (max-height: 39.9px) { .k-kurz, .k-nr, .k-lang, .k-info, .k-ort { display: none; } }
 /* Gerade gewählt (Silas, V-0225): die gewählte Kachel setzt sich kurz, die übrigen Gruppen des
    Formats verblassen von der möglichen Kachel ins Hellgrau. Nur transform und opacity, 200 ms. */
 .frisch.gewaehlt { animation: setzen 200ms var(--ein); }
@@ -300,23 +342,22 @@ button:active::after { opacity: .1; }
 .lg-zeile b { color: var(--grau-10); }
 .lg-k { width: 16px; height: 12px; border-radius: 4px; border: 1px solid var(--grau-8); flex: none; }
 .lg-k.gewaehlt { background: var(--grau-10); border-color: var(--grau-10); }
-.lg-k.auto { border-style: dashed; border-color: var(--grau-10); }
+.lg-k.vorschlag { border-style: dashed; border-color: var(--grau-10); }
 .lg-k.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; }
-.lg-zeile .punkt { width: 8px; height: 8px; }
+.lg-zeile .punkt { width: 8px; height: 8px; border: 0; background: var(--rand); }
 
+/* Der Fuß (Silas' zweiter Test, V-0237): links der Hinweis in einem Absatz, klein und zurückgenommen
+   (--fuss-text, ≥ 4,5:1), rechts die Links. Vorher drei Teile mit eigener Anordnung je Breite. */
 .fuss {
-  flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "a c" "b b";
-  column-gap: 16px; row-gap: 8px; font-size: 12px; line-height: 16px; color: var(--grau-9);
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 24px;
+  font-size: 12px; line-height: 16px;
 }
-.fuss-a { grid-area: a; }
-.fuss-b { grid-area: b; display: flex; flex-wrap: wrap; gap: 0 12px; }
-.fuss-c { grid-area: c; display: flex; gap: 12px; justify-content: flex-end; }
+.fuss-hinweis { flex: 1 1 480px; max-width: 840px; color: var(--fuss-text); }
+.fuss-hinweis .leise { margin-left: 8px; color: var(--grau-10); }
+.fuss-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; color: var(--grau-9); }
 .fuss a { display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; padding: 0 4px; border-radius: 4px; }
 .fuss .alt { color: var(--hinweis-text); }
-@media (min-width: 1280px) {
-  .fuss { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "a b c"; align-items: center; min-height: 24px; }
-}
-@media (pointer: coarse) and (min-width: 768px) { .fuss { row-gap: 0; } .fuss > p { min-height: 44px; align-items: center; display: flex; } .fuss a, .fuss .leise { min-height: 44px; margin: 0; } }
+@media (pointer: coarse) and (min-width: 768px) { .fuss-links { min-height: 44px; } .fuss a, .fuss .leise { min-height: 44px; margin: 0; } }
 
 /* ── Schwebende Ebenen: Karte, Blatt, Dialog, Meldung (§3.5) */
 .hinter { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .32); opacity: 0; transition: opacity 200ms var(--ein); }
@@ -331,6 +372,10 @@ button:active::after { opacity: .1; }
 .ebene.dialog { inset: 0; margin: auto; width: min(560px, calc(100vw - 32px)); height: fit-content; }
 .ebene.blatt { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; max-height: 85dvh; border-radius: 12px 12px 0 0; transform: translateY(100%); transition-duration: 200ms; padding-bottom: env(safe-area-inset-bottom); }
 .ebene.blatt.karte-g { max-height: 70dvh; }
+/* „Für später speichern“ (V-0237) schiebt sich auf jeder Breite von unten herein, am Rechner mittig. */
+.ebene.blatt.speichern { margin: 0 auto; max-width: 640px; }
+.speichern .feld { font-size: 14px; }
+@media (min-width: 768px) { .blatt.speichern .e-aktionen .knopf { flex: 0 1 auto; height: var(--ziel); } }
 .ebene.blatt.da { transform: none; transition-duration: 250ms; }
 .e-kopf { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 0 16px; }
 .e-titel { flex: 1; padding-top: 4px; font-size: 16px; line-height: 24px; font-weight: 600; }
@@ -380,7 +425,6 @@ details[open] > summary::before { transform: rotate(45deg); }
   .unter { grid-column: auto; }
   .laedt .module { min-height: 132px; }
   .laedt .werkzeug { min-height: 80px; }
-  .sg-hinweis { display: none; }
   .lage { flex-basis: 100%; }
   .umschalter { margin-left: auto; }
 }
@@ -405,7 +449,7 @@ details[open] > summary::before { transform: rotate(45deg); }
   .studiengang { grid-area: sg; flex-wrap: wrap; }
   .sg-reiter { padding-inline: 0; border-radius: 0; }
   .sg-name { white-space: normal; }
-  .sg-hinweis { display: block; flex-basis: 100%; }
+  .plan-hinweise { margin-top: 16px; }
   .mitte { display: block; }
   .module { margin-top: 24px; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
   .f-pille { height: 28px; padding: 0 4px; }
@@ -429,13 +473,14 @@ details[open] > summary::before { transform: rotate(45deg); }
   .unter { margin-top: 24px; display: grid; gap: 24px; }
   .steuer:empty { display: none; }
   .legende { display: grid; gap: 8px; }
-  .fuss { margin-top: 48px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b" "c"; row-gap: 8px; font-size: 14px; line-height: 20px; }
-  .fuss-b, .fuss-c { flex-wrap: wrap; gap: 0 16px; align-items: center; }
-  .fuss-c { justify-content: flex-start; }
+  .fuss { margin-top: 48px; display: grid; gap: 8px; }
+  .fuss-hinweis .leise { display: flex; margin: 0; }
+  .fuss-links { gap: 0 16px; }
   #stand-fuss { flex-basis: 100%; }
-  .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; }
+  .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; justify-content: center; }
   .meldung { bottom: calc(var(--schalter-zone) + 8px); }
-  .laedt .studiengang { min-height: 66px; }
+  /* Reiter mit zwei Zeilen (V-0234: ohne „Weitere Studiengänge folgen“ darunter), gemessen bei 390 px. */
+  .laedt .studiengang { min-height: 46px; }
   .laedt .module { min-height: 298px; }
 }
 /* Unter 390 px bricht die dritte Pille einer Modulkachel um (WI: BuK), die Module werden höher. */
@@ -452,6 +497,84 @@ details[open] > summary::before { transform: rotate(45deg); }
   #stand.nur-breit { display: none !important; }
   #stand-fuss.nur-handy { display: inline-flex !important; }
 }
-/* Unter 1280 px ist „Weitere Studiengänge folgen“ das Erste, was weicht — sonst kürzt der Reiter das
-   Semester („WiSe 202…“, gesehen bei 1100 px). */
-@media (min-width: 768px) and (max-width: 1279px) { .sg-hinweis { display: none; } }
+
+/* ── Der Startbildschirm (Hello-Screen, V-0234; DESIGN §3.6) ─────────────────────────────────────
+   Eine ruhige Spalte von höchstens 720 px: oben die Frage, darunter große Optionen, unten die Leiste
+   mit allen Stufen. Am Rechner steht alles auf einem Schirm (die Frage mittig im freien Raum), am
+   Handy scrollt die Seite, und die Leiste klebt am unteren Rand (sticky, kein Skript). Nur Tokens aus
+   §5.2 („Für neue Ansichten“): Seite --grau-2, Optionen --grau-1 mit Rand --grau-5, Text --grau-10,
+   Zweittext --grau-9, die eine Hauptaktion Tinte. */
+.hallo { --h-breite: 720px; min-height: 100vh; min-height: 100dvh; max-width: 2448px; margin: 0 auto; display: flex; flex-direction: column; padding: 12px var(--rand-x) 0; }
+/* Ab 1024 px drei Optionen nebeneinander: Auch sieben Studienrichtungen passen bei 1366 × 657 ohne Scrollen. */
+@media (min-width: 1024px) { .hallo { --h-breite: 960px; } }
+.h-kopf { flex: none; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.h-mitte { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 32px; }
+/* Mittig über align-self, nicht über margin: auto — ein „auto“ ergibt bei 865 px 48,5 px, außerhalb
+   des 4-px-Rasters (§5.6, gemessen). */
+.h-inhalt { width: 100%; max-width: var(--h-breite); align-self: center; display: grid; gap: 24px; }
+.h-frage { display: grid; gap: 4px; }
+.h-titel { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+.h-titel:focus { outline: none; }
+.h-kontext, .h-notiz { color: var(--grau-9); }
+.h-optionen { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 288px), 1fr)); gap: 8px; }
+.h-gruppe { display: grid; gap: 8px; }
+.h-g-titel { font-weight: 600; color: var(--grau-9); }
+.h-option {
+  display: grid; align-content: center; gap: 4px; min-height: 64px; padding: 8px 40px 8px 16px;
+  border: 1px solid var(--grau-5); border-radius: 12px; background: var(--grau-1);
+}
+.h-option[aria-current="true"] { border-color: var(--grau-10); }
+.h-o-label { font-size: 16px; line-height: 24px; }
+.h-o-zusatz { color: var(--grau-9); }
+.h-o-i { position: absolute; top: 16px; right: 16px; }
+.h-aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.h-aktionen .knopf { height: 44px; padding: 0 16px; }
+.h-liste { margin: 0; display: grid; border-top: 1px solid var(--grau-5); }
+.h-zeile { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; align-items: start; gap: 4px 16px; padding: 8px 0; border-bottom: 1px solid var(--grau-5); }
+.h-zeile dt { color: var(--grau-9); }
+.h-zeile dd { margin: 0; display: grid; gap: 4px; }
+.h-z-zusatz { color: var(--grau-9); }
+.h-zeile .leise { margin: 0; }
+/* Die Leiste: je Stufe ein Balken, darunter Stufe und Wert. Erledigt Tinte, automatisch gestrichelt
+   wie die automatisch eingeplante Kachel, entfällt nur eine dünne Linie, offen die leere Schiene,
+   die Stufe, an der man gerade ist, mit Rand in Tinte. Erledigte und automatische Stufen sind Knöpfe:
+   Ein Tipp führt zurück. */
+.h-leiste { position: sticky; bottom: 0; z-index: 5; display: grid; justify-items: center; margin: 0 calc(-1 * var(--rand-x)); padding: 12px var(--rand-x); background: var(--grau-2); border-top: 1px solid var(--grau-5); }
+.h-l-innen { width: 100%; max-width: var(--h-breite); display: grid; gap: 8px; }
+.h-stufen { margin: 0; padding: 0; list-style: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.h-s { display: grid; align-content: start; gap: 4px; width: 100%; min-height: 44px; padding: 4px 0; border-radius: 8px; text-align: left; }
+.h-balken { display: block; height: 4px; border-radius: 2px; background: var(--grau-5); }
+.gewaehlt .h-balken { background: var(--grau-10); }
+.automatisch .h-balken { background: none; border: 1px dashed var(--grau-10); }
+.entfaellt .h-balken { height: 2px; margin-top: 2px; transform: translateY(-1px); background: var(--grau-6); }
+.hier .h-balken { outline: 1px solid var(--grau-10); outline-offset: 1px; }
+.h-s-label { font-size: 12px; line-height: 16px; color: var(--grau-9); }
+.h-s-wert { overflow-wrap: break-word; hyphens: auto; }
+.hier .h-s-label { color: var(--grau-10); font-weight: 600; }
+.offen .h-s-wert, .entfaellt .h-s-wert { color: var(--grau-9); }
+.h-recht { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; width: 100%; max-width: var(--h-breite); align-self: center; padding: 8px 0 16px; font-size: 12px; line-height: 16px; color: var(--grau-9); }
+.h-recht span { margin-right: auto; }
+.h-recht a { display: inline-flex; align-items: center; min-height: 24px; padding: 0 4px; border-radius: 4px; }
+/* Fokus und Scrollen halten Abstand zur klebenden Leiste: Was den Fokus bekommt, liegt nie darunter. */
+.im-hallo { scroll-padding-bottom: 160px; }
+@media (max-width: 767.98px) {
+  .hallo { padding-top: 8px; }
+  .h-kopf { height: 44px; }
+  .h-mitte { justify-content: flex-start; padding: 24px 0 32px; }
+  .h-option { min-height: 56px; }
+  .h-zeile { grid-template-columns: minmax(0, 1fr) auto; }
+  .h-zeile dt { align-self: center; }
+  .h-zeile dd { grid-column: 1; }
+  .h-zeile .leise { grid-row: 1; grid-column: 2; }
+  .h-aktionen .knopf.haupt { flex: 1 1 100%; height: 48px; }
+  /* Am Handy nur die Balken; was sie heißen, sagen die Frage oben und der Satz über der Leiste. */
+  .h-s-label, .h-s-wert { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .h-s { align-content: center; padding: 0; }
+  .h-leiste { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); padding-top: 8px; }
+  .h-l-innen { gap: 0; }
+  .h-recht { font-size: 14px; line-height: 20px; padding-bottom: 24px; }
+  .h-recht span { flex-basis: 100%; }
+  .h-recht a { min-height: 44px; padding: 0; }
+}
+@media (pointer: coarse) { .h-recht a, .h-zeile .leise { min-height: 44px; } }
+

@@ -257,3 +257,14 @@ test('icsAnstossen: iPhone über data:, sonst über blob:, immer mit Dateinamen'
   assert.ok(b.geklickt[0].href.startsWith('blob:'));
   assert.equal(b.geklickt[0].download, d.name);
 });
+
+test('alle Gruppen eines Bestandteils (`gruppen: alle`, V-0234): group als Liste liefert die Termine aller', () => {
+  const p = plan();
+  const c = p.modules[0].components.find((x) => x.id === '10001:200');
+  const ids = c.groups.filter((g) => (g.bookings || []).length).map((g) => g.id);
+  assert.ok(ids.length > 1);
+  const einzeln = ids.map((id) => I.icsTermine(plan(), { '10001:200': { group: id } }).length);
+  const alle = I.icsTermine(p, { '10001:200': { group: ids } });
+  assert.equal(alle.length, einzeln.reduce((a, b) => a + b, 0));
+  assert.deepEqual([...new Set(alle.map((t) => t.gruppe.id))], ids);
+});

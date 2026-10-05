@@ -1,7 +1,8 @@
 # Die Seite
 
 Statisches HTML, CSS und JS ohne Build-Schritt: der Stundenplanner als **One-Pager**, gebaut nach
-[`docs/DESIGN.md`](../docs/DESIGN.md) (V-0220, Bedienung nach Silas' Tests neu in V-0225). Liest `web/daten/` (das Lesemodell,
+[`docs/DESIGN.md`](../docs/DESIGN.md) (V-0220, Bedienung nach Silas' Tests neu in V-0225, Startbildschirm
+in V-0234). Liest `web/daten/` (das Lesemodell,
 [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5) und hält die Auswahl im Browser (§6). Lokal
 ansehen:
 
@@ -18,15 +19,16 @@ python3 ops/sicht.py --web web               # misst DESIGN §8 in allen Fenster
 
 | Datei | Was |
 |---|---|
-| `index.html` | der Rahmen: Kopf (mit Studiengang-Reiter, Kalender, Teilen), Module, Bühne (Werkzeugzeile mit Lage und Umschalter Tag/Woche, Raster), Legende, Fuß; die Hilfe als `<template>`, der SVG-Symbolsatz. Steht ohne JS (erstes Bild), der Satz der Lage schon im HTML (größter Inhalt früh) |
+| `index.html` | der Rahmen: der Startbildschirm (`#hallo`, versteckt, bis `app.js` ihn braucht), dann der Plan: Kopf (mit Studiengang-Reiter, Kalender, Teilen), Hinweise oben, Module, Bühne (Werkzeugzeile mit Lage und Umschalter Tag/Woche, Raster), Legende, Fuß; die Hilfe als `<template>`, der SVG-Symbolsatz. Steht ohne JS (erstes Bild), der Satz der Lage schon im HTML (größter Inhalt früh) |
 | `stil.css` | das Aussehen: Tokens aus DESIGN §5 auf `:root` (hell und dunkel), Zonen, Modulkacheln und Formate, Raster, Kachelarten mit Container-Abfragen und der kurzen Wahl-Animation, Ebenen, Tablet und Handy |
-| `app.js` | lädt die Daten, zeichnet, verdrahtet die Bedienung, Karten, Blätter, Dialoge, Meldung. Der einzige Teil mit DOM |
+| `app.js` | lädt die Daten, zeichnet Startbildschirm und Plan, verdrahtet die Bedienung, Karten, Blätter, Dialoge, Meldung. Der einzige Teil mit DOM |
+| `planwahl.mjs` | der Startbildschirm ohne DOM (V-0234): den Baum aus `index.json` prüfen (`wahlBaum`), alle Pläne flach (`blaetter`), wo die Wahl steht und was die Leiste zeigt (`wahlStand`, mit Voraussage), wählen, zurück, vorbelegen, welcher Plan zu einem Link gehört (`planZumLink`), Optionen nach Zusatz gruppieren, was die Seite bei „keine Wahl ohne Überschneidung“ sagt (`ohneLoesung`) |
 | `raster.mjs` | das Raster ohne DOM: Zeitachse, Spuren paralleler Gruppen, dichteste Stelle, was sichtbar ist, die Navigation Modul → Format (`tippeModul`, `tippeFormat`, `stufeZurueck`), die Legende, Gruppennummer, Typ ausgeschrieben |
 | `woche.mjs` | Konflikte gegen echte Termine, Ansichtsfilter, Wochen, A/B, Termine einer Karte |
-| `auswahl.mjs` | die Auswahl: Speicher, eine Gruppe je Format, `changed`, `missing`, `stale`, die automatisch eingeplante einzige Gruppe (`einzige`, `auto`), Fortschritt, wirksame Auswahl, Teilen-Link |
+| `auswahl.mjs` | die Auswahl: Speicher (Schlüssel je `plan.id`, Umzug des alten Schlüssels, die Planwahl), eine Gruppe je Format, `changed`, `missing`, `stale`, der Vorschlag der einzigen Gruppe (`einzige`, `vorschlag`), die Regeln `alle`/`keine` der Gruppen, Fortschritt, wirksame Auswahl, Teilen-Link |
 | `text.mjs` | Escapen, sichere Links, Datumsangaben, Berliner Zeit ohne `Intl`, Abschluss ausgeschrieben |
 | `manifest.webmanifest`, `icon.svg`, `icon-180/192/512.png` | Home-Bildschirm. Das Symbol ist eine Woche aus fünf Kacheln in Modulfarben auf Tinte; die PNGs sind daraus gerendert |
-| `tests/` | `node --test` für die vier `.mjs`, gegen `tests/fixtures/plan.json` (synthetisch, Format §5) |
+| `tests/` | `node --test` für die `.mjs`, gegen `tests/fixtures/plan.json` (synthetisch, Format §5); `planwahl.test.mjs` mit einem erfundenen Baum im Format von `index.json` |
 | `impressum.html`, `datenschutz.html`, `recht.css` | gehören zum Betrieb, nicht zu diesem Teil |
 | `daten/` | erzeugt (`abruf/bauen.py`), nicht im Repo |
 
@@ -57,10 +59,12 @@ ab 1024 px kommt die Modulspalte dazu (240 + 24 px). Die Entscheidung fällt üb
 L ab 96 px (Modul, ab 240 px der volle Titel; die Einheit ausgeschrieben; ab 60 px Höhe Gruppe mit
 Zeit; ab 76 px der Raum oder ein abweichender Rhythmus), M (80–95 px Modulname und „TUT 12“,
 darunter Kürzel und Nummer), S unter 44 px (das Kürzel), unter 24 px nur Farbe. Arten: möglich
-(weiß, Rand in Modulfarbe), gewählt (kräftig), automatisch (gestrichelt), Kontext (dunkelgrau),
-zurückgenommen (hellgrau), dazu Ringe für Überschneidung. Am Rechner (feiner Zeiger, ab 768 px)
-tragen Kacheln ab 160 px Breite und 52 px Höhe oben rechts „Einplanen“, „Wechseln“ oder „Lösen“;
-sonst öffnet ein Klick die Gruppenkarte. Die Woche am Handy öffnet keine Karte: Ein Tipp zeigt den Tag.
+(weiß, Rand in Modulfarbe), gewählt (kräftig), Vorschlag (gestrichelt, nicht eingeplant), Kontext
+(dieselbe Kachel durchscheinend, Deckkraft 0,2), zurückgenommen (blass), dazu Ringe für
+Überschneidung. Die Sättigung folgt der Kategorie des Formats (`R.kategorie()`, Klassen `kat-uebung`
+70 %, `kat-sonstige` 50 %, `filter: saturate()`). Am Rechner (feiner Zeiger, ab 768 px) tragen Kacheln
+ein abgerundetes Plus (Einplanen, Wechseln) bzw. ein Kreuz (Lösen): ab 96 px Breite oben rechts, auf
+schmalen ab 52 px Höhe unten mittig; sonst öffnet ein Klick die Gruppenkarte (V-0237). Die Woche am Handy öffnet keine Karte: Ein Tipp zeigt den Tag.
 
 **Ebenen:** eine zur Zeit. Ab 768 px Karte an ihrem Anker (Gruppenkarte neben der Kachel, rechts,
 sonst links, sonst darunter, nie über ihr), Hilfe und Rückfrage als Dialog. Unter 768 px wird
@@ -69,24 +73,48 @@ Fokus kehrt zur Kachel zurück.
 
 ## Ablauf beim Öffnen
 
-1. Der Rahmen steht sofort aus HTML und CSS; erst nach 300 ms ohne Daten erscheint „Termine werden
-   geladen …“ (CSS, ohne Skript). Solange halten Studiengang und Module ihre Höhe (`.laedt`, für
-   WI 1. FS gemessen; sonst springt das Raster, CLS).
-2. `daten/index.json` laden. Ein Plan: gewählt. Mehrere: die Wahl im Raster (vorgewählt, wenn die
-   Adresse einen Plan nennt oder genau ein Plan eine gespeicherte Auswahl hat). Die Wahl steht danach
-   im Fragment der Adresse (`#studiengang=…&semester=…&fs=…`).
-3. Die Plandatei laden (`daten/<datei>` aus dem Index; nur relative Pfade unter `daten/`).
+1. Der Rahmen des Plans steht sofort aus HTML und CSS; erst nach 300 ms ohne Daten erscheint „Termine
+   werden geladen …“ (CSS, ohne Skript). Solange halten Studiengang und Module ihre Höhe (`.laedt`,
+   für WI 1. FS gemessen; sonst springt das Raster, CLS).
+2. `daten/index.json` laden und den Baum `wahl` prüfen (`planwahl.mjs`; Blätter nur mit gültiger
+   Kennung und relativer Datei unter `daten/`). Welcher Plan: der aus dem Teilen-Link (`#plan=<id>`,
+   alte Links über Studiengang, Semester, Fachsemester, wenn eindeutig), sonst die gespeicherte
+   Planwahl, sonst der einzige Plan mit gespeicherter Auswahl, sonst **der Startbildschirm**
+   (DESIGN §3.6, §4.5). Ohne Plan ist der Plan-Rahmen höchstens so lange zu sehen, bis `index.json`
+   da ist; ein vorgeschaltetes Skript, das das vor dem ersten Bild entscheidet, gibt es bewusst nicht
+   (DESIGN §6).
+3. Die Plandatei laden (`daten/<datei>` aus dem Blatt). Danach trägt die Adresse `#plan=<id>`.
 4. Kopf, Module und Werkzeug zeichnen, das Raster in einer eigenen Aufgabe danach: So blockiert keine
    einzelne Aufgabe den Browser lange (TBT, DESIGN §6).
 
+## Der Startbildschirm
+
+`app.js` zeichnet je Stufe eine Frage mit Optionen und unten die Leiste; was er weiß, sagt
+`planwahl.mjs` (`wahlStand`): je Stufe `gewaehlt`, `automatisch`, `entfaellt` oder `offen`, auch
+vorausgesagt für Stufen, an denen man noch nicht ist (entfällt oder automatisch in jedem Zweig
+darunter). Eine Option wählt und führt zur nächsten offenen Stufe; sind alle da, kommt die
+Zusammenfassung mit „Stundenplan öffnen“. Zurück geht es über „Zurück“, die Leiste, „Ändern“ und Esc.
+Der Reiter im Plan öffnet den Startbildschirm vorbelegt mit dem offenen Plan (`wahlFuer`). Die
+Leiste klebt unten (`position: sticky`), `scroll-padding-bottom` hält fokussierte Optionen über ihr.
+Die Haken für `ops/sicht.py`: `data-sicht="hallo"`, `data-sicht="option"` mit `data-s` (Stufe) und
+`data-i` (Stelle im Knoten), `data-sicht="fortschritt"`, `[data-act="h-oeffnen"]`.
+
 ## Der Zustand — was wo liegt
 
-- **Im Speicher des Browsers** genau ein Schlüssel je Plan:
-  `stundenplanner:v1:<studiengang>:<semester>:fs<n>` =
-  `{ "<component_id>": { "group": "…", "digest": "…", "name": "…" } }`. Nichts sonst.
+- **Im Speicher des Browsers** ein Schlüssel je Plan, seit V-0234 je `plan.id`:
+  `stundenplanner:v1:<plan.id>` =
+  `{ "<component_id>": { "group": "…", "digest": "…", "name": "…" } }`, dazu
+  `stundenplanner:v1:plan` = die Kennung des Plans, den man zuletzt im Startbildschirm geöffnet hat.
+  Nichts sonst.
+- **Umzug** (V-0234): Bis dahin hieß der Schlüssel `stundenplanner:v1:<studiengang>:<semester>:fs<n>`,
+  und Pläne mit Vertiefung oder anderer Ordnung teilten ihn. Liegt unter dem neuen Schlüssel nichts
+  und gehört der alte genau einem Plan (WI 1. FS, live), gilt die Auswahl von dort
+  (`ladeAuswahlFuer`). Die erste aktive Änderung schreibt sie unter den neuen Schlüssel und entfernt
+  den alten (`speichereUndZiehUm`); „Auswahl zurücksetzen“ löscht beide. Laden schreibt auch hier nichts.
 - **Regeln** (Silas' Hosting-Recherche, DSK-Orientierungshilfe zu Web Storage; damit kein
   Einwilligungsbanner nötig ist): geschrieben wird erst, wenn jemand aktiv eine Gruppe wählt,
-  einen geteilten Plan übernimmt oder eine Änderung als geprüft markiert. Laden schreibt nichts,
+  einen geteilten Plan übernimmt, eine Änderung als geprüft markiert oder im Startbildschirm
+  „Stundenplan öffnen“ drückt (dann nur die Planwahl). Laden schreibt nichts,
   auch kein Probeschreiben. Kein Zeitstempel, keine Kennung. „Auswahl zurücksetzen“ (mit Rückfrage)
   löscht den Schlüssel, und eine leer gewordene Auswahl entfernt ihn ebenfalls. Die Tests in
   `tests/auswahl.test.mjs` halten jede dieser Regeln fest.
@@ -95,19 +123,25 @@ Fokus kehrt zur Kachel zurück.
   Auswahl nicht. Nimm den Teilen-Link mit.“
 - **Zwei Registerkarten:** Ändert die eine die Auswahl, zieht die andere über das `storage`-Ereignis
   nach.
-- **Die einzige Gruppe eines Formats** ist automatisch eingeplant (`auswerten()`, `g.auto`):
-  berechnet, nie gespeichert. „Lösen“ speichert die Abwahl als `{ "group": null, … }`, sonst käme
-  sie beim nächsten Laden wieder; mit einer zweiten Gruppe ist das Format wieder offen.
+- **Die einzige Gruppe eines Formats** ist ein Vorschlag (`auswerten()`, `g.vorschlag`, V-0237):
+  berechnet, nie gespeichert, **nicht eingeplant** (nicht in `selected`, nicht im Fortschritt, nicht
+  im Export, nicht im Link), bis man „Einplanen“ drückt. „Lösen“ entfernt den Eintrag, die Gruppe ist
+  wieder ein Vorschlag. Ein `group: null` aus V-0225 gilt wie kein Eintrag.
+- **Wie die Gruppen zu belegen sind** (`gruppen`, V-0233): `alle` heißt, alle Gruppen mit Terminen
+  sind ein Vorschlag; eingeplant wird das Format als Ganzes (eine seiner Gruppen im Speicher), im
+  Export ist `group` dann eine Liste. `keine` (offenes Angebot) wird nie vorgeschlagen, zählt nicht
+  im Fortschritt und steht nicht in „Mein Stundenplan“ (`sichtbar()` in `raster.mjs`). `unklar` wählt
+  man wie üblich, die Seite sagt es leise.
 - **Im Speicher der Seite** (`z` in `app.js`), nicht im Browser: der Filter (`modul`, `teil`,
   `ueber`), Tag oder Woche (`modus`, null heißt Vorgabe), der Tag (heute, am Wochenende Montag),
   Zeitraum, A/B, welche Kachel den Fokus hat, eine laufende Vorschau.
 
 ## Was das Raster zeigt
 
-`sichtbar()` in `raster.mjs` (DESIGN §4.1): jede eingeplante Gruppe, dunkelgrau als Kontext, wenn
-sie nicht zum Filter passt; ohne Filter dazu die Gruppen der Formate ohne Wahl („Noch offen“), mit
-Filter alle Gruppen des Moduls bzw. Formats, auch die eines schon gewählten Formats (hellgrau): So
-wechselt man. Die Navigation: Modul tippen filtert auf das Modul, Format tippen auf das Format;
+`sichtbar()` in `raster.mjs` (DESIGN §4.1): ohne Filter „Mein Stundenplan“, jede eingeplante Gruppe
+und jeder Vorschlag (die Vorgabe beim Öffnen, immer, V-0237); mit Filter alle Gruppen des Moduls
+bzw. Formats, auch die eines schon gewählten Formats (blass): So wechselt man. „Mein Stundenplan“
+außerhalb des Filters steht als Kontext da, durchscheinend. Die Navigation: Modul tippen filtert auf das Modul, Format tippen auf das Format;
 nochmals tippen hebt auf, was man zuletzt gesetzt hat (`tippeModul`, `tippeFormat`, `stufeZurueck`). `spuren()` verteilt die Kacheln eines Tages auf Spuren
 (gewählte zuerst, dann Beginn, Modul, Gruppenname); verkettete Überschneidungen teilen sich die
 Tagesbreite. Die Zeitachse kommt aus allen Gruppen des Plans, damit das Raster beim Filtern nicht
@@ -116,18 +150,26 @@ springt.
 ## Der Teilen-Link
 
 ```
-https://…/#studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=10001:100~11&w=10002:500~52
+https://…/#plan=wi-bsc:stupo-2025:wise-2026-27:fs1&w=10001:100~11&w=10002:500~52
 ```
 
-- `w` = Bestandteil `~` Gruppe, je ausdrücklich gewählter Gruppe einmal (automatisch eingeplante
-  rechnet, wer den Link öffnet, selbst). Getrennt wird am letzten `~`, weil die
+- `plan` ist die Kennung des Plans (seit V-0234). Ein Link führt direkt in den Plan, am
+  Startbildschirm vorbei. Alte Links (`#studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=…`) gelten
+  weiter, wenn genau ein Plan dazu passt; sonst fragt der Startbildschirm.
+
+- `w` = Bestandteil `~` Gruppe, je eingeplanter Gruppe einmal (Vorschläge rechnet, wer den Link
+  öffnet, selbst; bei `gruppen: alle` genügt eine Gruppe). Getrennt wird am letzten `~`, weil die
   Bestandteil-ID selbst einen Doppelpunkt trägt. Fingerabdruck und Name stehen nicht drin.
 - **Im Fragment (hinter `#`), nicht in der Abfrage:** Das Fragment schickt der Browser nie an den
   Server.
-- „Teilen“ öffnet am Handy (grober Zeiger) das Teilen-Menü des Systems, sonst kopiert es den Link
-  („Link kopiert“); ohne Clipboard-API zeigt eine Karte den Link zum Kopieren von Hand. Gesperrt ist
-  der Knopf nie: Ohne gewählte Gruppe oder während einer Vorschau sagt eine Meldung, was fehlt
-  (`teilenWeg()` in `auswahl.mjs`; ein grauer Knopf ohne Antwort hielt Silas am Handy für kaputt).
+- „Teilen“ schiebt von unten die Fläche **„Für später speichern“** herein (V-0237, ein Blatt auf jeder
+  Breite): der Link im Feld, „Kopieren“ (ohne Clipboard-API wird der Link markiert), „Lesezeichen“
+  (eine Seite kann keins setzen: Solange die Fläche offen ist, steht der Link in der Adresse, und die
+  Fläche nennt je Gerät die Taste bzw. den Weg, `lesezeichenText()`), „Teilen“ nur, wo es
+  `navigator.share` gibt (`{ title, url }`, am iPhone das Teilen-Menü mit allen Apps). Geschlossen
+  steht wieder `#plan=<id>` in der Adresse (`zu` an `oeffne()`). Gesperrt ist der Knopf nie: Ohne
+  eingeplante Gruppe oder während einer Vorschau sagt eine Meldung, was fehlt (`teilenWeg()` in
+  `auswahl.mjs`; ein grauer Knopf ohne Antwort hielt Silas am Handy für kaputt).
 - **Öffnen heißt ansehen:** Die Teilen-Leiste über dem Raster nennt den geteilten Plan und wie viele
   Gruppen von der eigenen Auswahl abweichen; die eigenen stehen grau daneben. Kacheln öffnen nur
   ihre Karte („Erst den Plan übernehmen“). „Übernehmen“ fragt nach, wenn eine eigene Auswahl da
@@ -194,7 +236,7 @@ Server die Auswahl kennen.
   `app.js` lädt `ics.mjs` bei der ersten Bedienung (pointerdown, keydown), nicht beim Laden: So
   zählt es nicht ins Budget und nicht zu den Anfragen bis zum Raster, und beim Klick ist das Modul
   meist da, der Export läuft ohne `await` (Safari gibt die Nutzergeste nicht über ein langes await
-  weiter). Übergeben wird die wirksame Auswahl (`wirksameAuswahl()`: gewählt und automatisch).
+  weiter). Übergeben wird die wirksame Auswahl (`wirksameAuswahl()`: nur Eingeplantes, keine Vorschläge, V-0237).
 
 **Was ein Klick auf welchem Gerät tut** (Recherche 05.10.2026):
 
