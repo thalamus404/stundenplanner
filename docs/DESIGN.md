@@ -43,7 +43,7 @@
 5. **Wählen auf beiden Wegen** (Silas, 05.10.2026, §9). Kacheln tragen am Rechner oben rechts ein
    abgerundetes Plus (Einplanen, Wechseln) bzw. ein Kreuz (Lösen), schmale unten. Sonst öffnet ein
    Tipp die Gruppenkarte, dort wird gewählt; am Handy als Blatt von unten (§3.5, §4).
-6. **Tag oder Woche** über einen Umschalter: am Handy schwebend unten mittig, Vorgabe Tag; am
+6. **Tag oder Woche** über einen Umschalter: am Handy schwebend unten mittig, Vorgabe Woche (seit V-0247, vorher Tag); am
    Rechner in der Werkzeugzeile, Vorgabe Woche. Darunter eine Legende der Formate (§3.3).
 7. **Farbe trägt Bedeutung, sonst nichts.** Grautreppe für alles Gerüst, acht Modulfarben als
    Kategorie, Rot für Überschneidung, Bernstein für Hinweise. Der eine Akzent ist die **Tinte**
@@ -153,7 +153,7 @@ bekommt den Rest. Am Handy scrollt sie (§3.3).
 
 | Zone | Inhalt |
 |---|---|
-| **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18, unter 390 px 16), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter. Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
+| **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter; am Handy steht der Schriftzug links (V-0247). Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
 | **Hinweise oben** (V-0234) | nur wenn nötig, je eine Zeile über die volle Breite: ein deutliches Schild in Bernstein, wenn die Termine Ersatz aus dem Vorjahr sind („Termine aus dem Vorjahr, Ersatz.“ mit Semester und wofür), und ein ruhiger Satz auf neutraler Fläche mit rotem Warnsymbol, wenn es keine Wahl ohne Überschneidung gibt („Mit den veröffentlichten Terminen gibt es keine Wahl ohne Überschneidung.“, unsicher mit „vermutlich“). „Warum“ öffnet eine Karte mit dem Grund aus dem Lesemodell (Zeiten, Tage), dem Verdacht und fehlenden Modulen. Der Grund steht nicht in der Zeile: Er ist bis 400 Zeichen lang und nähme der Woche am Rechner die Höhe |
 | **Module** | je Modul eine **Modulkachel**: Farbkreis und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“). Der Farbkreis ist ein Ring und füllt sich, wenn das Modul aufgeschlagen ist; dazu trägt die Kachel wieder einen Rahmen in Tinte (2 px, hell dunkel, dunkel weiß; V-0237 entfernt, V-0245 zurück: sonst sah man schlecht, welches Modul offen ist) |
 | **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Modul-Infos“ und „Filter aufheben“, sobald gefiltert ist, und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
@@ -1042,7 +1042,7 @@ zehn Gruppen, darunter die sechs parallelen, dazu der übrige Plan durchscheinen
 | 2 | dasselbe im Stressfall | wie 1 (am Handy wie 1h) | erfüllt ab 1280 × 720 und bei 390 × 844. Kleinere Fenster dürfen scrollen, schneiden aber nichts ab |
 | 3 | alle Formate sichtbar | jedes Format liegt vollständig im Fenster (am Handy beim Öffnen, oben) | in allen Fenstern |
 | 4 | **jede sichtbare Gruppe hat eine Kachel** | Zahl der Kacheln = Zahl der Slots, die Ansicht und Filter zeigen | gleich, kein „+ N weitere“ |
-| 5 | ganze Zeitachse sichtbar | erste und letzte Stundenmarke im Fenster | ab 768 px alle Wochentage, darunter der gewählte Tag |
+| 5 | ganze Zeitachse sichtbar | erste und letzte Stundenmarke im Fenster | alle Wochentage, in jeder Breite (seit V-0247 auch am Handy die Woche als Vorgabe) |
 | 6 | Kachelgröße | `getBoundingClientRect` | Breite ≥ 24 px. Höhe einer 2-h-Kachel ≥ 40 px, auf Touch ≥ 44 px. Stufe wie in §3.4 |
 | 7 | Ziele | alle Bedienelemente | ≥ 24 × 24 px, bei `pointer: coarse` ≥ 44 × 44 px (Kacheln: Kriterium 6) |
 | 8 | Kontraste | die Paare aus §5.5, nachgerechnet aus den CSS-Werten | alle wie in §5.5. Nichts gerundet |
@@ -1182,6 +1182,15 @@ machen.“
     man das Blättern entdeckt (§3.5).
 40. **Der Fuß mittig zwischen Raster und unterem Rand, der Hinweis noch blasser** (§3.1, §5.2: so blass,
     wie 4,5:1 erlaubt).
+
+**Am Handy, 05.10.2026** (Punkt b1026f71, gebaut in V-0247):
+
+41. **Ein Tipp auf eine Kachel plant sie ein, ein zweiter Tipp nimmt sie wieder heraus.** Lange drücken
+    (500 ms) öffnet die Karte mit Zeit, Raum und allen Terminen; der erste Tipp je Besuch sagt es in
+    einer Meldung. Nicht in der Vorschau eines geteilten Plans und nicht auf dem durchscheinenden
+    eigenen Plan beim Filtern (dort öffnet ein Tipp die Karte wie bisher).
+42. **Die Woche ist am Handy die Vorgabe**, nicht der Tag (§0 Punkt 6).
+43. **Der Schriftzug steht am Handy links**, am Rechner und Tablet weiter in der Mitte (§3.1).
 
 ---
 

@@ -421,7 +421,9 @@ function renderModule() {
 }
 
 /** Tag oder Woche. Vorgabe: am Handy der Tag, sonst die Woche, wenn sie passt (§3.3). */
-const modus = () => z.modus || (handy.matches || !(wocheMq && wocheMq.matches) ? 'tag' : 'woche');
+// Am Handy ist die Woche die Vorgabe (Silas, 05.10.2026, V-0247; vorher der Tag), am Tablet und Rechner
+// die Woche, wenn sie passt (DESIGN §3.3).
+const modus = () => z.modus || (handy.matches || (wocheMq && wocheMq.matches) ? 'woche' : 'tag');
 const tagAnsicht = () => (modus() === 'tag' ? { woche: false, tag: z.tag } : { woche: true, tag: null });
 
 /** Zeitraum und A/B: am Rechner in der Werkzeugzeile, am Handy unter dem Raster. */
@@ -584,6 +586,9 @@ function renderRaster() {
 // außerhalb als kontext: dieselbe Kachel, nur ganz zurückgenommen (stil.css).
 function kachel(e, mini) {
   const { g, s, art } = e;
+  // Am Handy plant ein Tipp ein, ein zweiter löst (Silas, V-0247); lange drücken öffnet die Karte.
+  // Nicht in der Vorschau eines geteilten Plans und nicht auf dem durchscheinenden eigenen Plan beim Filtern.
+  const tippen = handy.matches && !vorschau && art !== 'kontext';
   const week = W.wocheAus(z.zeitraum);
   const look = art === 'kontext' ? (g.selected ? 'gewaehlt' : g.vorschlag ? 'vorschlag' : 'moeglich') : art;
   const mit = look === 'gewaehlt' ? partner.get(g.key) || [] : selected.filter((x) => x.component_id !== g.component_id && W.overlap(g, x));
@@ -599,13 +604,13 @@ function kachel(e, mini) {
   const zustand = art === 'kontext' ? (vorschau ? 'deine Auswahl' : `${look === 'vorschlag' ? 'Vorschlag' : 'eingeplant'}, außerhalb des Filters`)
     : look === 'moeglich' ? (zurueck ? 'nicht gewählt, das Format ist schon gewählt' : 'nicht eingeplant')
       : look === 'vorschlag' ? `Vorschlag, ${alle ? 'alle Gruppen dieses Formats' : 'einzige Gruppe'}, noch nicht eingeplant` : 'eingeplant';
-  const name = `${titel(g)}, ${g.name}, ${TAGE[s.day]} ${s.start} bis ${s.end}${raum ? ', Raum ' + raum : ''}${rh ? ', ' + rh : ''}, ${zustand}${neu ? ', geändert seit deiner Wahl' : ''}${mit.length ? ', überschneidet sich mit ' + mit.map((x) => `${x.module_short} ${R.typLang(x.type)}`).join(' und ') : ''}${mini ? '. Zeigt den Tag groß' : ''}`;
+  const name = `${titel(g)}, ${g.name}, ${TAGE[s.day]} ${s.start} bis ${s.end}${raum ? ', Raum ' + raum : ''}${rh ? ', ' + rh : ''}, ${zustand}${neu ? ', geändert seit deiner Wahl' : ''}${mit.length ? ', überschneidet sich mit ' + mit.map((x) => `${x.module_short} ${R.typLang(x.type)}`).join(' und ') : ''}${tippen ? (g.selected ? '. Tippen löst die Auswahl, lange drücken zeigt die Details' : '. Tippen plant ein, lange drücken zeigt die Details') : mini ? '. Zeigt den Tag groß' : ''}`;
   // Der Knopf auf der Kachel (Silas' zweiter Test, V-0237): ein abgerundetes Plus zum Einplanen
   // (auch zum Wechseln), ein Kreuz zum Lösen. Er passt auch auf schmale Kacheln (stil.css).
   const akt = g.selected ? ['kreuz', 'Auswahl lösen'] : zurueck ? ['plus', 'Wechseln zu'] : ['plus', 'Einplanen'];
   const knopf = vorschau || mini || art === 'kontext' ? '' : `<button type="button" class="k-akt ${akt[0]}" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${ic(akt[0])}</button>`;
   const klasse = `m${g.farbe + 1} ${look}${art === 'kontext' ? ' kontext' : ''}${katKlasse(g.component)}${zurueck ? ' zurueck' : ''}${frisch === g.component_id ? ' frisch' : ''}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}${knopf ? ' mit-akt' : ''}`;
-  return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${klasse}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="${mini ? 'tag' : 'kachel'}" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-titel">${esc(g.component.module.title || g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-kurz">${esc(nr ? g.type + ' ' + nr : g.type)}</span><span class="k-nr">${esc(nr || '')}</span><span class="k-lang k-2">${esc(R.typLang(g.type))}</span><span class="k-info k-2">${esc(`${gruppe}, ${s.start}–${s.end}`)}</span><span class="k-ort k-2">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
+  return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${klasse}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="${tippen ? 'umschalten' : mini ? 'tag' : 'kachel'}" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-titel">${esc(g.component.module.title || g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-kurz">${esc(nr ? g.type + ' ' + nr : g.type)}</span><span class="k-nr">${esc(nr || '')}</span><span class="k-lang k-2">${esc(R.typLang(g.type))}</span><span class="k-info k-2">${esc(`${gruppe}, ${s.start}–${s.end}`)}</span><span class="k-ort k-2">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
 }
 
 /** Die Legende (Silas, 05.10.2026): am Rechner klein links unter den Modulen (V-0243), sonst unter dem
@@ -985,6 +990,16 @@ const AKTIONEN = {
   },
   'hallo-zu': () => { zeigeHallo(false); const r = $('studiengang').querySelector('button'); if (r) r.focus({ preventScroll: true }); },
   kachel: (b) => karteGruppe(b),
+  umschalten: (b) => {
+    // Nach langem Drücken kommt noch ein click; der gehört zur Karte, nicht zum Einplanen.
+    if (lang.gedrueckt) { lang.gedrueckt = false; return; }
+    const g = finde(b.dataset.key);
+    if (!g) return;
+    const war = g.selected;
+    waehle(b.dataset.key);
+    if (navigator.vibrate) navigator.vibrate(8);
+    if (!lang.erklaert) { lang.erklaert = true; melde(war ? 'Herausgenommen. Nochmal tippen plant wieder ein.' : 'Eingeplant. Nochmal tippen nimmt es heraus, lange drücken zeigt die Details.'); }
+  },
   waehlen: (b) => {
     const key = b.dataset.key;
     const zurueck = offen && offen.zurueck;
@@ -1163,6 +1178,31 @@ $('koerper').addEventListener('keydown', (e) => {
   z.fokus = ziel.dataset.fokus;
   ziel.focus();
 });
+
+// Am Handy (V-0247): Ein Tipp plant ein oder löst, lange drücken (500 ms ohne zu wischen) öffnet die
+// Karte mit Zeit, Raum und allen Terminen. Der click danach wird verschluckt (Aktion umschalten).
+const lang = { uhr: 0, x: 0, y: 0, gedrueckt: false, erklaert: false };
+$('koerper').addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('.k-flaeche[data-act="umschalten"]');
+  if (!b || e.pointerType === 'mouse') return;
+  lang.gedrueckt = false;
+  lang.x = e.clientX; lang.y = e.clientY;
+  clearTimeout(lang.uhr);
+  lang.uhr = setTimeout(() => {
+    lang.gedrueckt = true;
+    if (navigator.vibrate) navigator.vibrate(15);
+    // Der click beim Loslassen träfe sonst die Fläche hinter dem Blatt und schlösse es gleich wieder
+    // (so gemessen am 05.10.2026). Er wird einmal verschluckt, egal wo er landet.
+    const schlucken = (ev) => { ev.preventDefault(); ev.stopPropagation(); lang.gedrueckt = false; };
+    document.addEventListener('click', schlucken, { capture: true, once: true });
+    setTimeout(() => { document.removeEventListener('click', schlucken, { capture: true }); lang.gedrueckt = false; }, 1000);
+    karteGruppe(b);
+  }, 500);
+});
+for (const t of ['pointerup', 'pointercancel', 'pointerleave']) $('koerper').addEventListener(t, () => clearTimeout(lang.uhr));
+$('koerper').addEventListener('pointermove', (e) => { if (Math.hypot(e.clientX - lang.x, e.clientY - lang.y) > 10) clearTimeout(lang.uhr); });
+// Android meldet langes Drücken auch als Kontextmenü; das Menü des Browsers soll dann nicht kommen.
+$('koerper').addEventListener('contextmenu', (e) => { if (e.target.closest('.k-flaeche[data-act="umschalten"]')) e.preventDefault(); });
 
 // Zeigt man auf eine Kachel, bekommen alle Kacheln derselben Gruppe einen Ring: gewählt wird die ganze Gruppe.
 $('koerper').addEventListener('pointerover', (e) => {
