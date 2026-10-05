@@ -105,7 +105,7 @@ export function speichereUndZiehUm(speicher, schluessel, alt, auswahl) {
 
 // ── Die Planwahl (V-0234) ──────────────────────────────────────────────────────────────────────
 // Welcher Plan zuletzt aktiv gewählt wurde: ein Schlüssel, eine Kennung. Geschrieben nur, wenn
-// jemand im Startbildschirm „Stundenplan öffnen“ drückt (wie die Auswahl, Regel 1: Laden schreibt
+// jemand im Startbildschirm die letzte Stufe wählt (V-0251; vorher „Stundenplan öffnen“; wie die Auswahl, Regel 1: Laden schreibt
 // nichts, auch kein geöffneter Teilen-Link). Kein Zeitstempel, nur die Kennung des Plans.
 export const PLAN_SCHLUESSEL = `${PRAEFIX}:plan`;
 
@@ -123,6 +123,30 @@ export function speicherePlanwahl(speicher, id) {
   if (!speicher || !gueltigeId(id)) return false;
   try {
     speicher.setItem(PLAN_SCHLUESSEL, id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ── Der Pfeiltasten-Tipp, geschlossen (V-0251) ───────────────────────────────────────────────
+// Wer den Tipp mit dem X schließt, bittet darum, ihn nicht wieder zu sehen: ein Schlüssel, ein fester
+// Wert, kein Zeitpunkt. Geschrieben nur bei diesem Klick (Regel 1: Laden schreibt nichts).
+export const TIPP_SCHLUESSEL = `${PRAEFIX}:tipp`;
+
+export function tippGeschlossen(speicher) {
+  if (!speicher) return false;
+  try {
+    return speicher.getItem(TIPP_SCHLUESSEL) === 'pfeile';
+  } catch {
+    return false;
+  }
+}
+
+export function tippSchliessen(speicher) {
+  if (!speicher) return false;
+  try {
+    speicher.setItem(TIPP_SCHLUESSEL, 'pfeile');
     return true;
   } catch {
     return false;

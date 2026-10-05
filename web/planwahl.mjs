@@ -159,7 +159,7 @@ export function waehleOption(stufen, wahl, stufe, id) {
 
 /**
  * Welche Stufe die Seite nach einer Wahl zeigt: die nächste offene, sonst 'fertig' (die
- * Zusammenfassung mit „Stundenplan öffnen“). Eine automatische Stufe wird nicht eigens gezeigt,
+ * Zusammenfassung; seit V-0251 öffnet app.js dann gleich den Plan). Eine automatische Stufe wird nicht eigens gezeigt,
  * sie steht in der Zusammenfassung und in der Leiste („nur eine gültige: …“).
  */
 export const naechsteSicht = (stand) => stand.aktuell || (stand.plan ? 'fertig' : null);
