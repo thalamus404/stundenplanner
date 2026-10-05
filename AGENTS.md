@@ -85,6 +85,7 @@ des TOWER (Block oben).
 | Thema | Datei |
 |---|---|
 | Was das Werkzeug ist, für alle | [`README.md`](README.md) |
+| **Wie es funktioniert**: Quelle, Katalog, MOSES, Regeln, Annahmen — am Beispiel WI 1. FS | [`docs/SYSTEM.md`](docs/SYSTEM.md) |
 | **Wie es gebaut ist**: Teile, Ordner, Datenformate, Befehle | [`docs/ARCHITEKTUR.md`](docs/ARCHITEKTUR.md) |
 | **Wie es aussieht und sich bedient**: Layout je Breite, Tokens, Abnahmekriterien. Vor jeder Arbeit an `web/` lesen | [`docs/DESIGN.md`](docs/DESIGN.md) |
 | Wie es online bleibt: Container, Cloudflare, was bei Fehlern passiert | [`docs/BETRIEB.md`](docs/BETRIEB.md) |
