@@ -26,7 +26,7 @@ python3 ops/sicht.py --web web               # misst DESIGN §8 in allen Fenster
 
 | Datei | Was |
 |---|---|
-| `index.html` | der Rahmen: der Startbildschirm (`#hallo`, versteckt, bis `app.js` ihn braucht), dann der Plan: Kopf (mit Studiengang-Reiter, Kalender, Teilen), Hinweise oben, Module, Bühne (Werkzeugzeile mit Lage und Umschalter Tag/Woche, Raster), Legende, Fuß; die Hilfe als `<template>`, der SVG-Symbolsatz. Steht ohne JS (erstes Bild), der Satz der Lage schon im HTML (größter Inhalt früh) |
+| `index.html` | der Rahmen: der Startbildschirm (`#hallo`, versteckt, bis `app.js` ihn braucht), dann der Plan: Kopf (Studiengang-Reiter, Schriftzug als `<use href="#marke">`, Kalender, „Stundenplan speichern“), Hinweise oben, Module, Bühne (Werkzeugzeile mit Lage und Umschalter Tag/Woche, Raster), Legende, Fuß; die Hilfe als `<template>`, der SVG-Symbolsatz. Steht ohne JS (erstes Bild), der Satz der Lage schon im HTML (größter Inhalt früh) |
 | `stil.css` | das Aussehen: Tokens aus DESIGN §5 auf `:root` (hell und dunkel), Zonen, Modulkacheln und Formate, Raster, Kachelarten mit Container-Abfragen und der kurzen Wahl-Animation, Ebenen, Tablet und Handy |
 | `app.js` | lädt die Daten, zeichnet Startbildschirm und Plan, verdrahtet die Bedienung, Karten, Blätter, Dialoge, Meldung. Der einzige Teil mit DOM |
 | `planwahl.mjs` | der Startbildschirm ohne DOM (V-0234): den Baum aus `index.json` prüfen (`wahlBaum`), alle Pläne flach (`blaetter`), wo die Wahl steht und was die Leiste zeigt (`wahlStand`, mit Voraussage), wählen, zurück, vorbelegen, welcher Plan zu einem Link gehört (`planZumLink`), Optionen nach Zusatz gruppieren, was die Seite bei „keine Wahl ohne Überschneidung“ sagt (`ohneLoesung`) |
@@ -53,9 +53,9 @@ die Seite statt abzuschneiden. Am Handy scrollt sie immer (Silas' Test, V-0225).
 
 | Breite | Kopf | Module | Werkzeugzeile | Raster | unten |
 |---|---|---|---|---|---|
-| unter 768 px | Name, Kalender, Teilen; darunter der Studiengang-Reiter | Kacheln in zwei Spalten | Lage; Zeitraum unter dem Raster; Tag/Woche schwebt unten mittig | die Bühne füllt einen Schirm über dem Umschalter; Tag (Vorgabe) oder die ganze Woche klein | Zeitraum, Legende mit Modulfarben, mit 48 px Abstand der Fuß (14 px, Ziele 44 px) |
-| 768–1023 px | Name, Reiter, Stand, Kalender, Teilen | Kacheln darüber, so viele Spalten wie 176 px passen | Lage in einer Zeile, darunter Zeitraum und Tag/Woche | die Woche, wenn sie passt | Legende, Fuß zweizeilig |
-| ab 1024 px | wie oben | Spalte von 240 px links neben der Woche | eine Zeile | die Woche (ab 1280 px Tage ausgeschrieben) | Legende, Fuß (ab 1280 px einzeilig) |
+| unter 768 px | der Schriftzug mittig, rechts Kalender und Speichern als Symbole; darunter der Studiengang-Reiter | Kacheln in zwei Spalten | Lage; Zeitraum unter dem Raster; Tag/Woche schwebt unten mittig | die Bühne füllt einen Schirm über dem Umschalter; Tag (Vorgabe) oder die ganze Woche klein | Zeitraum, Legende mit Modulfarben, mit 48 px Abstand der Fuß (14 px, Ziele 44 px) |
+| 768–1023 px | der Schriftzug mittig, rechts „Kalender“ und „Speichern“; darunter der Reiter; Stand im Fuß | Kacheln darüber, so viele Spalten wie 176 px passen | Lage in einer Zeile, darunter Zeitraum und Tag/Woche | die Woche, wenn sie passt | Legende, Fuß zweizeilig |
+| ab 1024 px | eine Zeile: Reiter links, Schriftzug mittig, Knöpfe rechts (ab 1200 px ausgeschrieben, ab 1440 px mit Stand) | Spalte von 240 px links neben der Woche, darunter klein die Legende (bis fünf Module) | eine Zeile | die Woche (ab 1280 px Tage ausgeschrieben) | Fuß (ab 1280 px einzeilig); ab sechs Modulen die Legende unter dem Raster |
 
 **Die Woche nur, wenn sie passt** (Vorgabe, DESIGN §3.3): `raster.mjs` rechnet die dichteste Stelle
 (`dichteste()`) und daraus die Mindestbreite (`wochenBreite()`), bei der jede Spur 24 px bekommt;
@@ -127,7 +127,7 @@ Die Haken für `ops/sicht.py`: `data-sicht="hallo"`, `data-sicht="option"` mit `
   `tests/auswahl.test.mjs` halten jede dieser Regeln fest.
 - **Ohne Speicher** (privates Fenster, gesperrte Website-Daten) geht alles, nur vergisst die Seite
   beim Neuladen. An der Stelle des Speicherhinweises steht in Bernstein „Dein Browser speichert die
-  Auswahl nicht. Nimm den Teilen-Link mit.“
+  Auswahl nicht. Sichere sie mit „Stundenplan speichern“.“
 - **Zwei Registerkarten:** Ändert die eine die Auswahl, zieht die andere über das `storage`-Ereignis
   nach.
 - **Die einzige Gruppe eines Formats** ist ein Vorschlag (`auswerten()`, `g.vorschlag`, V-0237):
@@ -169,7 +169,7 @@ https://…/#plan=wi-bsc:stupo-2025:wise-2026-27:fs1&w=10001:100~11&w=10002:500~
   Bestandteil-ID selbst einen Doppelpunkt trägt. Fingerabdruck und Name stehen nicht drin.
 - **Im Fragment (hinter `#`), nicht in der Abfrage:** Das Fragment schickt der Browser nie an den
   Server.
-- „Teilen“ schiebt von unten die Fläche **„Für später speichern“** herein (V-0237, ein Blatt auf jeder
+- „Stundenplan speichern“ (bis V-0243 „Teilen“) schiebt von unten die gleichnamige Fläche herein (V-0237, ein Blatt auf jeder
   Breite): der Link im Feld, „Kopieren“ (ohne Clipboard-API wird der Link markiert), „Lesezeichen“
   (eine Seite kann keins setzen: Solange die Fläche offen ist, steht der Link in der Adresse, und die
   Fläche nennt je Gerät die Taste bzw. den Weg, `lesezeichenText()`), „Teilen“ nur, wo es

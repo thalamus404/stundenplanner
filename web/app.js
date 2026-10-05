@@ -208,8 +208,8 @@ function zuruecksetzen() {
 }
 
 /**
- * „Teilen“ (Silas' zweiter Test, V-0237): Von unten schiebt sich eine Fläche über die Ansicht, „Für
- * später speichern“. Sie trägt den Link zum fertigen Stundenplan (die Auswahl hinter dem #, nie an
+ * „Stundenplan speichern“ (bis V-0243 „Teilen“; Silas' zweiter Test, V-0237): Von unten schiebt sich
+ * eine Fläche über die Ansicht. Sie trägt den Link zum fertigen Stundenplan (die Auswahl hinter dem #, nie an
  * einen Server) mit drei Wegen: Kopieren, Lesezeichen, Teilen (das Teilen-Menü des Systems, am iPhone
  * mit allen Apps). Ein Lesezeichen kann keine Seite selbst setzen; solange die Fläche offen ist, steht
  * der Link deshalb in der Adresse, und die Fläche sagt, welche Taste oder welcher Tipp es anlegt.
@@ -217,12 +217,12 @@ function zuruecksetzen() {
 function teilen() {
   const weg = A.teilenWeg({ anzahl: selected.length, vorschau: !!vorschau, share: typeof navigator.share === 'function', grob: grob.matches });
   if (weg === 'vorschau') { melde('Erst den geteilten Plan übernehmen oder verwerfen.'); return; }
-  if (weg === 'leer') { melde('Plane zuerst eine Gruppe ein. Dann speichert „Teilen“ deinen Plan als Link.'); return; }
+  if (weg === 'leer') { melde('Plane zuerst eine Gruppe ein. Dann speichert „Stundenplan speichern“ deinen Plan als Link.'); return; }
   const frag = A.teilenFragment(plan, teilbareAuswahl());
   const url = location.href.split('#')[0] + frag;
   history.replaceState(null, '', location.pathname + location.search + frag);
   const teilenKnopf = typeof navigator.share === 'function' ? `<button type="button" class="knopf" data-act="system-teilen">${ic('teilen')}Teilen</button>` : '';
-  oeffne('blatt', 'Für später speichern', `<p>Der Link enthält deinen Stundenplan (${esc(mehrzahl(selected.length, 'eingeplante Gruppe', 'eingeplante Gruppen'))}). Wer ihn öffnet, sieht genau diese Auswahl. Er liegt auf keinem Server.</p><input class="feld" id="teilen-link" readonly value="${esc(url)}" aria-label="Link zu deinem Stundenplan"><div class="e-aktionen"><button type="button" class="knopf haupt" data-act="kopieren" data-fokus>${ic('kopieren')}Kopieren</button><button type="button" class="knopf" data-act="lesezeichen">${ic('lesezeichen')}Lesezeichen</button>${teilenKnopf}</div><p class="klein" id="lz-text" hidden></p>`,
+  oeffne('blatt', 'Stundenplan speichern', `<p>Der Link enthält deinen Stundenplan (${esc(mehrzahl(selected.length, 'eingeplante Gruppe', 'eingeplante Gruppen'))}). Wer ihn öffnet, sieht genau diese Auswahl. Er liegt auf keinem Server.</p><input class="feld" id="teilen-link" readonly value="${esc(url)}" aria-label="Link zu deinem Stundenplan"><div class="e-aktionen"><button type="button" class="knopf haupt" data-act="kopieren" data-fokus>${ic('kopieren')}Kopieren</button><button type="button" class="knopf" data-act="lesezeichen">${ic('lesezeichen')}Lesezeichen</button>${teilenKnopf}</div><p class="klein" id="lz-text" hidden></p>`,
     { klasse: 'speichern', zurueck: () => $('teilen'), zu: adresseOhneAuswahl });
 }
 
@@ -350,7 +350,7 @@ function renderKopf() {
   const t = $('teilen');
   // Nie gesperrt: Ohne Wahl oder in der Vorschau sagt ein Klick, was fehlt (teilenWeg in auswahl.mjs).
   t.disabled = false;
-  t.title = vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : selected.length ? 'Link zu deiner Auswahl teilen' : 'Erst eine Gruppe wählen';
+  t.title = vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : selected.length ? 'Deinen Stundenplan als Link speichern' : 'Erst eine Gruppe wählen';
 }
 
 /**
@@ -604,30 +604,36 @@ function kachel(e, mini) {
   return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${klasse}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="${mini ? 'tag' : 'kachel'}" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-titel">${esc(g.component.module.title || g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-kurz">${esc(nr ? g.type + ' ' + nr : g.type)}</span><span class="k-nr">${esc(nr || '')}</span><span class="k-lang k-2">${esc(R.typLang(g.type))}</span><span class="k-info k-2">${esc(`${gruppe}, ${s.start}–${s.end}`)}</span><span class="k-ort k-2">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
 }
 
-/** Die Legende unter dem Raster (Silas, 05.10.2026). */
+/** Die Legende (Silas, 05.10.2026): am Rechner klein links unter den Modulen (V-0243), sonst unter dem
+ *  Raster. Das Muster zeigt, wie es aussieht; das Wort sagt nur noch, was es heißt. Ab sechs Modulen
+ *  steht sie auch am Rechner unter dem Raster, und die Modulkacheln rücken zusammen (stil.css). */
 function renderUnter() {
+  $('seite').classList.toggle('viele-module', plan.modules.length > 5);
   const module = plan.modules.map((m, i) => `<span class="m${(i % 8) + 1}"><span class="punkt"></span>${esc(m.short)}</span>`).join('');
   const formate = R.legende(bestand.parts).map((x) => `<span><b>${esc(x.kurz)}</b>${esc(x.lang)}</span>`).join('');
   // Immer dieselben Einträge: Die Legende ändert ihre Höhe nicht, das Raster springt nicht.
   // Die Wörter nennen die Rolle, keinen Farbton: „dunkelgrau“/„hellgrau“ stimmten nur hell (V-0236).
   const k = (art, text) => `<span><span class="lg-k ${art}"></span>${text}</span>`;
-  const zustand = k('', 'umrandet: wählbar') + k('gewaehlt', 'gefüllt: eingeplant') + k('vorschlag', 'gestrichelt: Vorschlag') +
-    k('kontext', `durchscheinend: ${vorschau ? 'deine Auswahl' : 'dein Plan beim Filtern'}`) + k('zurueck', 'blass: Format gewählt') + k('gewaehlt konflikt', 'roter Ring: Überschneidung');
-  $('legende').innerHTML = `<p class="lg-zeile nur-handy">${module}</p><p class="lg-zeile">${formate}</p><p class="lg-zeile">${zustand}</p>`;
+  const zustand = k('', 'wählbar') + k('gewaehlt', 'eingeplant') + k('vorschlag', 'Vorschlag') +
+    k('kontext', vorschau ? 'deine Auswahl' : 'dein Plan') + k('zurueck', 'Format gewählt') + k('gewaehlt konflikt', 'Überschneidung');
+  $('legende').innerHTML = `<p class="lg-zeile lg-module nur-handy">${module}</p><p class="lg-zeile lg-formate">${formate}</p><p class="lg-zeile lg-zustand">${zustand}</p>`;
 }
 
 /** Hochschule und Quelle der Termine aus der Plandatei (Punkt 8541d9f5: nicht „TU“ und „MOSES“ fest). */
 function quelle() {
   const hs = (plan && plan.hochschule) || {};
-  return { kurz: hs.kurz || hs.name || 'Hochschule', name: (hs.quelle && hs.quelle.name) || 'ihr Vorlesungsverzeichnis' };
+  const url = hs.quelle && typeof hs.quelle.url === 'string' && /^https:\/\/[^\s"<>]+$/.test(hs.quelle.url) ? hs.quelle.url : null;
+  return { kurz: hs.kurz || hs.name || 'Hochschule', name: (hs.quelle && hs.quelle.name) || 'ihr Vorlesungsverzeichnis', url };
 }
 
 function renderFuss() {
   const q = quelle();
-  $('inoffiziell').textContent = `Kein offizielles Angebot der ${q.kurz}. Verbindlich sind ${q.name} und die Anmeldungen dort.`;
+  // Die Quelle als Link (Silas' dritter Blick, V-0243): Wer nachsehen will, ist mit einem Tipp dort.
+  const name = q.url ? `<a href="${esc(q.url)}" target="_blank" rel="noopener">${esc(q.name)}</a>` : esc(q.name);
+  $('inoffiziell').innerHTML = `Kein offizielles Angebot der ${esc(q.kurz)}. Verbindlich sind ${name} und die Anmeldungen dort.`;
   const s = $('speicher');
   const ohne = !speicher || !gespeichert;
-  s.textContent = ohne ? 'Dein Browser speichert die Auswahl nicht. Nimm den Teilen-Link mit.' : 'Deine Auswahl wird nur in diesem Browser gespeichert.';
+  s.textContent = ohne ? 'Dein Browser speichert die Auswahl nicht. Sichere sie mit „Stundenplan speichern“.' : 'Deine Auswahl wird nur in diesem Browser gespeichert.';
   s.classList.toggle('alt', ohne);
   $('zuruecksetzen').hidden = !!vorschau || !Object.keys(eigene).length;
 }
@@ -877,68 +883,68 @@ function renderHallo(fokus = false) {
   const st = P.wahlStand(baum, stufen, hallo.wahl);
   const sch = st.schritte.find((x) => x.id === hallo.sicht);
   if (hallo.sicht === 'fertig' ? !st.plan : !(sch && sch.knoten)) hallo.sicht = P.naechsteSicht(st);
-  const fertig = hallo.sicht === 'fertig';
-  $('h-inhalt').innerHTML = fertig ? halloFertig(st) : halloSchritt(st, hallo.sicht);
+  $('h-inhalt').innerHTML = halloAbschnitte(st);
   $('h-leiste').innerHTML = halloLeiste(st);
   $('h-zum-plan').hidden = !plan;
+  // Die Farbe einer Hochschule (katalog, V-0243) kommt über das CSSOM: Die CSP verbietet style-Attribute.
+  for (const b of $('h-inhalt').querySelectorAll('[data-farbe]')) b.style.setProperty('--h-farbe', b.dataset.farbe);
   if (fokus) {
-    const ziel = (fertig && $('h-inhalt').querySelector('[data-act="h-oeffnen"]')) || $('h-titel');
+    const ziel = (hallo.sicht === 'fertig' && $('h-inhalt').querySelector('[data-act="h-oeffnen"]')) || $('h-titel');
     if (ziel) ziel.focus({ preventScroll: true });
   }
 }
 
-/** Was vor einer Stufe schon feststeht, als eine Zeile: „TU Berlin, Wirtschaftsinformatik“. Beim
- *  Fachsemester (die Option trägt `semester`) gehört das Semester dazu: Erst beides ist der Plan. */
+/** Was eine gewählte Option sagt: „1. Fachsemester, WiSe 2026/27“. Beim Fachsemester (die Option trägt
+ *  `semester`) gehört das Semester dazu: Erst beides ist der Plan. */
 const optionText = (o) => (o.semester != null && o.zusatz ? `${o.label}, ${o.zusatz}` : o.label);
-const halloKontext = (st, i) => st.schritte.slice(0, i).filter((x) => x.option && x.art !== 'entfaellt').map((x) => optionText(x.option)).join(', ');
 
-function halloSchritt(st, stufe) {
-  const i = st.schritte.findIndex((x) => x.id === stufe);
-  const sch = st.schritte[i], k = sch.knoten;
-  const auto = sch.art === 'automatisch';
-  // Auf der ersten Stufe ein Satz, wozu das Ganze dient; danach steht dort, was schon feststeht.
-  const kontext = halloKontext(st, i) || 'Wähle dein Studium, dann zeigt der Stundenplanner alle Termine deines Semesters.';
-  const knopf = (o) => {
-    const j = k.optionen.indexOf(o), an = sch.option === o;
-    return `<button type="button" class="h-option" data-sicht="option" data-act="${auto ? 'h-weiter' : 'h-option'}" data-s="${esc(stufe)}" data-i="${j}"${an ? ' aria-current="true"' : ''}${gruppen ? ` aria-label="${esc(`${o.label}, ${o.zusatz}`)}"` : ''}><span class="h-o-label">${esc(o.label)}</span>${o.zusatz && !gruppen ? `<span class="h-o-zusatz">${esc(o.zusatz)}</span>` : ''}${an ? ic('haken', 'i h-o-i') : ''}</button>`;
-  };
+/**
+ * Der Startbildschirm (Silas' dritter Blick, V-0243): eine ruhige Spalte. Je Stufe, an der jemand
+ * wählt, ein Abschnitt; gewählte Stufen stehen als eine Karte mit Haken (ein Tipp öffnet sie wieder),
+ * die Stufe, an der man gerade ist, zeigt alle Optionen, spätere noch nichts. Stufen, die entfallen
+ * oder nur eine gültige Option haben (Vertiefung, Ordnung), erscheinen nicht: Silas wollte nur
+ * Hochschule, Studiengang und Fachsemester sehen. Ist alles gewählt, kommt „Stundenplan öffnen“.
+ */
+function halloAbschnitte(st) {
+  let html = '';
+  for (const x of st.schritte) {
+    if (!x.knoten || (x.art !== 'gewaehlt' && x.art !== 'offen')) continue;
+    const hier = x.id === hallo.sicht;
+    html += hier ? halloOptionen(x) : halloGewaehlt(x);
+    if (hier) break;
+  }
+  if (hallo.sicht === 'fertig' && st.plan) html += '<div class="h-aktionen"><button type="button" class="knopf haupt" data-act="h-oeffnen">Stundenplan öffnen</button></div>';
+  return html;
+}
+
+const farbeVon = (o) => (o.farbe ? ` data-farbe="${esc(o.farbe)}"` : '');
+
+/** Eine Stufe mit allen Optionen. Die gewählte (beim Ändern) trägt den Haken. */
+function halloOptionen(x) {
+  const k = x.knoten;
   const gruppen = P.gruppiert(k.optionen);
+  const knopf = (o) => {
+    const j = k.optionen.indexOf(o), an = x.option === o;
+    return `<button type="button" class="h-option${o.farbe ? ' farbig' : ''}" data-sicht="option" data-act="h-option" data-s="${esc(x.id)}" data-i="${j}"${farbeVon(o)}${an ? ' aria-current="true"' : ''}${gruppen ? ` aria-label="${esc(`${o.label}, ${o.zusatz}`)}"` : ''}><span class="h-o-label">${esc(o.label)}</span>${o.zusatz && !gruppen ? `<span class="h-o-zusatz">${esc(o.zusatz)}</span>` : ''}${an ? ic('haken', 'i h-o-i') : ''}</button>`;
+  };
   const optionen = gruppen
     ? gruppen.map((g) => `<div class="h-gruppe" role="group" aria-label="${esc(g.zusatz)}"><p class="h-g-titel">${esc(g.zusatz)}</p><div class="h-optionen">${g.optionen.map(knopf).join('')}</div></div>`).join('')
     : `<div class="h-optionen" role="group" aria-labelledby="h-titel">${k.optionen.map(knopf).join('')}</div>`;
-  const notiz = auto ? `Nur eine gültige: ${sch.option.label}. Sie ist automatisch gewählt.` : k.optionen.length === 1 ? 'Weitere folgen.' : '';
-  const zurueck = P.vorige(st, stufe) ? '<button type="button" class="knopf" data-act="h-zurueck">Zurück</button>' : '';
-  const aktionen = auto ? `<button type="button" class="knopf haupt" data-act="h-weiter">Weiter</button>${zurueck}` : zurueck;
-  return `<div class="h-frage"><h1 class="h-titel" id="h-titel" tabindex="-1">${esc(sch.label)}</h1><p class="h-kontext">${esc(kontext)}</p></div>${optionen}${notiz ? `<p class="h-notiz">${esc(notiz)}</p>` : ''}${aktionen ? `<div class="h-aktionen">${aktionen}</div>` : ''}`;
+  return `<section class="h-abschnitt hier"><h2 class="h-titel" id="h-titel" tabindex="-1">${esc(x.label)}</h2>${optionen}</section>`;
 }
 
-/** Alles gewählt: die Angaben auf einen Blick, die automatische mit ihrem Grund, „Stundenplan öffnen“. */
-function halloFertig(st) {
-  const zeilen = st.schritte.filter((x) => x.option && x.art !== 'entfaellt').map((x) => {
-    const auto = x.art === 'automatisch';
-    const aendern = auto ? '' : `<button type="button" class="leise" data-act="h-stufe" data-s="${esc(x.id)}" aria-label="${esc(`${x.label} ändern`)}">Ändern</button>`;
-    // Ein kurzer Zusatz (Abschluss, Semester) gehört in die Zeile, ein langer (für wen die Ordnung gilt)
-    // darunter: So passt die Zusammenfassung am Rechner auf einen Schirm (1366 × 657, gemessen).
-    const z = x.option.zusatz || '', lang = z.length > 40;
-    return `<div class="h-zeile"><dt>${esc(x.label)}</dt><dd><span class="h-z-wert">${esc(z && !lang ? `${x.option.label}, ${z}` : x.option.label)}</span>${auto ? '<span class="h-z-zusatz">Nur eine gültige, automatisch gewählt.</span>' : ''}${lang ? `<span class="h-z-zusatz">${esc(z)}</span>` : ''}</dd>${aendern}</div>`;
-  }).join('');
-  return `<div class="h-frage"><h1 class="h-titel" id="h-titel" tabindex="-1">Deine Angaben</h1></div><dl class="h-liste">${zeilen}</dl><div class="h-aktionen"><button type="button" class="knopf haupt" data-act="h-oeffnen">Stundenplan öffnen</button></div>`;
+/** Eine gewählte Stufe: ihre Karte mit Haken. Ein Tipp öffnet die Stufe wieder (data-act h-stufe). */
+function halloGewaehlt(x) {
+  const o = x.option;
+  return `<section class="h-abschnitt"><h2 class="h-titel">${esc(x.label)}</h2><button type="button" class="h-option gewaehlt${o.farbe ? ' farbig' : ''}" data-sicht="gewaehlt" data-act="h-stufe" data-s="${esc(x.id)}"${farbeVon(o)} aria-label="${esc(`${x.label}: ${optionText(o)}. Ändern`)}"><span class="h-o-label">${esc(o.label)}</span>${o.zusatz ? `<span class="h-o-zusatz">${esc(o.zusatz)}</span>` : ''}${ic('haken', 'i h-o-i')}</button></section>`;
 }
 
-/** Die Leiste unten (Silas: „welche Entscheidung noch fehlt für eine eindeutige Zuordnung“). */
+/** Die Fortschrittslinie unter dem Schriftzug: ein Strich je Stufe, an der jemand wählt (Silas, V-0234),
+ *  ohne Beschriftung (V-0243: „alles Unnötige entfernen“); was sie sagt, steht für Screenreader daneben. */
 function halloLeiste(st) {
-  const WORT = { entfaellt: 'entfällt', offen: 'offen' };
-  const teile = st.schritte.map((x) => {
-    const hier = x.id === hallo.sicht;
-    const wert = x.art === 'automatisch' ? (x.wert ? `${x.wert}, automatisch` : 'automatisch') : x.art === 'gewaehlt' ? x.wert : hier ? 'jetzt' : WORT[x.art];
-    const inhalt = `<span class="h-balken"></span><span class="h-s-label">${esc(x.label)}</span><span class="h-s-wert">${esc(wert)}</span>`;
-    const klasse = `h-stufe ${x.art}${hier ? ' hier' : ''}`;
-    const zurueck = x.knoten && x.option && x.art !== 'entfaellt';
-    const name = `${x.label}: ${wert}${x.art === 'gewaehlt' ? '. Ändern' : ''}`;
-    return `<li class="${klasse}"${hier ? ' aria-current="step"' : ''}>${zurueck ? `<button type="button" class="h-s" data-act="h-stufe" data-s="${esc(x.id)}" aria-label="${esc(name)}">${inhalt}</button>` : `<span class="h-s">${inhalt}</span>`}</li>`;
-  }).join('');
-  const t = P.leistenText(st);
-  return `<div class="h-l-innen"><p class="h-l-text"><span class="nur-breit">${esc(t.zahl)}</span><span class="nur-handy">${esc(t.namen)}</span></p><ol class="h-stufen" aria-label="Deine Angaben">${teile}</ol></div>`;
+  const teile = st.schritte.filter((x) => x.art === 'gewaehlt' || x.art === 'offen');
+  const striche = teile.map((x) => `<span class="h-strich${x.art === 'gewaehlt' ? ' voll' : ''}${x.id === hallo.sicht ? ' hier' : ''}"></span>`).join('');
+  return `<span class="h-striche" aria-hidden="true">${striche}</span><span class="nur-sr">${esc(P.leistenText(st).zahl)}</span>`;
 }
 
 // ── Bedienung
@@ -964,8 +970,6 @@ const AKTIONEN = {
   wechseln: () => halloOeffnen(blatt ? P.wahlFuer(blaetter, blatt.id) : {}, blatt ? 'fertig' : null),
   'h-option': (b) => halloWaehlen(b.dataset.s, Number(b.dataset.i)),
   'h-stufe': (b) => { hallo.sicht = b.dataset.s; renderHallo(true); },
-  'h-zurueck': () => { hallo.sicht = P.vorige(P.wahlStand(baum, stufen, hallo.wahl), hallo.sicht) || hallo.sicht; renderHallo(true); },
-  'h-weiter': () => { hallo.sicht = P.naechsteSicht(P.wahlStand(baum, stufen, hallo.wahl)); renderHallo(true); },
   'h-oeffnen': () => {
     const st = P.wahlStand(baum, stufen, hallo.wahl);
     const b = st.plan && blaetter.find((x) => x.id === st.plan.id);

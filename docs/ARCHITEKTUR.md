@@ -69,13 +69,16 @@ Kennungen (`id`) sind Datei- und Speichernamen: nur `a–z`, `0–9`, `-`, gleic
 `katalog/hochschulen/<hochschule-id>.json`
 
 ```json
-{ "id": "tu-berlin", "kurz": "TU Berlin", "name": "Technische Universität Berlin",
+{ "id": "tu-berlin", "kurz": "TU Berlin", "name": "Technische Universität Berlin", "farbe": "#c50e1f",
   "quelle": { "name": "MOSES", "url": "https://moseskonto.tu-berlin.de", "text": "…" },
   "sichtbar": "live", "abruf": "erlaubt" }
 ```
 
 - `quelle` nennt das System der Termine für die Anzeige (Punkt 8541d9f5: die Seite soll nicht „TU“
   und „MOSES“ fest nennen). Welcher Abruf es liest, sagt das Semester (unten)
+- `farbe` (frei, V-0243): `#rrggbb`, die Farbe der Hochschule. Ihre Karte im Startbildschirm ist damit
+  gefüllt, die Schrift darauf weiß (DESIGN §3.6); `katalog.py` lässt nur Farben zu, auf denen Weiß
+  mindestens 4,5:1 hat. Nur die Farbe, nie ein Logo. `bauen.py` gibt sie an die Option der Hochschule
 - `"abruf": "gesperrt"` mit `abruf_grund` (Pflicht): Pläne dieser Hochschule holt `abruf.py` **nie**,
   auch nicht mit `--mit-vorschau`; ein ausdrücklich genanntes Semester endet mit Exit 2. Heute die HU
   Berlin (robots.txt von AGNES, Punkt 7411bed1)
@@ -268,7 +271,8 @@ Seite (Schlüssel wie in Schema 1), bis die Seite umgestellt ist.
 - **Ein Knoten** ist `{ stufe, regel, optionen }`, am Knoten der Vertiefung dazu `label` (die
   Bezeichnung des Studiengangs, z. B. „Studienrichtung“). **Eine Option** ist `{ id, label, zusatz }`
   und `weiter` (der nächste Knoten) oder, auf der letzten Stufe, `plan`. Beim Fachsemester stehen
-  `semester` und `fachsemester` dabei. Jeder Pfad endet in genau einem Plan
+  `semester` und `fachsemester` dabei, bei der Hochschule `farbe`, wenn der Katalog eine nennt
+  (`planwahl.mjs` lässt nur `#rrggbb` durch). Jeder Pfad endet in genau einem Plan
 - **`regel`** sagt der Seite, was sie tut (Silas, 05.10.2026):
   - `ueberspringen`: Vertiefung oder Ordnung, deren einzige Option „keine“ ist (`id: null`): ein
     Studiengang ohne Vertiefung, ein Katalog ohne Ordnung. Die Stufe erscheint nicht

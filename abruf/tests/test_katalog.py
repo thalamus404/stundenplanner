@@ -127,6 +127,17 @@ class FehlerTests(unittest.TestCase):
         self.aendere('studiengaenge/ing-bsc.json', self.plan(2, waehlbar=False))
         self.fehler('waehlbar')
 
+    def test_farbe_der_hochschule(self):
+        # V-0243: Die Karte im Startbildschirm ist mit `farbe` gefüllt, die Schrift weiß (≥ 4,5:1).
+        self.aendere('hochschulen/zweite-hs.json', lambda h: h.update(farbe='#C50E1F'))
+        self.assertEqual(K.lesen(self.kat)['hochschulen']['zweite-hs']['farbe'], '#c50e1f')
+
+    def test_farbe_ungueltig_oder_zu_hell(self):
+        self.aendere('hochschulen/zweite-hs.json', lambda h: h.update(farbe='rot'))
+        self.fehler('rrggbb')
+        self.aendere('hochschulen/zweite-hs.json', lambda h: h.update(farbe='#f8ee42'))
+        self.fehler('4,5:1')
+
     def test_sperre_ohne_grund(self):
         self.aendere('hochschulen/zweite-hs.json', lambda h: h.pop('abruf_grund'))
         self.fehler('abruf_grund')

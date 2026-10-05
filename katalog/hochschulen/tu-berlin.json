@@ -2,6 +2,7 @@
   "id": "tu-berlin",
   "kurz": "TU Berlin",
   "name": "Technische Universität Berlin",
+  "farbe": "#c50e1f",
   "quelle": {
     "name": "MOSES",
     "url": "https://moseskonto.tu-berlin.de",
