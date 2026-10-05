@@ -28,6 +28,7 @@ HIER = Path(__file__).resolve().parent
 WURZEL = HIER.parent
 sys.path.insert(0, str(HIER))  # moses.py liegt daneben, egal von wo aus aufgerufen wird
 
+import katalog as K  # noqa: E402
 import moses  # noqa: E402
 
 KATALOG = WURZEL / 'katalog'
@@ -53,8 +54,7 @@ except Exception:  # ohne Zeitzonendaten lieber UTC mit Versatz als ein Zeitstem
     BERLIN = timezone.utc
 
 
-class KatalogFehler(ValueError):
-    pass
+KatalogFehler = K.KatalogFehler  # ein Fehlertyp für den ganzen Katalog, wo immer er gelesen wird
 
 
 def jetzt() -> str:
@@ -63,35 +63,39 @@ def jetzt() -> str:
 
 # --- Katalog -----------------------------------------------------------------------------------
 
-def _json(pfad: Path):
-    try:
-        return json.loads(pfad.read_text(encoding='utf-8'))
-    except (OSError, ValueError) as exc:
-        raise KatalogFehler(f'{pfad.name}: nicht lesbar ({type(exc).__name__})') from exc
+def lade_katalog(katalog: Path = KATALOG, mit_vorschau: bool = False) -> dict:
+    """Semester und abzurufende Pläne (docs/ARCHITEKTUR.md §3), gelesen und aufgelöst von katalog.py
+    (Erbe der Vertiefungen, Sichtbarkeit); hier geprüft wird nur, was der MOSES-Abruf braucht.
 
-
-def lade_katalog(katalog: Path = KATALOG) -> dict:
-    """Semester und Pläne aus `katalog/` (docs/ARCHITEKTUR.md §3). Prüft, was der Abruf braucht."""
+    Abgerufen wird ein Plan nur, wenn er live ist (Vorschau nur mit `mit_vorschau`) und seine
+    Hochschule den Abruf nicht sperrt. Eine Sperre gilt auch mit `mit_vorschau` (Punkt 7411bed1):
+    Was übergangen wurde, steht je Semester unter `gesperrt` (Grund der Sperre, oder „Vorschau“),
+    damit ein ausdrücklich genanntes Semester laut abgelehnt wird.
+    Auch nicht wählbare Grundpläne zählen: Ihre Module stehen in den Plänen der Vertiefungen.
+    """
+    kat = K.lesen(katalog)
     semester = {}
-    for pfad in sorted((katalog / 'semester').glob('*.json')):
-        s = _json(pfad)
-        sid = s.get('id')
-        if not isinstance(sid, str) or not SEMESTER_ID.fullmatch(sid) or pfad.stem != sid:
-            raise KatalogFehler(f'{pfad.name}: "id" fehlt oder passt nicht zum Dateinamen')
+    for sid, s in kat['semester'].items():
+        if not SEMESTER_ID.fullmatch(sid):
+            raise KatalogFehler(f'{sid}.json: "id" ist keine Semester-Kennung')
         if not isinstance(s.get('moses'), str) or not s['moses'].strip():
-            raise KatalogFehler(f'{pfad.name}: "moses" (Beschriftung der MOSES-Semesterwahl) fehlt')
+            raise KatalogFehler(f'{sid}.json: "moses" (Beschriftung der MOSES-Semesterwahl) fehlt')
         semester[sid] = s
-    plaene = []
-    for pfad in sorted((katalog / 'studiengaenge').glob('*.json')):
-        g = _json(pfad)
-        for plan in g.get('plaene', []):
-            if plan.get('semester') not in semester:
-                raise KatalogFehler(f'{pfad.name}: Plan nennt unbekanntes Semester {plan.get("semester")!r}')
-            for m in plan.get('module', []):
-                if not isinstance(m.get('nummer'), str) or not NUMMER.fullmatch(m['nummer']):
-                    raise KatalogFehler(f'{pfad.name}: ungültige Modulnummer {m.get("nummer")!r}')
-            plaene.append({**plan, 'studiengang': g.get('id')})
-    return {'semester': semester, 'plaene': plaene}
+    plaene, gesperrt = [], {}
+    for p in kat['plaene']:
+        sid = p['semester']['id']
+        if not K.sichtbar(p, mit_vorschau):
+            gesperrt.setdefault(sid, set()).add('Vorschau-Pläne nur mit --mit-vorschau')
+            continue
+        if p['hochschule']['abruf'] == 'gesperrt':
+            gesperrt.setdefault(sid, set()).add(f"{p['hochschule']['kurz']}: {p['hochschule']['abruf_grund']}")
+            continue
+        for m in p['module']:
+            if not NUMMER.fullmatch(m['nummer']):
+                raise KatalogFehler(f'{p["studiengang"]["id"]}.json: ungültige Modulnummer {m["nummer"]!r}')
+        plaene.append({**p['roh'], 'id': p['id'], 'studiengang': p['studiengang']['id'], 'semester': sid,
+                       'module': p['module']})
+    return {'semester': semester, 'plaene': plaene, 'gesperrt': gesperrt}
 
 
 def module_je_semester(katalog: dict) -> dict[str, list[str]]:
@@ -237,18 +241,24 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
     return lauf
 
 
-def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, **kw) -> dict:
+def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, mit_vorschau=False, **kw) -> dict:
     """Alle (oder die genannten) Semester. Gibt je Semester das Ergebnis von lauf_semester zurück.
 
     Mit `nur` entsteht kein `_lauf.json`: Ein gezielter Nachabruf einzelner Module ist kein Lauf des
     Semesters, und `last_run` der Seite soll nicht „1 Modul“ melden, wo der Plan fünf hat.
+    Ohne `mit_vorschau` werden nur Live-Pläne geholt (der tägliche Lauf). Ein ausdrücklich genanntes
+    Semester, dessen Pläne alle Vorschau oder gesperrt sind, ist ein Aufruffehler, bevor etwas
+    geschrieben wird: Sonst überschriebe ein `_lauf.json` mit „error“ den Stand eines Ordners, in dem
+    nur nichts geholt werden durfte. (Ganz ohne Plan bleibt es ein gescheiterter Lauf, wie bisher.)
     """
-    kat = lade_katalog(katalog)
+    kat = lade_katalog(katalog, mit_vorschau)
     je = module_je_semester(kat)
     gewaehlt = list(semester) if semester else [sid for sid in kat['semester'] if je[sid]]
     for sid in gewaehlt:
         if sid not in kat['semester']:
             raise KatalogFehler(f'Semester {sid!r} steht nicht in katalog/semester/')
+        if not je[sid] and kat['gesperrt'].get(sid):
+            raise KatalogFehler(f'Für {sid} ist nichts abzurufen: ' + '; '.join(sorted(kat['gesperrt'][sid])))
     ergebnis = {}
     for sid in gewaehlt:
         nummern = je[sid]
@@ -271,10 +281,13 @@ def main(argv=None) -> int:
                    help='nur dieses Modul (mehrfach möglich); schreibt kein _lauf.json')
     p.add_argument('--roh', type=Path, default=ROH,
                    help='Ordner der Rohstände (Vorgabe: daten/roh im Repo; relativ zum Arbeitsverzeichnis)')
+    p.add_argument('--mit-vorschau', action='store_true',
+                   help='auch Pläne mit "sichtbar": "vorschau" holen (nie im täglichen Lauf); gesperrte nie')
     p.add_argument('--katalog', type=Path, default=KATALOG, help=argparse.SUPPRESS)
     a = p.parse_args(argv)
     try:
-        ergebnis = lauf(katalog=a.katalog, roh=a.roh.resolve(), semester=a.semester, nur=a.nur)
+        ergebnis = lauf(katalog=a.katalog, roh=a.roh.resolve(), semester=a.semester, nur=a.nur,
+                        mit_vorschau=a.mit_vorschau)
     except KatalogFehler as exc:
         print(f'abruf: {exc}', file=sys.stderr)
         return 2
