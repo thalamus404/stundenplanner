@@ -28,8 +28,9 @@ python3 abruf/abruf.py --roh /irgendwo/roh    # Rohstände anderswohin
   Aufruf oder der Katalog nicht stimmt (dann wird nichts geschrieben).
 - Je Modul eine Zeile auf stderr (`✓ 70123 v11: 2 Bestandteile, 5 Gruppen, 63 Buchungen`), am Ende
   je Semester eine auf stdout.
-- **Dauer:** je Modul 2 Seiten, je Bestandteil 5 Anfragen, mit 0,7 s Abstand. WI im 1. Fachsemester
-  (5 Module, 11 Bestandteile) dauert gut eine Minute.
+- **Dauer:** je Modul 2 Seiten, je Bestandteil 5 Anfragen (ein leerer Bestandteil: 2), mit 0,7 s Abstand,
+  dazu 2 s zwischen zwei Modulen. WI im 1. Fachsemester (5 Module, 11 Bestandteile) dauert gut eine
+  Minute, 20 Module mit 44 Bestandteilen (vier TU-Studiengänge, V-0228) gut fünf Minuten.
 
 ### Was schiefgehen kann
 
@@ -64,13 +65,30 @@ die strenge Regel kippte das ganze Modul (19 Gruppen, 277 Termine). Freigegeben 
 05.10.2026; die Regel steht als Docstring an `parse_export()` in `moses.py`, die Tests in
 `tests/test_moses.py`.
 
+**Ein Bestandteil ohne Gruppe im Zielsemester ist leer, kein Fehler** (V-0228). Listet die Seite des
+Vorlesungsverzeichnisses im Zielsemester **keine einzige** Termingruppe, zeigt MOSES nur den leeren
+Kalender, und „Liste als Excel-Datei exportieren“ fehlt, weil es nichts zu listen gibt. Der Bestandteil
+steht dann mit `groups: []` und `status: "unplanned"` im Rohstand, ohne Export; die Seite zeigt ihn als
+„ohne Termine“. Eng gehalten: nur wenn das Zielsemester gewählt ist, kein Gruppenlink, kein
+Kalenderereignis und kein „Liste als Excel-Datei exportieren“ auf der Seite steht und der Kalender
+selbst da ist. Sonst `VVZ ohne Gruppen in unbekanntem Layout`; listet die Seite Gruppen, aber keinen
+Export, bleibt es `VVZ-Export fehlt`. Die Regel gab es zweimal, unabhängig gebaut (V-0228 und V-0227);
+seit V-0233 gilt die Vereinigung beider Prüfungen, also die strengere.
+Anlass: Am 05.10.2026 fehlten so die Übung von Analysis I und Lineare Algebra (20122), die Übung von
+Einführung in die Informatik (40013) und das Labor von Grundlagen der Elektrotechnik (40774), und
+jedes Mal fiel das ganze Modul samt Vorlesung. Regel: Docstring von `empty_component()` in
+`moses.py`, Tests in `tests/test_moses.py`.
+
 ### Höflichkeit
 
 MOSES ist ein öffentlicher Dienst der TU Berlin, kein Angebot an uns. Deshalb:
 
 - **Einmal am Tag** reicht. Die Termine ändern sich selten, und die Seite sagt, wie alt sie sind.
   Kein Lauf in einer Schleife und kein sofortiges Wiederholen nach einem Fehler
-- Zwischen zwei Anfragen derselben Sitzung mindestens **0,7 s** (`Client(delay=0.7)`)
+- Zwischen zwei Anfragen derselben Sitzung mindestens **0,7 s** (`Client(delay=0.7)`), zwischen zwei
+  Modulen mindestens **2 s** (`abruf.PAUSE_MODULE`, Punkt aed3e76c): Jedes Modul hat eine eigene
+  Sitzung, ohne die Pause folgte das nächste Modul sofort auf das vorige. Nie parallel, ein Modul
+  nach dem anderen
 - Der **User-Agent** nennt das Projekt und seine Adresse (`moses.USER_AGENT`), damit MOSES einen
   auffälligen Abruf zuordnen kann, statt ihn zu sperren
 - Je Modul eine frische Sitzung **ohne Login**. Die Exporteinstellungen gelten nur für sie;

@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,6 +33,13 @@ import moses  # noqa: E402
 KATALOG = WURZEL / 'katalog'
 ROH = WURZEL / 'daten' / 'roh'
 LAUF = '_lauf.json'
+
+# Pause zwischen zwei Modulen, in Sekunden (Punkt aed3e76c). Der Abstand von 0,7 s in moses.Client gilt
+# nur innerhalb eines Moduls, denn jedes Modul bekommt eine frische Sitzung; ohne diese Pause folgte
+# die erste Anfrage des nächsten Moduls sofort auf die letzte des vorigen. Mit mehreren Studiengängen
+# im Katalog (V-0228: 20 Module statt 5) wird daraus ein Dauerfeuer. Nie parallel: Ein Lauf holt
+# ein Modul nach dem anderen.
+PAUSE_MODULE = 2.0
 
 # Eine Modulnummer landet in einer MOSES-Adresse und in einem Dateinamen. Nur Ziffern: Ein Tippfehler
 # im Katalog wie "../70123" darf weder eine fremde Datei überschreiben noch eine fremde Seite holen.
@@ -181,9 +189,15 @@ def rohstand_fehler(vorbestand, nummer: str, ziel: str, zeit: str, meldung: str)
 # --- Der Lauf ----------------------------------------------------------------------------------
 
 def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabrik=None,
-                  holer=hole_modul, uhr=jetzt, schreibe_lauf=True, log=print) -> dict:
-    """Ein Semester: jedes Modul einmal, je Modul ein Rohstand, am Ende `_lauf.json`."""
+                  holer=hole_modul, uhr=jetzt, schreibe_lauf=True, log=print,
+                  pause=PAUSE_MODULE, schlaf=None) -> dict:
+    """Ein Semester: jedes Modul einmal, je Modul ein Rohstand, am Ende `_lauf.json`.
+
+    Zwischen zwei Modulen wartet der Lauf `pause` Sekunden (vor dem ersten nicht), auch nach einem
+    gescheiterten Modul. `schlaf` ist für Tests; ohne ihn `time.sleep`, zur Laufzeit nachgeschlagen.
+    """
     client_fabrik = client_fabrik or moses.Client
+    schlaf = schlaf or time.sleep
     ziel = semester['moses']
     ordner = roh / semester['id']
     lauf = {'gestartet_am': uhr(), 'beendet_am': None, 'status': 'error',
@@ -191,7 +205,9 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
     try:
         if not nummern:
             raise KatalogFehler(f'Kein Plan nennt Module für {semester["id"]}')
-        for nummer in nummern:
+        for i, nummer in enumerate(nummern):
+            if i:
+                schlaf(pause)
             pfad = ordner / f'{nummer}.json'
             try:
                 # Je Modul eine frische, loginfreie MOSES-Sitzung wie im Vorbild: Ein verklemmter
