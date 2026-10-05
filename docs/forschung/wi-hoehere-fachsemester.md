@@ -278,14 +278,14 @@ Gebaut (klein, getrennt von V-0225: `web/wahl.mjs`, `web/wahl.css`, Haken in `ap
 1. **Plan:** Studiengang, Ordnung, Fachsemester, Semester stehen im Plannamen
    („Wirtschaftsinformatik B.Sc. (StuPO 2021), 5. Fachsemester, WiSe 2026/27“). Gewählt wird wie
    bisher aus der Liste der Pläne.
-2. **Wahlpflichtmodule:** je Bereich ein Knopf in der Modulleiste mit den gewählten LP („WP
-   Informatik 15 LP“). Er öffnet die Liste des Bereichs: Titel, LP, Unterbereich, Wochentage, Zahl
+2. **Wahlpflichtmodule:** je Bereich ein Knopf am Ende der Modulliste mit den gewählten LP („WP
+   Informatik 12 LP“). Er öffnet die Liste des Bereichs: Titel, LP, Unterbereich, Wochentage, Zahl
    der Gruppen; Anteil und LP-Grenzen des Bereichs; aufklappbar die Module ohne Termine mit Grund;
    die Quelle (MOSES, Ordnung, Liste). Ein Klick nimmt ein Modul dazu oder lässt es weg. Erst dann
    lädt die Seite seine Moduldatei.
 3. **Gruppen** wie bisher, je Bestandteil eine. Wahlpflichtmodule tragen „WP“ am Namen und in der
    Modulkarte den Bereich und „Modul weglassen“.
-4. **Ersatzdaten** zeigt ein Chip vorn in der Modulleiste, auf jeder Breite: „Ersatzdaten, nicht
+4. **Ersatzdaten** zeigt ein Knopf vorn in der Modulliste, auf jeder Breite: „Ersatzdaten, nicht
    SoSe 2027“; er öffnet den Datenstand mit der Erklärung.
 
 Kein neuer Speicher: Aktiv ist ein Wahlpflichtmodul, wenn die Auswahl eine Gruppe darin hat (die
@@ -305,14 +305,16 @@ du?“.
 **<https://demo-wi-hoehere.stundenplanner.pages.dev>** (Cloudflare-Vorschau, nicht die Produktion),
 gebaut aus Zweig `vorgang/v-0227` mit den Rohständen vom 05.10.2026. Zehn Pläne: StuPO 2025 FS 1–6,
 StuPO 2021 FS 3–6. Die Pläne der geraden Fachsemester tragen „SoSe 2026 (Ersatz für SoSe 2027)“ im
-Namen und vorn in der Modulleiste den Chip „Ersatzdaten, nicht SoSe 2027“.
+Namen und vorn in der Modulliste den Knopf „Ersatzdaten, nicht SoSe 2027“.
 
-Geprüft mit Playwright auf der veröffentlichten Vorschau, 390×844 und 1440×900: Planwahl mit allen
+Geprüft mit Playwright auf der veröffentlichten Vorschau, 390×844 und 1440×900, zweimal: auf der
+Oberfläche vom Morgen und nach dem Hereinholen von dev (neue Bedienung V-0225, Kalender V-0231),
+auf der die Vorschau jetzt läuft: Planwahl mit allen
 zehn Plänen, Wahlpflichtliste öffnen (WP Informatik, 5. FS StuPO 2021: 43 Module), ein Modul
 dazunehmen (erscheint mit „WP“ in der Leiste, seine Gruppen im Raster), Ersatzdaten-Chip und
-Datenstand, die neun Beispielpläne unten über ihren Teilen-Link übernommen (alle Bestandteile
-eingeplant, kein Konflikt-Chip), der leere Zustand eines Plans ohne Pflichtmodule. Keine Fehler in der
-Konsole. `sh ops/test.sh` grün (105 Python-, 58 Node-Tests).
+Datenstand, die neun Beispielpläne unten über ihren Teilen-Link übernommen (alle Formate
+eingeplant, „Keine Überschneidung“), der leere Zustand eines Plans ohne Pflichtmodule. Keine Fehler in
+der Konsole. `sh ops/test.sh` grün (105 Python-, 82 Node-Tests nach dem Hereinholen von dev).
 
 **Beispielpläne** — je Plan eine konfliktfreie Auswahl aus den echten Daten, automatisch gesucht
 (alle Pflicht-Bestandteile, dazu Wahlpflichtmodule mit Wochenrhythmus bis zum LP-Anteil). Sie
