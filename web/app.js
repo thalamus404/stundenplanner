@@ -182,8 +182,11 @@ function zuruecksetzen() {
 }
 
 async function teilen() {
+  const weg = A.teilenWeg({ anzahl: selected.length, vorschau: !!vorschau, share: typeof navigator.share === 'function', grob: grob.matches });
+  if (weg === 'vorschau') { melde('Erst den geteilten Plan übernehmen oder verwerfen.'); return; }
+  if (weg === 'leer') { melde('Wähle zuerst eine Gruppe. Dann teilt der Knopf deinen Plan als Link.'); return; }
   const url = location.href.split('#')[0] + A.teilenFragment(plan, teilbareAuswahl());
-  if (navigator.share && grob.matches) {
+  if (weg === 'system') {
     try { await navigator.share({ title: 'Stundenplan', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }
   try {
@@ -267,8 +270,9 @@ function renderKopf() {
   $('stand-fuss').innerHTML = s.html;
   $('stand-fuss').classList.toggle('alt', s.alt);
   const t = $('teilen');
-  t.disabled = !!vorschau || !selected.length;
-  t.title = t.disabled ? (vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : 'Erst eine Gruppe wählen') : 'Link zu deiner Auswahl teilen';
+  // Nie gesperrt: Ohne Wahl oder in der Vorschau sagt ein Klick, was fehlt (teilenWeg in auswahl.mjs).
+  t.disabled = false;
+  t.title = vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : selected.length ? 'Link zu deiner Auswahl teilen' : 'Erst eine Gruppe wählen';
   const zahl = hinweise().zahl + paare.length;
   $('mehr-zahl').hidden = !zahl;
   $('mehr-zahl').textContent = zahl;
@@ -581,9 +585,13 @@ function schliesse(sofort = false) {
   if (h) h.classList.remove('da');
   if (sofort) $('ebenen').innerHTML = '';
   else setTimeout(() => { if (ebeneNr === nr && !offen) $('ebenen').innerHTML = ''; }, 200);
-  if (!sofort && zurueck) {
-    const a = zurueck();
-    if (a && a.isConnected) a.focus({ preventScroll: true });
+  if (!sofort) {
+    // Zurück zum Auslöser. Gibt es ihn nicht mehr oder ist er versteckt („Auswahl zurücksetzen“ nach
+    // dem Zurücksetzen, die Teilen-Leiste nach „Übernehmen“), dann an den Tabulatorhalt des Rasters:
+    // Sonst fiele der Fokus auf <body>, und die Tastatur finge von vorn an (V-0224).
+    const a = zurueck && zurueck();
+    const ziel = a && a.isConnected && a.offsetParent !== null ? a : $('koerper').querySelector('.k-flaeche[tabindex="0"]');
+    if (ziel) ziel.focus({ preventScroll: true });
   }
 }
 
@@ -714,7 +722,9 @@ const AKTIONEN = {
   },
   ebene: (b) => ebene(b.dataset.ebene, b),
   zu: () => schliesse(),
-  ja: () => { const f = offen && offen.ja; schliesse(); if (f) f(); },
+  // Erst handeln, dann schließen: So sucht schliesse() den Fokus im neuen Zustand (der Auslöser kann
+  // dabei verschwunden sein).
+  ja: () => { const o = offen, f = o && o.ja; if (f) f(); if (offen === o) schliesse(); },
   teilen: () => teilen(),
   zuruecksetzen: () => zuruecksetzen(),
   uebernehmen: () => uebernehmen(),
