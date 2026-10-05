@@ -482,7 +482,7 @@ function renderRaster() {
 
 // Eine Kachel (Silas, V-0225): oben das Modul, darunter die Einheit ausgeschrieben, dann Gruppe mit
 // Zeit, dann Raum; nie „Termingruppe 3“ als Titel. Die übrigen Gruppen eines schon gewählten Formats
-// sind hellgrau (zurück), die einzige Gruppe eines Formats ist automatisch eingeplant (auto, gestrichelt).
+// sind blass (zurück), die einzige Gruppe eines Formats ist automatisch eingeplant (auto, gestrichelt).
 function kachel(e, mini) {
   const { g, s, art } = e;
   const week = W.wocheAus(z.zeitraum);
@@ -508,9 +508,10 @@ function renderUnter() {
   const module = plan.modules.map((m, i) => `<span class="m${(i % 8) + 1}"><span class="punkt"></span>${esc(m.short)}</span>`).join('');
   const formate = R.legende(bestand.parts).map((x) => `<span><b>${esc(x.kurz)}</b>${esc(x.lang)}</span>`).join('');
   // Immer dieselben Einträge: Die Legende ändert ihre Höhe nicht, das Raster springt nicht.
+  // Die Wörter nennen die Rolle, keinen Farbton: „dunkelgrau“/„hellgrau“ stimmten nur hell (V-0236).
   const k = (art, text) => `<span><span class="lg-k ${art}"></span>${text}</span>`;
   const zustand = k('', 'umrandet: wählbar') + k('gewaehlt', 'gefüllt: eingeplant') + k('auto', 'gestrichelt: einzige Gruppe, automatisch') +
-    k('kontext', `dunkelgrau: ${vorschau ? 'deine eigene Auswahl' : 'anderswo eingeplant'}`) + k('zurueck', 'hellgrau: Format schon gewählt') + k('gewaehlt konflikt', 'roter Ring: Überschneidung');
+    k('kontext', `grau: ${vorschau ? 'deine eigene Auswahl' : 'anderswo eingeplant'}`) + k('zurueck', 'blass: Format schon gewählt') + k('gewaehlt konflikt', 'roter Ring: Überschneidung');
   $('legende').innerHTML = `<p class="lg-zeile nur-handy">${module}</p><p class="lg-zeile">${formate}</p><p class="lg-zeile">${zustand}</p>`;
 }
 
