@@ -53,7 +53,7 @@ die Seite statt abzuschneiden. Am Handy scrollt sie immer (Silas' Test, V-0225).
 
 | Breite | Kopf | Module | Werkzeugzeile | Raster | unten |
 |---|---|---|---|---|---|
-| unter 768 px | der Schriftzug mittig, rechts Kalender und Speichern als Symbole; darunter der Studiengang-Reiter | Kacheln in zwei Spalten | Lage; Zeitraum unter dem Raster; Tag/Woche schwebt unten mittig | die Bühne füllt einen Schirm über dem Umschalter; Tag (Vorgabe) oder die ganze Woche klein | Zeitraum, Legende mit Modulfarben, mit 48 px Abstand der Fuß (14 px, Ziele 44 px) |
+| unter 768 px | der Schriftzug links, rechts Kalender und Speichern als Symbole; darunter der Studiengang-Reiter | Kacheln in zwei Spalten | Lage; Zeitraum unter dem Raster; Tag/Woche schwebt unten mittig | die Bühne füllt einen Schirm über dem Umschalter; die ganze Woche klein (Vorgabe, V-0247) oder ein Tag | Zeitraum, Legende mit Modulfarben, mit 48 px Abstand der Fuß (14 px, Ziele 44 px) |
 | 768–1023 px | der Schriftzug mittig, rechts „Kalender“ und „Speichern“; darunter der Reiter; Stand im Fuß | Kacheln darüber, so viele Spalten wie 176 px passen | Lage in einer Zeile, darunter Zeitraum und Tag/Woche | die Woche, wenn sie passt | Legende, Fuß zweizeilig |
 | ab 1024 px | eine Zeile: Reiter links, Schriftzug mittig, Knöpfe rechts (ab 1200 px ausgeschrieben, ab 1440 px mit Stand) | Spalte von 240 px links neben der Woche, darunter klein die Legende (bis fünf Module) | eine Zeile | die Woche (ab 1280 px Tage ausgeschrieben) | Fuß (ab 1280 px einzeilig); ab sechs Modulen die Legende unter dem Raster |
 
@@ -71,7 +71,7 @@ darunter Kürzel und Nummer), S unter 44 px (das Kürzel), unter 24 px nur Farbe
 Überschneidung. Die Sättigung folgt der Kategorie des Formats (`R.kategorie()`, Klassen `kat-uebung`
 70 %, `kat-sonstige` 50 %, `filter: saturate()`). Am Rechner (feiner Zeiger, ab 768 px) tragen Kacheln
 ein abgerundetes Plus (Einplanen, Wechseln) bzw. ein Kreuz (Lösen): ab 96 px Breite oben rechts, auf
-schmalen ab 52 px Höhe unten mittig; sonst öffnet ein Klick die Gruppenkarte (V-0237). Die Woche am Handy öffnet keine Karte: Ein Tipp zeigt den Tag.
+schmalen ab 52 px Höhe unten mittig; sonst öffnet ein Klick die Gruppenkarte (V-0237). Am Handy plant ein Tipp auf eine Kachel ein, ein zweiter löst sie (V-0247, Aktion `umschalten`); lange drücken (500 ms) öffnet die Karte, der click beim Loslassen wird verschluckt. Nicht in der Vorschau eines geteilten Plans und nicht auf dem durchscheinenden eigenen Plan beim Filtern.
 
 **Ebenen:** eine zur Zeit. Ab 768 px Karte an ihrem Anker (Gruppenkarte neben der Kachel, rechts,
 sonst links, sonst darunter, nie über ihr), Hilfe und Rückfrage als Dialog. Unter 768 px wird

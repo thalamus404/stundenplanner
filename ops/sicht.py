@@ -2087,11 +2087,9 @@ def kacheln_pruefen(bf, m, erw, w, wo, stress=False):
     if ohne_tag:
         bf.add('4', UNBESTIMMT, f'{ohne_tag} Kacheln ohne data-tag', wo)
         return
+    # Seit V-0247 ist auch am Handy die Woche die Vorgabe (vorher ein Tag): Jede Breite zeigt alle Tage.
     ein_tag = len(je) == 1 and len([t for t, n in soll.items() if n]) > 1
-    if w < 768 and not stress and len(je) > 1:
-        bf.add('4', FEHLER, f'unter 768 px {len(je)} Tage zugleich sichtbar (Soll: ein Tag)', wo)
-        return
-    if ein_tag or (w < 768 and len(je) == 1):
+    if ein_tag:
         tag = next(iter(je))
         fehl = [] if je[tag] == soll.get(tag, 0) else [f'Tag {tag}: {je[tag]} statt {soll.get(tag, 0)}']
         text = f"ein Tag ({tag}): {je[tag]} Kacheln (Soll {soll.get(tag, 0)})"
@@ -2138,17 +2136,13 @@ def achse_pruefen(bf, m, erw, w, wo):
         if ziffer(letzte['text']) not in (e - 1, e):
             fehl.append(f"letzte Marke „{letzte['text']}“, Soll {e - 1:02d} oder {e:02d}")
     tage = m['tage']
-    if w >= 768:
-        da = {int(t['tag']) for t in tage if t['tag'] is not None and t['ganz']}
-        fehlt = [t for t in erw['tage'] if t not in da]
-        if not tage:
-            fehl.append('kein Tageskopf data-sicht="tag"')
-        elif fehlt:
-            fehl.append('Tage nicht sichtbar: ' + ', '.join('Mo Di Mi Do Fr Sa So'.split()[t] for t in fehlt))
-    else:
-        tags = {x['tag'] for x in m['kacheln']}
-        if len(tags) > 1:
-            fehl.append(f'{len(tags)} Tage zugleich (Soll einer)')
+    # Alle Tage in jeder Breite (V-0247: am Handy die Woche als Vorgabe, vorher genau ein Tag).
+    da = {int(t['tag']) for t in tage if t['tag'] is not None and t['ganz']}
+    fehlt = [t for t in erw['tage'] if t not in da]
+    if not tage:
+        fehl.append('kein Tageskopf data-sicht="tag"')
+    elif fehlt:
+        fehl.append('Tage nicht sichtbar: ' + ', '.join('Mo Di Mi Do Fr Sa So'.split()[t] for t in fehlt))
     bf.add('5', FEHLER if fehl else OK, '; '.join(fehl) or f"„{erste['text']}“ bis „{letzte['text']}“ sichtbar", wo)
 
 
