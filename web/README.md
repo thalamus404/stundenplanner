@@ -242,7 +242,10 @@ Server die Auswahl kennen.
   Klick-Handler `icsAnstossen(datei)` → Gerät, und zeigt `ICS_TEXTE[gerät]`: den einen Satz, was
   jetzt passiert oder was nicht mit einem Klick geht.
 - **Der Knopf** „In Kalender übernehmen“ (am Handy „Kalender“) steht neben „Teilen“ (V-0225).
-  `app.js` lädt `ics.mjs` bei der ersten Bedienung (pointerdown, keydown), nicht beim Laden: So
+  Seit V-0253 öffnet der Knopf zuerst das Bild des fertigen Plans (`bild.mjs`: `planBildHtml`,
+  `planBildLegen`, `kalenderSatz`); erst „In eigenen Kalender exportieren“ darin ruft
+  `icsHerunterladen` und `icsAnstossen`, mit einer eigenen Geste. „Stundenplan speichern“ zeigt dasselbe Bild.
+  `app.js` lädt `ics.mjs` und `bild.mjs` bei der ersten Bedienung (pointerdown, keydown), nicht beim Laden: So
   zählt es nicht ins Budget und nicht zu den Anfragen bis zum Raster, und beim Klick ist das Modul
   meist da, der Export läuft ohne `await` (Safari gibt die Nutzergeste nicht über ein langes await
   weiter). Übergeben wird die wirksame Auswahl (`wirksameAuswahl()`: nur Eingeplantes, keine Vorschläge, V-0237).

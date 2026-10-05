@@ -489,6 +489,25 @@ button:active::after { opacity: .1; }
 .speichern .feld { font-size: 14px; }
 @media (min-width: 768px) { .blatt.speichern .e-aktionen .knopf { flex: 0 1 auto; height: var(--ziel); } }
 .ebene.blatt.da { transform: none; transition-duration: 250ms; }
+/* Das Bild des fertigen Plans (Silas, 05.10.2026, V-0253) vor „In Kalender übernehmen“ und in „Stundenplan
+   speichern“: ein großer Dialog, drei Viertel der Fensterbreite („Picture-in-Picture, 75 % des
+   Fullscreens“), der Hintergrund tiefer gedimmt, er schiebt sich von unten herauf. Darin der Plan wie im
+   Raster, nur das Eingeplante, ohne Knöpfe (bild.mjs), auf einer eingelassenen Fläche wie ein Bild. */
+.hinter.tief { background: rgb(0 0 0 / .48); }
+.ebene.dialog.plan-bild { width: min(75vw, 1440px); max-height: calc(100dvh - 32px); transform: translateY(32px); transition-duration: 150ms; }
+.ebene.dialog.plan-bild.da { transform: none; transition-duration: 300ms; }
+.plan-bild .e-inhalt { gap: 16px; padding: 8px 24px 24px; }
+.plan-bild .e-kopf { padding: 16px 16px 0 24px; }
+.pb-bild { margin: 0; display: grid; gap: 8px; padding: 12px 16px 16px 8px; border-radius: 12px; background: var(--grau-2); border: 1px solid var(--grau-5); }
+.pb-titel { padding-left: 8px; font-size: 12px; line-height: 16px; color: var(--grau-9); }
+/* Das Bild nimmt die Höhe, die der Dialog übrig lässt (Kopf, Satz, Knöpfe, Hinweis: etwa 380 px), so passt
+   alles auch bei 1366 × 657 ohne Scrollen. */
+.raster.bild { flex: none; height: clamp(260px, calc(100dvh - 380px), 720px); }
+.pb-zeile { color: var(--grau-9); }
+.pb-zeile b { color: var(--grau-10); }
+.pb-rot { display: inline-flex; align-items: center; gap: 4px; color: var(--konflikt-text); font-weight: 600; }
+.pb-rot .i { color: var(--konflikt); }
+.plan-bild .e-aktionen .knopf.haupt { height: 44px; padding: 0 20px; }
 .e-kopf { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 0 16px; }
 .e-titel { flex: 1; padding-top: 4px; font-size: 16px; line-height: 24px; font-weight: 600; }
 .e-zu { flex: none; width: var(--ziel); height: var(--ziel); display: grid; place-items: center; border-radius: 8px; position: relative; }
@@ -619,6 +638,12 @@ details[open] > summary::before { transform: rotate(45deg); }
   #stand-fuss { flex-basis: 100%; }
   .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; justify-content: center; }
   .meldung { bottom: calc(var(--schalter-zone) + 8px); }
+  /* Das Bild am Handy: ein Blatt bis fast nach oben, die Woche gut halb so hoch wie das Fenster. */
+  .ebene.blatt.plan-bild { max-height: 92dvh; }
+  .plan-bild .e-inhalt { padding: 4px 16px 16px; }
+  .plan-bild .e-kopf { padding: 8px 8px 0 16px; }
+  .pb-bild { padding: 8px 8px 12px 4px; }
+  .raster.bild { height: clamp(320px, 52dvh, 520px); }
   /* Reiter mit zwei Zeilen (V-0234: ohne „Weitere Studiengänge folgen“ darunter), gemessen bei 390 px. */
   .laedt .studiengang { min-height: 46px; }
   .laedt .module { min-height: 330px; }
