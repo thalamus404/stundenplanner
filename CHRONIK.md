@@ -12,6 +12,11 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 05.10.2026 abends — Favicon und App-Symbol „sp“ (V-0254)
+
+- Silas wählte aus fünf Entwürfen „Schwer und leicht“: „s“ in Sora 800, „p“ leicht, „komplett mittig und
+  zentriert“, im dunklen Schema auf tiefem Schwarz. Ersetzt die fünf bunten Kacheln.
+
 ## 05.10.2026 abends — Der fertige Plan als Bild vor Kalender und Speichern (V-0253)
 
 - Silas: „nicht gleich der Download …, sondern der finale fertige Stundenplan … 75 % des Fullscreens …
