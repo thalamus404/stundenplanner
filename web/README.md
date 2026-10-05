@@ -34,7 +34,7 @@ python3 ops/sicht.py --web web               # misst DESIGN §8 in allen Fenster
 | `woche.mjs` | Konflikte gegen echte Termine, Ansichtsfilter, Wochen, A/B, Termine einer Karte |
 | `auswahl.mjs` | die Auswahl: Speicher (Schlüssel je `plan.id`, Umzug des alten Schlüssels, die Planwahl), eine Gruppe je Format, `changed`, `missing`, `stale`, der Vorschlag der einzigen Gruppe (`einzige`, `vorschlag`), die Regeln `alle`/`keine` der Gruppen, Fortschritt, wirksame Auswahl, Teilen-Link |
 | `text.mjs` | Escapen, sichere Links, Datumsangaben, Berliner Zeit ohne `Intl`, Abschluss ausgeschrieben |
-| `manifest.webmanifest`, `icon.svg`, `icon-180/192/512.png` | Home-Bildschirm. Das Symbol ist eine Woche aus fünf Kacheln in Modulfarben auf Tinte; die PNGs sind daraus gerendert |
+| `manifest.webmanifest`, `icon.svg`, `icon-32/180/192/512.png` | Tab und Home-Bildschirm. Das Symbol ist „sp“ aus dem Schriftzug, „s“ in Sora 800, „p“ leicht (im Favicon 450, damit es bei 16 px trägt, im App-Symbol 300), genau mittig auf einer Kachel: hell Tinte auf `#f7f8fb`, im dunklen Schema hell auf Schwarz `#000` (V-0254, Silas: „komplett mittig … tieferer Schwarzton für die dunkle Version“). `icon-32.png` ist der Rückfall für Browser ohne SVG-Favicon; die App-PNGs sind deckend, iOS rundet selbst. Vorher fünf Kacheln in Modulfarben (bis V-0253) |
 | `tests/` | `node --test` für die `.mjs`, gegen `tests/fixtures/plan.json` (synthetisch, Format §5); `planwahl.test.mjs` mit einem erfundenen Baum im Format von `index.json` |
 | `impressum.html`, `datenschutz.html`, `recht.css` | gehören zum Betrieb, nicht zu diesem Teil |
 | `daten/` | erzeugt (`abruf/bauen.py`), nicht im Repo |
