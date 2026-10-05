@@ -13,14 +13,26 @@
 //   3. „Auswahl zurücksetzen“ löscht den Schlüssel.
 // Wer hier ein Feld hinzufügt, prüft es gegen diese drei Sätze; die Tests halten sie fest.
 
+import { gueltigeId } from './planwahl.mjs';
+
 export const PRAEFIX = 'stundenplanner:v1';
-const FELDER = ['group', 'digest', 'name'];
 const STUNDEN_BIS_VERALTET = 36;
 
-/** Der Schlüssel eines Plans: stundenplanner:v1:<studiengang>:<semester>:fs<n>. */
+const sgId = (plan) => (typeof plan.studiengang === 'object' && plan.studiengang ? plan.studiengang.id : plan.studiengang);
+
+/**
+ * Der Schlüssel eines Plans: stundenplanner:v1:<plan.id> (V-0234). Bis dahin hieß er
+ * <studiengang>:<semester>:fs<n>, und Pläne mit Vertiefung oder anderer Ordnung im selben Fachsemester
+ * teilten sich einen Schlüssel (Hinweis von flugplan, V-0233). Ohne `id` (erstes Katalogformat) bleibt
+ * es der alte, der dann mit plan.id übereinstimmt.
+ */
 export function speicherSchluessel(plan) {
-  const sg = typeof plan.studiengang === 'object' && plan.studiengang ? plan.studiengang.id : plan.studiengang;
-  return `${PRAEFIX}:${sg}:${plan.semester}:fs${plan.fachsemester}`;
+  return gueltigeId(plan.id) ? `${PRAEFIX}:${plan.id}` : alterSchluessel(plan);
+}
+
+/** Der Schlüssel, unter dem die Seite bis V-0234 die Auswahl ablegte. */
+export function alterSchluessel(plan) {
+  return `${PRAEFIX}:${sgId(plan)}:${plan.semester}:fs${plan.fachsemester}`;
 }
 
 /** Nur die erlaubten Felder, nur Zeichenketten. Alles andere (auch ein altes `at`) fällt weg.
@@ -67,6 +79,56 @@ export function speichereAuswahl(speicher, schluessel, auswahl) {
   }
 }
 
+/**
+ * Die Auswahl eines Plans, auch wenn sie noch unter dem alten Schlüssel liegt (V-0234): Echte Nutzer
+ * haben ihre Auswahl für WI 1. FS dort. Der alte Schlüssel gilt nur, wenn unter dem neuen nichts liegt
+ * und `eindeutig` ist (genau ein Plan hat diesen alten Schlüssel); sonst könnte die Auswahl eines
+ * anderen Plans übernommen werden. Liest nur (Regel 1): Umgezogen wird beim ersten aktiven Speichern
+ * (speichereAuswahl mit `alt`), und erst dann verschwindet der alte Schlüssel.
+ * Gibt { auswahl, alt } zurück; `alt` ist der Schlüssel, aus dem gelesen wurde, sonst null.
+ */
+export function ladeAuswahlFuer(speicher, plan, eindeutig = true) {
+  const neu = speicherSchluessel(plan);
+  const auswahl = ladeAuswahl(speicher, neu);
+  const alt = alterSchluessel(plan);
+  if (Object.keys(auswahl).length || !eindeutig || alt === neu) return { auswahl, alt: null };
+  const vorher = ladeAuswahl(speicher, alt);
+  return Object.keys(vorher).length ? { auswahl: vorher, alt } : { auswahl, alt: null };
+}
+
+/** Speichert unter dem neuen Schlüssel und entfernt dann den alten, aus dem gelesen wurde (einmalig). */
+export function speichereUndZiehUm(speicher, schluessel, alt, auswahl) {
+  const ok = speichereAuswahl(speicher, schluessel, auswahl);
+  if (ok && alt && alt !== schluessel) loescheAuswahl(speicher, alt);
+  return ok;
+}
+
+// ── Die Planwahl (V-0234) ──────────────────────────────────────────────────────────────────────
+// Welcher Plan zuletzt aktiv gewählt wurde: ein Schlüssel, eine Kennung. Geschrieben nur, wenn
+// jemand im Startbildschirm „Stundenplan öffnen“ drückt (wie die Auswahl, Regel 1: Laden schreibt
+// nichts, auch kein geöffneter Teilen-Link). Kein Zeitstempel, nur die Kennung des Plans.
+export const PLAN_SCHLUESSEL = `${PRAEFIX}:plan`;
+
+export function ladePlanwahl(speicher) {
+  if (!speicher) return null;
+  try {
+    const v = speicher.getItem(PLAN_SCHLUESSEL);
+    return gueltigeId(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function speicherePlanwahl(speicher, id) {
+  if (!speicher || !gueltigeId(id)) return false;
+  try {
+    speicher.setItem(PLAN_SCHLUESSEL, id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** „Auswahl zurücksetzen“ (Regel 3). */
 export function loescheAuswahl(speicher, schluessel) {
   if (!speicher) return false;
@@ -95,18 +157,29 @@ export function loese(auswahl, componentId, einzig = false) {
 /** Der Fortschritt: Es zählen nur Formate mit Terminen in diesem Semester. Eines ohne Gruppe blieb
  *  sonst immer „offen“, und „alle eingeplant“ kam nie (querwind, Punkt db561642). */
 export function fortschritt(parts) {
-  const mit = parts.filter((c) => c.groups.some((g) => (g.slots || []).length));
+  const mit = parts.filter((c) => c.gruppen !== 'keine' && c.groups.some((g) => (g.slots || []).length));
   return { n: mit.length, k: mit.filter((c) => c.groups.some((g) => g.selected)).length };
 }
 
-/** Die einzige Gruppe mit Terminen eines Formats, sonst null (Silas, 05.10.2026, V-0225). */
+/** Die einzige Gruppe mit Terminen eines Formats, sonst null (Silas, 05.10.2026, V-0225). Ein offenes
+ *  Angebot (`gruppen: keine`, V-0233) ist keine Wahl und wird auch mit einer Gruppe nicht eingeplant. */
 export function einzige(c) {
+  if (c.gruppen === 'keine') return null;
   const mit = (c.groups || []).filter((g) => (g.slots || []).length);
   return mit.length === 1 ? mit[0] : null;
 }
 
-/** Die wirksame Auswahl (ausdrücklich gewählt und automatisch), im Speicherformat: für den Export. */
-export const wirksameAuswahl = (selected) => Object.fromEntries(selected.map((g) => [g.component_id, { group: g.id, digest: g.digest || '', name: g.name || '' }]));
+/** Die wirksame Auswahl (ausdrücklich gewählt und automatisch), im Speicherformat: für den Export.
+ *  Bei `gruppen: alle` gelten mehrere Gruppen eines Bestandteils: `group` ist dann eine Liste. */
+export function wirksameAuswahl(selected) {
+  const out = {};
+  for (const g of selected) {
+    const e = out[g.component_id];
+    if (!e) out[g.component_id] = { group: g.id, digest: g.digest || '', name: g.name || '' };
+    else e.group = [].concat(e.group, g.id);
+  }
+  return out;
+}
 
 /** „Änderung geprüft“: übernimmt den neuen Fingerabdruck (und den aktuellen Namen). */
 export function bestaetige(auswahl, componentId, gruppe) {
@@ -161,6 +234,20 @@ export function auswerten(plan, { groups, parts }, auswahl) {
   for (const c of parts) {
     ids.add(c.id);
     const e = auswahl[c.id];
+    // `gruppen: alle` (V-0233): Die Gruppen sind Teile, man besucht alle. Keine Wahl: alle mit
+    // Terminen gelten als eingeplant (gestrichelt wie automatisch), bis jemand das Format löst
+    // (`group: null`). Eine einzelne gespeicherte Gruppe aus der Zeit davor zählt nicht mehr.
+    if (c.gruppen === 'alle') {
+      const ab = !!e && e.group === null;
+      const mit = c.groups.filter((g) => g.slots.length);
+      c.selection = !ab && mit.length ? mit[0].id : null;
+      for (const g of c.groups) {
+        g.auto = !ab && mit.includes(g);
+        g.selected = g.auto;
+        g.changed = false;
+      }
+      continue;
+    }
     const auto = e ? null : einzige(c);
     c.selection = e ? e.group : auto && auto.id;
     for (const g of c.groups) {
@@ -189,7 +276,8 @@ export function veraltet(successAt, jetzt = Date.now()) {
 // Die Auswahl steht im FRAGMENT der Adresse (hinter #), nicht in der Abfrage (hinter ?): Das
 // Fragment schickt der Browser nie an den Server. Wer einen Link öffnet, verrät die Auswahl darin
 // also auch nicht dem Hoster (ARCHITEKTUR §6, SCOPE §5 „keine persönlichen Daten auf einem Server“).
-// Form: #studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=<component_id>~<group_id>&w=…
+// Form: #plan=<plan.id>&w=<component_id>~<group_id>&w=… (seit V-0234); alte Links
+// #studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=… gelten weiter, wenn sie eindeutig sind.
 // `~` trennt, weil component_id selbst einen Doppelpunkt trägt (Modulnummer:LV-ID); getrennt wird
 // am LETZTEN `~` (Gruppen-IDs aus MOSES sind Zahlen und tragen keins).
 
@@ -202,8 +290,10 @@ const MAX_LAENGE = 120;
 const kodiere = (s) => encodeURIComponent(String(s)).replace(/%3A/gi, ':');
 
 export function teilenFragment(plan, auswahl) {
-  const sg = typeof plan.studiengang === 'object' && plan.studiengang ? plan.studiengang.id : plan.studiengang;
-  const teile = [`studiengang=${kodiere(sg)}`, `semester=${kodiere(plan.semester)}`, `fs=${kodiere(plan.fachsemester)}`];
+  // Seit V-0234 nennt der Link den Plan mit seiner Kennung: Studiengang, Semester und Fachsemester
+  // allein sind nicht eindeutig, wenn es Vertiefungen oder mehrere Ordnungen gibt.
+  const teile = gueltigeId(plan.id) ? [`plan=${kodiere(plan.id)}`]
+    : [`studiengang=${kodiere(sgId(plan))}`, `semester=${kodiere(plan.semester)}`, `fs=${kodiere(plan.fachsemester)}`];
   for (const cid of Object.keys(auswahl).sort()) teile.push(`w=${kodiere(cid)}~${kodiere(auswahl[cid].group)}`);
   return '#' + teile.join('&');
 }
@@ -233,24 +323,31 @@ export function teilenLesen(fragment) {
   } catch {
     return null;
   }
+  const plan = p.get('plan');
   const studiengang = p.get('studiengang');
   const semester = p.get('semester');
   const fs = Number(p.get('fs'));
-  if (!studiengang || !semester || !Number.isInteger(fs) || fs < 1) return null;
-  if (studiengang.length > MAX_LAENGE || semester.length > MAX_LAENGE) return null;
+  if (plan !== null) {
+    if (!gueltigeId(plan)) return null;
+  } else if (!studiengang || !semester || !Number.isInteger(fs) || fs < 1 || studiengang.length > MAX_LAENGE || semester.length > MAX_LAENGE) {
+    return null;
+  }
   const paare = {};
   for (const w of p.getAll('w').slice(0, MAX_PAARE)) {
     const i = w.lastIndexOf('~');
     if (i <= 0 || i === w.length - 1 || w.length > MAX_LAENGE) continue;
     paare[w.slice(0, i)] = w.slice(i + 1);
   }
-  return { studiengang, semester, fachsemester: fs, paare };
+  if (plan !== null) return { plan, studiengang: null, semester: null, fachsemester: null, paare };
+  return { plan: null, studiengang, semester, fachsemester: fs, paare };
 }
 
-/** Passt ein gelesener Link zu diesem Plan (Eintrag aus index.json oder Plandatei)? */
+/** Passt ein gelesener Link zu diesem Plan (Blatt aus index.json oder Plandatei)? Ein neuer Link
+ *  über die Kennung, ein alter über Studiengang, Semester und Fachsemester. */
 export function passtZuPlan(link, plan) {
-  const sg = typeof plan.studiengang === 'object' && plan.studiengang ? plan.studiengang.id : plan.studiengang;
-  return !!link && link.studiengang === sg && link.semester === plan.semester && link.fachsemester === Number(plan.fachsemester);
+  if (!link || !plan) return false;
+  if (link.plan) return link.plan === plan.id;
+  return link.studiengang === sgId(plan) && link.semester === plan.semester && link.fachsemester === Number(plan.fachsemester);
 }
 
 /**

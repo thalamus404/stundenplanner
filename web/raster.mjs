@@ -109,8 +109,11 @@ export function sichtbar(groups, { modul = '', teil = '' } = {}) {
   const out = [];
   for (const g of groups) {
     const passt = (!modul || g.component.module.number === modul) && (!teil || g.component_id === teil);
+    // Ein offenes Angebot (`gruppen: keine`, V-0233) ist nichts, was „noch offen“ ist: Seine Gruppen
+    // stehen erst, wenn man das Modul oder das Format aufschlägt (Lerninsel: 10 Stunden je Woche).
+    const offen = !g.component.selection && g.component.gruppen !== 'keine';
     if (g.selected) out.push({ g, art: passt ? 'gewaehlt' : 'kontext' });
-    else if (passt && (teil || modul || !g.component.selection)) out.push({ g, art: 'moeglich' });
+    else if (passt && (teil || modul || offen)) out.push({ g, art: 'moeglich' });
   }
   return out;
 }

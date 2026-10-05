@@ -104,8 +104,8 @@ button:active::after { opacity: .1; }
 .stand:disabled { cursor: default; }
 .kopf-rechts { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 
-/* Der Studiengang-Reiter (Silas, 05.10.2026): ein Reiter je Plan aus index.json, der gewählte mit
-   einer Linie in Tinte darunter. */
+/* Der Studiengang-Reiter (Silas, 05.10.2026): der offene Plan mit einer Linie in Tinte darunter.
+   Seit V-0234 öffnet er den Startbildschirm zum Wechseln (Winkel unten am Namen). */
 /* Der Reiter füllt den freien Platz, sonst war der Rand links vom Knopfpaar ein Rest (53 px bei
    865 px Breite, außerhalb des 4-px-Rasters, V-0236). */
 .studiengang { flex: 1 1 auto; display: flex; align-items: center; gap: 4px 16px; min-width: 0; }
@@ -113,10 +113,10 @@ button:active::after { opacity: .1; }
   display: grid; align-content: center; min-width: 0; min-height: 44px; padding: 4px 8px;
   border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; text-align: left;
 }
-.sg-reiter[aria-pressed="true"] { border-bottom-color: var(--grau-10); cursor: default; }
-.sg-reiter[aria-pressed="true"]::after { display: none; }
-.sg-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sg-fs, .sg-hinweis { font-size: 12px; line-height: 16px; color: var(--grau-9); white-space: nowrap; }
+.sg-reiter { border-bottom-color: var(--grau-10); }
+.sg-name { display: flex; align-items: center; gap: 4px; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-i { color: var(--grau-8); }
+.sg-fs { font-size: 12px; line-height: 16px; color: var(--grau-9); white-space: nowrap; }
 
 .knopf {
   height: var(--ziel); min-width: var(--ziel); padding: 0 12px; border-radius: 8px; border: 1px solid var(--grau-6);
@@ -158,6 +158,17 @@ button:active::after { opacity: .1; }
 .format.hinweis .f-pille { outline: 2px solid var(--hinweis); outline-offset: 1px; }
 
 .buehne { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* Oben im Plan (V-0234): das Schild für Ersatztermine (Bernstein, deutlich) und der ruhige Satz, wenn
+   es keine Wahl ohne Überschneidung gibt (neutrale Fläche, nur das Symbol rot). Je eine Zeile, der
+   lange Grund steht in einer Karte („Warum“), damit die Woche am Rechner ihre Höhe behält. */
+.plan-hinweise { flex: none; display: grid; gap: 8px; }
+.ph { display: flex; align-items: flex-start; gap: 8px; min-height: 44px; padding: 12px; border-radius: 8px; border: 1px solid var(--grau-5); background: var(--grau-1); }
+.ph > .i { margin-top: 2px; }
+.ph-warn { color: var(--konflikt); }
+.ph.gelb { border-color: var(--hinweis-flaeche); background: var(--hinweis-flaeche); color: var(--hinweis-text); }
+.ph.gelb > .i { color: var(--hinweis); }
+.ph .leise { margin-left: 4px; }
 
 .werkzeug { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-height: 40px; }
 .lage { flex: 1 1 320px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
@@ -239,6 +250,8 @@ button:active::after { opacity: .1; }
 /* Der gestrichelte Rand als outline nach innen: Ein 2-px-Rand nähme schmalen Kacheln den Platz. */
 .auto > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
 .format.auto .f-pille { border: 1px dashed var(--tinte); }
+/* Ein offenes Angebot (`gruppen: keine`, V-0234) ist keine Wahl: neutral umrandet, nicht in Modulfarbe. */
+.format.frei .f-pille { border-color: var(--grau-6); color: var(--grau-9); }
 .kachel.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; border-radius: 4px; }
 .kachel.zeigen { outline: 2px solid var(--grau-10); outline-offset: 1px; border-radius: 4px; }
 .k-flaeche > span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -380,7 +393,6 @@ details[open] > summary::before { transform: rotate(45deg); }
   .unter { grid-column: auto; }
   .laedt .module { min-height: 132px; }
   .laedt .werkzeug { min-height: 80px; }
-  .sg-hinweis { display: none; }
   .lage { flex-basis: 100%; }
   .umschalter { margin-left: auto; }
 }
@@ -405,7 +417,7 @@ details[open] > summary::before { transform: rotate(45deg); }
   .studiengang { grid-area: sg; flex-wrap: wrap; }
   .sg-reiter { padding-inline: 0; border-radius: 0; }
   .sg-name { white-space: normal; }
-  .sg-hinweis { display: block; flex-basis: 100%; }
+  .plan-hinweise { margin-top: 16px; }
   .mitte { display: block; }
   .module { margin-top: 24px; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
   .f-pille { height: 28px; padding: 0 4px; }
@@ -435,7 +447,8 @@ details[open] > summary::before { transform: rotate(45deg); }
   #stand-fuss { flex-basis: 100%; }
   .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; }
   .meldung { bottom: calc(var(--schalter-zone) + 8px); }
-  .laedt .studiengang { min-height: 66px; }
+  /* Reiter mit zwei Zeilen (V-0234: ohne „Weitere Studiengänge folgen“ darunter), gemessen bei 390 px. */
+  .laedt .studiengang { min-height: 46px; }
   .laedt .module { min-height: 298px; }
 }
 /* Unter 390 px bricht die dritte Pille einer Modulkachel um (WI: BuK), die Module werden höher. */
@@ -452,6 +465,83 @@ details[open] > summary::before { transform: rotate(45deg); }
   #stand.nur-breit { display: none !important; }
   #stand-fuss.nur-handy { display: inline-flex !important; }
 }
-/* Unter 1280 px ist „Weitere Studiengänge folgen“ das Erste, was weicht — sonst kürzt der Reiter das
-   Semester („WiSe 202…“, gesehen bei 1100 px). */
-@media (min-width: 768px) and (max-width: 1279px) { .sg-hinweis { display: none; } }
+
+/* ── Der Startbildschirm (Hello-Screen, V-0234; DESIGN §3.6) ─────────────────────────────────────
+   Eine ruhige Spalte von höchstens 720 px: oben die Frage, darunter große Optionen, unten die Leiste
+   mit allen Stufen. Am Rechner steht alles auf einem Schirm (die Frage mittig im freien Raum), am
+   Handy scrollt die Seite, und die Leiste klebt am unteren Rand (sticky, kein Skript). Nur Tokens aus
+   §5.2 („Für neue Ansichten“): Seite --grau-2, Optionen --grau-1 mit Rand --grau-5, Text --grau-10,
+   Zweittext --grau-9, die eine Hauptaktion Tinte. */
+.hallo { --h-breite: 720px; min-height: 100vh; min-height: 100dvh; max-width: 2448px; margin: 0 auto; display: flex; flex-direction: column; padding: 12px var(--rand-x) 0; }
+/* Ab 1024 px drei Optionen nebeneinander: Auch sieben Studienrichtungen passen bei 1366 × 657 ohne Scrollen. */
+@media (min-width: 1024px) { .hallo { --h-breite: 960px; } }
+.h-kopf { flex: none; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.h-mitte { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 32px; }
+/* Mittig über align-self, nicht über margin: auto — ein „auto“ ergibt bei 865 px 48,5 px, außerhalb
+   des 4-px-Rasters (§5.6, gemessen). */
+.h-inhalt { width: 100%; max-width: var(--h-breite); align-self: center; display: grid; gap: 24px; }
+.h-frage { display: grid; gap: 4px; }
+.h-titel { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+.h-titel:focus { outline: none; }
+.h-kontext, .h-notiz { color: var(--grau-9); }
+.h-optionen { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 288px), 1fr)); gap: 8px; }
+.h-gruppe { display: grid; gap: 8px; }
+.h-g-titel { font-weight: 600; color: var(--grau-9); }
+.h-option {
+  display: grid; align-content: center; gap: 4px; min-height: 64px; padding: 8px 40px 8px 16px;
+  border: 1px solid var(--grau-5); border-radius: 12px; background: var(--grau-1);
+}
+.h-option[aria-current="true"] { border-color: var(--grau-10); }
+.h-o-label { font-size: 16px; line-height: 24px; }
+.h-o-zusatz { color: var(--grau-9); }
+.h-o-i { position: absolute; top: 16px; right: 16px; }
+.h-aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.h-aktionen .knopf { height: 44px; padding: 0 16px; }
+.h-liste { margin: 0; display: grid; border-top: 1px solid var(--grau-5); }
+.h-zeile { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; align-items: start; gap: 4px 16px; padding: 8px 0; border-bottom: 1px solid var(--grau-5); }
+.h-zeile dt { color: var(--grau-9); }
+.h-zeile dd { margin: 0; display: grid; gap: 4px; }
+.h-z-zusatz { color: var(--grau-9); }
+.h-zeile .leise { margin: 0; }
+/* Die Leiste: je Stufe ein Balken, darunter Stufe und Wert. Erledigt Tinte, automatisch gestrichelt
+   wie die automatisch eingeplante Kachel, entfällt nur eine dünne Linie, offen die leere Schiene,
+   die Stufe, an der man gerade ist, mit Rand in Tinte. Erledigte und automatische Stufen sind Knöpfe:
+   Ein Tipp führt zurück. */
+.h-leiste { position: sticky; bottom: 0; z-index: 5; display: grid; justify-items: center; margin: 0 calc(-1 * var(--rand-x)); padding: 12px var(--rand-x); background: var(--grau-2); border-top: 1px solid var(--grau-5); }
+.h-l-innen { width: 100%; max-width: var(--h-breite); display: grid; gap: 8px; }
+.h-stufen { margin: 0; padding: 0; list-style: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.h-s { display: grid; align-content: start; gap: 4px; width: 100%; min-height: 44px; padding: 4px 0; border-radius: 8px; text-align: left; }
+.h-balken { display: block; height: 4px; border-radius: 2px; background: var(--grau-5); }
+.gewaehlt .h-balken { background: var(--grau-10); }
+.automatisch .h-balken { background: none; border: 1px dashed var(--grau-10); }
+.entfaellt .h-balken { height: 2px; margin-top: 2px; transform: translateY(-1px); background: var(--grau-6); }
+.hier .h-balken { outline: 1px solid var(--grau-10); outline-offset: 1px; }
+.h-s-label { font-size: 12px; line-height: 16px; color: var(--grau-9); }
+.h-s-wert { overflow-wrap: break-word; hyphens: auto; }
+.hier .h-s-label { color: var(--grau-10); font-weight: 600; }
+.offen .h-s-wert, .entfaellt .h-s-wert { color: var(--grau-9); }
+.h-recht { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; width: 100%; max-width: var(--h-breite); align-self: center; padding: 8px 0 16px; font-size: 12px; line-height: 16px; color: var(--grau-9); }
+.h-recht span { margin-right: auto; }
+.h-recht a { display: inline-flex; align-items: center; min-height: 24px; padding: 0 4px; border-radius: 4px; }
+/* Fokus und Scrollen halten Abstand zur klebenden Leiste: Was den Fokus bekommt, liegt nie darunter. */
+.im-hallo { scroll-padding-bottom: 160px; }
+@media (max-width: 767.98px) {
+  .hallo { padding-top: 8px; }
+  .h-kopf { height: 44px; }
+  .h-mitte { justify-content: flex-start; padding: 24px 0 32px; }
+  .h-option { min-height: 56px; }
+  .h-zeile { grid-template-columns: minmax(0, 1fr) auto; }
+  .h-zeile dd { grid-column: 1; }
+  .h-zeile .leise { grid-row: 1; grid-column: 2; }
+  .h-aktionen .knopf.haupt { flex: 1 1 100%; height: 48px; }
+  /* Am Handy nur die Balken; was sie heißen, sagen die Frage oben und der Satz über der Leiste. */
+  .h-s-label, .h-s-wert { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .h-s { align-content: center; padding: 0; }
+  .h-leiste { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); padding-top: 8px; }
+  .h-l-innen { gap: 0; }
+  .h-recht { font-size: 14px; line-height: 20px; padding-bottom: 24px; }
+  .h-recht span { flex-basis: 100%; }
+  .h-recht a { min-height: 44px; padding: 0; }
+}
+@media (pointer: coarse) { .h-recht a, .h-zeile .leise { min-height: 44px; } }
+

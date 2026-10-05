@@ -24,9 +24,20 @@
 <link rel="modulepreload" href="woche.mjs">
 <link rel="modulepreload" href="raster.mjs">
 <link rel="modulepreload" href="text.mjs">
+<link rel="modulepreload" href="planwahl.mjs">
 <script type="module" src="app.js"></script>
 </head>
 <body>
+<!-- Der Startbildschirm (V-0234), gefüllt von app.js aus index.json -->
+<div class="hallo" id="hallo" data-sicht="hallo" hidden>
+  <header class="h-kopf">
+    <p class="name">Stundenplanner</p>
+    <button type="button" class="knopf" id="h-zum-plan" data-act="hallo-zu" hidden>Zurück zum Plan</button>
+  </header>
+  <section class="h-mitte" aria-labelledby="h-titel"><div class="h-inhalt" id="h-inhalt"></div></section>
+  <nav class="h-leiste" id="h-leiste" data-sicht="fortschritt" aria-label="Fortschritt"></nav>
+  <p class="h-recht"><span>Kein offizielles Angebot der Hochschulen. Deine Wahl bleibt in diesem Browser.</span><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>
+</div>
 <div class="seite laedt" id="seite">
   <header class="kopf" data-sicht="kopf">
     <p class="name">Stundenplanner</p>
@@ -37,6 +48,7 @@
       <button type="button" class="knopf" id="teilen" data-act="teilen" disabled><svg class="i" aria-hidden="true"><use href="#i-teilen"/></svg>Teilen</button>
     </span>
   </header>
+  <div class="plan-hinweise" id="plan-hinweise" hidden></div>
   <div class="mitte">
   <nav class="module" id="module" data-sicht="module" aria-label="Module und Formate"></nav>
   <section class="buehne" aria-label="Stundenplan">
@@ -60,7 +72,7 @@
   </div>
   </div>
   <footer class="fuss" data-sicht="fuss">
-    <p class="fuss-a">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>
+    <p class="fuss-a" id="inoffiziell">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>
     <p class="fuss-b"><span id="speicher">Deine Auswahl wird nur in diesem Browser gespeichert.</span><button type="button" class="leise" id="zuruecksetzen" data-act="zuruecksetzen" hidden>Auswahl zurücksetzen</button></p>
     <p class="fuss-c"><button type="button" class="leise nur-handy" id="stand-fuss" data-act="ebene" data-ebene="stand" disabled></button><button type="button" class="leise" data-act="ebene" data-ebene="hilfe">Hilfe</button><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>
   </footer>

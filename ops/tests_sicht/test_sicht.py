@@ -141,6 +141,73 @@ class Messung(unittest.TestCase):
         self.assertEqual(bf.status('resize'), sicht.FEHLER)
 
 
+    def test_startbildschirm(self):
+        # §8 #19 (V-0234): am Handy jede Option ins Bild gescrollt ganz und frei, nicht unter der Leiste.
+        spec = {'fenster': (390, 600), 'touch': True, 'schema': 'light', 'url': self.url + 'hallo.html', 'wege': [('start', [])]}
+        r = sicht.lauf_hallo(spec)
+        hl = r['ansichten']['start']['hallo']
+        self.assertEqual(len(hl['optionen']), 5)
+        self.assertTrue(all(o['ganz'] and o['frei'] for o in hl['optionen']), hl['optionen'])
+        self.assertTrue(hl['leiste']['ganz'] and hl['nachher']['ganz'])
+        bf = sicht.Befund()
+        sicht.bewerten_hallo(bf, spec, r, None)
+        self.assertEqual(bf.status('h1'), sicht.OK, bf.liste)
+        # Ohne scroll-padding liegt die letzte Option unter der klebenden Leiste: nicht erreichbar.
+        zu = sicht.lauf_hallo({**spec, 'url': self.url + 'hallo.html?zu'})
+        self.assertFalse(zu['ansichten']['start']['hallo']['optionen'][-1]['frei'])
+        bf = sicht.Befund()
+        sicht.bewerten_hallo(bf, spec, zu, None)
+        self.assertEqual(bf.status('h1'), sicht.FEHLER)
+        self.assertIn('unter der Leiste', next(b['detail'] for b in bf.liste if b['pruefung'] == 'h1'))
+        # Am Rechner (600 px hoch) scrollt die Seite: Das ist ab 768 px ein Fehler.
+        bf = sicht.Befund()
+        sicht.bewerten_hallo(bf, {**spec, 'fenster': (800, 600), 'touch': False},
+                             sicht.lauf_hallo({**spec, 'fenster': (800, 600), 'touch': False}), None)
+        self.assertIn('scrollt', next(b['detail'] for b in bf.liste if b['pruefung'] == 'h1'))
+
+
+class Baum(unittest.TestCase):
+    """Der Weg durch index.json (Schema 2, V-0233/V-0234), ohne Browser."""
+
+    INDEX = {'schema': 2, 'wahl': {'stufe': 'hochschule', 'regel': 'waehlen', 'optionen': [
+        {'id': 'a', 'label': 'A', 'weiter': {'stufe': 'studiengang', 'regel': 'waehlen', 'optionen': [
+            {'id': 'x', 'label': 'X', 'weiter': {'stufe': 'vertiefung', 'regel': 'ueberspringen', 'optionen': [
+                {'id': None, 'label': 'Ohne', 'weiter': {'stufe': 'fachsemester', 'regel': 'waehlen', 'optionen': [
+                    {'id': 's:fs1', 'label': '1.', 'weiter': {'stufe': 'ordnung', 'regel': 'automatisch', 'optionen': [
+                        {'id': 'o', 'label': 'O', 'plan': {'id': 'x:o:s:fs1', 'datei': 'x/o/s-fs1.json'}}]}},
+                    {'id': 's:fs3', 'label': '3.', 'weiter': {'stufe': 'ordnung', 'regel': 'waehlen', 'optionen': [
+                        {'id': 'o', 'label': 'O', 'plan': {'id': 'x:o:s:fs3', 'datei': 'x/o/s-fs3.json'}},
+                        {'id': 'p', 'label': 'P', 'plan': {'id': 'x:p:s:fs3', 'datei': 'x/p/s-fs3.json'}},
+                        {'id': 'q', 'label': 'Q', 'plan': {'id': 'x:q:s:fs3', 'datei': 'x/q/s-fs3.json'}}]}}]}}]}}]}},
+        {'id': 'b', 'label': 'B', 'weiter': {'stufe': 'studiengang', 'regel': 'waehlen', 'optionen': [
+            {'id': 'z', 'label': 'Z', 'plan': {'id': 'z:s:fs1', 'datei': 'z/s-fs1.json'}}]}}]},
+        'plaene': [{'datei': 'alt.json'}]}
+
+    def test_blaetter_und_klicks(self):
+        b = sicht.blaetter_aus(self.INDEX)
+        self.assertEqual([x['id'] for x in b], ['x:o:s:fs1', 'x:o:s:fs3', 'x:p:s:fs3', 'x:q:s:fs3', 'z:s:fs1'])
+        # Geklickt wird nur, wo „waehlen“ steht: Vertiefung entfällt, die Ordnung im 1. FS ist automatisch.
+        self.assertEqual(sicht.klicks(b[0]['weg']), [('hochschule', 0), ('studiengang', 0), ('fachsemester', 0)])
+        self.assertEqual(sicht.klicks(b[2]['weg']), [('hochschule', 0), ('studiengang', 0), ('fachsemester', 1), ('ordnung', 1)])
+        self.assertEqual(sicht.blaetter_aus({'plaene': [{'datei': 'alt.json'}]}), [{'id': None, 'datei': 'alt.json', 'weg': []}])
+
+    def test_wege_des_startbildschirms(self):
+        self.assertEqual(sicht.hallo_wege(self.INDEX), [
+            ('start', []),
+            ('meiste', [('hochschule', 0), ('studiengang', 0), ('fachsemester', 1)]),   # drei Ordnungen
+            ('fertig', [('hochschule', 0), ('studiengang', 0), ('fachsemester', 0)])])
+        self.assertEqual(sicht.hallo_wege({'plaene': [{'datei': 'alt.json'}]}), [])
+
+    def test_plan_waehlen_und_schluessel(self):
+        self.assertEqual(sicht.plan_waehlen(self.INDEX, None)['id'], 'x:o:s:fs1')
+        self.assertEqual(sicht.plan_waehlen(self.INDEX, 'z:s:fs1')['datei'], 'z/s-fs1.json')
+        with self.assertRaises(LookupError):
+            sicht.plan_waehlen(self.INDEX, 'gibt:es:nicht')
+        plan = {'id': 'x:o:s:fs1', 'studiengang': {'id': 'x'}, 'semester': 's', 'fachsemester': 1}
+        self.assertEqual(sicht.speicher_schluessel(plan), 'stundenplanner:v1:x:o:s:fs1')
+        self.assertEqual(sicht.speicher_schluessel({**plan, 'id': None}), 'stundenplanner:v1:x:s:fs1')
+
+
 class Stressfall(unittest.TestCase):
     def test_wie_section_8_ihn_verlangt(self):
         index, plan = sicht.stressplan()
@@ -159,6 +226,10 @@ class Stressfall(unittest.TestCase):
             spitze = max(spitze, n)
         self.assertEqual(spitze, 6)
         self.assertEqual(erw['gesamt'], len(slots))
+        # Schema 2 mit einem Blatt (V-0234): Die Seite öffnet ihn über #plan=<id>.
+        self.assertEqual(index['schema'], 2)
+        self.assertEqual([b['id'] for b in sicht.blaetter_aus(index)], [sicht.STRESS_ID])
+        self.assertEqual(plan['id'], sicht.STRESS_ID)
 
 
 if __name__ == '__main__':

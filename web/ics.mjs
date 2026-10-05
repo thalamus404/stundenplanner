@@ -127,13 +127,15 @@ export function icsTermine(plan, auswahl) {
     for (const c of (Array.isArray(m.components) ? m.components : [])) {
       const wahl = auswahl && auswahl[c.id];
       if (!wahl || wahl.group == null || wahl.group === '') continue;
-      const g = (Array.isArray(c.groups) ? c.groups : []).find((x) => x.id === wahl.group);
-      if (!g) continue;
-      for (const b of (Array.isArray(g.bookings) ? g.bookings : [])) {
-        const uid = uidVon(b, c, g);
-        if (gesehen.has(uid)) continue;
-        gesehen.add(uid);
-        out.push({ modul: m, teil: c, gruppe: g, termin: b, uid });
+      // Eine Liste, wenn alle Gruppen eines Bestandteils gelten (`gruppen: alle`, V-0234).
+      const ids = [].concat(wahl.group);
+      for (const g of (Array.isArray(c.groups) ? c.groups : []).filter((x) => ids.includes(x.id))) {
+        for (const b of (Array.isArray(g.bookings) ? g.bookings : [])) {
+          const uid = uidVon(b, c, g);
+          if (gesehen.has(uid)) continue;
+          gesehen.add(uid);
+          out.push({ modul: m, teil: c, gruppe: g, termin: b, uid });
+        }
       }
     }
   }

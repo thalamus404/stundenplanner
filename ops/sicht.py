@@ -14,6 +14,7 @@ Benutzung
     python3 ops/sicht.py --json                  # maschinenlesbar auf stdout, Fortschritt auf stderr
     python3 ops/sicht.py --bilder <ordner>       # Bildschirmfotos je Lauf, nur AUSSERHALB des Repos
     python3 ops/sicht.py --fenster 390x844,1280x720 --schnell   # Teilmessung beim Bauen
+    python3 ops/sicht.py --plan <plan.id>        # einen anderen Plan messen (Vorgabe: der erste im Baum)
 
   --schnell     nur die leere Auswahl, ohne Stressfall, Zoom und Tastatur. Das Ergebnis heißt dann
                 TEILMESSUNG und ist keine Abnahme.
@@ -21,6 +22,9 @@ Benutzung
   --touch-bis   bis zu welcher Fensterbreite mit Touch (pointer: coarse) gemessen wird, Vorgabe 767
                 (die Handy-Fenster). --touch-bis 1024 misst auch die Tablets mit Touch.
   --parallel    wie viele Browser zugleich messen, Vorgabe 4.
+  --plan        welcher Plan aus index.json gemessen wird (seine Kennung, plan.id). Vorgabe: der erste
+                Plan im Baum `wahl` (V-0234). Die Seite öffnet ihn über die Adresse (#plan=<id>), ohne
+                den Startbildschirm und ohne etwas zu speichern.
 
 Voraussetzungen: Python ≥ 3.11 und Playwright mit Chromium (`pip install playwright` und
 `python3 -m playwright install chromium`). Mit --web muss `<ordner>/daten/index.json` da sein; das
@@ -42,6 +46,11 @@ Ohne Haken lässt sich nicht zählen, was ein Chip oder eine Kachel ist; dann he
     data-sicht="umschalter"                        der Umschalter Tag/Woche mit den Knöpfen „Tag“ und
                                                    „Woche“ (am Handy schwebend, V-0225)
     data-sicht="legende"                           die Legende; Modulfarben dürfen dort stehen
+    data-sicht="option"  data-s data-i             jede Option des Startbildschirms (V-0234), mit Stufe und
+                                                   Stelle im Knoten von index.json; so klickt das Werkzeug
+                                                   sich durch den Baum
+    data-sicht="fortschritt"                       die Leiste unten im Startbildschirm
+    [data-act="h-oeffnen"]                         „Stundenplan öffnen“ am Ende des Startbildschirms
 Schwebende Ebenen (Karte, Blatt, Dialog) sind `role="dialog"` oder `<dialog>`. Die Tokens aus §5
 stehen als Variablen auf :root: `--grau-1` … `--grau-10`, `--m1-hauch|rand|flaeche|tinte` …
 `--m8-…`, `--konflikt`, `--konflikt-text`, `--konflikt-flaeche`, `--hinweis`, `--hinweis-text`,
@@ -103,6 +112,15 @@ sagt es in der Ausgabe. Die Token-Paare (§5.5) und die Stressfall-Fenster (§8 
         ist in jedem Fenster ohne Scrollen sichtbar (§3.3).
 §3.3    ohne Scrollen sichtbar: „Teilen“, „Kein offizielles Angebot“, Impressum, Datenschutz,
         Speicherhinweis, ab 768 px die Werkzeugleiste.
+§8 #19  der Startbildschirm (V-0234), je Fenster hell und dunkel, ohne Speicher und ohne #plan: drei
+        Ansichten — der Anfang, die Stufe mit den meisten Optionen (der Weg dahin wird aus index.json
+        gerechnet und geklickt), die Zusammenfassung vor dem ersten Plan. Ab 768 px kein Scrollen; am
+        Handy nichts seitlich, die Leiste ganz im Fenster und jede Option erreichbar: ins Bild
+        gescrollt ganz zu sehen und nicht unter der Leiste. „Kein offizielles Angebot“, Impressum und
+        Datenschutz zu sehen (am Handy am Seitenende). Dazu wie im Plan: Ziele (#7), Kontrast (#8 b),
+        Schrift (#9), Abstände (§5.6), Tells (#15), Laden schreibt nichts (#17), keine Fehler.
+§8 #20  „Stundenplan öffnen“ öffnet den Plan (eine Kachel erscheint), und erst danach steht im
+        Speicher genau die Planwahl `stundenplanner:v1:plan` mit der Kennung des Plans.
 §6      Konsolenfehler, fehlgeschlagene Anfragen und HTTP ≥ 400: keine. DOM-Knoten mit allen
         Kacheln ≤ 1 200. Kein `style=`, kein Inline-Skript, kein `on…=` im ausgelieferten HTML.
         Keine `resize`-Hörer und kein ResizeObserver. Ohne JavaScript stehen Kopf, Raster und Fuß.
@@ -262,6 +280,9 @@ PFLICHT = [
     {'id': 'speicher', 'name': 'Speicherhinweis',
      'texte': ['nur in diesem browser gespeichert', 'speichert die auswahl nicht'], 'bedien': False},
 ]
+
+# Der Startbildschirm (V-0234) trägt keinen Teilen-Knopf und keinen Speicherhinweis zur Auswahl.
+HALLO_PFLICHT = [p for p in PFLICHT if p['id'] in ('inoffiziell', 'impressum', 'datenschutz')]
 
 # ---------------------------------------------------------------------------------------------
 # JavaScript, das in der Seite läuft
@@ -791,6 +812,27 @@ zeigbar(false);
 return p;
 }"""
 
+# Der Startbildschirm (V-0234): die Leiste (data-sicht="fortschritt") und jede Option
+# (data-sicht="option"). Am Handy wird jede Option ins Bild gescrollt (wie es Finger und Tastatur
+# tun) und muss dann ganz und frei sein, also nicht unter der klebenden Leiste liegen; danach muss
+# die Leiste noch ganz im Fenster stehen.
+HALLO_JS = "(opt) => {\n" + HELFER_JS + r"""
+zeigbar(true);
+const leiste = [...document.querySelectorAll('[data-sicht="fortschritt"]')].find(vis);
+const lage = () => { if (!leiste) return null; const r = box(leiste.getBoundingClientRect()); return { t: r.t, b: r.b, ganz: ganz(r), frei: !verdeckt(leiste, r) }; };
+const out = { leiste: lage(), optionen: [], nachher: null };
+for (const o of [...document.querySelectorAll('[data-sicht="option"]')].filter(vis)) {
+  if (opt.scrollen) o.scrollIntoView({ block: 'nearest' });
+  const r = box(o.getBoundingClientRect());
+  const ecken = [[r.l + 2, r.t + 2], [r.r - 2, r.t + 2], [r.l + 2, r.b - 2], [r.r - 2, r.b - 2], [(r.l + r.r) / 2, (r.t + r.b) / 2]];
+  out.optionen.push({ name: name(o), ganz: ganz(r), frei: !ecken.some(([x, y]) => verdecktAn(o, x, y)), b: r.r - r.l, h: r.b - r.t });
+}
+if (opt.scrollen) out.nachher = lage();
+window.scrollTo(0, 0);
+zeigbar(false);
+return out;
+}"""
+
 # Schrift unsichtbar machen, ohne currentColor (Ränder, SVG) zu ändern: -webkit-text-fill-color.
 # Erst über eine konstruierte Stilvorlage (die CSP der Seite verbietet <style>), sonst je Element
 # über das CSSOM (erlaubt).
@@ -1009,9 +1051,62 @@ def auswahl_bauen(plan: dict, art: str) -> dict:
     return out
 
 
+PLAN_ID = __import__('re').compile(r'^[a-z0-9][a-z0-9-]*(?::[a-z0-9][a-z0-9-]*)*$')
+
+
 def speicher_schluessel(plan: dict) -> str:
-    """ARCHITEKTUR §6."""
+    """ARCHITEKTUR §6: seit V-0234 stundenplanner:v1:<plan.id>; ohne Kennung der alte Schlüssel."""
+    if isinstance(plan.get('id'), str) and PLAN_ID.match(plan['id']):
+        return f"stundenplanner:v1:{plan['id']}"
     return f"stundenplanner:v1:{plan['studiengang']['id']}:{plan['semester']}:fs{plan['fachsemester']}"
+
+
+def blaetter_aus(index: dict) -> list[dict]:
+    """Die Pläne aus index.json in der Reihenfolge des Baums (Schema 2, V-0233), je mit dem Weg dorthin:
+    [(stufe, regel, stelle der Option)]. Ohne Baum (Schema 1) die alte Liste `plaene`."""
+    out = []
+
+    def geh(k, weg):
+        if not isinstance(k, dict):
+            return
+        for i, o in enumerate(k.get('optionen') or []):
+            schritt = weg + [(k.get('stufe'), k.get('regel'), i)]
+            if isinstance(o, dict) and o.get('plan'):
+                out.append({**o['plan'], 'weg': schritt})
+            elif isinstance(o, dict):
+                geh(o.get('weiter'), schritt)
+    geh(index.get('wahl'), [])
+    return out or [{'id': None, 'datei': p['datei'], 'weg': []} for p in index.get('plaene', [])]
+
+
+def klicks(weg) -> list:
+    """Was man im Startbildschirm anklickt: nur Stufen mit der Regel „waehlen“ (die anderen setzt die Seite)."""
+    return [(st, i) for st, regel, i in weg if regel == 'waehlen']
+
+
+def hallo_wege(index: dict) -> list:
+    """Die drei Ansichten des Startbildschirms, die gemessen werden (§8 #19): der Anfang, die Stufe mit
+    den meisten Optionen (ihr Weg aus dem Baum) und die Zusammenfassung vor dem ersten Plan."""
+    best = [None, []]
+
+    def geh(k, weg):
+        if not isinstance(k, dict):
+            return
+        n = len(k.get('optionen') or [])
+        if k.get('regel') == 'waehlen' and (best[0] is None or n > best[0]):
+            best[0], best[1] = n, list(weg)
+        for i, o in enumerate(k.get('optionen') or []):
+            if isinstance(o, dict) and o.get('weiter'):
+                geh(o['weiter'], weg + ([(k.get('stufe'), i)] if k.get('regel') == 'waehlen' else []))
+    if not index.get('wahl'):
+        return []
+    geh(index['wahl'], [])
+    wege = [('start', [])]
+    if best[1]:
+        wege.append(('meiste', best[1]))
+    erstes = blaetter_aus(index)[0]
+    wege.append(('fertig', klicks(erstes['weg'])))
+    return wege
 
 
 def speicher_wert(auswahl: dict) -> str:
@@ -1041,6 +1136,9 @@ def erwartung(plan: dict, auswahl: dict) -> dict:
         'tage': sorted(tage | {0, 1, 2, 3, 4}),   # §1.2: Mo–Fr immer, Sa/So nur mit Daten
         'bestandteile': len(bestandteile(plan)),
     }
+
+
+STRESS_ID = 'stress-bsc:ws-2030-31:fs1'
 
 
 def stressplan() -> tuple[dict, dict]:
@@ -1129,9 +1227,20 @@ def stressplan() -> tuple[dict, dict]:
             'semester': 'ws-2030-31', 'label': 'WiSe 2030/31', 'anchor': anker.isoformat(), 'fachsemester': 1,
             'modules': module, 'has_fortnightly': True, 'group_count': nr, 'booking_count': buchung[0],
             'last_run': {'finished_at': jetzt, 'status': 'ok', 'modules': 8, 'bookings': buchung[0], 'errors': []}}
-    index = {'schema': 1, 'erzeugt_am': jetzt, 'plaene': [{
-        'studiengang': 'stress-bsc', 'name': 'Stressfall (erfunden)', 'abschluss': 'B.Sc.', 'semester': 'ws-2030-31',
-        'label': 'WiSe 2030/31', 'fachsemester': 1, 'datei': 'stress/ws-2030-31-fs1.json'}]}
+    # Schema 2 (V-0233/V-0234): Die Seite liest den Baum; ein Blatt, geöffnet über #plan=<id>.
+    plan['id'] = STRESS_ID
+    blatt = {'id': STRESS_ID, 'datei': 'stress/ws-2030-31-fs1.json', 'kombinationen': {'loesbar': None, 'sicher': False, 'grund': 'erfunden'}}
+    knoten = lambda stufe, regel, optionen: {'stufe': stufe, 'regel': regel, 'optionen': optionen}
+    index = {'schema': 2, 'erzeugt_am': jetzt,
+             'stufen': [{'id': x, 'label': x} for x in ('hochschule', 'studiengang', 'vertiefung', 'fachsemester', 'ordnung')],
+             'wahl': knoten('hochschule', 'waehlen', [{'id': 'erfunden', 'label': 'Erfundene Hochschule', 'zusatz': '', 'weiter':
+                     knoten('studiengang', 'waehlen', [{'id': 'stress-bsc', 'label': 'Stressfall (erfunden)', 'zusatz': 'B.Sc.', 'weiter':
+                     knoten('vertiefung', 'ueberspringen', [{'id': None, 'label': 'Ohne', 'zusatz': None, 'weiter':
+                     knoten('fachsemester', 'waehlen', [{'id': 'ws-2030-31:fs1', 'label': '1. Fachsemester', 'zusatz': 'WiSe 2030/31',
+                             'semester': 'ws-2030-31', 'fachsemester': 1, 'weiter':
+                     knoten('ordnung', 'ueberspringen', [{'id': None, 'label': 'Ohne', 'zusatz': None, 'plan': blatt}])}])}])}])}]),
+             'plaene': [{'studiengang': 'stress-bsc', 'name': 'Stressfall (erfunden)', 'abschluss': 'B.Sc.', 'semester': 'ws-2030-31',
+                         'label': 'WiSe 2030/31', 'fachsemester': 1, 'datei': 'stress/ws-2030-31-fs1.json'}]}
     return index, plan
 
 
@@ -1571,12 +1680,65 @@ def lauf_wahl(spec: dict) -> dict:
         ctx.close()
 
 
+SPEICHER_JS = """() => { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); o[k] = localStorage.getItem(k); } } catch (e) {} return o; }"""
+
+
+def lauf_hallo(spec: dict) -> dict:
+    """§8 #19/#20: der Startbildschirm. Je Weg (spec['wege']: Name, [(stufe, stelle)]) frisch laden, die
+    Optionen anklicken, messen wie die Standardansicht (MESSEN_JS) und dazu Leiste und Optionen
+    (HALLO_JS). Mit spec['oeffnen'] am Ende „Stundenplan öffnen“ und nachsehen, was im Speicher steht."""
+    ctx = _kontext(spec)
+    try:
+        page, ereignis, offen, eigen = _seite(ctx, spec)
+        handy = spec['fenster'][0] < HANDY_BIS_UNTER
+        ansichten, oeffnen = {}, None
+        for i, (name, weg) in enumerate(spec['wege']):
+            page.goto(spec['url'], wait_until='load', timeout=30000)
+            _warten(page, offen)
+            page.wait_for_selector('[data-sicht="option"]', timeout=8000)
+            for stufe, stelle in weg:
+                page.locator(f'[data-sicht="option"][data-s="{stufe}"][data-i="{stelle}"]').first.click(timeout=3000)
+                page.wait_for_timeout(60)
+            page.evaluate('() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))')
+            mess = page.evaluate(MESSEN_JS, {'pflicht': HALLO_PFLICHT, 'tokens': []})
+            mess['kontrast'] = _kontrast(page, mess, voll=False if handy else None)
+            mess['hallo'] = page.evaluate(HALLO_JS, {'scrollen': handy})
+            mess['ende'] = page.evaluate(ENDE_JS, {'pflicht': HALLO_PFLICHT}) if handy else None
+            if handy:
+                kontrast_dazu(page, mess)
+            if spec.get('bilder'):
+                page.evaluate('() => window.scrollTo(0, 0)')
+                page.screenshot(path=spec['bilder'].replace('.png', f'-{name}.png'), full_page=handy, scale='css', animations='disabled', caret='hide')
+            mess['fehler'] = list(ereignis['fehler'])
+            mess['fremd'] = sorted({a['url'][:120] for a in ereignis['anfragen'] if not a['url'].startswith(('data:', 'blob:', eigen))})
+            ansichten[name] = mess
+            if name == 'fertig' and spec.get('oeffnen'):
+                vorher = page.evaluate(SPEICHER_JS)
+                knopf = page.locator('[data-act="h-oeffnen"]')
+                if knopf.count():
+                    knopf.first.click(timeout=3000)
+                    try:
+                        page.wait_for_selector('[data-sicht="kachel"]', timeout=8000)
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(200)
+                    oeffnen = {'vorher': vorher, 'nachher': page.evaluate(SPEICHER_JS),
+                               'kacheln': page.locator('[data-sicht="kachel"]:visible').count(),
+                               'hallo_zu': not page.locator('[data-sicht="hallo"]:visible').count(),
+                               'adresse': page.evaluate('() => location.hash')}
+                else:
+                    oeffnen = {'kein_knopf': True}
+        return {'ansichten': ansichten, 'oeffnen': oeffnen, 'fehler': ereignis['fehler']}
+    finally:
+        ctx.close()
+
+
 def ausfuehren(aufgabe):
     art, spec = aufgabe
     if not _PW:
         _arbeiter_start()
     fn = {'lauf': lauf, 'leistung': lauf_leistung, 'bewegung': lauf_bewegung, 'zoom': lauf_zoom,
-          'tastatur': lauf_tastatur, 'ohne_js': lauf_ohne_js, 'wahl': lauf_wahl}[art]
+          'tastatur': lauf_tastatur, 'ohne_js': lauf_ohne_js, 'wahl': lauf_wahl, 'hallo': lauf_hallo}[art]
     fehler = None
     for _ in range(2):                         # einmal wiederholen: ein hängender Browser ist kein Befund
         try:
@@ -1619,6 +1781,8 @@ PRUEFUNGEN = {
     'inline': ('§6', 'Kein Inline-Stil, kein Inline-Skript im HTML'),
     'resize': ('§6', 'Größe ändern ohne Skript (kein resize-Hörer, kein ResizeObserver)'),
     'nojs': ('§6', 'Erstes Bild ohne JS: Kopf, Raster und Fuß stehen'),
+    'h1': ('§8 #19', 'Startbildschirm: ab 768 px ohne Scrollen, am Handy nie seitlich; Leiste ganz im Fenster, jede Option erreichbar'),
+    'h2': ('§8 #20', 'Startbildschirm: „Stundenplan öffnen“ öffnet den Plan, erst dann steht die Planwahl im Speicher'),
 }
 OK, FEHLER, UNBESTIMMT = 'ok', 'fehler', 'unbestimmt'
 
@@ -1720,9 +1884,6 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
                 kacheln_pruefen(bf, schirm_sicht(m, sch), erw, HANDY_BIS_UNTER, f'{wo} Woche')
                 achse_pruefen(bf, schirm_sicht(m, sch), erw, HANDY_BIS_UNTER, f'{wo} Woche')
 
-    # §5.6: Abstände im 4-px-Raster
-    ab = m.get('abstand', [])
-    bf.add('abstand', FEHLER if ab else OK, (f'{len(ab)} Abstände außerhalb des Rasters, z. B. ' + '; '.join(ab[:3])) if ab else 'alle Abstände in Stufen von 4 px (und 2 px)', wo, len(ab))
 
     # §3.3 und Speicherhinweis
     fehlt = [p['name'] for p in PFLICHT if not pflicht_ok(m, p['id'])]
@@ -1770,6 +1931,31 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
         else:
             bf.add('6', UNBESTIMMT, 'keine Kachel sichtbar', wo)
 
+    bewerten_text_ziele(bf, m, touch, wo)
+
+    # §8 #17, erster Teil: Laden schreibt nichts
+    log = m.get('log') or {}
+    sch = log.get('schreiben') or []
+    bf.add('17', FEHLER if sch else OK,
+           ('Laden schreibt: ' + ', '.join(f"{s['art']}.{s['was']}({s['schluessel']})" for s in sch[:3])) if sch else 'Laden schreibt nichts', wo)
+
+    # Konsolenfehler, Größe ändern, DOM
+    bf.add('f', FEHLER if m['fehler'] else OK, '; '.join(m['fehler'][:2]) or 'keine', wo, len(m['fehler']))
+    if log:
+        rz = log.get('resize', 0) + log.get('ro', 0)
+        bf.add('resize', FEHLER if rz else OK, f"resize-Hörer {log.get('resize', 0)}, ResizeObserver {log.get('ro', 0)}, matchMedia-Hörer {log.get('mm', 0)}", wo)
+    if spec.get('auswahl') == 'leer' and w >= 768:
+        bf.add('dom', FEHLER if m['dom'] > BUDGET['dom'] else OK, f"{m['dom']} Knoten bei {len(m['kacheln'])} Kacheln", wo, m['dom'])
+    if m['fremd']:
+        bf.add('12c', FEHLER, 'fremd: ' + ', '.join(m['fremd'][:3]), wo)
+
+
+def bewerten_text_ziele(bf: Befund, m: dict, touch: bool, wo: str):
+    """Was Plan und Startbildschirm gleich messen: Abstände (§5.6), Ziele (#7), Kontrast (#8 b), Schrift (#9)."""
+    # §5.6: Abstände im 4-px-Raster
+    ab = m.get('abstand', [])
+    bf.add('abstand', FEHLER if ab else OK, (f'{len(ab)} Abstände außerhalb des Rasters, z. B. ' + '; '.join(ab[:3])) if ab else 'alle Abstände in Stufen von 4 px (und 2 px)', wo, len(ab))
+
     # §8 #7
     zu, info = [], []
     for z in m['ziele']:
@@ -1805,22 +1991,6 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
     falsch_w = [g for g in ge if g not in GEWICHTE]
     bf.add('9', FEHLER if falsch_g or falsch_w else OK,
            f"{len(gr)} Größen ({', '.join(zahl(g, 0 if g == int(g) else 2) for g in gr)} px), Gewichte {', '.join(map(str, ge))}", wo, len(gr))
-
-    # §8 #17, erster Teil: Laden schreibt nichts
-    log = m.get('log') or {}
-    sch = log.get('schreiben') or []
-    bf.add('17', FEHLER if sch else OK,
-           ('Laden schreibt: ' + ', '.join(f"{s['art']}.{s['was']}({s['schluessel']})" for s in sch[:3])) if sch else 'Laden schreibt nichts', wo)
-
-    # Konsolenfehler, Größe ändern, DOM
-    bf.add('f', FEHLER if m['fehler'] else OK, '; '.join(m['fehler'][:2]) or 'keine', wo, len(m['fehler']))
-    if log:
-        rz = log.get('resize', 0) + log.get('ro', 0)
-        bf.add('resize', FEHLER if rz else OK, f"resize-Hörer {log.get('resize', 0)}, ResizeObserver {log.get('ro', 0)}, matchMedia-Hörer {log.get('mm', 0)}", wo)
-    if spec.get('auswahl') == 'leer' and w >= 768:
-        bf.add('dom', FEHLER if m['dom'] > BUDGET['dom'] else OK, f"{m['dom']} Knoten bei {len(m['kacheln'])} Kacheln", wo, m['dom'])
-    if m['fremd']:
-        bf.add('12c', FEHLER, 'fremd: ' + ', '.join(m['fremd'][:3]), wo)
 
 
 def pflicht_ok(m: dict, pid: str) -> bool:
@@ -2077,6 +2247,75 @@ class _Inline(html.parser.HTMLParser):
         self._skript = False
 
 
+def bewerten_hallo(bf: Befund, spec: dict, r: dict, plan_id):
+    """§8 #19/#20: der Startbildschirm in einem Fenster und Schema (V-0234)."""
+    w, h = spec['fenster']
+    handy = w < HANDY_BIS_UNTER
+    schema = 'hell' if spec['schema'] == 'light' else 'dunkel'
+    if 'absturz' in r:
+        bf.add('h1', UNBESTIMMT, 'Lauf abgestürzt: ' + r['absturz'], f'{w}×{h} {schema} Start')
+        return
+    for name, m in r['ansichten'].items():
+        wo = f'{w}×{h} {schema} Start „{name}“'
+        W, H = m['W'], m['H']
+        sh, sb = m['seite']['h'], m['seite']['b']
+        teile = []
+        if sb > W:
+            teile.append(f'seitlich {sb - W} px zu breit')
+        if not handy and sh > H:
+            teile.append(f'scrollt: Seite {sh} px hoch bei {H} px')
+        aussen, beispiele = (m.get('aussenX', 0), m.get('aussenXBsp', [])) if handy else (m['aussen'], m['aussenBsp'])
+        if aussen:
+            teile.append(f"{aussen} Elemente außerhalb (z. B. {beispiele[0]})")
+        if m['innen']:
+            teile.append(f"{len(m['innen'])} Bereiche scrollen innen (z. B. {m['innen'][0]['el']})")
+        if m['abgeschnitten']:
+            teile.append(f"{len(m['abgeschnitten'])} abgeschnitten (z. B. {m['abgeschnitten'][0]})")
+        hl = m.get('hallo') or {}
+        lst = hl.get('leiste')
+        if not lst:
+            teile.append('keine Leiste (data-sicht="fortschritt")')
+        elif not (lst['ganz'] and lst['frei']):
+            teile.append('Leiste nicht ganz im Fenster oder verdeckt')
+        elif hl.get('nachher') and not (hl['nachher']['ganz'] and hl['nachher']['frei']):
+            teile.append('Leiste nach dem Scrollen nicht mehr ganz im Fenster')
+        opts = hl.get('optionen') or []
+        if name != 'fertig' and not opts:
+            teile.append('keine Option (data-sicht="option")')
+        nicht = [o['name'] for o in opts if not (o['ganz'] and o['frei'])]
+        if nicht:
+            teile.append(f'{len(nicht)} von {len(opts)} Optionen nicht erreichbar oder unter der Leiste (z. B. {nicht[0]})')
+        fehlt = [p['name'] for p in HALLO_PFLICHT if not ((m.get('ende') or m['pflicht']).get(p['id'], {}).get('ok'))]
+        if fehlt:
+            teile.append('nicht sichtbar: ' + ', '.join(fehlt))
+        text = (f"{len(opts)} Optionen erreichbar, Leiste ganz im Fenster, " + (f'Seite {zahl(sh / H)} Bildschirme (Handy)' if handy else 'kein Scrollen'))
+        bf.add('h1', FEHLER if teile else OK, '; '.join(teile) or text, wo, len(opts))
+        bewerten_text_ziele(bf, m, spec['touch'], wo)
+        sch = (m.get('log') or {}).get('schreiben') or []
+        bf.add('17', FEHLER if sch else OK, ('Startbildschirm schreibt vor der Wahl: ' + ', '.join(f"{x['art']}.{x['was']}({x['schluessel']})" for x in sch[:3])) if sch else 'Startbildschirm schreibt nichts', wo)
+        bf.add('f', FEHLER if m['fehler'] else OK, '; '.join(m['fehler'][:2]) or 'keine', wo, len(m['fehler']))
+        if m.get('fremd'):
+            bf.add('12c', FEHLER, 'fremd: ' + ', '.join(m['fremd'][:3]), wo)
+    o = r.get('oeffnen')
+    if spec.get('oeffnen'):
+        wo = f'{w}×{h} {schema} Start → Plan'
+        if not o or o.get('kein_knopf'):
+            bf.add('h2', FEHLER, 'kein Knopf [data-act="h-oeffnen"] in der Zusammenfassung', wo)
+        else:
+            teile = []
+            eigene = {k: v for k, v in o['vorher'].items() if k.startswith('stundenplanner:')}
+            if eigene:
+                teile.append('vor „Stundenplan öffnen“ stand schon etwas im Speicher: ' + ', '.join(eigene))
+            nach = {k: v for k, v in o['nachher'].items() if k.startswith('stundenplanner:')}
+            if nach != {'stundenplanner:v1:plan': plan_id}:
+                teile.append(f'danach im Speicher {nach} (Soll: stundenplanner:v1:plan = {plan_id})')
+            if not o['kacheln']:
+                teile.append('kein Plan zu sehen (keine Kachel)')
+            if not o['hallo_zu']:
+                teile.append('der Startbildschirm ist noch zu sehen')
+            bf.add('h2', FEHLER if teile else OK, '; '.join(teile) or f"Plan offen ({o['kacheln']} Kacheln), Speicher: nur die Planwahl, Adresse {o['adresse']}", wo)
+
+
 def bewerten_rest(bf: Befund, extra: dict, erw: dict):
     for wo, b in extra.get('bewegung', []):
         if 'absturz' in b:
@@ -2237,6 +2476,19 @@ def im_repo(p: Path) -> bool:
     return any(p == w or w in p.parents for w in wurzeln)
 
 
+def plan_waehlen(index: dict, plan_id: str | None) -> dict:
+    """Welcher Plan gemessen wird: --plan, sonst der erste im Baum (Schema 2) bzw. in `plaene`."""
+    liste = blaetter_aus(index)
+    if not liste:
+        raise LookupError('nennt keinen Plan')
+    if plan_id:
+        b = next((x for x in liste if x.get('id') == plan_id), None)
+        if not b:
+            raise LookupError(f'kein Plan {plan_id}; da sind: ' + ', '.join(str(x.get('id')) for x in liste[:8]))
+        return b
+    return liste[0]
+
+
 def fortschritt(text: str, still: bool):
     if not still:
         print(text, file=sys.stderr, flush=True)
@@ -2253,6 +2505,7 @@ def main(argv=None) -> int:
     ap.add_argument('--schnell', action='store_true', help='nur leere Auswahl, ohne Stressfall, Zoom, Tastatur (Teilmessung)')
     ap.add_argument('--touch-bis', type=int, default=767, help='Fenster bis zu dieser Breite mit Touch messen (Vorgabe 767)')
     ap.add_argument('--parallel', type=int, default=4, help='Browser zugleich (Vorgabe 4)')
+    ap.add_argument('--plan', help='Kennung (plan.id) des Plans, der gemessen wird (Vorgabe: der erste im Baum)')
     a = ap.parse_args(argv)
     still = False
 
@@ -2285,7 +2538,8 @@ def main(argv=None) -> int:
         ziel = url
         try:
             index = json_holen(urllib.parse.urljoin(url, 'daten/index.json'))
-            plan = json_holen(urllib.parse.urljoin(url, 'daten/' + index['plaene'][0]['datei']))
+            blatt = plan_waehlen(index, a.plan)
+            plan = json_holen(urllib.parse.urljoin(url, 'daten/' + blatt['datei']))
         except Exception as e:
             print(f'Die Daten unter {urllib.parse.urljoin(url, "daten/index.json")} sind nicht lesbar: {e}', file=sys.stderr)
             return 2
@@ -2302,16 +2556,25 @@ def main(argv=None) -> int:
                   f'oder aus vorhandenen Rohständen:  python3 abruf/bauen.py --roh <ordner>', file=sys.stderr)
             return 2
         index = json.loads(idx.read_text('utf-8'))
-        if not index.get('plaene'):
-            print(f'{idx} nennt keinen Plan.', file=sys.stderr)
+        try:
+            blatt = plan_waehlen(index, a.plan)
+        except LookupError as e:
+            print(f'{idx}: {e}', file=sys.stderr)
             return 2
-        plan = json.loads((ordner / 'daten' / index['plaene'][0]['datei']).read_text('utf-8'))
+        plan = json.loads((ordner / 'daten' / blatt['datei']).read_text('utf-8'))
         srv, url = server_starten(ordner.resolve())
         ziel = str(ordner)
 
-    seite = url
-    if len(index.get('plaene', [])) > 1:          # §4.2: bei mehreren Plänen fragt die Seite zuerst
+    # Seit V-0234 beginnt die Seite ohne gespeicherte Planwahl mit dem Startbildschirm. Die
+    # Standardansicht des Plans öffnet die Adresse (#plan=<id>, wie ein Teilen-Link ohne Auswahl): Sie
+    # schreibt nichts in den Speicher, und der Speicher bleibt frei für die erfundene Auswahl.
+    if blatt.get('id'):
+        plan.setdefault('id', blatt['id'])
+        seite = url + f"#plan={blatt['id']}"
+    elif len(index.get('plaene', [])) > 1:        # Schema 1 (vor V-0233)
         seite = url + f"#studiengang={plan['studiengang']['id']}&semester={plan['semester']}&fs={plan['fachsemester']}"
+    else:
+        seite = url
     auswahlen = ('leer',) if a.schnell else AUSWAHLEN
     s_index, s_plan = stressplan()
     stress_daten = (json.dumps(s_index), json.dumps(s_plan))
@@ -2331,7 +2594,7 @@ def main(argv=None) -> int:
                         'bilder': bildpfad(f'{w}x{h}-{schema}-{aw}')}
                 specs.append(('lauf', spec, erwartung(plan, sel)))
         if not a.schnell:
-            spec = {'fenster': (w, h), 'touch': touch, 'schema': 'light', 'auswahl': 'stress', 'url': url,
+            spec = {'fenster': (w, h), 'touch': touch, 'schema': 'light', 'auswahl': 'stress', 'url': url + f'#plan={STRESS_ID}',
                     'stress': stress_daten, 'bilder': bildpfad(f'{w}x{h}-stress')}
             specs.append(('lauf', spec, erw_stress))
     gross = (1280, 800) if (1280, 800) in fenster or not a.fenster else fenster[-1]
@@ -2351,6 +2614,17 @@ def main(argv=None) -> int:
             extra_specs.append(('zoom', {**basis, 'fenster': (w, h), 'touch': False, 'zoom': 2,
                                          'bilder': bildpfad(f'{w}x{h}-zoom200')}, 'zoom'))
 
+    # Der Startbildschirm (§8 #19/#20): je Fenster hell und dunkel, ohne Speicher und ohne #plan.
+    wege = hallo_wege(index)
+    hallo_specs = []
+    if wege:
+        for (w, h) in fenster:
+            for schema in SCHEMEN:
+                hallo_specs.append(('hallo', {'fenster': (w, h), 'touch': w <= a.touch_bis, 'schema': schema, 'url': url, 'speicher': None,
+                                              'wege': wege if not a.schnell else wege[:1] + wege[-1:], 'oeffnen': schema == 'light',
+                                              'bilder': bildpfad(f'{w}x{h}-{schema}-start')}, 'hallo'))
+    erstes_id = blaetter_aus(index)[0].get('id')
+    extra_specs += hallo_specs
     alle = [(art, spec) for art, spec, _ in specs] + [(art, spec) for art, spec, _ in extra_specs]
     fortschritt(f'  sicht.py: {len(specs)} Läufe der Standardansicht, {len(extra_specs) + 1} Sonderläufe, {a.parallel} Browser …', still)
     t0 = time.monotonic()
@@ -2383,11 +2657,18 @@ def main(argv=None) -> int:
         bewerten_lauf(bf, spec, m, erw)
         laeufe.append((spec, m))
     bewerten_tokens(bf, laeufe)
-    bewerten_tells(bf, laeufe)
+    hallo_tells = []
+    for (art, spec, rolle), m in zip(extra_specs, ergebnisse[len(specs):]):
+        if rolle == 'hallo':
+            bewerten_hallo(bf, spec, m, erstes_id)
+            hallo_tells += [(spec, x) for x in (m.get('ansichten') or {}).values()]
+    bewerten_tells(bf, laeufe + hallo_tells)
     extra = {'bewegung': [], 'zoom': [], 'ohne_speicher': []}
     for (art, spec, rolle), m in zip(extra_specs, ergebnisse[len(specs):]):
         w, h = spec['fenster']
         wo = f'{w}×{h}' + (' Touch' if spec['touch'] else '')
+        if rolle == 'hallo':
+            continue
         if rolle in ('bewegung', 'zoom', 'ohne_speicher'):
             extra[rolle].append((wo + (' Zoom 200 %' if rolle == 'zoom' else ''), m))
         else:
@@ -2405,7 +2686,7 @@ def main(argv=None) -> int:
     ausgabe = {
         'werkzeug': 'ops/sicht.py', 'ziel': ziel, 'zeit': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'dauer_s': round(time.monotonic() - t0, 1), 'teilmessung': teil,
-        'plan': {'studiengang': plan['studiengang']['id'], 'semester': plan['semester'], 'fachsemester': plan['fachsemester'],
+        'plan': {'id': plan.get('id'), 'studiengang': plan['studiengang']['id'], 'semester': plan['semester'], 'fachsemester': plan['fachsemester'],
                  'bestandteile': erw0['bestandteile'], 'kacheln_leer': erw0['gesamt'], 'achse': erw0['achse'], 'tage': erw0['tage']},
         'fenster': [f'{w}×{h}' for w, h in fenster],
         'budget': dict(BUDGET), 'aus_design_nicht_gelesen': nicht_gelesen,
@@ -2462,7 +2743,7 @@ def menschlich(aus, laeufe, bf: Befund):
     print('  sicht.py — Prüfstand der Oberfläche (docs/DESIGN.md §8)')
     achse = f", Achse {z['achse'][0]:02d}–{z['achse'][1]:02d} Uhr" if z['achse'] else ''
     print(f"  Ziel: {aus['ziel']}")
-    print(f"  Plan: {z['studiengang']} {z['semester']} FS {z['fachsemester']}, {z['bestandteile']} Bestandteile, "
+    print(f"  Plan: {z.get('id') or z['studiengang']} ({z['semester']} FS {z['fachsemester']}), {z['bestandteile']} Bestandteile, "
           f"{z['kacheln_leer']} Kacheln ohne Auswahl{achse}")
     print()
     kopf = f"  {'Fenster':<11}{'Gerät':<7}{'Seite':>15}  {'außen':>6}  {'Ziele klein':>11}  {'Kontrast':>9}  {'Schrift':>9}  {'Chips':>5}  {'Kacheln':>7}  {'Fehler':>6}  {'Raster':>8}"
