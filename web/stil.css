@@ -477,7 +477,7 @@ details[open] > summary::before { transform: rotate(45deg); }
   .fuss-hinweis .leise { display: flex; margin: 0; }
   .fuss-links { gap: 0 16px; }
   #stand-fuss { flex-basis: 100%; }
-  .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; }
+  .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; justify-content: center; }
   .meldung { bottom: calc(var(--schalter-zone) + 8px); }
   /* Reiter mit zwei Zeilen (V-0234: ohne „Weitere Studiengänge folgen“ darunter), gemessen bei 390 px. */
   .laedt .studiengang { min-height: 46px; }
