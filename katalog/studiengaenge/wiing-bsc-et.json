@@ -1,0 +1,31 @@
+{
+  "id": "wiing-bsc-et",
+  "name": "Wirtschaftsingenieurwesen (Elektrotechnik)",
+  "abschluss": "B.Sc.",
+  "hochschule": "TU Berlin",
+  "plaene": [
+    {
+      "semester": "wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Exemplarischer Studienverlaufsplan, Studienbeginn im Wintersemester, 1. Semester, der StuPO 2015 (AMBl. 37/2015, Berichtigung 8/2016, 1. Änderung 2017 mit der Studienrichtung Energie und Ressourcen), Anlage 2: https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_VII/Wirtschaftsingenieurwesen_B.Sc._2015.pdf. Sie gilt für alle, die bis zum WiSe 2026/27 beginnen; die StuPO 2026 gilt erst ab SoSe 2027 (§ 2). Technische Studienrichtung Elektrotechnik: ihr Modul des 1. Semesters. Die Studienrichtung wird spätestens mit der Rückmeldung zum 2. Fachsemester gewählt (§ 5 Abs. 3), der Verlaufsplan sieht ihr Modul aber schon im 1. Semester vor; deshalb ein Plan je Studienrichtung. Modulnummern aus der MOSES-Modulliste WiSe 2026/27 der StuPO 2015: https://moseskonto.tu-berlin.de/moses/modultransfersystem/studiengaenge/anzeigen.html?studiengang=59&mkg=1761&semester=77. Einführung in die Informatik: laut StuPO 9 LP, davon 6 im 1. Semester; MOSES führt das Modul inzwischen mit 6 LP. Von Hand übernommen, Stand 05.10.2026 (V-0228, Demo).",
+      "module": [
+        {
+          "nummer": "20122",
+          "kurz": "Analysis I/LinA"
+        },
+        {
+          "nummer": "40013",
+          "kurz": "Einf. Inf."
+        },
+        {
+          "nummer": "70188",
+          "kurz": "Mikro"
+        },
+        {
+          "nummer": "40774",
+          "kurz": "GLET"
+        }
+      ]
+    }
+  ]
+}

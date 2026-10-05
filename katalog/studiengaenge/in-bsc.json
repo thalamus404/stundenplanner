@@ -1,0 +1,31 @@
+{
+  "id": "in-bsc",
+  "name": "Informatik",
+  "abschluss": "B.Sc.",
+  "hochschule": "TU Berlin",
+  "plaene": [
+    {
+      "semester": "wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Exemplarischer Studienverlaufsplan der StuPO 2025 (AMBl. 08/2026), Anlage 2: https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_IV/Informatik_B.Sc._2025.pdf. Sie tritt am 01.10.2026 in Kraft und gilt für alle, die ab dem WiSe 2026/27 beginnen (§ 2). Der Plan trägt keine Semesterbeschriftung; jede der drei oberen Zeilen umfasst 30 LP, die erste Zeile ist deshalb als 1. Semester gelesen (Annahme, siehe docs/forschung/tu-studiengaenge.md). Modulnummern aus der MOSES-Modulliste WiSe 2026/27 der StuPO 2025: https://moseskonto.tu-berlin.de/moses/modultransfersystem/studiengaenge/anzeigen.html?studiengang=31&mkg=24983&semester=77. Keine Wahl im 1. Semester. Von Hand übernommen, Stand 05.10.2026 (V-0228, Demo).",
+      "module": [
+        {
+          "nummer": "20122",
+          "kurz": "Analysis I/LinA"
+        },
+        {
+          "nummer": "41319",
+          "kurz": "Inf. als Diszipl."
+        },
+        {
+          "nummer": "41320",
+          "kurz": "Grundl. Prog."
+        },
+        {
+          "nummer": "41313",
+          "kurz": "RO/BS"
+        }
+      ]
+    }
+  ]
+}

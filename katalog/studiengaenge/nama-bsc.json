@@ -1,0 +1,35 @@
+{
+  "id": "nama-bsc",
+  "name": "Nachhaltiges Management (statt BWL)",
+  "abschluss": "B.Sc.",
+  "hochschule": "TU Berlin",
+  "plaene": [
+    {
+      "semester": "wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Stellvertreter für „Betriebswirtschaftslehre B.Sc.“: Den gibt es an der TU Berlin nicht (weder in der StuPO-Liste der TU noch in der Studiengangssuche von MOSES, 05.10.2026); der betriebswirtschaftliche Bachelor der Fakultät VII ist Nachhaltiges Management. Exemplarischer Studienverlaufsplan, 1. Semester, der StuPO vom 02.11.2016 in der Fassung der 1. Änderung vom 05.01.2022 (AMBl. 05/2017 und 13/2022; gilt ab WiSe 2022/23), Anlage 1: https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_VII/NachhaltigesManagement_B.Sc._2016.pdf. Modulnummern aus der MOSES-Modulliste WiSe 2026/27 („StuPO 2022“): https://moseskonto.tu-berlin.de/moses/modultransfersystem/studiengaenge/anzeigen.html?studiengang=135&mkg=24928&semester=77. Keine Wahl im 1. Semester. Von Hand übernommen, Stand 05.10.2026 (V-0228, Demo).",
+      "module": [
+        {
+          "nummer": "70432",
+          "kurz": "Grundl. NaMa"
+        },
+        {
+          "nummer": "70295",
+          "kurz": "Mikro"
+        },
+        {
+          "nummer": "70112",
+          "kurz": "BuK"
+        },
+        {
+          "nummer": "70202",
+          "kurz": "Orga & Inno"
+        },
+        {
+          "nummer": "20367",
+          "kurz": "Mathe I"
+        }
+      ]
+    }
+  ]
+}
