@@ -1,0 +1,10 @@
+{
+ "number": "90013",
+ "semester": "WiSe 2030/31",
+ "components": [],
+ "abruf": {
+  "geprueft_am": "2030-10-01T05:20:00+02:00",
+  "erfolg_am": null,
+  "fehler": "SourceError: Modul 90013: keine gültige Version für WiSe 2030/31"
+ }
+}

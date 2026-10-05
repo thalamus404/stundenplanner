@@ -1,0 +1,17 @@
+{
+ "gestartet_am": "2030-10-01T05:20:00+02:00",
+ "beendet_am": "2030-10-01T05:21:00+02:00",
+ "status": "ok",
+ "modules": 3,
+ "bookings": 5,
+ "errors": [],
+ "kandidaten": {
+  "module": 2,
+  "fehler": [
+   {
+    "module": "90013",
+    "message": "SourceError: Modul 90013: keine gültige Version für WiSe 2030/31"
+   }
+  ]
+ }
+}

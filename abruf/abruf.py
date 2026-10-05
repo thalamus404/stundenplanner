@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,10 +29,15 @@ WURZEL = HIER.parent
 sys.path.insert(0, str(HIER))  # moses.py liegt daneben, egal von wo aus aufgerufen wird
 
 import moses  # noqa: E402
+import modulliste  # noqa: E402
 
 KATALOG = WURZEL / 'katalog'
 ROH = WURZEL / 'daten' / 'roh'
 LAUF = '_lauf.json'
+# Pause zwischen zwei Modulen (Punkt aed3e76c, V-0227). Innerhalb eines Moduls wartet der Client
+# 0,7 s je Anfrage; zwischen Modulen gab es bis V-0227 keine Pause. Mit Wahlpflichtbereichen holt
+# ein Lauf statt 5 Module über 200: Ohne Pause wäre das ein Dauerfeuer auf MOSES.
+PAUSE = 2.0
 
 # Eine Modulnummer landet in einer MOSES-Adresse und in einem Dateinamen. Nur Ziffern: Ein Tippfehler
 # im Katalog wie "../70123" darf weder eine fremde Datei überschreiben noch eine fremde Seite holen.
@@ -74,6 +80,7 @@ def lade_katalog(katalog: Path = KATALOG) -> dict:
             raise KatalogFehler(f'{pfad.name}: "moses" (Beschriftung der MOSES-Semesterwahl) fehlt')
         semester[sid] = s
     plaene = []
+    listen = {}
     for pfad in sorted((katalog / 'studiengaenge').glob('*.json')):
         g = _json(pfad)
         for plan in g.get('plaene', []):
@@ -82,16 +89,67 @@ def lade_katalog(katalog: Path = KATALOG) -> dict:
             for m in plan.get('module', []):
                 if not isinstance(m.get('nummer'), str) or not NUMMER.fullmatch(m['nummer']):
                     raise KatalogFehler(f'{pfad.name}: ungültige Modulnummer {m.get("nummer")!r}')
-            plaene.append({**plan, 'studiengang': g.get('id')})
+            kandidaten = []
+            for wp in plan.get('wahlpflicht', []):
+                kandidaten += wahlpflicht_kandidaten(katalog, wp, listen, pfad.name)
+            plaene.append({**plan, 'studiengang': g.get('id'), 'kandidaten': kandidaten})
     return {'semester': semester, 'plaene': plaene}
 
 
-def module_je_semester(katalog: dict) -> dict[str, list[str]]:
-    """Je Semester die Modulnummern aller Pläne, jede nur einmal, sortiert."""
+def wahlpflicht_kandidaten(katalog: Path, wp: dict, listen: dict, datei: str) -> list[dict]:
+    """Die Module eines Wahlpflichtbereichs aus der gespeicherten Modulliste (V-0227).
+
+    Der Plan nennt `modulliste` (Datei unter katalog/modullisten/, erzeugt von modulliste.py) und
+    `bereich` (Pfad im Baum, z. B. "Wahlpflichtbereich/Vertiefung Informatik"). Abgeschrieben wird
+    nichts: Die Kandidaten sind genau die Module, die MOSES dem Bereich zuordnet.
+    """
+    lid = wp.get('modulliste')
+    if not isinstance(lid, str) or not SEMESTER_ID.fullmatch(lid):
+        raise KatalogFehler(f'{datei}: Wahlpflicht ohne gültige "modulliste"')
+    if lid not in listen:
+        listen[lid] = _json(katalog / 'modullisten' / f'{lid}.json')
+    try:
+        b = modulliste.finde(listen[lid], wp.get('bereich') or '')
+    except KeyError as exc:
+        raise KatalogFehler(f'{datei}: {exc.args[0]} ({lid})') from exc
+    out = []
+    for m in modulliste.module_von(b):
+        if not NUMMER.fullmatch(m['nummer']):
+            raise KatalogFehler(f'{lid}: ungültige Modulnummer {m["nummer"]!r}')
+        out.append({**m, 'wp': wp.get('id')})
+    return out
+
+
+def im_turnus(turnus: str | None, moses_label: str) -> bool:
+    """Bietet das Modul laut MTS-Turnus im Semester `moses_label` an? Unbekannt (k.A.) zählt als ja.
+
+    Der Turnus ist eine Angabe der Modulbeschreibung, kein Termin. Er spart nur Anfragen: Ein
+    Modul mit Turnus „SoSe“ wird für ein WiSe gar nicht erst abgerufen. Ob der Turnus stimmt, misst
+    `abruf.py --alle-kandidaten` (V-0227, docs/forschung/wi-hoehere-fachsemester.md).
+    """
+    t = (turnus or '').replace(' ', '')
+    art = 'WiSe' if moses_label.startswith(('WiSe', 'WS')) else 'SoSe'
+    return t not in ('WiSe', 'SoSe') or t == art
+
+
+def module_je_semester(katalog: dict, turnusfilter: bool = True) -> dict[str, list[str]]:
+    """Je Semester die Modulnummern aller Pläne, jede nur einmal, sortiert: Pflichtmodule und die
+    Kandidaten der Wahlpflichtbereiche (diese nur, wenn ihr Turnus zum Semester passt)."""
     out: dict[str, set[str]] = {sid: set() for sid in katalog['semester']}
     for plan in katalog['plaene']:
         out[plan['semester']].update(m['nummer'] for m in plan.get('module', []))
+        label = katalog['semester'][plan['semester']]['moses']
+        out[plan['semester']].update(k['nummer'] for k in plan.get('kandidaten', [])
+                                     if not turnusfilter or im_turnus(k.get('turnus'), label))
     return {sid: sorted(nummern) for sid, nummern in out.items()}
+
+
+def pflicht_je_semester(katalog: dict) -> dict[str, set[str]]:
+    """Je Semester die Modulnummern, die in mindestens einem Plan Pflicht sind."""
+    out: dict[str, set[str]] = {sid: set() for sid in katalog['semester']}
+    for plan in katalog['plaene']:
+        out[plan['semester']].update(m['nummer'] for m in plan.get('module', []))
+    return out
 
 
 # --- Ein Modul ---------------------------------------------------------------------------------
@@ -181,17 +239,27 @@ def rohstand_fehler(vorbestand, nummer: str, ziel: str, zeit: str, meldung: str)
 # --- Der Lauf ----------------------------------------------------------------------------------
 
 def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabrik=None,
-                  holer=hole_modul, uhr=jetzt, schreibe_lauf=True, log=print) -> dict:
-    """Ein Semester: jedes Modul einmal, je Modul ein Rohstand, am Ende `_lauf.json`."""
+                  holer=hole_modul, uhr=jetzt, schreibe_lauf=True, log=print,
+                  kandidaten=frozenset(), pause=PAUSE, schlaf=time.sleep) -> dict:
+    """Ein Semester: jedes Modul einmal, je Modul ein Rohstand, am Ende `_lauf.json`.
+
+    `kandidaten` sind Module, die nur als Wahlpflicht-Kandidat im Katalog stehen (V-0227). Dass
+    einer davon im Semester nicht angeboten wird („keine gültige Version“), ist der Normalfall,
+    kein Fehler des Laufs: Sein Scheitern steht im Rohstand und unter `kandidaten` in
+    `_lauf.json`, `status` und `errors` richten sich nur nach den Pflichtmodulen.
+    """
     client_fabrik = client_fabrik or moses.Client
     ziel = semester['moses']
     ordner = roh / semester['id']
     lauf = {'gestartet_am': uhr(), 'beendet_am': None, 'status': 'error',
             'modules': 0, 'bookings': 0, 'errors': []}
+    kand = {'module': 0, 'fehler': []} if kandidaten else None
     try:
         if not nummern:
             raise KatalogFehler(f'Kein Plan nennt Module für {semester["id"]}')
-        for nummer in nummern:
+        for i, nummer in enumerate(nummern):
+            if i and pause:
+                schlaf(pause)
             pfad = ordner / f'{nummer}.json'
             try:
                 # Je Modul eine frische, loginfreie MOSES-Sitzung wie im Vorbild: Ein verklemmter
@@ -199,14 +267,19 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
                 daten = holer(client_fabrik(), nummer, ziel)
             except Exception as exc:
                 meldung = fehlertext(exc)
-                log(f'  ✗ {nummer}: {meldung}', file=sys.stderr)
-                lauf['errors'].append({'module': nummer, 'message': meldung})
+                log(f'  {"·" if nummer in kandidaten else "✗"} {nummer}: {meldung}', file=sys.stderr)
+                if nummer in kandidaten:
+                    kand['fehler'].append({'module': nummer, 'message': meldung})
+                else:
+                    lauf['errors'].append({'module': nummer, 'message': meldung})
                 schreibe_atomar(pfad, rohstand_fehler(lies_vorbestand(pfad), nummer, ziel, uhr(), meldung))
                 continue
             n = buchungen(daten)
             schreibe_atomar(pfad, rohstand_erfolg(daten, uhr()))
             lauf['modules'] += 1
             lauf['bookings'] += n
+            if nummer in kandidaten:
+                kand['module'] += 1
             log(f'  ✓ {nummer} v{daten.get("version")}: {len(daten["components"])} Bestandteile, '
                 f'{sum(len(c["groups"]) for c in daten["components"])} Gruppen, {n} Buchungen',
                 file=sys.stderr)
@@ -216,19 +289,23 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
         lauf['status'] = 'error'
     finally:
         lauf['beendet_am'] = uhr()
+        if kand is not None:
+            lauf['kandidaten'] = kand
         if schreibe_lauf:
             schreibe_atomar(ordner / LAUF, lauf)
     return lauf
 
 
-def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, **kw) -> dict:
+def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None,
+         turnusfilter=True, **kw) -> dict:
     """Alle (oder die genannten) Semester. Gibt je Semester das Ergebnis von lauf_semester zurück.
 
     Mit `nur` entsteht kein `_lauf.json`: Ein gezielter Nachabruf einzelner Module ist kein Lauf des
     Semesters, und `last_run` der Seite soll nicht „1 Modul“ melden, wo der Plan fünf hat.
     """
     kat = lade_katalog(katalog)
-    je = module_je_semester(kat)
+    je = module_je_semester(kat, turnusfilter)
+    pflicht = pflicht_je_semester(kat)
     gewaehlt = list(semester) if semester else [sid for sid in kat['semester'] if je[sid]]
     for sid in gewaehlt:
         if sid not in kat['semester']:
@@ -242,7 +319,8 @@ def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, *
                 raise KatalogFehler(f'{", ".join(fremd)} steht in keinem Plan von {sid}')
             nummern = [n for n in nummern if n in set(nur)]
         ergebnis[sid] = lauf_semester(kat['semester'][sid], nummern, roh,
-                                      schreibe_lauf=not nur, **kw)
+                                      schreibe_lauf=not nur,
+                                      kandidaten=frozenset(set(nummern) - pflicht[sid]), **kw)
     return ergebnis
 
 
@@ -255,10 +333,15 @@ def main(argv=None) -> int:
                    help='nur dieses Modul (mehrfach möglich); schreibt kein _lauf.json')
     p.add_argument('--roh', type=Path, default=ROH,
                    help='Ordner der Rohstände (Vorgabe: daten/roh im Repo; relativ zum Arbeitsverzeichnis)')
+    p.add_argument('--pause', type=float, default=PAUSE,
+                   help=f'Sekunden Pause zwischen zwei Modulen (Vorgabe {PAUSE:g}; Punkt aed3e76c)')
+    p.add_argument('--alle-kandidaten', action='store_true',
+                   help='Wahlpflicht-Kandidaten auch abrufen, wenn ihr MTS-Turnus nicht zum Semester passt')
     p.add_argument('--katalog', type=Path, default=KATALOG, help=argparse.SUPPRESS)
     a = p.parse_args(argv)
     try:
-        ergebnis = lauf(katalog=a.katalog, roh=a.roh.resolve(), semester=a.semester, nur=a.nur)
+        ergebnis = lauf(katalog=a.katalog, roh=a.roh.resolve(), semester=a.semester, nur=a.nur,
+                        turnusfilter=not a.alle_kandidaten, pause=max(0.0, a.pause))
     except KatalogFehler as exc:
         print(f'abruf: {exc}', file=sys.stderr)
         return 2
@@ -266,8 +349,10 @@ def main(argv=None) -> int:
         print('abruf: kein Semester mit Plänen im Katalog', file=sys.stderr)
         return 2
     for sid, r in ergebnis.items():
+        k = r.get('kandidaten')
         print(f'{sid}: {r["status"]} — {r["modules"]} Module, {r["bookings"]} Buchungen, '
-              f'{len(r["errors"])} Fehler')
+              f'{len(r["errors"])} Fehler'
+              + (f' (Wahlpflicht: {k["module"]} geholt, {len(k["fehler"])} ohne Angebot/Fehler)' if k else ''))
     return 0 if all(r['status'] == 'ok' for r in ergebnis.values()) else 1
 
 

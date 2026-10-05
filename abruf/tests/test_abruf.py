@@ -125,7 +125,7 @@ class LaufTests(unittest.TestCase):
 
     def laufe(self, welt, start=0, **kw):
         return abruf.lauf(katalog=KATALOG, roh=self.roh, client_fabrik=welt.client,
-                          uhr=uhr(start), log=still, **kw)
+                          uhr=uhr(start), log=still, schlaf=still, **kw)
 
     def lies(self, name):
         return json.loads((self.ordner / name).read_text(encoding='utf-8'))
@@ -208,7 +208,7 @@ class LaufTests(unittest.TestCase):
         def main(*argv, welt):
             with mock.patch.object(moses, 'Client', welt.client), \
                     contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-                return abruf.main(['--katalog', str(KATALOG), '--roh', str(self.roh), *argv])
+                return abruf.main(['--katalog', str(KATALOG), '--roh', str(self.roh), '--pause', '0', *argv])
         self.assertEqual(main(welt=Welt()), 0)
         self.assertEqual(main(welt=Welt(scheitert={'99901:901'})), 1)
         self.assertEqual(main('--semester', 'gibt-es-nicht', welt=Welt()), 2)

@@ -1,0 +1,74 @@
+{
+  "id": "wi-bsc-stupo2021",
+  "name": "Wirtschaftsinformatik",
+  "abschluss": "B.Sc.",
+  "ordnung": "StuPO 2021",
+  "hochschule": "TU Berlin",
+  "plaene": [
+    {
+      "semester": "wise-2026-27",
+      "fachsemester": 3,
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 3. FS; Modulnummern aus der MTS-Modulliste StuPO 2021, WiSe 2026/27 (abgerufen 05.10.2026). Jahrgang WiSe 2025/26, sofern nicht in die StuPO 2025 gewechselt",
+      "module": [
+        { "nummer": "70232", "kurz": "Statistik II" },
+        { "nummer": "40271", "kurz": "TechGI" },
+        { "nummer": "40029", "kurz": "SWTPP" },
+        { "nummer": "70146", "kurz": "OR-GDL" },
+        { "nummer": "70183", "kurz": "MuP" }
+      ]
+    },
+    {
+      "semester": "sose-2026",
+      "fachsemester": 4,
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 4. FS; Modulnummern und Wahlpflichtbereich aus der MTS-Modulliste StuPO 2021, SoSe 2026 (abgerufen 05.10.2026). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
+      "module": [
+        { "nummer": "40002", "kurz": "ISDA" },
+        { "nummer": "41034", "kurz": "IT-Sicherheit" },
+        { "nummer": "40064", "kurz": "GP" },
+        { "nummer": "70174", "kurz": "InvFin" }
+      ],
+      "wahlpflicht": [
+        { "id": "pp", "kurz": "WP Programmierpraktikum", "name": "Wahlpflicht Programmierpraktikum",
+          "modulliste": "wi-bsc-stupo2021-sose-2026", "bereich": "Wahlpflichtbereich/Programmierpraktikum",
+          "anteil": "6 LP im 4. FS" }
+      ]
+    },
+    {
+      "semester": "wise-2026-27",
+      "fachsemester": 5,
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 5. FS; Wahlpflichtkataloge aus der MTS-Modulliste StuPO 2021, WiSe 2026/27 (abgerufen 05.10.2026). Jahrgang WiSe 2024/25, sofern nicht gewechselt",
+      "module": [
+        { "nummer": "40499", "kurz": "Inf & Ges" }
+      ],
+      "wahlpflicht": [
+        { "id": "inf", "kurz": "WP Informatik", "name": "Wahlpflicht Katalog Informatik",
+          "modulliste": "wi-bsc-stupo2021-wise-2026-27", "bereich": "Wahlpflichtbereich/Informatik",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP, dazu ein Seminar und ein Projekt (StuPO 2021 § 5 Abs. 4)" },
+        { "id": "wiwi", "kurz": "WP WiWi", "name": "Wahlpflicht Katalog Wirtschaftswissenschaften",
+          "modulliste": "wi-bsc-stupo2021-wise-2026-27", "bereich": "Wahlpflichtbereich/Wirtschaftswissenschaften",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP" }
+      ],
+      "frei": [
+        { "name": "Wahlbereich", "anteil": "12–15 LP über das 5. und 6. FS", "hinweis": "Aus dem gesamten Angebot der TU Berlin und anderer Hochschulen (StuPO 2021 § 5 Abs. 5). Keine Liste, deshalb nicht im Katalog" }
+      ]
+    },
+    {
+      "semester": "sose-2026",
+      "fachsemester": 6,
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 6. FS; Wahlpflichtkataloge aus der MTS-Modulliste StuPO 2021, SoSe 2026 (abgerufen 05.10.2026). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
+      "module": [],
+      "wahlpflicht": [
+        { "id": "inf", "kurz": "WP Informatik", "name": "Wahlpflicht Katalog Informatik",
+          "modulliste": "wi-bsc-stupo2021-sose-2026", "bereich": "Wahlpflichtbereich/Informatik",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP, dazu ein Seminar und ein Projekt (StuPO 2021 § 5 Abs. 4)" },
+        { "id": "wiwi", "kurz": "WP WiWi", "name": "Wahlpflicht Katalog Wirtschaftswissenschaften",
+          "modulliste": "wi-bsc-stupo2021-sose-2026", "bereich": "Wahlpflichtbereich/Wirtschaftswissenschaften",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP" }
+      ],
+      "frei": [
+        { "name": "Wahlbereich", "anteil": "12–15 LP über das 5. und 6. FS", "hinweis": "Aus dem gesamten Angebot der TU Berlin und anderer Hochschulen (StuPO 2021 § 5 Abs. 5). Keine Liste, deshalb nicht im Katalog" },
+        { "name": "Bachelorarbeit", "anteil": "12 LP im 6. FS", "hinweis": "Keine Lehrveranstaltung mit Terminen (StuPO 2021 § 9)" }
+      ]
+    }
+  ]
+}

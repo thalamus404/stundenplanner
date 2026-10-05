@@ -223,6 +223,13 @@ class Client:
             if a:
                 gid=parse_qs(urlsplit(a['href']).query)['veranstaltung'][0]
                 series.setdefault(gid,[]).append(form_groups(wrap))
+        if not group_ids and not any('Liste als Excel-Datei exportieren' in clean(a) for a in page.find_all('a')):
+            # Keine Termingruppe und kein Listenexport: Der Bestandteil hat in diesem Semester keine
+            # Termine (V-0227). Wahlpflichtmodule werden oft nur im WiSe oder nur im SoSe angeboten;
+            # ohne diese Ausnahme meldete der Abruf „VVZ-Export fehlt“ wie bei einem Layoutwechsel.
+            # Beides muss fehlen: Fände der Parser nur die Gruppenlinks nicht mehr, gäbe es den
+            # Exportlink noch, und der Abruf scheiterte weiter laut statt still „keine Termine“.
+            return {**part,'vvz_url':url,'semester_id':sid,'groups':[],'status':'unplanned'},''
         raw=self.export(url,page)
         # Gruppen, deren Buchungen alle ein anderes Semester tragen, fallen heraus (parse_export).
         foreign={}

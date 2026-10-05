@@ -1,0 +1,80 @@
+{
+ "number": "90001",
+ "title": "Titel 90001",
+ "version": 1,
+ "valid_from": "WiSe 2030/31",
+ "valid_to": "offen",
+ "valid_versions": [
+  1
+ ],
+ "url": "https://moseskonto.tu-berlin.de/x",
+ "isis_url": null,
+ "notes": {},
+ "semester": "WiSe 2030/31",
+ "components": [
+  {
+   "id": "90001:1",
+   "lvvid": "1",
+   "title": "t",
+   "type": "VL",
+   "number": "n",
+   "sws": 2.0,
+   "cycle": "",
+   "language": "",
+   "section": "Pflichtbereich",
+   "required": true,
+   "vvz_url": "https://moseskonto.tu-berlin.de/v",
+   "isis_url": null,
+   "semester_id": "1",
+   "status": "ok",
+   "groups": [
+    {
+     "id": "11",
+     "name": "Gruppe 11",
+     "url": "https://moseskonto.tu-berlin.de/g",
+     "series": [],
+     "bookings": [
+      {
+       "id": "1",
+       "start": "2030-10-14T10:00:00",
+       "end": "2030-10-14T12:00:00",
+       "room": "Erfundener Raum",
+       "title": "x",
+       "format": "x",
+       "number": "x",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "2",
+       "start": "2030-10-21T10:00:00",
+       "end": "2030-10-21T12:00:00",
+       "room": "Erfundener Raum",
+       "title": "x",
+       "format": "x",
+       "number": "x",
+       "note": "",
+       "info": ""
+      },
+      {
+       "id": "3",
+       "start": "2030-10-28T10:00:00",
+       "end": "2030-10-28T12:00:00",
+       "room": "Erfundener Raum",
+       "title": "x",
+       "format": "x",
+       "number": "x",
+       "note": "",
+       "info": ""
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "abruf": {
+  "geprueft_am": "2030-10-01T05:20:00+02:00",
+  "erfolg_am": "2030-10-01T05:20:00+02:00",
+  "fehler": null
+ }
+}
