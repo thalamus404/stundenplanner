@@ -1,0 +1,214 @@
+{
+  "stand": "2026-10-05",
+  "bericht": "docs/forschung/formate.md",
+  "kategorien": {
+    "vorlesung": "Präsenz im Stil einer Vorlesung: Lehrende tragen vor, alle Teilnehmenden zugleich. Silas, 05.10.2026: volle Sättigung (100 %)",
+    "uebung": "Aufgaben gemeinsam unter Anleitung lösen, in festen Gruppen und Terminen. Silas, 05.10.2026: 70 %",
+    "sonstige": "alles andere: Tutorien, Seminare, Projekte, Kolloquien, offene Angebote, und jedes Format, das hier nicht steht. Silas, 05.10.2026: 50 %"
+  },
+  "formate": {
+    "VL": {
+      "lang": "Vorlesung",
+      "kategorie": "vorlesung",
+      "hochschulen": ["tu", "hu", "fu"],
+      "namen": ["Vorlesung", "Vertiefungsvorlesung"],
+      "quelle": "TU: MOSES-Art „VL“, CSV „Vorlesung“. HU: „VL“ in den Modulbeschreibungen (AMB 27/2025, 26/2025, 41/2026, 35/2025), AGNES-Art „Vorlesung“. FU: „Vorlesung“, „Vertiefungsvorlesung“ (BWL) im Vorlesungsverzeichnis WiSe 2026/27",
+      "grund": "Silas, 05.10.2026: Vorlesung 100 %. Die Vertiefungsvorlesung der FU (BWL) ist eine Vorlesung, die Methodenübung daneben ist ihre Übung."
+    },
+    "IV": {
+      "lang": "Integrierte Veranstaltung",
+      "kategorie": "vorlesung",
+      "hochschulen": ["tu"],
+      "namen": ["Integrierte Veranstaltung"],
+      "quelle": "TU: MOSES-Art „IV“, CSV „Integrierte Veranstaltung“ (36 Bestandteile im WiSe 2026/27, 21 im SoSe 2026)",
+      "grund": "Silas, 05.10.2026: IV 100 %. Vorlesung und Übung in einem Termin; zählt wie ihr Vorlesungsanteil."
+    },
+    "VL/UE": {
+      "lang": "Vorlesung/Übung",
+      "kategorie": "vorlesung",
+      "hochschulen": ["hu"],
+      "namen": ["Vorlesung/Übung"],
+      "quelle": "abruf/lsf.py (ARTEN): Kurzform, die der Abruf für die AGNES-Art „Vorlesung/Übung“ schreibt",
+      "grund": "Mischform wie die IV, zählt also wie ihr Vorlesungsanteil.",
+      "vermutung": "In den gelesenen Quellen nicht gesehen. Steht hier, weil der Abruf diese Kurzform erzeugen kann."
+    },
+    "RV": {
+      "lang": "Ringvorlesung",
+      "kategorie": "vorlesung",
+      "hochschulen": ["fu"],
+      "namen": ["Ringvorlesung"],
+      "quelle": "FU: Art „RV“ im Vorlesungsverzeichnis WiSe 2026/27 (Informatik: „Einführung in die Profilbereiche Data Science“)",
+      "grund": "Eine Vorlesungsreihe mit wechselnden Vortragenden: Präsenz im Stil einer Vorlesung.",
+      "vermutung": "Die FU schreibt nur „RV“. „Ringvorlesung“ ist die übliche Lesart, ausgeschrieben steht es im Verzeichnis nicht."
+    },
+    "UE": {
+      "lang": "Übung",
+      "kategorie": "uebung",
+      "hochschulen": ["tu", "hu", "fu"],
+      "namen": ["Übung", "Methodenübung"],
+      "quelle": "TU: MOSES-Art „UE“, CSV „Übung“. HU: „UE“ in den Modulbeschreibungen (AMB 27/2025 u. a.), AGNES-Art „Übung“. FU: „Übung“, „Methodenübung“ (BWL) im Vorlesungsverzeichnis WiSe 2026/27",
+      "grund": "Silas, 05.10.2026: Übung 70 %. Die Methodenübung der FU ist die Übung zur Vertiefungsvorlesung (im Titel „(Ü)“)."
+    },
+    "MU": {
+      "lang": "Mathematik-Übung",
+      "kategorie": "uebung",
+      "hochschulen": ["hu"],
+      "namen": ["Mathematik-Übung", "Mathematik-Übungen"],
+      "quelle": "HU: AMB 26/2025 (Mathematik, Kombinationsstudiengang), § 4 Abs. 1",
+      "grund": "Laut Ordnung: „Es werden Aufgaben gestellt und unter Anleitung gelöst.“ Das ist die Übung."
+    },
+    "PR": {
+      "lang": "Praktikum",
+      "kategorie": "uebung",
+      "hochschulen": ["tu", "hu", "fu"],
+      "namen": ["Praktikum"],
+      "quelle": "TU: MOSES-Art „Praktikum“, CSV „Praktikum“ (11 Bestandteile im WiSe 2026/27, 26 im SoSe 2026). HU: „PR“ in AMB 27/2025 (Biologie: „Im Praktikum werden Experimente … durchgeführt“). FU: „Praktikum“ im Vorlesungsverzeichnis (Chemie, Informatik)",
+      "grund": "Grenzfall. Im Kern betreute praktische Arbeit in Präsenz zu festen Terminen: Versuche im Labor (HU Biologie, FU Chemie), betreute Rechnerübungen (TU, Betriebssystempraktikum). Das ist gemeinsames Aufgabenlösen unter Anleitung wie in der Übung. An der TU heißen auch Software-Teamprojekte so; die wären als sonstige richtiger, sind am Kürzel aber nicht zu erkennen. Programmierpraktikum (P-PR) und Berufspraktikum (BP) sind eigene Einträge."
+    },
+    "LTP": {
+      "lang": "Labortechnisches Praktikum",
+      "kategorie": "uebung",
+      "hochschulen": ["hu"],
+      "namen": ["Labortechnisches Praktikum"],
+      "quelle": "HU: AMB 27/2025 (Biologie), § 5 Abs. 3",
+      "grund": "Laut Ordnung Durchführung, Protokollierung und Auswertung von Experimenten mit Antestat vor jedem Versuch: ein Praktikum im Labor, wie PR."
+    },
+    "LAB": {
+      "lang": "Labor",
+      "kategorie": "uebung",
+      "hochschulen": ["tu"],
+      "namen": ["Labor", "Laborübung"],
+      "quelle": "TU: MOSES-Art „LAB“ in Modul 40774 Grundlagen der Elektrotechnik (WiSe 2026/27, ohne Buchungen). Die Modulbeschreibung nennt „Laborübungen in Kleingruppen“",
+      "grund": "Laborübungen in Kleingruppen: Versuche unter Anleitung, wie PR.",
+      "vermutung": "MOSES liefert zu „LAB“ keinen Langnamen (der Bestandteil hat keine Buchung, also keine CSV-Zeile). „Labor“ folgt aus der Modulbeschreibung."
+    },
+    "SE/UE": {
+      "lang": "Seminar/Übung",
+      "kategorie": "uebung",
+      "hochschulen": ["hu"],
+      "namen": ["Seminar/Übung"],
+      "quelle": "abruf/lsf.py (ARTEN): Kurzform, die der Abruf für die AGNES-Art „Seminar/Übung“ schreibt",
+      "grund": "Mischform. Sie zählt wie ihr Übungsanteil, so wie die IV wie ihr Vorlesungsanteil zählt: die höhere der beiden Kategorien.",
+      "vermutung": "In den gelesenen Quellen nicht gesehen. Steht hier, weil der Abruf diese Kurzform erzeugen kann."
+    },
+    "TUT": {
+      "lang": "Tutorium",
+      "kategorie": "sonstige",
+      "hochschulen": ["tu", "hu", "fu"],
+      "namen": ["Tutorium", "TU"],
+      "quelle": "TU: MOSES-Art „TUT“, CSV „Tutorium“. HU: „Übung (UE) oder Tutorium (TU)“ in AMB 41/2026 (Deutsch). FU: „Tutorium“ im Vorlesungsverzeichnis (BWL)",
+      "grund": "Silas, 05.10.2026: Tutorium 50 %. Von Studierenden geleitet und meist freiwillig."
+    },
+    "SE": {
+      "lang": "Seminar",
+      "kategorie": "sonstige",
+      "hochschulen": ["tu", "hu", "fu"],
+      "namen": ["SEM", "Seminar", "Seminar/Proseminar", "Praxisseminar", "Seminar am PC"],
+      "quelle": "TU: MOSES-Art „SEM“, CSV „Seminar“. HU: „SE“ in den Modulbeschreibungen, AGNES-Art „Seminar“. FU: „Seminar“, „Seminar/Proseminar“, „Praxisseminar“, „Seminar am PC“ im Vorlesungsverzeichnis WiSe 2026/27",
+      "grund": "Grenzfall. Erarbeiten, Vortragen und Diskutieren in kleiner Runde: weder Vortrag im Stil einer Vorlesung noch gemeinsames Aufgabenrechnen. Das „Seminar am PC“ der FU ist einmal die Übung zu Rechnerarchitektur (parallele Termine im Rechnerpool), einmal ein Seminar, einmal ein Programmierpraktikum; es bleibt beim Wort der Quelle, also Seminar."
+    },
+    "PS": {
+      "lang": "Proseminar",
+      "kategorie": "sonstige",
+      "hochschulen": ["fu"],
+      "namen": ["Proseminar"],
+      "quelle": "FU: „Proseminar“ im Vorlesungsverzeichnis (Politikwissenschaft, Informatik). Kurzform aus abruf/lsf.py (ARTEN)",
+      "grund": "Ein Seminar für den Einstieg: wie SE."
+    },
+    "HS": {
+      "lang": "Hauptseminar",
+      "kategorie": "sonstige",
+      "hochschulen": ["hu", "fu"],
+      "namen": ["Hauptseminar"],
+      "quelle": "HU: „HS“ in AMB 27/2025 (Biologie, Wahlpflichtmodule). FU: „Hauptseminar“ im Vorlesungsverzeichnis (Politikwissenschaft). Kurzform aus abruf/lsf.py (ARTEN)",
+      "grund": "Ein Seminar für Fortgeschrittene: wie SE.",
+      "vermutung": "Die HU-Ordnungen nennen nur das Kürzel; die Langnamen stehen in der ZSP-HU, die nur hinter der KI-Sperre liegt. „Hauptseminar“ ist das Wort der FU."
+    },
+    "PJS": {
+      "lang": "Projektseminar",
+      "kategorie": "sonstige",
+      "hochschulen": ["fu"],
+      "namen": ["Projektseminar"],
+      "quelle": "FU: „Projektseminar“ im Vorlesungsverzeichnis (Informatik, z. B. „Softwareprojekt“). Kurzform aus abruf/lsf.py (ARTEN)",
+      "grund": "Projektarbeit im Team mit Treffen: wie PJ."
+    },
+    "PJ": {
+      "lang": "Projekt",
+      "kategorie": "sonstige",
+      "hochschulen": ["tu", "fu"],
+      "namen": ["Projekt"],
+      "kuerzel_eigen": true,
+      "quelle": "TU: MOSES-Art „Projekt“, CSV „Projekt“ (25 Bestandteile im WiSe 2026/27, 21 im SoSe 2026). FU: „Projekt“ im Vorlesungsverzeichnis (BWL)",
+      "grund": "Grenzfall. Eigenständige Teamarbeit über das Semester; die festen Termine sind Besprechungen, kein gemeinsames Aufgabenlösen unter Anleitung."
+    },
+    "P-PR": {
+      "lang": "Programmierpraktikum",
+      "kategorie": "sonstige",
+      "hochschulen": ["tu"],
+      "namen": ["Programmierpraktikum"],
+      "quelle": "TU: MOSES-Art „P-PR“, CSV „Programmierpraktikum“ (6 Bestandteile im SoSe 2026)",
+      "grund": "Grenzfall. Trotz des Namens ein Projekt: Alle sechs Modulbeschreibungen nennen Projektteam- und Kleingruppenarbeit, Besprechungen, Meilensteine und eine Abschlusspräsentation. Deshalb nicht wie PR."
+    },
+    "SPJ": {
+      "lang": "Studienprojekt",
+      "kategorie": "sonstige",
+      "hochschulen": ["hu"],
+      "namen": ["Studienprojekt"],
+      "quelle": "HU: AMB 27/2025 (Biologie), § 5 Abs. 2",
+      "grund": "Laut Ordnung individuell oder in Gruppen, Methodik wissenschaftlichen Arbeitens an einem Thema: ein Projekt."
+    },
+    "LI": {
+      "lang": "Lerninsel",
+      "kategorie": "sonstige",
+      "hochschulen": ["tu"],
+      "namen": ["Lerninsel"],
+      "quelle": "TU: MOSES-Art „LI“, CSV „Lerninsel“ (Modul 20122 Analysis I und Lineare Algebra, 27 Gruppen im WiSe 2026/27). katalog/bestandteile.json: Gruppen „keine“, offenes Angebot",
+      "grund": "Grenzfall. Dort rechnet man zwar Aufgaben, aber in einem offenen Angebot ohne feste Gruppe, betreut wie ein Tutorium. Deshalb wie TUT, nicht wie UE."
+    },
+    "KO": {
+      "lang": "Kolloquium",
+      "kategorie": "sonstige",
+      "hochschulen": ["tu", "hu", "fu"],
+      "namen": ["Kolloquium", "Colloquium", "CO", "Kolloquium-F"],
+      "quelle": "TU: MOSES-Art „Kolloquium-F“, CSV „Kolloquium“ (Modul 41218). HU: „CO“ in AMB 27/2025 und 35/2025. FU: „Colloquium“ im Vorlesungsverzeichnis (Politikwissenschaft). Kurzform aus abruf/lsf.py (ARTEN)",
+      "grund": "Vorträge und Diskussion zu laufender Forschung oder Abschlussarbeiten, oft als Block.",
+      "vermutung": "Was das „F“ in „Kolloquium-F“ bedeutet, sagt keine gelesene Quelle. Das HU-Kürzel „CO“ steht in den gelesenen Ordnungen ohne Langnamen."
+    },
+    "EX": {
+      "lang": "Exkursion",
+      "kategorie": "sonstige",
+      "hochschulen": ["hu"],
+      "namen": ["Exkursion"],
+      "quelle": "HU: AMB 27/2025 (Biologie, Modul Ökologie: „Exkursion: Biologische Feldarbeit …“). Kurzform aus abruf/lsf.py (ARTEN)",
+      "grund": "Arbeit im Gelände, meist als Block: weder Vorlesung noch Übung im Wochenraster.",
+      "vermutung": "In den gelesenen Ordnungen nur als Inhalt eines Moduls, nicht als Art mit Kürzel. „EX“ ist die Kurzform des Abrufs."
+    },
+    "KU": {
+      "lang": "Kurs",
+      "kategorie": "sonstige",
+      "hochschulen": ["tu", "fu"],
+      "namen": ["Kurs", "Methodenkurs", "Brückenkurs"],
+      "quelle": "TU: MOSES-Art „KU“ in Modul 40525 Kognitive Algorithmen (ohne Buchungen). FU: „Kurs“, „Methodenkurs“, „Brückenkurs“ im Vorlesungsverzeichnis (Informatik)",
+      "grund": "Grenzfall. Kurse mischen Vortrag und Übung, oft als Block (TU 40525: „mehrtägige Blockveranstaltung mit Frontalunterricht und betreuten Übungen“; der Brückenkurs der FU liegt vor dem Semester). Weder Vorlesung noch Übung im Wochenraster.",
+      "vermutung": "MOSES liefert zu „KU“ keinen Langnamen (keine Buchung, also keine CSV-Zeile). „Kurs“ ist die Lesart nach der Modulbeschreibung."
+    },
+    "SU": {
+      "lang": "Seminaristischer Unterricht",
+      "kategorie": "sonstige",
+      "hochschulen": ["fu"],
+      "namen": ["Seminaristischer Unterricht"],
+      "kuerzel_eigen": true,
+      "quelle": "FU: „Seminaristischer Unterricht“ im Vorlesungsverzeichnis (Informatik, BWL)",
+      "grund": "Grenzfall. Unterricht in Seminarform mit Beteiligung der Teilnehmenden, nicht im Stil einer Vorlesung."
+    },
+    "BP": {
+      "lang": "Berufspraktikum",
+      "kategorie": "sonstige",
+      "hochschulen": ["fu"],
+      "namen": ["Berufspraktikum"],
+      "kuerzel_eigen": true,
+      "quelle": "FU: „Berufspraktikum Informatik“ im Vorlesungsverzeichnis",
+      "grund": "Eine Tätigkeit in einem Betrieb, keine Lehrveranstaltung mit Terminen. Ein eigener Eintrag, damit es nie als Praktikum (PR) gelesen wird."
+    }
+  }
+}

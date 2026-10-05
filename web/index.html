@@ -24,9 +24,20 @@
 <link rel="modulepreload" href="woche.mjs">
 <link rel="modulepreload" href="raster.mjs">
 <link rel="modulepreload" href="text.mjs">
+<link rel="modulepreload" href="planwahl.mjs">
 <script type="module" src="app.js"></script>
 </head>
 <body>
+<!-- Der Startbildschirm (V-0234), gefüllt von app.js aus index.json -->
+<div class="hallo" id="hallo" data-sicht="hallo" hidden>
+  <header class="h-kopf">
+    <p class="name">Stundenplanner</p>
+    <button type="button" class="knopf" id="h-zum-plan" data-act="hallo-zu" hidden>Zurück zum Plan</button>
+  </header>
+  <section class="h-mitte" aria-labelledby="h-titel"><div class="h-inhalt" id="h-inhalt"></div></section>
+  <nav class="h-leiste" id="h-leiste" data-sicht="fortschritt" aria-label="Fortschritt"></nav>
+  <p class="h-recht"><span>Kein offizielles Angebot der Hochschulen. Deine Wahl bleibt in diesem Browser.</span><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>
+</div>
 <div class="seite laedt" id="seite">
   <header class="kopf" data-sicht="kopf">
     <p class="name">Stundenplanner</p>
@@ -37,11 +48,12 @@
       <button type="button" class="knopf" id="teilen" data-act="teilen" disabled><svg class="i" aria-hidden="true"><use href="#i-teilen"/></svg>Teilen</button>
     </span>
   </header>
+  <div class="plan-hinweise" id="plan-hinweise" hidden></div>
   <div class="mitte">
   <nav class="module" id="module" data-sicht="module" aria-label="Module und Formate"></nav>
   <section class="buehne" aria-label="Stundenplan">
     <div class="werkzeug" id="werkzeug" data-sicht="werkzeug">
-      <div class="lage" id="lage"><p class="l-text"><span class="l-titel">Noch offen</span> <span class="l-unter">Wähle ein Modul oder ein Format, dann zeigt der Plan nur dessen Gruppen.</span></p></div>
+      <div class="lage" id="lage"><p class="l-text"><span class="l-titel">Mein Stundenplan</span> <span class="l-unter">Wähle ein Modul oder ein Format, dann zeigt der Plan dessen Gruppen.</span></p></div>
       <div class="steuer nur-breit" id="steuer"></div>
       <div class="umschalter" id="umschalter" data-sicht="umschalter" role="group" aria-label="Tag oder Woche zeigen">
         <button type="button" class="seg" data-act="modus" data-v="tag" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-tag"/></svg>Tag</button>
@@ -60,9 +72,8 @@
   </div>
   </div>
   <footer class="fuss" data-sicht="fuss">
-    <p class="fuss-a">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>
-    <p class="fuss-b"><span id="speicher">Deine Auswahl wird nur in diesem Browser gespeichert.</span><button type="button" class="leise" id="zuruecksetzen" data-act="zuruecksetzen" hidden>Auswahl zurücksetzen</button></p>
-    <p class="fuss-c"><button type="button" class="leise nur-handy" id="stand-fuss" data-act="ebene" data-ebene="stand" disabled></button><button type="button" class="leise" data-act="ebene" data-ebene="hilfe">Hilfe</button><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>
+    <p class="fuss-hinweis"><span id="inoffiziell">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</span> <span id="speicher">Deine Auswahl wird nur in diesem Browser gespeichert.</span><button type="button" class="leise" id="zuruecksetzen" data-act="zuruecksetzen" hidden>Auswahl zurücksetzen</button></p>
+    <p class="fuss-links"><button type="button" class="leise nur-handy" id="stand-fuss" data-act="ebene" data-ebene="stand" disabled></button><button type="button" class="leise" data-act="ebene" data-ebene="hilfe">Hilfe</button><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>
   </footer>
 </div>
 <div id="ebenen"></div>
@@ -70,8 +81,8 @@
 <div class="nur-sr" id="ansage" aria-live="polite"></div>
 <noscript><p class="ohne-js">Diese Seite braucht JavaScript: Die Auswahl und die Woche laufen in deinem Browser.</p></noscript>
 <template id="hilfe-text">
-  <p>Wähle je Format eines Moduls (Vorlesung, Übung, Tutorium …) eine Termingruppe. Die Module stehen am Rechner links, am Handy oben, darunter je ihre Formate mit der Zahl der Gruppen: umrandet heißt noch offen, gefüllt mit Haken heißt gewählt.</p>
-  <p>Tippe auf ein Modul, und der Stundenplan zeigt alle seine Gruppen. Tippe auf ein Format darin, und er zeigt nur dessen Gruppen. Nochmals tippen oder „Filter aufheben“ führt zurück. Ohne Filter zeigt er alles, was noch offen ist; was du gewählt hast, bleibt immer sichtbar.</p>
+  <p>Wähle je Format eines Moduls (Vorlesung, Übung, Tutorium …) eine Termingruppe. Die Module stehen am Rechner links, am Handy oben, darunter je ihre Formate mit der Zahl der Gruppen: umrandet heißt noch offen, gestrichelt ein Vorschlag, gefüllt mit Haken eingeplant.</p>
+  <p>Ohne Filter zeigt der Plan „Mein Stundenplan“: was du eingeplant hast, und gestrichelt die Vorschläge, Formate mit nur einer Gruppe. Ein Vorschlag zählt erst, wenn du ihn einplanst. Tippe auf ein Modul, und der Plan zeigt alle seine Gruppen, dein übriger Plan bleibt durchscheinend dahinter. Tippe auf ein Format darin, und er zeigt nur dessen Gruppen. Nochmals tippen oder „Filter aufheben“ führt zurück.</p>
   <p>Tippe auf eine Gruppe: Ihre Karte zeigt Zeit, Raum, alle Termine und ob sie sich mit deiner Auswahl überschneidet. Dort planst du sie ein, wechselst oder löst sie; auf breiten Kacheln am Rechner geht das auch direkt. Gewählt wird immer die ganze Termingruppe, auch wenn sie an mehreren Wochentagen liegt.</p>
   <p>„Tag“ zeigt einen Wochentag groß, „Woche“ die ganze Woche. „Alle Wochen“ legt alle Termine des Semesters übereinander; wähle eine Woche, um nur ihre tatsächlichen Termine zu sehen. Eine A/B-Ansicht erscheint, sobald die Quelle einen 14-tägigen Rhythmus zeigt. Überschneidungen prüft die Seite gegen jeden einzelnen Termin des Semesters.</p>
   <p>Deine Auswahl bleibt in diesem Browser. Es gibt kein Konto, und sie liegt auf keinem Server. Gespeichert wird erst, wenn du eine Gruppe wählst, und nur, welche Gruppe du je Format gewählt hast. „Auswahl zurücksetzen“ löscht sie. Ändern sich Zeit oder Raum einer gewählten Gruppe, sagt es die Seite, bis du die Änderung als geprüft markierst.</p>
@@ -92,6 +103,9 @@
   <symbol id="i-woche" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path class="voll" d="M4.5 4.5h5v5h-5zM14.5 4.5h5v5h-5zM9.5 9.5h5v5h-5zM4.5 14.5h5v5h-5zM14.5 14.5h5v5h-5z"/></symbol>
   <symbol id="i-kalender" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
   <symbol id="i-teilen" viewBox="0 0 24 24"><path d="M12 3.5v11M8 7.5l4-4 4 4M5.5 12v6.5a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6.5v11M6.5 12h11"/></symbol>
+  <symbol id="i-kopieren" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-lesezeichen" viewBox="0 0 24 24"><path d="M7 4.5h10a1 1 0 0 1 1 1v14l-6-4-6 4v-14a1 1 0 0 1 1-1z"/></symbol>
   <symbol id="i-extern" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10M19.5 4.5L11 13M17.5 14v4.5a1.5 1.5 0 0 1-1.5 1.5H6a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 6 7h4.5"/></symbol>
 </svg>
 </body>

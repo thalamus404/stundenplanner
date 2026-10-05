@@ -62,12 +62,18 @@ test('Dichteste Stelle des Plans und die Breite, ab der die Woche passt', () => 
   assert.ok(R.wochenBreite(6, 6) > 768);
 });
 
-test('Sichtbar ohne Filter („Noch offen“): Formate ohne Wahl möglich, Gewähltes bleibt sichtbar', () => {
-  const b = geladen({ '10001:100': { group: '11', digest: '', name: '' } });
-  const s = R.sichtbar(b.groups, {});
-  assert.deepEqual(s.filter((x) => x.art === 'gewaehlt').map((x) => x.g.key), ['10001:100:11']);
-  assert.equal(s.filter((x) => x.art === 'moeglich').length, 6);
-  assert.equal(s.filter((x) => x.art === 'kontext').length, 0);
+test('Sichtbar ohne Filter („Mein Stundenplan“, V-0237): nur Eingeplantes und Vorschläge', () => {
+  let b = geladen({ '10001:200': { group: '21', digest: '', name: '' } });
+  assert.deepEqual(R.sichtbar(b.groups, {}).map((x) => [x.g.key, x.art]), [['10001:100:11', 'vorschlag'], ['10001:200:21', 'gewaehlt']]);
+  b = geladen({ '10001:100': { group: '11', digest: '', name: '' } });
+  assert.deepEqual(R.sichtbar(b.groups, {}).map((x) => [x.g.key, x.art]), [['10001:100:11', 'gewaehlt']]);
+});
+
+test('Sichtbar mit Filter: Mein Stundenplan außerhalb (auch Vorschläge) wird Kontext, ein Vorschlag im Filter bleibt Vorschlag', () => {
+  const b = geladen({ '10002:500': { group: '51', digest: '', name: '' } });
+  assert.deepEqual(R.sichtbar(b.groups, { modul: '10002', teil: '10002:500' }).map((x) => [x.g.key, x.art]), [
+    ['10001:100:11', 'kontext'], ['10002:500:51', 'gewaehlt'], ['10002:500:52', 'moeglich'], ['10002:500:53', 'moeglich']]);
+  assert.equal(R.sichtbar(b.groups, { modul: '10001' }).find((x) => x.g.key === '10001:100:11').art, 'vorschlag');
 });
 
 test('Sichtbar mit Filter: ein Format zeigt alle seine Gruppen, Gewähltes außerhalb ist Kontext', () => {
@@ -83,7 +89,7 @@ test('Sichtbar mit Modulfilter: ALLE Gruppen des Moduls, auch die eines schon ge
   assert.deepEqual(m.map((x) => [x.g.key, x.art]), [
     ['10001:100:11', 'gewaehlt'], ['10001:200:21', 'moeglich'], ['10001:200:22', 'moeglich'], ['10001:200:23', 'moeglich'],
     ['10002:500:51', 'kontext']]);
-  // Ohne Filter verschwinden die übrigen Gruppen eines gewählten Formats („Noch offen“).
+  // Ohne Filter steht nur Mein Stundenplan: vom Format nur die gewählte Gruppe.
   assert.equal(R.sichtbar(b.groups, {}).filter((x) => x.g.component_id === '10002:500').length, 1);
 });
 
@@ -143,4 +149,16 @@ test('Gruppennummer, Typ ausgeschrieben, Rhythmus nur wenn nicht wöchentlich', 
 test('Tagansicht: heute zuerst, am Wochenende Montag', () => {
   assert.equal(R.startTag(new Date('2026-10-14T12:00:00')), 2);   // Mittwoch
   assert.equal(R.startTag(new Date('2026-10-17T12:00:00')), 0);   // Samstag
+});
+
+test('Ein offenes Angebot (`gruppen: keine`, V-0234) steht nicht unter „Noch offen“, aber mit Filter', () => {
+  const p = plan();
+  for (const c of p.modules[0].components) if (c.id === '10001:200') c.gruppen = 'keine';
+  const b = A.bestand(p);
+  A.auswerten(p, b, {});
+  assert.ok(!R.sichtbar(b.groups, {}).some((e) => e.g.component_id === '10001:200'));
+  assert.ok(R.sichtbar(b.groups, { modul: '10001' }).some((e) => e.g.component_id === '10001:200' && e.art === 'moeglich'));
+  const moeglich = R.sichtbar(b.groups, { modul: '10001', teil: '10001:200' }).filter((e) => e.art === 'moeglich');
+  assert.equal(moeglich.length, 3);
+  assert.ok(moeglich.every((e) => e.g.component_id === '10001:200'));
 });

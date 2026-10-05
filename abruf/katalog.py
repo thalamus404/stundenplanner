@@ -41,6 +41,12 @@ Regeln, an denen etwas hängt:
 - **Wahlpflicht** (V-0227): Ein Plan nennt Bereiche einer Modulliste (`katalog/modullisten/`,
   erzeugt von modulliste.py), keine Module. Welche Module dazugehören, löst `lesen()` auf
   (`wahlpflicht[].kandidaten`). Eine Vertiefung erbt nur die Pflichtmodule des Grundplans.
+- **Formate** (`katalog/formate.json`, V-0238): je Lehrveranstaltungsformat ein Kürzel mit Langname,
+  einer von drei Kategorien (`vorlesung`, `uebung`, `sonstige`; die Seite macht daraus die
+  Sättigung) und den Namen, unter denen die Quellen es schreiben (MOSES: Art „SEM“, CSV „Seminar“;
+  AGNES: „SE“). `format_von()` löst einen Bestandteil auf; was dort nicht steht, ist `sonstige`
+  mit `unbekannt`, und bauen.py meldet es. Ein Name, der zu zwei Formaten passt, ist ein
+  Katalogfehler: Sonst entschiede die Reihenfolge der Datei, wie ein Termin aussieht.
 """
 from __future__ import annotations
 
@@ -57,6 +63,12 @@ SICHTBAR = ('live', 'vorschau')
 GRUPPEN = ('eine', 'alle', 'keine', 'unklar')  # wie plan.GRUPPEN
 BESTANDTEIL = re.compile(r'[A-Za-z0-9][A-Za-z0-9-]{0,39}:[A-Za-z0-9-]+')
 ABRUF = ('erlaubt', 'gesperrt')
+# Die drei Kategorien der Formate (Silas, 05.10.2026: Sättigung 100, 70 und 50 %). Sie sind der Vertrag
+# mit der Seite, deshalb stehen sie hier und nicht nur in der Datei. `sonstige` fängt alles Unbekannte.
+KATEGORIEN = ('vorlesung', 'uebung', 'sonstige')
+# Ein Kürzel ist, was die Seite als Chip zeigt: kurz, ohne Leerzeichen. Die Quellen schreiben auch
+# „P-PR“, „VL/UE“ und „Kolloquium-F“; Langnamen mit Leerzeichen gehören nach `namen`.
+FORMAT_KUERZEL = re.compile(r'[A-Za-zÄÖÜäöü][A-Za-zÄÖÜäöü0-9/-]{0,19}')
 # Die Felder einer Ordnung, die ins Lesemodell gehen (docs/ARCHITEKTUR.md §5), in dieser Reihenfolge.
 ORDNUNG_FELDER = ('id', 'label', 'name', 'fundstelle', 'url', 'gilt_ab', 'gilt_bis', 'studienbeginn', 'fuer_wen')
 
@@ -251,6 +263,78 @@ def bestandteile_im_semester(kat, sid):
             for b in kat['bestandteile'] if b['semester'] is None or sid in b['semester']}
 
 
+def _name(text):
+    # Verglichen wird ohne Groß- und Kleinschreibung und mit einfachen Leerzeichen: MOSES schreibt
+    # „Integrierte Veranstaltung“, ein anderes System vielleicht „integrierte  Veranstaltung“.
+    return ' '.join(str(text).split()).casefold()
+
+
+def _formate(ordner):
+    """Die Formate aus `katalog/formate.json`: `{'formate': {kuerzel: eintrag}, 'namen': {name: kuerzel}}`.
+    Fehlt die Datei, gibt es keine: Jedes Format ist dann unbekannt und zählt als `sonstige`."""
+    pfad = ordner / 'formate.json'
+    if not pfad.exists():
+        return {'formate': {}, 'namen': {}}
+    roh = _lies(pfad)
+    kat = roh.get('kategorien')
+    if kat is not None and (not isinstance(kat, dict) or set(kat) != set(KATEGORIEN)):
+        raise KatalogFehler(f'formate.json: „kategorien“ nennt genau {", ".join(KATEGORIEN)}')
+    eintraege = roh.get('formate')
+    if not isinstance(eintraege, dict) or not eintraege:
+        raise KatalogFehler('formate.json: „formate“ fehlt oder ist leer')
+    formate, namen = {}, {}
+    for kuerzel, f in eintraege.items():
+        w = f'formate.json, {kuerzel}'
+        if not FORMAT_KUERZEL.fullmatch(kuerzel):
+            raise KatalogFehler(f'{w}: kein Kürzel (ein Wort, höchstens 20 Zeichen)')
+        if not isinstance(f, dict):
+            raise KatalogFehler(f'{w}: kein Objekt')
+        for feld in ('lang', 'quelle', 'grund'):
+            _text(f, feld, w)
+        _text(f, 'vermutung', w, pflicht=False)
+        _wahl(f, 'kategorie', KATEGORIEN, None, w)
+        hs = f.get('hochschulen')
+        if not isinstance(hs, list) or not hs:
+            raise KatalogFehler(f'{w}: „hochschulen“ ist eine nicht leere Liste')
+        for h in hs:
+            _kennung(h, w, 'hochschulen')
+        andere = f.get('namen', [])
+        if not isinstance(andere, list) or not all(isinstance(n, str) and n.strip() for n in andere):
+            raise KatalogFehler(f'{w}: „namen“ ist eine Liste von Texten')
+        if not isinstance(f.get('kuerzel_eigen', False), bool):
+            raise KatalogFehler(f'{w}: „kuerzel_eigen“ ist true oder false')
+        for n in {_name(x) for x in [kuerzel, f['lang'], *andere]}:
+            if n in namen:
+                raise KatalogFehler(f'{w}: „{n}“ gehört schon zu {namen[n]}')
+            namen[n] = kuerzel
+        formate[kuerzel] = {'kuerzel': kuerzel, 'lang': f['lang'], 'kategorie': f['kategorie']}
+    return {'formate': formate, 'namen': namen}
+
+
+def format_von(formate, typ, buchungsformate=()):
+    """Das Format eines Bestandteils fürs Lesemodell: `{kuerzel, lang, kategorie}`.
+
+    `typ` ist die Art des Bestandteils im Rohstand (MOSES: Spalte „Art“, AGNES: Kurzform aus
+    lsf.ARTEN), `buchungsformate` die `format`-Angaben seiner Buchungen (MOSES-CSV
+    „Veranstaltungsformat“). Erst zählt die Art; kennt der Katalog sie nicht, die Buchungen, wenn sie
+    alle dasselbe bekannte Format nennen. Sonst ist das Format unbekannt: Kürzel und Langname, wie
+    die Quelle sie schreibt, Kategorie `sonstige` und `unbekannt: true`. So erscheint ein neues
+    Format nicht stumm als Vorlesung, und bauen.py kann es melden."""
+    formate = formate or {'formate': {}, 'namen': {}}
+    buchungen = sorted({str(b).strip() for b in buchungsformate if b and str(b).strip()})
+    kandidaten = [typ] if typ else []
+    treffer = {formate['namen'].get(_name(b)) for b in buchungen}
+    if len(treffer) == 1 and None not in treffer:
+        kandidaten.append(buchungen[0])
+    for k in kandidaten:
+        kuerzel = formate['namen'].get(_name(k))
+        if kuerzel:
+            return dict(formate['formate'][kuerzel])
+    return {'kuerzel': typ or (buchungen[0] if len(buchungen) == 1 else None),
+            'lang': buchungen[0] if len(buchungen) == 1 else (typ or None),
+            'kategorie': 'sonstige', 'unbekannt': True}
+
+
 def plan_id(g, o, v, sem, fs):
     """Die Kennung eines Plans, eindeutig über alle fünf Stufen und stabil (Schlüssel im Browser)."""
     return ':'.join([g] + ([o] if o else []) + [sem, f'fs{fs}'] + ([v] if v else []))
@@ -262,8 +346,8 @@ def plan_datei(g, o, v, sem, fs):
 
 
 def lesen(ordner):
-    """Liest und prüft den Katalog. Gibt ein dict mit `hochschulen`, `semester`, `studiengaenge` und
-    `plaene` zurück; jeder Plan ist aufgelöst (Erbe, Sichtbarkeit) und sortiert nach Studiengang,
+    """Liest und prüft den Katalog. Gibt ein dict mit `hochschulen`, `semester`, `studiengaenge`,
+    `plaene`, `bestandteile` und `formate` zurück; jeder Plan ist aufgelöst (Erbe, Sichtbarkeit) und sortiert nach Studiengang,
     Semesterbeginn, Fachsemester, Ordnung und Vertiefung (in der Reihenfolge des Katalogs)."""
     ordner = Path(ordner)
     hochschulen = _hochschulen(ordner)
@@ -349,7 +433,7 @@ def lesen(ordner):
                 ro.get((p['ordnung'] or {}).get('id'), -1), rv.get((p['vertiefung'] or {}).get('id'), -1))
     plaene.sort(key=ordnung_der_plaene)
     return {'hochschulen': hochschulen, 'semester': semester, 'studiengaenge': studiengaenge, 'plaene': plaene,
-            'bestandteile': _bestandteile(ordner, semester)}
+            'bestandteile': _bestandteile(ordner, semester), 'formate': _formate(ordner)}
 
 
 def sichtbar(plan, mit_vorschau):
