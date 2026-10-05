@@ -61,6 +61,9 @@
     Unterlänge), am Handy links (18 px), im Startbildschirm oben mittig (34 px, am Handy 28). In Tinte.
     Sora steht unter der SIL Open Font License 1.1; die Seite selbst bleibt bei der Systemschrift (§5.7)
     und lädt keine.
+    **Favicon und App-Symbol** (V-0254, Entwurf 2 von fünf, Silas: „das ist das beste Favicon“): „sp“, „s“ schwer und
+    „p“ leicht wie im Schriftzug, genau mittig auf einer Kachel; hell Tinte auf `#f7f8fb`, dunkel hell auf tiefem
+    Schwarz `#000`.
 
 ---
 
@@ -1255,6 +1258,8 @@ machen.“
 53. **Vorschau vor Kalender und Speichern** (Punkt 37e78bfb, gebaut in V-0253): der fertige Plan als Bild,
     drei Viertel des Fensters, Hintergrund gedimmt, darunter „In eigenen Kalender exportieren“ bzw. der Link
     (§4.2, Schritte 10 und 11).
+54. **Favicon „Schwer und leicht“** (Punkt 8376683f, gebaut in V-0254): „sp“ mittig, dunkel auf tiefem Schwarz
+    (§0 Punkt 10). Aus fünf Entwürfen gewählt.
 
 ---
 
