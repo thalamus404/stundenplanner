@@ -213,6 +213,8 @@ def aus_design(pfad: Path | None = None) -> tuple[list, dict, list]:
 
 STRESS_PFLICHT = {(1280, 720), (1280, 800), (1440, 900), (1920, 1080), (2560, 1440), (390, 844)}  # §8 #2
 ZOOM_FENSTER = ((1280, 800), (1920, 1080))       # §8 #14
+HANDY_BIS_UNTER = 768                            # §3.3: darunter das Handy-Layout (die Seite scrollt)
+FUSS_PFLICHT = ('inoffiziell', 'impressum', 'datenschutz', 'speicher')   # am Handy am Seitenende
 
 # §5.5: Paar, Vordergrund, Hintergrund, Ziel. „mN“ steht für alle acht Modulfarben (kleinster Wert).
 KONTRAST_PAARE = [
@@ -391,8 +393,32 @@ const malt = (e) => {
   const s = cs(e), c = farbe(s.backgroundColor);
   return (c && c[3] > 0.1) || s.backgroundImage !== 'none';
 };
+// Der Schatten einer schwebenden Fläche (fest positioniert, mit box-shadow) deckt, was unter ihm
+// liegt, wie die Fläche selbst: Der Grund dort ist ein Verlauf, kein Grund für Kontrast (gesehen am
+// schwebenden Umschalter am Handy, V-0225: Kachelschrift unter seinem Schatten hieß „unbestimmt“).
+let _schatten = null;
+const schattenZonen = () => {
+  if (_schatten) return _schatten;
+  _schatten = [];
+  for (const e of document.querySelectorAll('body *')) {
+    const s = cs(e);
+    if (s.position !== 'fixed' || s.boxShadow === 'none' || !vis(e)) continue;
+    const r = e.getBoundingClientRect();
+    let l = 0, t = 0, rr = 0, b = 0;
+    for (const m of s.boxShadow.matchAll(/(-?[\d.]+)px\s+(-?[\d.]+)px\s+([\d.]+)px(?:\s+(-?[\d.]+)px)?/g)) {
+      const x = +m[1], y = +m[2], weite = +m[3] + (+m[4] || 0);
+      l = Math.max(l, weite - x); rr = Math.max(rr, weite + x); t = Math.max(t, weite - y); b = Math.max(b, weite + y);
+    }
+    _schatten.push({ e, l: r.left - l, t: r.top - t, r: r.right + rr, b: r.bottom + b });
+  }
+  return _schatten;
+};
 const verdecktAn = (el, x, y) => {
   if (x < 0 || y < 0 || x >= W || y >= H) return true;
+  for (const z of schattenZonen()) {
+    if (z.e === el || z.e.contains(el) || el.contains(z.e)) continue;
+    if (x >= z.l && x <= z.r && y >= z.t && y <= z.b) return true;
+  }
   for (const e of document.elementsFromPoint(x, y)) {
     if (e === el || el.contains(e) || e.contains(el)) return false;
     if (!vis(e)) continue;
@@ -429,6 +455,34 @@ const oklch = (c) => {
   const Bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
   let h = Math.atan2(Bb, A) * 180 / Math.PI; if (h < 0) h += 360;
   return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, Math.hypot(A, Bb), h];
+};
+// Haken: Chips, Kacheln, Stundenmarken, Tage (Markup, siehe oben), mit Lage und ob ganz und frei.
+const haken = (sel) => [...document.querySelectorAll(sel)].filter(vis).map((el) => {
+  const roh = box(el.getBoundingClientRect());
+  const sicht = schnitt(roh, kinderClip(el.parentElement));
+  return { name: name(el), tag: el.dataset.tag ?? null, start: el.dataset.start ?? null, ende: el.dataset.ende ?? null,
+    text: kurz(el.textContent, 12), l: roh.l, t: roh.t, b: roh.r - roh.l, h: roh.b - roh.t,
+    ganz: !!sicht && ganz(roh) && flaeche(sicht) >= 0.98 * flaeche(roh), frei: !!sicht && !verdeckt(el, sicht) };
+}).filter((x) => x.b > 0 && x.h > 0);
+// Was immer zu sehen sein muss (§3.3): je Eintrag das erste passende Element, ganz im Fenster und frei.
+const pflichtMessen = (liste, texte) => {
+  const kandidaten = [];
+  for (const t of texte) kandidaten.push([t.el, (t.el.textContent || '').toLowerCase()]);
+  for (const el of document.querySelectorAll('[aria-label], [title]')) kandidaten.push([el, ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '')).toLowerCase()]);
+  const pflicht = {};
+  for (const nd of liste) {
+    let bestes = null;
+    for (let [el, t] of kandidaten) {
+      if (!nd.texte.some((x) => t.includes(x))) continue;
+      if (nd.bedien) { el = el.closest('a[href], button, [role=button], [role=link]'); if (!el) continue; }
+      if (!vis(el)) continue;
+      const r = box(el.getBoundingClientRect()), c = schnitt(r, kinderClip(el.parentElement));
+      if (c && ganz(r) && !verdeckt(el, c)) { bestes = { ok: true, el: name(el) }; break; }
+      if (!bestes) bestes = { ok: false, el: name(el), wo: [Math.round(r.l), Math.round(r.t)] };
+    }
+    pflicht[nd.id] = bestes || { ok: false, fehlt: true };
+  }
+  return pflicht;
 };
 // Alle sichtbaren Texte mit ihren Zeilenboxen (beschnitten durch die Vorfahren).
 const texteSammeln = () => {
@@ -520,7 +574,12 @@ const texte = texteSammeln();
 const alle = [...body.querySelectorAll('*')];
 
 // Außerhalb, innen scrollend, abgeschnitten, AI tells — ein Durchgang über alle Elemente.
-let aussen = 0; const aussenBsp = [];
+let aussen = 0; const aussenBsp = []; let aussenX = 0; const aussenXBsp = [];
+// §5.6: Abstände (Innenabstand, Außenabstand bis 64 px, Lücken in Flex und Grid) in Stufen der
+// 4-px-Einheit, dazu 2 px. Größere Außenabstände sind „auto“ (zentriert, nach rechts geschoben), das
+// berechnete Maß ist dann der freie Platz, kein gewählter Abstand. Kacheln und Dialoge zählen nicht.
+const abstand = []; const abstandSchon = new Set();
+const imRaster = (v) => { const a = Math.abs(v); return a < 0.01 || Math.abs(a - 2) < 0.01 || Math.abs(a / 4 - Math.round(a / 4)) < 0.01; };
 const innen = []; const abgeschnitten = [];
 const tells = []; const tellSchon = new Set();
 const tell = (art, el, mehr) => { const k = art + '|' + (el ? name(el) : ''); if (tellSchon.has(k)) return; tellSchon.add(k); tells.push({ art, el: el ? name(el) : '', mehr: mehr || '' }); };
@@ -553,6 +612,22 @@ for (const el of alle) {
     if (sicht.l < -0.5 || sicht.t < -0.5 || sicht.r > W + 0.5 || sicht.b > H + 0.5) {
       aussen++;
       if (aussenBsp.length < 6) aussenBsp.push(name(el) + ' bei ' + Math.round(sicht.l) + ',' + Math.round(sicht.t));
+    }
+    if (sicht.l < -0.5 || sicht.r > W + 0.5) {
+      aussenX++;
+      if (aussenXBsp.length < 6) aussenXBsp.push(name(el) + ' bei ' + Math.round(sicht.l) + ',' + Math.round(sicht.t));
+    }
+  }
+  if (!el.closest('[data-sicht="kachel"], ' + DIALOG)) {
+    const props = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
+    for (const k of ['marginTop', 'marginRight', 'marginBottom', 'marginLeft']) if (Math.abs(parseFloat(s[k]) || 0) <= 64) props.push(k);
+    if (/flex|grid/.test(s.display)) props.push('rowGap', 'columnGap');
+    for (const k of props) {
+      const v = parseFloat(s[k]);
+      if (!Number.isNaN(v) && !imRaster(v)) {
+        const sch = name(el).split(' ')[0] + k;
+        if (!abstandSchon.has(sch)) { abstandSchon.add(sch); abstand.push(name(el) + ' ' + k + ' ' + Math.round(v * 100) / 100 + ' px'); }
+      }
     }
   }
   // innen scrollend (außer in Dialogen, Karten, Blättern)
@@ -644,37 +719,14 @@ for (const el of document.querySelectorAll(BEDIEN)) {
   ziele.push({ name: name(el), b: r.r - r.l, h: r.b - r.t, link: el.matches('a[href], [role=link]'), gesperrt: gesperrt(el), dialog: !!el.closest(DIALOG) });
 }
 
-// Haken
-const haken = (sel) => [...document.querySelectorAll(sel)].filter(vis).map((el) => {
-  const roh = box(el.getBoundingClientRect());
-  const sicht = schnitt(roh, kinderClip(el.parentElement));
-  return { name: name(el), tag: el.dataset.tag ?? null, start: el.dataset.start ?? null, ende: el.dataset.ende ?? null,
-    text: kurz(el.textContent, 12), l: roh.l, t: roh.t, b: roh.r - roh.l, h: roh.b - roh.t,
-    ganz: !!sicht && ganz(roh) && flaeche(sicht) >= 0.98 * flaeche(roh), frei: !!sicht && !verdeckt(el, sicht) };
-}).filter((x) => x.b > 0 && x.h > 0);
 const zonen = {};
 for (const z of ['kopf', 'module', 'werkzeug', 'raster', 'fuss']) {
   const el = [...document.querySelectorAll('[data-sicht="' + z + '"]')].find(vis);
   if (el) { const r = box(el.getBoundingClientRect()); zonen[z] = { t: r.t, h: r.b - r.t, ganz: ganz(r) }; }
 }
 
-// Pflicht ohne Scrollen (§3.3)
-const kandidaten = [];
-for (const t of texte) kandidaten.push([t.el, (t.el.textContent || '').toLowerCase()]);
-for (const el of document.querySelectorAll('[aria-label], [title]')) kandidaten.push([el, ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '')).toLowerCase()]);
-const pflicht = {};
-for (const nd of opt.pflicht) {
-  let bestes = null;
-  for (let [el, t] of kandidaten) {
-    if (!nd.texte.some((x) => t.includes(x))) continue;
-    if (nd.bedien) { el = el.closest('a[href], button, [role=button], [role=link]'); if (!el) continue; }
-    if (!vis(el)) continue;
-    const r = box(el.getBoundingClientRect()), c = schnitt(r, kinderClip(el.parentElement));
-    if (c && ganz(r) && !verdeckt(el, c)) { bestes = { ok: true, el: name(el) }; break; }
-    if (!bestes) bestes = { ok: false, el: name(el), wo: [Math.round(r.l), Math.round(r.t)] };
-  }
-  pflicht[nd.id] = bestes || { ok: false, fehlt: true };
-}
+// Pflicht ohne Scrollen (§3.3; am Handy der Teil im Kopf, der Fuß kommt aus ENDE_JS)
+const pflicht = pflichtMessen(opt.pflicht, texte);
 
 const tok = {};
 for (const n of opt.tokens) { const v = getComputedStyle(de).getPropertyValue(n).trim(); tok[n] = v ? farbe(v) : null; }
@@ -683,7 +735,7 @@ zeigbar(false);
 return {
   W, H, seite: { h: seite.scrollHeight, b: seite.scrollWidth }, scroll: [scrollX, scrollY],
   coarse: matchMedia('(pointer: coarse)').matches, dunkel: matchMedia('(prefers-color-scheme: dark)').matches,
-  aussen, aussenBsp, innen, abgeschnitten, tells, statisch, ziele,
+  aussen, aussenBsp, aussenX, aussenXBsp, abstand, innen, abgeschnitten, tells, statisch, ziele,
   texte: texte.map(({ el, ...x }) => x),
   chips: haken('[data-sicht="chip"]'), kacheln: haken('[data-sicht="kachel"]'),
   stunden: haken('[data-sicht="stunde"]'), tage: haken('[data-sicht="tag"]'), zonen,
@@ -692,6 +744,45 @@ return {
   dom: document.getElementsByTagName('*').length,
   log: log ? { schreiben: log.schreiben, resize: log.resize, ro: log.ro, mm: log.mm, letzte: log.letzte, ersteKachel: log.ersteKachel } : null,
 };
+}"""
+
+# Am Handy (Silas' Test, V-0225): Die Seite darf senkrecht scrollen, aber das Raster samt Umschalter
+# muss auf EINEN Schirm passen. Gemessen wird an der Stelle, an der das Raster 8 px unter dem oberen
+# Rand steht: Dort muss jede Kachel und jede Stundenmarke ganz und frei (nicht unter dem schwebenden
+# Umschalter) zu sehen sein, und der Umschalter ganz im Fenster.
+SCHIRM_JS = "() => {\n" + HELFER_JS + r"""
+const r = [...document.querySelectorAll('[data-sicht="raster"]')].find(vis);
+if (!r) return null;
+window.scrollTo(0, Math.max(0, r.getBoundingClientRect().top + scrollY - 8));
+const rb = box(r.getBoundingClientRect());
+const sw = [...document.querySelectorAll('[data-sicht="umschalter"]')].find(vis);
+const sb = sw ? box(sw.getBoundingClientRect()) : null;
+const mod = [...document.querySelectorAll('[data-sicht="module"]')].find(vis);
+zeigbar(true);
+const out = { W, H, raster: rb, schalter: sb, schalterGanz: !!sb && ganz(sb), modulUnten: mod ? mod.getBoundingClientRect().bottom : null,
+  breit: (document.scrollingElement || de).scrollWidth, kacheln: haken('[data-sicht="kachel"]'),
+  stunden: haken('[data-sicht="stunde"]'), tage: haken('[data-sicht="tag"]'), weitere: /\+\s*\d+\s*weitere/i.test(body.innerText) };
+zeigbar(false);
+return out;
+}"""
+
+# Die Texte an der Stelle, an der die Seite gerade steht (für den Kontrast am Handy, siehe _kontrast).
+TEXTE_JS = "() => {\n" + HELFER_JS + r"""
+zeigbar(true);
+const t = texteSammeln();
+zeigbar(false);
+return { W, H, scroll: [scrollX, scrollY], seite: { h: (document.scrollingElement || de).scrollHeight, b: (document.scrollingElement || de).scrollWidth },
+  texte: t.map(({ el, ...x }) => x) };
+}"""
+
+# Am Handy steht der Fuß (inoffiziell, Speicherhinweis, Impressum, Datenschutz) am Seitenende: dort,
+# ganz unten, muss er ganz zu sehen sein, nicht unter dem schwebenden Umschalter.
+ENDE_JS = "(opt) => {\n" + HELFER_JS + r"""
+window.scrollTo(0, (document.scrollingElement || de).scrollHeight);
+zeigbar(true);
+const p = pflichtMessen(opt.pflicht, texteSammeln());
+zeigbar(false);
+return p;
 }"""
 
 # Schrift unsichtbar machen, ohne currentColor (Ränder, SVG) zu ändern: -webkit-text-fill-color.
@@ -1149,17 +1240,23 @@ def kuerzen(url: str) -> str:
     return (p.path or '/') if p.scheme in ('http', 'https') and p.hostname in ('127.0.0.1', 'localhost') else url[:120]
 
 
-def _kontrast(page, mess, zoom_ok=True):
-    """Fotografiert die Seite ohne Schrift und misst jeden Text gegen die Pixel dahinter."""
+def _kontrast(page, mess, zoom_ok=True, voll=None):
+    """Fotografiert die Seite ohne Schrift und misst jeden Text gegen die Pixel dahinter.
+
+    voll=False fotografiert nur das Fenster, an der Stelle, an der die Seite steht. So misst der
+    Handy-Lauf (V-0225): Das Ganzseitenfoto legt die Seite mit der vollen Höhe als Fenster neu an, und
+    alles, was sich nach der Fensterhöhe richtet (100svh, die Bühne), steht im Foto woanders als beim
+    Messen der Texte (gesehen: „Statistik I“ gegen den Rand einer verschobenen Kachel, 4,30:1)."""
     W, H = mess['W'], mess['H']
-    voll = mess['seite']['h'] > H or mess['seite']['b'] > W
+    if voll is None:
+        voll = mess['seite']['h'] > H or mess['seite']['b'] > W
     page.evaluate(VERSTECKEN_JS, True)
     try:
         png = page.screenshot(full_page=voll, scale='css', animations='disabled', caret='hide')
     finally:
         page.evaluate(VERSTECKEN_JS, False)
     gw, gh = (mess['seite']['b'], mess['seite']['h']) if voll else (W, H)
-    sx, sy = mess['scroll']
+    sx, sy = mess['scroll'] if voll else (0, 0)
     items, zu = [], []
     for t in mess['texte']:
         rects = []
@@ -1231,15 +1328,52 @@ def lauf(spec: dict) -> dict:
         mess = page.evaluate(MESSEN_JS, {'pflicht': PFLICHT, 'tokens': token_namen()})
         mess['ruhig'] = ruhig
         mess['dauer_s'] = round(time.monotonic() - t0, 2)
-        mess['kontrast'] = _kontrast(page, mess)
+        handy = spec['fenster'][0] < HANDY_BIS_UNTER
+        mess['kontrast'] = _kontrast(page, mess, voll=False if handy else None)
         mess['fehler'] = list(ereignis['fehler'])
         mess['fremd'] = sorted({a['url'][:120] for a in ereignis['anfragen']
                                 if not a['url'].startswith(('data:', 'blob:', eigen))})
         if spec.get('bilder'):
             page.screenshot(path=spec['bilder'], scale='css', animations='disabled', caret='hide')
+        if spec['fenster'][0] < HANDY_BIS_UNTER:
+            handy_messen(page, spec, mess)
         return mess
     finally:
         ctx.close()
+
+
+def handy_messen(page, spec, mess):
+    """Am Handy (V-0225): Raster samt Umschalter auf einem Schirm, im Tag und in der Woche; der Fuß
+    am Seitenende. Die Woche öffnet der Knopf „Woche“ im Umschalter (data-sicht="umschalter")."""
+    def bild(zusatz):
+        if spec.get('bilder'):
+            page.screenshot(path=spec['bilder'].replace('.png', f'-{zusatz}.png'), scale='css', animations='disabled', caret='hide')
+    mess['schirm'] = page.evaluate(SCHIRM_JS)
+    kontrast_dazu(page, mess)
+    bild('tag')
+    mess['woche'] = None
+    knopf = page.locator('[data-sicht="umschalter"]').get_by_role('button', name='Woche', exact=True)
+    if knopf.count():
+        knopf.first.click(timeout=3000)
+        page.wait_for_timeout(150)
+        page.evaluate('() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))')
+        mess['woche'] = page.evaluate(SCHIRM_JS)
+        kontrast_dazu(page, mess)
+        bild('woche')
+    mess['ende'] = page.evaluate(ENDE_JS, {'pflicht': PFLICHT})
+    kontrast_dazu(page, mess)
+
+
+def kontrast_dazu(page, mess):
+    """Am Handy: Kontrast auch dort, wohin gescrollt wurde (Raster, Woche, Fuß), Fenster für Fenster."""
+    k = _kontrast(page, page.evaluate(TEXTE_JS), voll=False)
+    a = mess['kontrast']
+    werte = [x for x in (a['min'], k['min']) if x is not None]
+    mess['kontrast'] = {
+        'gemessen': a['gemessen'] + k['gemessen'], 'min': min(werte) if werte else None,
+        'fehler': a['fehler'] + k['fehler'], 'unbestimmt': a['unbestimmt'] + k['unbestimmt'],
+        'gesperrt': a['gesperrt'] + k['gesperrt'], 'ungemessen': k['ungemessen'],
+        'verdeckt': a['verdeckt'] + k['verdeckt'], 'verdeckt_bsp': (a['verdeckt_bsp'] + k['verdeckt_bsp'])[:5]}
 
 
 def lauf_leistung(spec: dict) -> dict:
@@ -1448,7 +1582,8 @@ def ausfuehren(aufgabe):
 # ---------------------------------------------------------------------------------------------
 
 PRUEFUNGEN = {
-    '1': ('§8 #1', 'Kein Scrollen der Standardansicht (leere, halbe, volle Auswahl)'),
+    '1': ('§8 #1', 'Kein Scrollen der Standardansicht (leere, halbe, volle Auswahl); am Handy nur nicht seitlich'),
+    '1h': ('§8 #1', 'Handy: Tag und Woche samt Umschalter auf einem Schirm unterhalb der Module'),
     '1a': ('§8 #1', 'Nichts ragt aus dem Fenster, nichts scrollt innen, nichts abgeschnitten'),
     '2': ('§8 #2', 'Stressfall: ohne Scrollen ab 1280 × 720 und bei 390 × 844, sonst nichts abgeschnitten'),
     '3': ('§8 #3', 'Alle Bestandteile (Chips) ganz im Fenster'),
@@ -1468,7 +1603,8 @@ PRUEFUNGEN = {
     '15': ('§8 #15', 'AI tells (messbarer Teil von §7)'),
     '16': ('§8 #16', 'Ohne Speicher: Seite geht, Hinweis sichtbar'),
     '17': ('§8 #17', 'Speicherregeln: Laden schreibt nichts, Wahl schreibt nur group/digest/name'),
-    '33': ('§3.3', 'Ohne Scrollen sichtbar: Teilen, Hinweis, Impressum, Datenschutz, Speicherhinweis'),
+    '33': ('§3.3', 'Sichtbar: Teilen, Hinweis, Impressum, Datenschutz, Speicherhinweis (Handy: der Fuß am Seitenende)'),
+    'abstand': ('§5.6', 'Abstände im 4-px-Raster (4, 8, 12, 16, 24, 32, 48 …, dazu 2 px)'),
     'f': ('§8', 'Keine Konsolenfehler, keine gescheiterte Anfrage'),
     'dom': ('§6', 'DOM-Knoten mit allen Kacheln ≤ 1 200'),
     'inline': ('§6', 'Kein Inline-Stil, kein Inline-Skript im HTML'),
@@ -1523,9 +1659,16 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
 
     if touch and not m['coarse']:
         bf.add('7', UNBESTIMMT, 'Touch verlangt, aber pointer: coarse greift nicht', wo)
+    handy = w < HANDY_BIS_UNTER
     if stress:
         pflicht = (w, h) in STRESS_PFLICHT
-        if pflicht:
+        if pflicht and handy:
+            # Am Handy (V-0225) heißt „ohne Scrollen“: nichts seitlich, Raster samt Umschalter auf einem Schirm.
+            pr = schirm_probleme(m.get('schirm'), erw, touch)
+            if sb > W:
+                pr.insert(0, f'seitlich {sb - W} px zu breit')
+            bf.add('2', FEHLER if pr else OK, '; '.join(pr) or f'Handy: nichts seitlich, Raster samt Umschalter auf einem Schirm (Seite {zahl(sh / H)} Bildschirme)', wo)
+        elif pflicht:
             bf.add('2', FEHLER if scrollt else OK, f'Seite {sh} px hoch ({zahl(sh / H)} Bildschirme), {sb} px breit, Fenster {W} × {H}', wo, round(sh / H, 2))
         else:
             schnitt = [x for x in m['abgeschnitten'] if '[kachel]' in x or '[chip]' in x]
@@ -1534,26 +1677,49 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
             else:
                 bf.add('2', OK, f'scrollt {zahl(sh / H)}× (erlaubt), nichts seitlich, nichts abgeschnitten', wo)
         if hat_haken:
-            kacheln_pruefen(bf, m, erw, w, wo, stress=True)
+            kacheln_pruefen(bf, schirm_sicht(m), erw, w, wo, stress=True)
         return
 
-    # §8 #1
-    bf.add('1', FEHLER if scrollt else OK,
-           f'Seite {sh} px hoch ({zahl(sh / H)} Bildschirme), {sb} px breit, Fenster {W} × {H}', wo, round(sh / H, 2))
+    # §8 #1 — am Handy darf die Seite senkrecht scrollen (Silas' Test, V-0225), nie seitlich
+    if handy:
+        bf.add('1', FEHLER if sb > W else OK,
+               f'Handy: {sb} px breit bei {W} px (Seite {sh} px hoch, {zahl(sh / H)} Bildschirme, senkrecht erlaubt)', wo, round(sb / W, 2))
+    else:
+        bf.add('1', FEHLER if scrollt else OK,
+               f'Seite {sh} px hoch ({zahl(sh / H)} Bildschirme), {sb} px breit, Fenster {W} × {H}', wo, round(sh / H, 2))
     teile = []
-    if m['aussen']:
-        teile.append(f"{m['aussen']} Elemente außerhalb (z. B. {'; '.join(m['aussenBsp'][:2])})")
+    aussen, beispiele = (m.get('aussenX', 0), m.get('aussenXBsp', [])) if handy else (m['aussen'], m['aussenBsp'])
+    if aussen:
+        teile.append(f"{aussen} Elemente {'seitlich ' if handy else ''}außerhalb (z. B. {'; '.join(beispiele[:2])})")
     if m['innen']:
         teile.append(f"{len(m['innen'])} Bereiche scrollen innen (z. B. {m['innen'][0]['el']})")
     if m['abgeschnitten']:
         teile.append(f"{len(m['abgeschnitten'])} abgeschnitten (z. B. {m['abgeschnitten'][0]})")
-    bf.add('1a', FEHLER if teile else OK, '; '.join(teile) or 'nichts außerhalb, nichts innen scrollend', wo, m['aussen'])
+    bf.add('1a', FEHLER if teile else OK, '; '.join(teile) or 'nichts außerhalb, nichts innen scrollend', wo, aussen)
+
+    # Am Handy: Tag und Woche samt Umschalter auf einem Schirm unterhalb der Module (V-0225)
+    if handy:
+        for art, sch in (('Tag', m.get('schirm')), ('Woche', m.get('woche'))):
+            if sch is None and art == 'Woche' and 'schirm' in m:
+                bf.add('1h', FEHLER, 'kein Knopf „Woche“ im Umschalter (data-sicht="umschalter")', f'{wo} {art}')
+                continue
+            pr = schirm_probleme(sch, erw, touch, woche=art == 'Woche')
+            kl = min((x['b'] for x in (sch or {}).get('kacheln', [])), default=None)
+            bf.add('1h', FEHLER if pr else OK, '; '.join(pr) or f"Raster {zahl(sch['raster']['b'] - sch['raster']['t'], 0)} px, Umschalter darunter, alles ganz und frei"
+                   + (f", schmalste Kachel {zahl(kl, 0)} px" if kl is not None else ''), f'{wo} {art}')
+            if art == 'Woche' and sch:
+                kacheln_pruefen(bf, schirm_sicht(m, sch), erw, HANDY_BIS_UNTER, f'{wo} Woche')
+                achse_pruefen(bf, schirm_sicht(m, sch), erw, HANDY_BIS_UNTER, f'{wo} Woche')
+
+    # §5.6: Abstände im 4-px-Raster
+    ab = m.get('abstand', [])
+    bf.add('abstand', FEHLER if ab else OK, (f'{len(ab)} Abstände außerhalb des Rasters, z. B. ' + '; '.join(ab[:3])) if ab else 'alle Abstände in Stufen von 4 px (und 2 px)', wo, len(ab))
 
     # §3.3 und Speicherhinweis
-    fehlt = [p['name'] for p in PFLICHT if not m['pflicht'].get(p['id'], {}).get('ok')]
+    fehlt = [p['name'] for p in PFLICHT if not pflicht_ok(m, p['id'])]
     if w >= 768 and m['zonen'].get('werkzeug') is not None and not m['zonen']['werkzeug']['ganz']:
         fehlt.append('Werkzeugleiste')
-    bf.add('33', FEHLER if fehlt else OK, ('nicht ohne Scrollen sichtbar: ' + ', '.join(fehlt)) if fehlt else 'alles sichtbar', wo)
+    bf.add('33', FEHLER if fehlt else OK, ('nicht sichtbar: ' + ', '.join(fehlt)) if fehlt else ('Teilen oben, der Fuß am Seitenende ganz und frei' if handy else 'alles sichtbar'), wo)
 
     # §8 #3–#6
     if not hat_haken:
@@ -1566,9 +1732,10 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
         bf.add('3', FEHLER if schlecht or not n_ok else OK,
                f"{len(chips)} Chips (Soll {erw['bestandteile']}), nicht ganz sichtbar: {len(schlecht)}"
                + (f" (z. B. {schlecht[0]})" if schlecht else ''), wo, len(chips))
-        kacheln_pruefen(bf, m, erw, w, wo)
-        achse_pruefen(bf, m, erw, w, wo)
-        k = m['kacheln']
+        mk = schirm_sicht(m)
+        kacheln_pruefen(bf, mk, erw, w, wo)
+        achse_pruefen(bf, mk, erw, w, wo)
+        k = mk['kacheln']
         if k:
             mh = 22 if touch else 20
             zu = []
@@ -1645,6 +1812,58 @@ def bewerten_lauf(bf: Befund, spec: dict, m: dict, erw: dict):
         bf.add('dom', FEHLER if m['dom'] > BUDGET['dom'] else OK, f"{m['dom']} Knoten bei {len(m['kacheln'])} Kacheln", wo, m['dom'])
     if m['fremd']:
         bf.add('12c', FEHLER, 'fremd: ' + ', '.join(m['fremd'][:3]), wo)
+
+
+def pflicht_ok(m: dict, pid: str) -> bool:
+    """Am Handy steht der Fuß am Seitenende und wird dort gemessen (ENDE_JS), alles andere oben."""
+    if pid in FUSS_PFLICHT and m.get('ende') is not None:
+        return bool(m['ende'].get(pid, {}).get('ok'))
+    return bool(m['pflicht'].get(pid, {}).get('ok'))
+
+
+def schirm_sicht(m: dict, sch: dict | None = None) -> dict:
+    """Die Messung mit Kacheln, Stunden und Tagen von dort, wo das Raster steht (am Handy der Schirm)."""
+    sch = sch if sch is not None else m.get('schirm')
+    if not sch:
+        return m
+    return {**m, 'kacheln': sch['kacheln'], 'stunden': sch['stunden'], 'tage': sch['tage'], 'weitere': sch['weitere']}
+
+
+def schirm_probleme(sch, erw, touch, woche=False) -> list[str]:
+    """Was am Handy verhindert, dass Raster und Umschalter zusammen auf einen Schirm passen."""
+    if not sch:
+        return ['kein Raster (data-sicht="raster")']
+    p = []
+    r, sw = sch['raster'], sch['schalter']
+    if sch['breit'] > sch['W'] + 0.5:
+        p.append(f"{sch['breit'] - sch['W']} px seitlich zu breit")
+    if not sw:
+        p.append('kein Umschalter (data-sicht="umschalter")')
+    elif not sch['schalterGanz']:
+        p.append('Umschalter nicht ganz im Fenster')
+    elif r['b'] > sw['t'] + 0.5:
+        p.append(f"Raster reicht {zahl(r['b'] - sw['t'], 0)} px unter den Umschalter")
+    if r['b'] > sch['H'] + 0.5 or r['t'] < -0.5:
+        p.append(f"Raster {zahl(r['b'] - r['t'], 0)} px hoch, passt nicht in {sch['H']} px")
+    if sch['modulUnten'] is not None and r['t'] < sch['modulUnten'] - 0.5:
+        p.append('Raster steht nicht unter den Modulen')
+    k = sch['kacheln']
+    nicht = [x for x in k if not (x['ganz'] and x['frei'])]
+    if nicht:
+        p.append(f"{len(nicht)} Kacheln nicht ganz oder verdeckt (z. B. {nicht[0]['name']})")
+    if not k and erw.get('gesamt'):
+        p.append('keine Kachel zu sehen')
+    st = sorted(sch['stunden'], key=lambda x: x['t'])
+    if not st:
+        p.append('keine Stundenmarke')
+    elif not (st[0]['ganz'] and st[-1]['ganz']):
+        p.append('erste oder letzte Stundenmarke nicht zu sehen')
+    if woche:
+        mh = 22 if touch else 20
+        zu = [x for x in k if x['start'] and x['ende'] and x['h'] < mh * (stunde(x['ende']) - stunde(x['start'])) - 0.01]
+        if zu:
+            p.append(f"{len(zu)} Kacheln niedriger als {mh} px je Stunde (z. B. {zu[0]['name']})")
+    return p
 
 
 def kacheln_pruefen(bf, m, erw, w, wo, stress=False):
@@ -1913,8 +2132,8 @@ def bewerten_rest(bf: Befund, extra: dict, erw: dict):
             bf.add('16', UNBESTIMMT, 'Lauf abgestürzt: ' + s['absturz'], wo)
             continue
         teile = []
-        if not s['pflicht'].get('speicher', {}).get('ok'):
-            teile.append('„… speichert die Auswahl nicht“ nicht ohne Scrollen sichtbar')
+        if not pflicht_ok(s, 'speicher'):
+            teile.append('„… speichert die Auswahl nicht“ nicht zu sehen (Handy: am Seitenende)')
         if any(f.startswith('Ausnahme') for f in s['fehler']):
             teile.append('Ausnahme: ' + next(f for f in s['fehler'] if f.startswith('Ausnahme')))
         if teile:
@@ -2222,7 +2441,9 @@ def lauf_kurz(spec, m):
         'fehler': m['fehler'][:10], 'dom': m['dom'], 'ruhig': m['ruhig'],
         'erste_kachel_ms': round(log['ersteKachel']) if log.get('ersteKachel') is not None else None,
         'ruhig_ms': round(log['letzte']) if log.get('letzte') else None,
-        'pflicht': {k: v.get('ok', False) for k, v in m['pflicht'].items()},
+        'pflicht': {k: pflicht_ok(m, k) for k in m['pflicht']},
+        'schirm': {art: {'raster_h': round(x['raster']['b'] - x['raster']['t'], 1), 'kacheln': len(x['kacheln']),
+                         'umschalter': bool(x['schalter'])} for art, x in (('tag', m.get('schirm')), ('woche', m.get('woche'))) if x},
     }
 
 
@@ -2252,7 +2473,7 @@ def menschlich(aus, laeufe, bf: Befund):
         bs = max(m['seite']['h'] / m['H'] for m in ms)
         breit = any(m['seite']['b'] > m['W'] for m in ms)
         seite = f"{zahl(bs, 1)}×" + (' +breit' if breit else '')
-        ok_seite = '✓' if bs <= 1 and not breit else '✗'
+        ok_seite = '✓' if (bs <= 1 or w < HANDY_BIS_UNTER) and not breit else '✗'
         aussen = max(m['aussen'] for m in ms)
         klein = max(len([zz for zz in m['ziele'] if not zz['gesperrt'] and not zz['dialog'] and min(zz['b'], zz['h']) < (44 if touch and not zz['link'] else 24) - 0.01]) for m in ms)
         kmin = min((m['kontrast']['min'] for m in ms if m['kontrast']['min'] is not None), default=None)
@@ -2270,7 +2491,7 @@ def menschlich(aus, laeufe, bf: Befund):
         print(f"  {f'{w}×{h}':<11}{'Touch' if touch else 'Maus':<7}{seite + ' ' + ok_seite:>15}  {aussen:>6}  {klein:>11}  {kont:>9}  "
               f"{str(gr) + (' ✗' if gr_falsch else ' ✓'):>9}  {'/'.join(map(str, sorted(chips))):>5}  {'/'.join(map(str, sorted(kach))):>7}  {fehler:>6}  {raster:>8}")
     print()
-    print('  Seite = höchste Seite durch Fensterhöhe über hell/dunkel und leer/halb/voll (1,0× heißt: scrollt nicht).')
+    print('  Seite = höchste Seite durch Fensterhöhe über hell/dunkel und leer/halb/voll (1,0× heißt: scrollt nicht; am Handy erlaubt).')
     print('  außen = sichtbare Elemente außerhalb des Fensters · Ziele klein = unter 24 px (Touch: 44 px)')
     print('  Kontrast = kleinster gemessener Text · Schrift = Zahl der Schriftgrößen · Raster = Median bis zur ersten Kachel, sonst bis ruhig')
     print()
