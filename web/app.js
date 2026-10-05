@@ -147,32 +147,27 @@ function aendere(neu) {
 const finde = (key) => bestand.groups.find((g) => g.key === key);
 const titel = (g) => `${g.module_short}, ${R.typLang(g.type)}`;
 
-// Eine automatisch eingeplante Gruppe (einzige des Formats) wird mit „Einplanen“ ausdrücklich gewählt,
-// mit „Lösen“ abgewählt; die Abwahl bleibt gespeichert (auswahl.mjs, loese).
+// Einplanen und Lösen (V-0237): Ein Vorschlag (die einzige Gruppe eines Formats, bei `gruppen: alle`
+// alle Gruppen) wird mit „Einplanen“ eingeplant; „Lösen“ nimmt die Wahl heraus, und die einzige
+// Gruppe ist wieder ein Vorschlag. Bei `alle` plant eine Gruppe das Format als Ganzes ein (auswahl.mjs).
 function waehle(key, loesen = false) {
   const g = finde(key);
   if (!g || vorschau) return;
   const vorher = fort.k;
-  // `gruppen: alle` (V-0233): keine Wahl einer Gruppe. Lösen nimmt alle heraus (group: null),
-  // Einplanen stellt den Normalfall wieder her (der Eintrag fällt weg, alle gelten).
-  if (g.component.gruppen === 'alle') {
-    aendere(A.loese(eigene, g.component_id, g.selected));
-    sage(`${titel(g)}: ${g.selected ? 'alle Gruppen eingeplant' : 'Auswahl gelöst'}.`);
-    return;
-  }
-  if (g.selected && (loesen || !g.auto)) {
-    aendere(A.loese(eigene, g.component_id, !!A.einzige(g.component)));
+  if (g.selected) {
+    aendere(A.loese(eigene, g.component_id));
     sage(`${titel(g)}: Auswahl gelöst.`);
     return;
   }
+  if (loesen) return;
   frisch = g.component_id;
   aendere(A.waehle(eigene, g.component_id, g));
-  sage(`${titel(g)}: ${g.name} eingeplant.`);
+  sage(`${titel(g)}: ${g.component.gruppen === 'alle' ? 'alle Gruppen' : g.name} eingeplant.`);
   if (fort.k === fort.n && vorher < fort.n) melde(`Alle ${fort.n} Formate eingeplant. ${paare.length ? 'Bitte die Überschneidungen prüfen.' : 'Keine Überschneidung.'}`);
 }
 
 /** Nur was es im Angebot gibt, geht in den Link — eine verschwundene Gruppe hilft niemandem. */
-const teilbareAuswahl = () => Object.fromEntries(selected.filter((g) => !g.auto).map((g) => [g.component_id, { group: g.id }]));
+const teilbareAuswahl = () => Object.fromEntries(selected.map((g) => [g.component_id, { group: g.id }]));
 
 /** Die Adresse ohne Teilen-Teil: nur der Plan (#plan=<id>). So bleibt er beim Neuladen, auch wenn
  *  der Browser nichts speichert, und ein Lesezeichen führt direkt dorthin. */
@@ -210,23 +205,51 @@ function zuruecksetzen() {
   });
 }
 
-async function teilen() {
+/**
+ * „Teilen“ (Silas' zweiter Test, V-0237): Von unten schiebt sich eine Fläche über die Ansicht, „Für
+ * später speichern“. Sie trägt den Link zum fertigen Stundenplan (die Auswahl hinter dem #, nie an
+ * einen Server) mit drei Wegen: Kopieren, Lesezeichen, Teilen (das Teilen-Menü des Systems, am iPhone
+ * mit allen Apps). Ein Lesezeichen kann keine Seite selbst setzen; solange die Fläche offen ist, steht
+ * der Link deshalb in der Adresse, und die Fläche sagt, welche Taste oder welcher Tipp es anlegt.
+ */
+function teilen() {
   const weg = A.teilenWeg({ anzahl: selected.length, vorschau: !!vorschau, share: typeof navigator.share === 'function', grob: grob.matches });
   if (weg === 'vorschau') { melde('Erst den geteilten Plan übernehmen oder verwerfen.'); return; }
-  if (weg === 'leer') { melde('Wähle zuerst eine Gruppe. Dann teilt der Knopf deinen Plan als Link.'); return; }
-  const url = location.href.split('#')[0] + A.teilenFragment(plan, teilbareAuswahl());
-  if (weg === 'system') {
-    try { await navigator.share({ title: 'Stundenplan', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
-  }
+  if (weg === 'leer') { melde('Plane zuerst eine Gruppe ein. Dann speichert „Teilen“ deinen Plan als Link.'); return; }
+  const frag = A.teilenFragment(plan, teilbareAuswahl());
+  const url = location.href.split('#')[0] + frag;
+  history.replaceState(null, '', location.pathname + location.search + frag);
+  const teilenKnopf = typeof navigator.share === 'function' ? `<button type="button" class="knopf" data-act="system-teilen">${ic('teilen')}Teilen</button>` : '';
+  oeffne('blatt', 'Für später speichern', `<p>Der Link enthält deinen Stundenplan (${esc(mehrzahl(selected.length, 'eingeplante Gruppe', 'eingeplante Gruppen'))}). Wer ihn öffnet, sieht genau diese Auswahl. Er liegt auf keinem Server.</p><input class="feld" id="teilen-link" readonly value="${esc(url)}" aria-label="Link zu deinem Stundenplan"><div class="e-aktionen"><button type="button" class="knopf haupt" data-act="kopieren" data-fokus>${ic('kopieren')}Kopieren</button><button type="button" class="knopf" data-act="lesezeichen">${ic('lesezeichen')}Lesezeichen</button>${teilenKnopf}</div><p class="klein" id="lz-text" hidden></p>`,
+    { klasse: 'speichern', zurueck: () => $('teilen'), zu: adresseOhneAuswahl });
+}
+
+async function linkKopieren() {
+  const f = $('teilen-link');
+  if (!f) return;
   try {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(f.value);
     melde('Link kopiert');
   } catch {
-    // Ohne sicheren Kontext gibt es kein Clipboard-API: den Link zum Kopieren von Hand zeigen.
-    oeffne('karte', 'Teilen-Link', `<input class="feld" readonly value="${esc(url)}" data-fokus aria-label="Teilen-Link"><p class="klein">Kopieren ging nicht. Markiere den Link und kopiere ihn von Hand.</p>`, { anker: $('teilen') });
-    const f = document.querySelector('.feld');
-    if (f) f.select();
+    // Ohne sicheren Kontext gibt es kein Clipboard-API: den Link markieren, kopieren geht von Hand.
+    f.focus();
+    f.select();
+    melde('Kopieren ging nicht. Der Link ist markiert: Kopiere ihn von Hand.');
   }
+}
+
+/** Wie man ein Lesezeichen setzt, je Gerät (eine Seite kann es nicht selbst). */
+function lesezeichenText(ua = navigator.userAgent, beruehrung = navigator.maxTouchPoints || 0) {
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && beruehrung > 1)) return 'Tippe in Safari unten auf Teilen und dann auf „Lesezeichen hinzufügen“. Der Link steht schon in der Adresse.';
+  if (/Android/.test(ua)) return 'Öffne das Menü des Browsers und tippe auf den Stern. Der Link steht schon in der Adresse.';
+  if (/Macintosh/.test(ua)) return 'Drücke Cmd + D, solange diese Fläche offen ist: Der Link steht schon in der Adresse.';
+  return 'Drücke Strg + D, solange diese Fläche offen ist: Der Link steht schon in der Adresse.';
+}
+
+async function systemTeilen() {
+  const f = $('teilen-link');
+  if (!f || typeof navigator.share !== 'function') return;
+  try { await navigator.share({ title: 'Stundenplan', url: f.value }); } catch (e) { if (e.name !== 'AbortError') linkKopieren(); }
 }
 
 // Kalender-Export (V-0231, bordkalender): ics.mjs lädt bei der ersten Bedienung, nicht beim Laden
@@ -239,7 +262,7 @@ const icsLaden = () => (ics ? Promise.resolve(ics) : import('./ics.mjs').then((m
 for (const t of ['pointerdown', 'keydown']) document.addEventListener(t, icsLaden, { once: true, capture: true });
 
 async function kalender() {
-  if (!selected.length) { melde('Wähle zuerst eine Gruppe. Dann übernimmt der Knopf deinen Plan in den Kalender.'); return; }
+  if (!selected.length) { melde('Plane zuerst eine Gruppe ein (Vorschläge mit „Einplanen“). Dann übernimmt der Knopf deinen Plan in den Kalender.'); return; }
   const I = ics || await icsLaden();
   try {
     const datei = I.icsHerunterladen(plan, A.wirksameAuswahl(selected));
@@ -359,31 +382,35 @@ function inhaltLoesung() {
 
 /** Wie die Gruppen eines Bestandteils zu belegen sind, wo es nicht „wähle eine“ heißt (V-0233). */
 const GRUPPEN = {
-  alle: 'Alle Gruppen gelten als eingeplant: Du besuchst alle.',
+  alle: 'Alle Gruppen gehören dazu: Du besuchst alle. „Einplanen“ plant das Format als Ganzes ein.',
   unklar: 'Unklar, ob du eine oder alle Gruppen besuchst. Prüfe es in der Quelle.',
   keine: 'Offenes Angebot, keine Wahl nötig. Es zählt nicht zum Fortschritt.',
 };
 const gruppenSatz = (c) => (GRUPPEN[c.gruppen] ? `${GRUPPEN[c.gruppen]}${c.gruppen_grund ? ' ' + c.gruppen_grund : ''}` : '');
 
-/** Ein Format: umrandet offen, gefüllt mit Haken gewählt, Tinte gefiltert. */
+/** Sättigung nach Kategorie (V-0237): Vorlesung voll, Übung 70 %, Sonstiges 50 % (stil.css). */
+const katKlasse = (c) => ({ uebung: ' kat-uebung', sonstige: ' kat-sonstige' }[R.kategorie(c)] || '');
+
+/** Ein Format: umrandet offen, gestrichelt ein Vorschlag, gefüllt mit Haken eingeplant, Tinte gefiltert. */
 function format(c, m) {
   const g = c.groups.find((x) => x.selected);
+  const vor = !g && c.groups.some((x) => x.vorschlag);
   const n = c.groups.filter((x) => x.slots.length).length;
   const fehlt = missing.some((x) => x.component_id === c.id);
   const kon = g && partner.has(g.key);
   const hin = (g && g.changed) || fehlt;
   const sym = kon ? ic('warn') : hin ? ic(g && g.changed ? 'neu' : 'hinweis') : g || fehlt ? ic('haken') : '';
   const alle = c.gruppen === 'alle';
-  const was = g ? (alle ? 'alle Gruppen eingeplant' : `${g.auto ? 'einzige Gruppe, automatisch eingeplant' : 'gewählt'}: ${g.name}`) : fehlt ? 'gewählte Gruppe nicht mehr im Angebot' : c.gruppen === 'keine' ? 'offenes Angebot, keine Wahl nötig' : n ? `offen, ${mehrzahl(n, 'Gruppe', 'Gruppen')}` : 'noch ohne veröffentlichte Termine';
+  const was = g ? (alle ? 'alle Gruppen eingeplant' : `eingeplant: ${g.name}`) : fehlt ? 'gewählte Gruppe nicht mehr im Angebot' : vor ? `Vorschlag, ${alle ? 'alle Gruppen' : 'einzige Gruppe'}, noch nicht eingeplant` : c.gruppen === 'keine' ? 'offenes Angebot, keine Wahl nötig' : n ? `offen, ${mehrzahl(n, 'Gruppe', 'Gruppen')}` : 'noch ohne veröffentlichte Termine';
   const tipp = `${m.short}, ${R.typLang(c.type)}, ${c.sws} SWS, ${c.required ? 'Pflichtbereich' : c.section || ''}${n ? '' : '. Noch ohne veröffentlichte Termine'}${gruppenSatz(c) ? '. ' + gruppenSatz(c) : ''}`;
-  return `<button type="button" data-sicht="chip" class="format${g || fehlt ? ' gewaehlt' : ''}${g && g.auto ? ' auto' : ''}${!g && c.gruppen === 'keine' ? ' frei' : ''}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${R.typLang(c.type)}, ${mehrzahl(n, 'Gruppe', 'Gruppen')}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}><span class="f-pille">${sym}${esc(c.type)} ${n}</span></button>`;
+  return `<button type="button" data-sicht="chip" class="format${g || fehlt ? ' gewaehlt' : ''}${vor ? ' vorschlag' : ''}${!g && c.gruppen === 'keine' ? ' frei' : ''}${katKlasse(c)}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${R.typLang(c.type)}, ${mehrzahl(n, 'Gruppe', 'Gruppen')}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}><span class="f-pille">${sym}${esc(c.type)} ${n}</span></button>`;
 }
 
 function renderModule() {
   $('module').innerHTML = plan.modules.map((m, i) => {
     const warn = m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : '';
     const an = z.modul === m.number;
-    return `<div class="modul m${(i % 8) + 1}${an ? ' aktiv' : ''}" role="group" aria-label="${esc(m.title || m.short)}"><button type="button" class="modul-name" data-act="modul" data-m="${i}" aria-pressed="${an}" title="${esc(m.title || m.short)}" aria-label="${esc(`${m.title || m.short}: alle Formate zeigen${warn ? ', mit Hinweis' : ''}`)}"><span class="punkt"></span><span class="m-kurz">${esc(m.short)}</span>${warn}</button><div class="formate">${m.components.map((c) => format(c, m)).join('')}</div></div>`;
+    return `<div class="modul m${(i % 8) + 1}${an ? ' aktiv' : ''}" role="group" aria-label="${esc(m.title || m.short)}"><button type="button" class="modul-name" data-sicht="modul" data-act="modul" data-m="${i}" aria-pressed="${an}" title="${esc(m.title || m.short)}" aria-label="${esc(`${m.title || m.short}: alle Formate zeigen${warn ? ', mit Hinweis' : ''}`)}"><span class="punkt"></span><span class="m-kurz">${esc(m.short)}</span>${warn}</button><div class="formate">${m.components.map((c) => format(c, m)).join('')}</div></div>`;
   }).join('');
 }
 
@@ -412,18 +439,19 @@ function renderWerkzeug() {
     // Am Handy erklärt der volle Titel den Kurznamen, am Rechner steht der Kurzname direkt darüber.
     titel = `<span class="nur-breit">${esc(m.short)}</span><span class="nur-handy">${esc(m.title || m.short)}</span>${c ? ', ' + esc(R.typLang(c.type)) : ''}`;
     const gew = c ? c.groups.find((g) => g.selected) : null;
-    unter = c ? `${mehrzahl(gruppen([c]), 'Gruppe', 'Gruppen')}, ${gew ? 'gewählt: ' + esc(gew.name) : 'noch keine gewählt'}`
-      : `Alle Formate, ${mehrzahl(gruppen(m.components), 'Gruppe', 'Gruppen')}, ${m.components.filter((x) => x.groups.some((g) => g.selected)).length} von ${m.components.length} gewählt`;
+    unter = c ? `${mehrzahl(gruppen([c]), 'Gruppe', 'Gruppen')}, ${gew ? 'eingeplant: ' + esc(c.gruppen === 'alle' ? 'alle' : gew.name) : 'noch keine eingeplant'}`
+      : `Alle Formate, ${mehrzahl(gruppen(m.components), 'Gruppe', 'Gruppen')}, ${m.components.filter((x) => x.groups.some((g) => g.selected)).length} von ${m.components.length} eingeplant`;
   } else if (vorschau) {
     titel = 'Geteilter Plan';
     unter = `${k} von ${n} Formaten im geteilten Plan`;
   } else if (n && k === n) {
-    titel = `Alle ${n} Formate gewählt`;
+    titel = `Alle ${n} Formate eingeplant`;
     unter = paare.length ? 'Bitte die Überschneidungen prüfen.' : 'Keine Überschneidung.';
   } else {
-    titel = 'Noch offen';
+    // Die Vorgabe beim Öffnen ist immer „Mein Stundenplan“ (Silas' zweiter Test, V-0237).
+    titel = 'Mein Stundenplan';
     // Ohne Wahl derselbe Satz wie im HTML: Er steht vor den Daten (größter Inhalt früh, LCP §6).
-    unter = selected.some((g) => !g.auto) ? `${k} von ${n} Formaten gewählt` : 'Wähle ein Modul oder ein Format, dann zeigt der Plan nur dessen Gruppen.';
+    unter = k ? `${k} von ${n} Formaten eingeplant` : 'Wähle ein Modul oder ein Format, dann zeigt der Plan dessen Gruppen.';
   }
   const knoepfe = m ? `<button type="button" class="knopf" data-act="info" data-m="${mi}">${ic('info')}Modul-Infos</button><button type="button" class="knopf" data-act="aufheben">${ic('kreuz')}Filter aufheben</button>` : '';
   const rechts = knoepfe + marken(h);
@@ -520,7 +548,8 @@ function renderRaster() {
     liste.push(...tag);
   }
   if (!liste.length) {
-    const leer = !z.teil && !z.modul && fort.k === fort.n ? 'Alles eingeplant.' : !t.woche ? 'An diesem Tag liegt nichts.' : 'Keine Termine für diese Auswahl.';
+    const nichts = !z.teil && !z.modul && !selected.length && !bestand.groups.some((g) => g.vorschlag);
+    const leer = nichts ? 'Noch nichts eingeplant. Wähle ein Modul oder ein Format.' : !t.woche ? 'An diesem Tag liegt nichts.' : 'Keine Termine für diese Auswahl.';
     html += `<p class="raster-text">${leer}</p>`;
   }
   k.innerHTML = html;
@@ -545,25 +574,31 @@ function renderRaster() {
 
 // Eine Kachel (Silas, V-0225): oben das Modul, darunter die Einheit ausgeschrieben, dann Gruppe mit
 // Zeit, dann Raum; nie „Termingruppe 3“ als Titel. Die übrigen Gruppen eines schon gewählten Formats
-// sind blass (zurück), die einzige Gruppe eines Formats ist automatisch eingeplant (auto, gestrichelt).
+// sind blass (zurück), ein Vorschlag ist gestrichelt (V-0237). Mit Filter steht „Mein Stundenplan“
+// außerhalb als kontext: dieselbe Kachel, nur ganz zurückgenommen (stil.css).
 function kachel(e, mini) {
   const { g, s, art } = e;
   const week = W.wocheAus(z.zeitraum);
-  const mit = art === 'moeglich' ? selected.filter((x) => x.component_id !== g.component_id && W.overlap(g, x)) : partner.get(g.key) || [];
-  const kon = art !== 'moeglich' && mit.length;
-  const neu = art !== 'moeglich' && g.changed && !vorschau;
+  const look = art === 'kontext' ? (g.selected ? 'gewaehlt' : g.vorschlag ? 'vorschlag' : 'moeglich') : art;
+  const mit = look === 'gewaehlt' ? partner.get(g.key) || [] : selected.filter((x) => x.component_id !== g.component_id && W.overlap(g, x));
+  const kon = look === 'gewaehlt' && mit.length;
+  const neu = look === 'gewaehlt' && g.changed && !vorschau;
   const zurueck = art === 'moeglich' && !!g.component.selection;
-  const sym = mit.length ? 'warn' : neu ? 'neu' : art === 'gewaehlt' ? 'haken' : '';
+  const sym = mit.length ? 'warn' : neu ? 'neu' : look === 'gewaehlt' ? 'haken' : '';
   const nr = R.gruppenNummer(g.name);
   const raum = raeume(g, s, week).join(', ');
   const rh = R.rhythmusHinweis(s);
   const alle = g.component.gruppen === 'alle';
-  const gruppe = g.auto && !alle ? 'Einzige Gruppe' : nr ? 'Gruppe ' + nr : g.name;
-  const zustand = art === 'moeglich' ? (zurueck ? 'nicht gewählt, das Format ist schon gewählt' : 'nicht gewählt') : vorschau && art === 'kontext' ? 'deine Auswahl' : alle && g.auto ? 'eingeplant, alle Gruppen dieses Formats gelten' : g.auto ? 'automatisch eingeplant, einzige Gruppe' : 'gewählt';
+  const gruppe = look === 'vorschlag' && !alle ? 'Einzige Gruppe' : nr ? 'Gruppe ' + nr : g.name;
+  const zustand = art === 'kontext' ? (vorschau ? 'deine Auswahl' : `${look === 'vorschlag' ? 'Vorschlag' : 'eingeplant'}, außerhalb des Filters`)
+    : look === 'moeglich' ? (zurueck ? 'nicht gewählt, das Format ist schon gewählt' : 'nicht eingeplant')
+      : look === 'vorschlag' ? `Vorschlag, ${alle ? 'alle Gruppen dieses Formats' : 'einzige Gruppe'}, noch nicht eingeplant` : 'eingeplant';
   const name = `${titel(g)}, ${g.name}, ${TAGE[s.day]} ${s.start} bis ${s.end}${raum ? ', Raum ' + raum : ''}${rh ? ', ' + rh : ''}, ${zustand}${neu ? ', geändert seit deiner Wahl' : ''}${mit.length ? ', überschneidet sich mit ' + mit.map((x) => `${x.module_short} ${R.typLang(x.type)}`).join(' und ') : ''}${mini ? '. Zeigt den Tag groß' : ''}`;
-  const akt = g.selected && !g.auto ? ['Lösen', 'Auswahl lösen'] : g.component.selection && !g.selected ? ['Wechseln', 'Gruppe wechseln'] : ['Einplanen', 'Einplanen'];
-  const knopf = vorschau || mini || alle || (art === 'kontext' && (g.auto || !g.selected)) ? '' : `<button type="button" class="k-akt" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${akt[0]}</button>`;
-  const klasse = `${art === 'kontext' ? '' : 'm' + (g.farbe + 1)} ${art}${g.auto && art === 'gewaehlt' ? ' auto' : ''}${zurueck ? ' zurueck' : ''}${frisch === g.component_id ? ' frisch' : ''}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}`;
+  // Der Knopf auf der Kachel (Silas' zweiter Test, V-0237): ein abgerundetes Plus zum Einplanen
+  // (auch zum Wechseln), ein Kreuz zum Lösen. Er passt auch auf schmale Kacheln (stil.css).
+  const akt = g.selected ? ['kreuz', 'Auswahl lösen'] : zurueck ? ['plus', 'Wechseln zu'] : ['plus', 'Einplanen'];
+  const knopf = vorschau || mini || art === 'kontext' ? '' : `<button type="button" class="k-akt ${akt[0]}" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${ic(akt[0])}</button>`;
+  const klasse = `m${g.farbe + 1} ${look}${art === 'kontext' ? ' kontext' : ''}${katKlasse(g.component)}${zurueck ? ' zurueck' : ''}${frisch === g.component_id ? ' frisch' : ''}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}${knopf ? ' mit-akt' : ''}`;
   return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${klasse}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="${mini ? 'tag' : 'kachel'}" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-titel">${esc(g.component.module.title || g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-kurz">${esc(nr ? g.type + ' ' + nr : g.type)}</span><span class="k-nr">${esc(nr || '')}</span><span class="k-lang k-2">${esc(R.typLang(g.type))}</span><span class="k-info k-2">${esc(`${gruppe}, ${s.start}–${s.end}`)}</span><span class="k-ort k-2">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
 }
 
@@ -574,8 +609,8 @@ function renderUnter() {
   // Immer dieselben Einträge: Die Legende ändert ihre Höhe nicht, das Raster springt nicht.
   // Die Wörter nennen die Rolle, keinen Farbton: „dunkelgrau“/„hellgrau“ stimmten nur hell (V-0236).
   const k = (art, text) => `<span><span class="lg-k ${art}"></span>${text}</span>`;
-  const zustand = k('', 'umrandet: wählbar') + k('gewaehlt', 'gefüllt: eingeplant') + k('auto', 'gestrichelt: einzige Gruppe, automatisch') +
-    k('kontext', `grau: ${vorschau ? 'deine eigene Auswahl' : 'anderswo eingeplant'}`) + k('zurueck', 'blass: Format schon gewählt') + k('gewaehlt konflikt', 'roter Ring: Überschneidung');
+  const zustand = k('', 'umrandet: wählbar') + k('gewaehlt', 'gefüllt: eingeplant') + k('vorschlag', 'gestrichelt: Vorschlag') +
+    k('kontext', `durchscheinend: ${vorschau ? 'deine Auswahl' : 'dein Plan beim Filtern'}`) + k('zurueck', 'blass: Format gewählt') + k('gewaehlt konflikt', 'roter Ring: Überschneidung');
   $('legende').innerHTML = `<p class="lg-zeile nur-handy">${module}</p><p class="lg-zeile">${formate}</p><p class="lg-zeile">${zustand}</p>`;
 }
 
@@ -665,10 +700,9 @@ function inhaltGruppe(g, s) {
   if (g.selected && g.changed && !vorschau) teile.push(`<div class="signal gelb"><p class="zeile">${ic('neu')}<span>Zeit oder Raum haben sich seit deiner Wahl geändert.</span></p><button type="button" class="knopf" data-act="geprueft" data-key="${esc(g.key)}">Änderung geprüft</button></div>`);
   const alle = g.component.gruppen === 'alle';
   if (gruppenSatz(g.component)) teile.push(`<p class="klein">${esc(gruppenSatz(g.component))}</p>`);
-  else if (g.auto) teile.push('<p class="klein">Einzige Gruppe dieses Formats: automatisch eingeplant (gestrichelt). „Einplanen“ macht es fest, „Auswahl lösen“ nimmt es heraus.</p>');
-  const verb = alle ? (g.selected ? 'Auswahl lösen' : 'Alle einplanen') : g.selected && !g.auto ? 'Auswahl lösen' : g.component.selection && !g.selected ? 'Gruppe wechseln' : 'Einplanen';
-  const loesen = g.auto && !alle && !vorschau ? `<button type="button" class="knopf" data-act="loesen-g" data-key="${esc(g.key)}">Auswahl lösen</button>` : '';
-  teile.push(`<div class="e-aktionen">${vorschau ? '<button type="button" class="knopf" disabled>Erst den Plan übernehmen</button>' : `<button type="button" class="knopf haupt" data-act="waehlen" data-key="${esc(g.key)}" data-fokus>${verb}</button>`}${loesen}${link(g.url, 'In MOSES ansehen')}</div>`);
+  else if (g.vorschlag) teile.push('<p class="klein">Vorschlag: die einzige Gruppe dieses Formats, gestrichelt. Sie ist noch nicht eingeplant; „Einplanen“ übernimmt sie in deinen Plan.</p>');
+  const verb = g.selected ? 'Auswahl lösen' : alle ? 'Alle einplanen' : g.component.selection ? 'Gruppe wechseln' : 'Einplanen';
+  teile.push(`<div class="e-aktionen">${vorschau ? '<button type="button" class="knopf" disabled>Erst den Plan übernehmen</button>' : `<button type="button" class="knopf haupt" data-act="waehlen" data-key="${esc(g.key)}" data-fokus>${verb}</button>`}${link(g.url, 'In MOSES ansehen')}</div>`);
   const termine = g.slots.flatMap((x) => W.termineDerKarte(g, x, week, par, plan.anchor)).sort((a, b) => (a.date + a.start < b.date + b.start ? -1 : 1));
   teile.push(`<details><summary>${mehrzahl(termine.length, 'Termin', 'Termine')}</summary><ul class="termine">${termine.map((b) => `<li>${KURZ[(new Date(b.date + 'T12:00:00Z').getUTCDay() + 6) % 7]} ${tagMonat(b.date)}, ${esc(b.start)}–${esc(b.end)}, ${esc(b.room)}${b.note ? `<br>${esc(b.note)}` : ''}${b.info ? `<br>${esc(b.info)}` : ''}</li>`).join('')}</ul></details>`);
   teile.push(`<p><button type="button" class="leise" data-act="modul" data-m="${plan.modules.indexOf(g.component.module)}">Zum Modul</button></p>`);
@@ -685,14 +719,14 @@ const EBENEN = {
 // Eine Ebene zur Zeit (§3.5). Ab 768 px Karte an ihrem Anker oder Dialog, darunter ein Blatt von unten.
 let offen = null, ebeneNr = 0;
 
-function oeffne(art, kopf, inhalt, { anker = null, wo = 'unten', klasse = '', zurueck = null, neu = null } = {}) {
+function oeffne(art, kopf, inhalt, { anker = null, wo = 'unten', klasse = '', zurueck = null, neu = null, zu = null } = {}) {
   schliesse(true);
   const nr = ++ebeneNr;
   // Eine Karte ohne Anker (etwa „Zum Modul“ aus einer anderen Karte) wird ein Dialog in der Mitte.
   const typ = handy.matches ? 'blatt' : art === 'karte' && !anker ? 'dialog' : art;
   $('ebenen').innerHTML = `<div class="hinter${typ === 'karte' ? ' leer' : ''}"${typ === 'karte' ? ' hidden' : ''}></div><section class="ebene ${typ} ${klasse}" role="dialog" aria-modal="${typ !== 'karte'}" aria-labelledby="e-titel"><div class="e-kopf"><h2 class="e-titel" id="e-titel">${esc(kopf)}</h2><button type="button" class="e-zu" data-act="zu" aria-label="Schließen">${ic('kreuz')}</button></div><div class="e-inhalt${klasse.includes('lesen') ? ' lesen' : ''}">${inhalt}</div></section>`;
   const el = $('ebenen').querySelector('.ebene');
-  offen = { el, typ, anker, wo, zurueck: zurueck || (anker ? () => anker : null), neu, nr };
+  offen = { el, typ, anker, wo, zurueck: zurueck || (anker ? () => anker : null), neu, nr, zu };
   if (typ === 'karte' && anker) platziere();
   requestAnimationFrame(() => { if (offen && offen.nr === nr) { el.classList.add('da'); $('ebenen').firstChild.classList.add('da'); } });
   (el.querySelector('[data-fokus]') || el.querySelector('.e-zu')).focus({ preventScroll: true });
@@ -700,8 +734,9 @@ function oeffne(art, kopf, inhalt, { anker = null, wo = 'unten', klasse = '', zu
 
 function schliesse(sofort = false) {
   if (!offen) return;
-  const { el, zurueck } = offen;
+  const { el, zurueck, zu } = offen;
   offen = null;
+  if (zu) zu();
   const nr = ebeneNr;
   el.classList.remove('da');
   const h = $('ebenen').querySelector('.hinter');
@@ -948,7 +983,6 @@ const AKTIONEN = {
     const ziel = (zurueck && zurueck()) || $('koerper').querySelector('.k-flaeche[tabindex="0"]');
     if (ziel && b.closest('.ebene')) ziel.focus({ preventScroll: true });
   },
-  'loesen-g': (b) => { const z0 = offen && offen.zurueck; if (offen) schliesse(true); waehle(b.dataset.key, true); const ziel = (z0 && z0()) || $('koerper').querySelector('.k-flaeche[tabindex="0"]'); if (ziel) ziel.focus({ preventScroll: true }); },
   kalender: () => kalender(),
   geprueft: (b) => { const g = finde(b.dataset.key); if (g && !vorschau) aendere(A.bestaetige(eigene, g.component_id, g)); },
   loesen: (b) => { if (!vorschau) aendere(A.loese(eigene, b.dataset.teil)); },
@@ -970,6 +1004,9 @@ const AKTIONEN = {
   // Erst handeln, dann schließen: schliesse() sucht den Fokus im neuen Zustand.
   ja: () => { const o = offen, f = o && o.ja; if (f) f(); if (offen === o) schliesse(); },
   teilen: () => teilen(),
+  kopieren: () => linkKopieren(),
+  lesezeichen: () => { const t = $('lz-text'); if (t) { t.textContent = lesezeichenText(); t.hidden = false; } },
+  'system-teilen': () => systemTeilen(),
   zuruecksetzen: () => zuruecksetzen(),
   uebernehmen: () => uebernehmen(),
   verwerfen: () => vorschauEnde(),
@@ -1016,6 +1053,8 @@ document.addEventListener('change', (e) => {
 async function planOeffnen(b, verweis = null) {
   schliesse(true);
   zeigeHallo(false);
+  // Beim Öffnen immer „Mein Stundenplan“, ohne Filter, auch nach dem Startbildschirm (V-0237).
+  Object.assign(z, R.KEIN_FILTER);
   if (plan && blatt && blatt.id === b.id && !verweis) { vorschau = null; adresseOhneAuswahl(); render(); return; }
   blatt = b;
   vorschau = null;

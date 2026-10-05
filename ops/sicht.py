@@ -37,6 +37,8 @@ Haken im Markup (die Seite setzt sie, das Werkzeug zählt danach)
 Ohne Haken lässt sich nicht zählen, was ein Chip oder eine Kachel ist; dann heißen die Prüfungen
 §8 #3–#6 „unbestimmt“, nicht „bestanden“.
     data-sicht="chip"                              jeder Bestandteil-Chip der Modulleiste
+    data-sicht="modul" data-m="<stelle>"           der Name einer Modulkachel (schlägt das Modul auf;
+                                                   so filtert der Stressfall, V-0237)
     data-sicht="kachel" data-tag="0…6" data-start="HH:MM" data-ende="HH:MM"
                                                    jede Kachel im Raster (eine je Slot; Tag wie `day`
                                                    im Plan, 0 = Montag)
@@ -68,10 +70,12 @@ sagt es in der Ausgabe. Die Token-Paare (§5.5) und die Stressfall-Fenster (§8 
         ab 1280 × 720 und bei 390 × 844, in kleineren Fenstern nichts seitlich und nichts
         abgeschnitten; die Kacheln werden wie in #4 gezählt.
 §8 #3   jeder Chip liegt ganz im Fenster und ist nicht verdeckt; Zahl der Chips = Bestandteile.
-§8 #4   Zahl der Kacheln je Tag = Zahl der Slots, die „Noch offen“ im Wochenskelett zeigt (aus der
-        Plandatei nachgerechnet: gewählte Bestandteile mit ihrer Gruppe, offene mit allen Gruppen,
-        bei A/B die Woche A). Unter 768 px ein Tag, sonst jeder Tag. Kacheln überlappen sich nicht,
-        nirgends steht „+ N weitere“.
+§8 #4   Zahl der Kacheln je Tag = Zahl der Slots, die „Mein Stundenplan“ im Wochenskelett zeigt (seit
+        V-0237 die Vorgabe; aus der Plandatei nachgerechnet: gewählte Bestandteile mit ihrer Gruppe,
+        bei `gruppen: alle` mit allen, sonst der Vorschlag, wenn ein Format genau eine Gruppe hat;
+        bei A/B die Woche A). Im Stressfall ist das dichteste Modul aufgeschlagen: seine Gruppen alle,
+        die übrigen wie oben (durchscheinend). Unter 768 px ein Tag, sonst jeder Tag. Kacheln
+        überlappen sich nicht, nirgends steht „+ N weitere“.
 §8 #5   erste und letzte Stundenmarke ganz im Fenster, die erste nennt den frühesten Beginn; ab
         768 px jeder Tag mit Daten (Mo–Fr immer) im Fenster, darunter genau ein Tag.
 §8 #6   jede Kachel ≥ 24 px breit und ≥ 20 px je Stunde ihrer Dauer hoch (Touch 22), also eine
@@ -1113,9 +1117,25 @@ def speicher_wert(auswahl: dict) -> str:
     return json.dumps({cid: {'group': g['id'], 'digest': g['digest'], 'name': g['name']} for cid, g in auswahl.items()})
 
 
-def erwartung(plan: dict, auswahl: dict) -> dict:
-    """Was „Noch offen“ im Wochenskelett ohne Filter zeigen muss (DESIGN §4.1), aus der Plandatei."""
+def im_plan(c: dict, auswahl: dict) -> list:
+    """Was „Mein Stundenplan“ von einem Bestandteil zeigt (DESIGN §4.1, V-0237): die eingeplante Gruppe
+    (bei `gruppen: alle` alle mit Terminen), sonst den Vorschlag: die einzige Gruppe mit Terminen bzw.
+    bei `alle` alle; ein offenes Angebot (`keine`) schlägt nichts vor."""
+    mit = [g for g in c.get('groups', []) if g.get('slots')]
+    if c['id'] in auswahl:
+        return mit if c.get('gruppen') == 'alle' else [auswahl[c['id']]]
+    if c.get('gruppen') == 'keine':
+        return []
+    if c.get('gruppen') == 'alle':
+        return mit
+    return mit if len(mit) == 1 else []
+
+
+def erwartung(plan: dict, auswahl: dict, modul: str | None = None) -> dict:
+    """Was die Standardansicht im Wochenskelett zeigen muss (DESIGN §4.1), aus der Plandatei: „Mein
+    Stundenplan“; mit `modul` (Nummer) dazu alle Gruppen dieses Moduls (aufgeschlagen)."""
     ab = bool(plan.get('has_fortnightly'))
+    auf = {c['id'] for m in plan.get('modules', []) if m.get('number') == modul for c in m.get('components', [])}
     je_tag: dict[int, int] = {}
     starts, enden, tage = [], [], set()
     for c in bestandteile(plan):
@@ -1124,7 +1144,7 @@ def erwartung(plan: dict, auswahl: dict) -> dict:
                 starts.append(stunde(s['start']))
                 enden.append(stunde(s['end']))
                 tage.add(int(s['day']))
-        gruppen = [auswahl[c['id']]] if c['id'] in auswahl else c.get('groups', [])
+        gruppen = c.get('groups', []) if c['id'] in auf else im_plan(c, auswahl)
         for g in gruppen:
             for s in g.get('slots', []):
                 if ab and 0 not in (s.get('parity') or [0, 1]):
@@ -1444,6 +1464,11 @@ def lauf(spec: dict) -> dict:
         # Stressfall) lag dazwischen mehr als die 300 ms Ruhe, und gemessen wurde ein Plan mit Modulen,
         # aber ohne Raster („0 Kacheln, Soll 54“, 1920 × 1080, 05.10.2026, V-0234).
         ruhig = _warten(page, offen, kachel=bool(spec.get('kachel')))
+        if spec.get('modul') is not None:
+            # Der Stressfall mit aufgeschlagenem Modul (V-0237): Ohne Filter zeigt die Seite nur „Mein
+            # Stundenplan“, die dichteste Stelle (sechs Spuren) entsteht erst beim Aufschlagen.
+            page.locator(f'[data-sicht="modul"][data-m="{spec["modul"]}"]').first.click(timeout=3000)
+            ruhig = _warten(page, offen, mindest_ms=0, kachel=True) and ruhig
         mess = page.evaluate(MESSEN_JS, {'pflicht': PFLICHT, 'tokens': token_namen()})
         mess['ruhig'] = ruhig
         mess['dauer_s'] = round(time.monotonic() - t0, 2)
@@ -2582,7 +2607,7 @@ def main(argv=None) -> int:
     auswahlen = ('leer',) if a.schnell else AUSWAHLEN
     s_index, s_plan = stressplan()
     stress_daten = (json.dumps(s_index), json.dumps(s_plan))
-    erw_stress = erwartung(s_plan, {})
+    erw_stress = erwartung(s_plan, {}, modul=s_plan['modules'][0]['number'])
 
     def bildpfad(name):
         return str(bilder / f'{name}.png') if bilder else None
@@ -2600,7 +2625,7 @@ def main(argv=None) -> int:
                 specs.append(('lauf', spec, erw))
         if not a.schnell:
             spec = {'fenster': (w, h), 'touch': touch, 'schema': 'light', 'auswahl': 'stress', 'url': url + f'#plan={STRESS_ID}',
-                    'stress': stress_daten, 'bilder': bildpfad(f'{w}x{h}-stress'), 'kachel': True}
+                    'stress': stress_daten, 'bilder': bildpfad(f'{w}x{h}-stress'), 'kachel': True, 'modul': 0}
             specs.append(('lauf', spec, erw_stress))
     gross = (1280, 800) if (1280, 800) in fenster or not a.fenster else fenster[-1]
     klein = (390, 844) if (390, 844) in fenster or not a.fenster else fenster[0]

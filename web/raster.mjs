@@ -100,20 +100,28 @@ export function wochenBreite(spurZahl, tage, rand = 48, achsenBreite = 32) {
 }
 
 /**
- * Was das Raster zeigt (DESIGN §4.1). Jede gewählte Gruppe, als Kontext, wenn sie nicht zum Filter
- * passt: Man muss sehen, wo die Woche belegt ist. Ohne Filter die Formate ohne Wahl („Noch offen“),
- * mit Filter ALLE Gruppen des Moduls bzw. Formats, auch gewählter: So wechselt man (V-0225; die
- * Ansichten „Alle“ und „Mein Plan“ gibt es seitdem nicht mehr).
+ * Was das Raster zeigt (DESIGN §4.1, Silas' zweiter Test, V-0237).
+ * - Ohne Filter „Mein Stundenplan“: jede eingeplante Gruppe (gewaehlt) und jeder Vorschlag
+ *   (vorschlag, gestrichelt). Offene Formate stehen dort nicht; man schlägt sie über Modul oder Format auf.
+ * - Mit Filter: ALLE Gruppen des Moduls bzw. Formats (gewählt, Vorschlag, möglich; das Zurückgenommene
+ *   eines schon gewählten Formats rechnet app.js), dazu „Mein Stundenplan“ außerhalb des Filters als
+ *   kontext: dieselben Kacheln, nur ganz zurückgenommen (etwa 20 % Deckkraft). So sieht man, wo die
+ *   Woche belegt ist, ohne dass es mit der Wahl verwechselt wird.
+ * Bis V-0237 zeigte die Vorgabe „Noch offen“ (alle Gruppen offener Formate) und Eingeplantes anderswo grau.
  */
 export function sichtbar(groups, { modul = '', teil = '' } = {}) {
   const out = [];
+  const filter = !!(modul || teil);
   for (const g of groups) {
     const passt = (!modul || g.component.module.number === modul) && (!teil || g.component_id === teil);
-    // Ein offenes Angebot (`gruppen: keine`, V-0233) ist nichts, was „noch offen“ ist: Seine Gruppen
-    // stehen erst, wenn man das Modul oder das Format aufschlägt (Lerninsel: 10 Stunden je Woche).
-    const offen = !g.component.selection && g.component.gruppen !== 'keine';
-    if (g.selected) out.push({ g, art: passt ? 'gewaehlt' : 'kontext' });
-    else if (passt && (teil || modul || offen)) out.push({ g, art: 'moeglich' });
+    const imPlan = g.selected || g.vorschlag;
+    if (!filter) {
+      if (imPlan) out.push({ g, art: g.selected ? 'gewaehlt' : 'vorschlag' });
+    } else if (passt) {
+      out.push({ g, art: g.selected ? 'gewaehlt' : g.vorschlag ? 'vorschlag' : 'moeglich' });
+    } else if (imPlan) {
+      out.push({ g, art: 'kontext' });
+    }
   }
   return out;
 }
@@ -170,6 +178,18 @@ const TYPEN = { VL: 'Vorlesung', UE: 'Übung', TUT: 'Tutorium', IV: 'Integrierte
 /** Typkürzel ausgeschrieben; unbekannte Kürzel bleiben, wie MOSES sie liefert (DESIGN §5.13). */
 export function typLang(t) {
   return TYPEN[t] || String(t || '');
+}
+
+// Die Kategorie eines Formats (Silas, 05.10.2026, V-0237): `vorlesung` (Präsenz im Stil einer
+// Vorlesung: VL, IV), `uebung` (gemeinsam Aufgaben: UE), `sonstige` (alles andere). Sie steuert die
+// Sättigung der Kachel (100 / 70 / 50 %). Die Quelle ist das Lesemodell (`format.kategorie`, V-0238);
+// fehlt es, das Kürzel, damit die Seite auch mit älteren Daten richtig aussieht.
+const KATEGORIE = { VL: 'vorlesung', IV: 'vorlesung', UE: 'uebung' };
+const KATEGORIEN = new Set(['vorlesung', 'uebung', 'sonstige']);
+
+export function kategorie(c) {
+  const k = c && c.format && c.format.kategorie;
+  return KATEGORIEN.has(k) ? k : KATEGORIE[c && c.type] || 'sonstige';
 }
 
 /** Der Rhythmus auf der Kachel, nur wenn er von „wöchentlich“ abweicht; 14-tägig als A/B-Woche. */
