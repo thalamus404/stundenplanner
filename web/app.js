@@ -28,6 +28,8 @@ const speicher = (() => { try { return window.localStorage; } catch { return nul
 // Was die Seite zeigt (nur im Speicher der Seite, DESIGN §4.1). Filter: modul, teil, ueber
 // (raster.mjs). modus: 'tag', 'woche' oder null (Vorgabe).
 const z = { ...R.KEIN_FILTER, zeitraum: 'skeleton', ab: 0, tag: R.startTag(new Date()), modus: null, fokus: '' };
+// Die zuletzt geöffneten Ansichten, für Pfeil links und rechts (V-0245, raster.mjs).
+let verlauf = R.verlaufNeu();
 let plan = null, bestand = { groups: [], parts: [] }, schluessel = '', eigene = {}, gespeichert = true;
 // Der Startbildschirm (V-0234): der Baum aus index.json, seine Stufen, alle Pläne flach, das Blatt
 // des offenen Plans. altSchluessel: Die Auswahl kam noch aus dem Schlüssel vor V-0234; die erste
@@ -127,7 +129,7 @@ function setzePlan(p) {
   tageZahl = R.tagesZahl(bestand.groups);
   wochen = W.wochen(bestand.groups);
   hatAB = W.hatAB(plan, bestand.groups);
-  if (vorher !== schluessel) Object.assign(z, R.KEIN_FILTER, { zeitraum: 'skeleton', ab: 0, fokus: '' });
+  if (vorher !== schluessel) { Object.assign(z, R.KEIN_FILTER, { zeitraum: 'skeleton', ab: 0, fokus: '' }); verlauf = R.verlaufNeu(); }
   if (!wochen.includes(z.zeitraum)) z.zeitraum = 'skeleton';
   if (z.tag >= tageZahl) z.tag = 0;
   if (wocheMq) wocheMq.removeEventListener('change', render);
@@ -950,8 +952,9 @@ function halloLeiste(st) {
 // ── Bedienung
 
 /** Den Filter setzen (raster.mjs) und ansagen, was zu sehen ist. */
-function filtern(neu) {
+function filtern(neu, ausVerlauf = false) {
   Object.assign(z, neu);
+  if (!ausVerlauf) verlauf = R.verlaufMerken(verlauf, z);
   const c = bestand.parts.find((x) => x.id === z.teil);
   const m = plan.modules.find((x) => x.number === z.modul);
   render();
@@ -1061,6 +1064,7 @@ async function planOeffnen(b, verweis = null) {
   zeigeHallo(false);
   // Beim Öffnen immer „Mein Stundenplan“, ohne Filter, auch nach dem Startbildschirm (V-0237).
   Object.assign(z, R.KEIN_FILTER);
+  verlauf = R.verlaufNeu();
   if (plan && blatt && blatt.id === b.id && !verweis) { vorschau = null; adresseOhneAuswahl(); render(); return; }
   blatt = b;
   vorschau = null;
@@ -1068,7 +1072,23 @@ async function planOeffnen(b, verweis = null) {
   if (!verweis) adresseOhneAuswahl();
 }
 
+/**
+ * Wo Pfeil links und rechts durch den Verlauf gehen (V-0245): überall auf der Seite, nur nicht dort, wo
+ * die Pfeile schon etwas tun: in Feldern und Auswahllisten, im Raster (Kachel zu Kachel, §4.4), in einer
+ * offenen Karte oder einem Blatt und im Startbildschirm.
+ */
+function pfeileFuerVerlauf(e) {
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || offen || !plan || !$('hallo').hidden) return false;
+  const t = e.target instanceof Element ? e.target : null;
+  return !(t && (t.closest('input, select, textarea, [contenteditable], #koerper, [role="tablist"]')));
+}
+
 document.addEventListener('keydown', (e) => {
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && pfeileFuerVerlauf(e)) {
+    const s = R.verlaufSchritt(verlauf, e.key === 'ArrowLeft' ? -1 : 1);
+    if (s) { e.preventDefault(); verlauf = s.v; filtern(s.filter, true); }
+    return;
+  }
   if (e.key === 'Escape') {
     if (offen) { e.preventDefault(); schliesse(); } else if (!$('hallo').hidden) halloEsc(); else if (z.teil || z.modul) filtern(R.stufeZurueck(z));
     return;

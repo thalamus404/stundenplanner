@@ -162,3 +162,34 @@ test('Ein offenes Angebot (`gruppen: keine`, V-0234) steht nicht unter „Noch o
   assert.equal(moeglich.length, 3);
   assert.ok(moeglich.every((e) => e.g.component_id === '10001:200'));
 });
+
+// ── Verlauf der Ansichten (V-0245): Pfeil links/rechts wie Zurück/Vor im Browser ──
+test('Verlauf: Vorlesung, Übung, zurück, vor; Neues hinter einem Schritt zurück schneidet ab', () => {
+  let v = R.verlaufNeu();
+  const vl = { modul: '10001', teil: '10001:vl', ueber: false };
+  const ue = { modul: '10001', teil: '10001:ue', ueber: false };
+  v = R.verlaufMerken(v, vl);
+  v = R.verlaufMerken(v, ue);
+  assert.equal(v.liste.length, 3);
+  let s = R.verlaufSchritt(v, -1);
+  assert.equal(s.filter.teil, '10001:vl');
+  s = R.verlaufSchritt(s.v, 1);
+  assert.equal(s.filter.teil, '10001:ue');
+  assert.equal(R.verlaufSchritt(s.v, 1), null, 'vorne ist Schluss');
+  // zweimal zurück: „Mein Stundenplan“; dann ein anderes Modul: Vorlesung und Übung fallen weg
+  s = R.verlaufSchritt(R.verlaufSchritt(s.v, -1).v, -1);
+  assert.deepEqual([s.filter.modul, s.filter.teil], ['', '']);
+  assert.equal(R.verlaufSchritt(s.v, -1), null, 'hinten ist Schluss');
+  v = R.verlaufMerken(s.v, { modul: '10002', teil: '', ueber: false });
+  assert.deepEqual(v.liste.map((x) => x.teil || x.modul || '-'), ['-', '10002']);
+});
+
+test('Verlauf: dieselbe Ansicht zählt nicht doppelt, höchstens 50 Einträge, nur der Filter wird gemerkt', () => {
+  let v = R.verlaufNeu();
+  v = R.verlaufMerken(v, { modul: '', teil: '', ueber: false, zeitraum: 'x', fokus: 'y' });
+  assert.equal(v.liste.length, 1);
+  for (let i = 0; i < 80; i++) v = R.verlaufMerken(v, { modul: String(i), teil: '' });
+  assert.equal(v.liste.length, 50);
+  assert.equal(v.i, 49);
+  assert.deepEqual(Object.keys(v.liste[0]).sort(), ['modul', 'teil', 'ueber']);
+});
