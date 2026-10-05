@@ -1,0 +1,36 @@
+{
+  "id": "nama-bsc",
+  "name": "Nachhaltiges Management",
+  "abschluss": "B.Sc.",
+  "hochschule": "tu-berlin",
+  "sichtbar": "vorschau",
+  "ordnungen": [
+    {
+      "id": "stupo-2022",
+      "label": "StuPO 2016 (Fassung 2022)",
+      "name": "Studien- und Prüfungsordnung für den Bachelorstudiengang Nachhaltiges Management vom 2. November 2016 in der Fassung der 1. Änderung vom 5. Januar 2022",
+      "fundstelle": "AMBl. TU 05/2017, 1. Änderung 13/2022",
+      "url": "https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_VII/NachhaltigesManagement_B.Sc._2016.pdf",
+      "gilt_ab": "2022-10-01",
+      "gilt_bis": null,
+      "studienbeginn": { "ab": "WiSe 2022/23", "bis": null },
+      "fuer_wen": "Studienbeginn ab WiSe 2022/23; seit dem 30.09.2024 für alle (die alte Fassung ist außer Kraft).",
+      "quelle": "1. Änderung, Artikel II Abs. 1: tritt am 1. Oktober 2022 in Kraft und gilt für Studierende, die ab dem Wintersemester 2022/2023 immatrikuliert werden; Abs. 2: die Fassung vom 02.11.2016 tritt am 30.09.2024 außer Kraft, wer noch nicht fertig ist, setzt nach der geänderten fort. MOSES nennt sie „StuPO 2022“. Gelesen am 05.10.2026"
+    }
+  ],
+  "plaene": [
+    {
+      "ordnung": "stupo-2022",
+      "semester": "wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Silas, 05.10.2026: Nachhaltiges Management ist der richtige Ersatz für „BWL“ (einen Bachelor Betriebswirtschaftslehre gibt es an der TU Berlin nicht; V-0228). Exemplarischer Studienverlaufsplan, 1. Semester, Anlage 1 der 1. Änderung (AMBl. 13/2022). Modulnummern aus der MOSES-Modulliste WiSe 2026/27 („StuPO 2022“): https://moseskonto.tu-berlin.de/moses/modultransfersystem/studiengaenge/anzeigen.html?studiengang=135&mkg=24928&semester=77. Keine Wahl im 1. Semester. Von Hand übernommen, Stand 05.10.2026 (querwind, V-0228)",
+      "module": [
+        { "nummer": "70432", "kurz": "Grundl. NaMa" },
+        { "nummer": "70295", "kurz": "Mikro" },
+        { "nummer": "70112", "kurz": "BuK" },
+        { "nummer": "70202", "kurz": "Orga & Inno" },
+        { "nummer": "20367", "kurz": "Mathe I" }
+      ]
+    }
+  ]
+}

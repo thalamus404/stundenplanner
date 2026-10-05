@@ -1,0 +1,3 @@
+{ "id": "ein-bsc", "name": "Einfachlehre", "abschluss": "B.Sc.", "hochschule": "test-uni",
+  "plaene": [ { "semester": "ws-2030-31", "fachsemester": 1, "quelle": "erfunden",
+                "module": [ { "nummer": "90001", "kurz": "Mod A" } ] } ] }

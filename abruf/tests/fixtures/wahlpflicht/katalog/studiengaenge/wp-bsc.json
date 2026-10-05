@@ -1,0 +1,55 @@
+{
+ "id": "wp-bsc",
+ "name": "Wahllehre",
+ "abschluss": "B.Sc.",
+ "hochschule": "erfunden",
+ "plaene": [
+  {
+   "semester": "ws-2030-31",
+   "fachsemester": 5,
+   "quelle": "erfunden für die Tests",
+   "module": [
+    {
+     "nummer": "90001",
+     "kurz": "Pflicht A"
+    }
+   ],
+   "wahlpflicht": [
+    {
+     "id": "vt",
+     "kurz": "WP Vertiefung",
+     "name": "Wahlpflicht Vertiefung",
+     "modulliste": "wp-bsc-o2030-ws-2030-31",
+     "bereich": "Wahlpflichtbereich/Vertiefung",
+     "anteil": "12–21 LP über das 5. und 6. FS"
+    }
+   ],
+   "frei": [
+    {
+     "name": "Wahlbereich",
+     "anteil": "12 LP",
+     "hinweis": "frei"
+    }
+   ],
+   "ordnung": "o2030"
+  },
+  {
+   "semester": "ss-2030",
+   "fachsemester": 4,
+   "quelle": "erfunden für die Tests",
+   "module": [
+    {
+     "nummer": "90002",
+     "kurz": "Pflicht B"
+    }
+   ],
+   "ordnung": "o2030"
+  }
+ ],
+ "ordnungen": [
+  {
+   "id": "o2030",
+   "label": "Ordnung 2030"
+  }
+ ]
+}

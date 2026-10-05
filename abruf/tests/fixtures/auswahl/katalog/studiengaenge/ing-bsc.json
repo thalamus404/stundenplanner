@@ -1,0 +1,19 @@
+{ "id": "ing-bsc", "name": "Testingenieurwesen", "abschluss": "B.Sc.", "hochschule": "test-uni",
+  "vertiefung_heisst": "Studienrichtung",
+  "ordnungen": [
+    { "id": "o-neu", "label": "Ordnung neu", "gilt_ab": "2030-10-01", "studienbeginn": { "ab": "WS 2030/31" },
+      "fuer_wen": "Studienbeginn ab WS 2030/31" },
+    { "id": "o-alt", "label": "Ordnung alt", "gilt_bis": "2031-09-30", "studienbeginn": { "bis": "SS 2030" },
+      "fuer_wen": "Studienbeginn bis SS 2030" } ],
+  "vertiefungen": [ { "id": "bau", "name": "Bauwesen", "kurz": "BW" }, { "id": "chemie", "name": "Chemie" } ],
+  "plaene": [
+    { "ordnung": "o-neu", "semester": "ws-2030-31", "fachsemester": 1, "waehlbar": false, "quelle": "erfunden",
+      "module": [ { "nummer": "90001", "kurz": "Mod A" } ] },
+    { "ordnung": "o-neu", "vertiefung": "chemie", "semester": "ws-2030-31", "fachsemester": 1, "quelle": "erfunden",
+      "module": [ { "nummer": "90002", "kurz": "Mod B" } ] },
+    { "ordnung": "o-neu", "vertiefung": "bau", "semester": "ws-2030-31", "fachsemester": 1, "quelle": "erfunden",
+      "module": [ { "nummer": "90003", "kurz": "Mod C" } ] },
+    { "ordnung": "o-alt", "semester": "ws-2030-31", "fachsemester": 3, "quelle": "erfunden",
+      "module": [ { "nummer": "90001", "kurz": "Mod A" } ] },
+    { "ordnung": "o-neu", "semester": "ws-2030-31", "fachsemester": 3, "sichtbar": "vorschau", "quelle": "erfunden",
+      "module": [ { "nummer": "90003", "kurz": "Mod C" } ] } ] }

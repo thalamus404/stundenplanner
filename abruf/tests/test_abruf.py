@@ -7,6 +7,7 @@ fixtures/katalog/ ist ebenso erfunden.
 import contextlib
 import io
 import json
+import shutil
 import stat
 import sys
 import tempfile
@@ -89,29 +90,103 @@ class KatalogTests(unittest.TestCase):
         kat = abruf.lade_katalog()
         self.assertTrue(kat['plaene'])
 
+    def kopie(self, t):
+        k = Path(t) / 'katalog'
+        shutil.copytree(KATALOG, k)
+        return k
+
     def test_ungueltige_modulnummer_wird_abgelehnt(self):
+        # Für MOSES nur Ziffern (abruf.NUMMER), enger als der Katalog selbst (katalog.MODUL).
         with tempfile.TemporaryDirectory() as t:
-            k = Path(t)
-            (k / 'semester').mkdir()
-            (k / 'studiengaenge').mkdir()
-            (k / 'semester' / 'wise-2026-27.json').write_text(
-                (KATALOG / 'semester' / 'wise-2026-27.json').read_text(encoding='utf-8'), encoding='utf-8')
-            (k / 'studiengaenge' / 'x.json').write_text(json.dumps(
-                {'id': 'x', 'plaene': [{'semester': 'wise-2026-27', 'module': [{'nummer': '../99901'}]}]}),
-                encoding='utf-8')
-            with self.assertRaises(abruf.KatalogFehler):
+            k = self.kopie(t)
+            g = json.loads((k / 'studiengaenge/aa-bsc.json').read_text(encoding='utf-8'))
+            g['plaene'][0]['module'][0]['nummer'] = 'A-99901'
+            (k / 'studiengaenge/aa-bsc.json').write_text(json.dumps(g), encoding='utf-8')
+            with self.assertRaisesRegex(abruf.KatalogFehler, 'ungültige Modulnummer'):
                 abruf.lade_katalog(k)
 
     def test_plan_mit_unbekanntem_semester_wird_abgelehnt(self):
         with tempfile.TemporaryDirectory() as t:
-            k = Path(t)
-            (k / 'semester').mkdir()
-            (k / 'studiengaenge').mkdir()
-            (k / 'studiengaenge' / 'x.json').write_text(json.dumps(
-                {'id': 'x', 'plaene': [{'semester': 'wise-2030-31', 'module': [{'nummer': '99901'}]}]}),
-                encoding='utf-8')
-            with self.assertRaises(abruf.KatalogFehler):
+            k = self.kopie(t)
+            g = json.loads((k / 'studiengaenge/aa-bsc.json').read_text(encoding='utf-8'))
+            g['plaene'][0]['semester'] = 'wise-2030-31'
+            (k / 'studiengaenge/aa-bsc.json').write_text(json.dumps(g), encoding='utf-8')
+            with self.assertRaisesRegex(abruf.KatalogFehler, 'wise-2030-31'):
                 abruf.lade_katalog(k)
+
+
+def katalog_mit_vorschau_und_sperre(t):
+    """Der Testkatalog, dazu: bb-bsc als Vorschau, und eine gesperrte Hochschule mit eigenem Plan (99904)."""
+    k = Path(t) / 'katalog'
+    shutil.copytree(KATALOG, k)
+    g = json.loads((k / 'studiengaenge/bb-bsc.json').read_text(encoding='utf-8'))
+    g['sichtbar'] = 'vorschau'
+    (k / 'studiengaenge/bb-bsc.json').write_text(json.dumps(g), encoding='utf-8')
+    (k / 'hochschulen/zu-hs.json').write_text(json.dumps(
+        {'id': 'zu-hs', 'kurz': 'Zu-HS', 'name': 'Erfundene gesperrte Hochschule', 'abruf': 'gesperrt',
+         'abruf_grund': 'erfunden: Die Hochschule hat nicht zugestimmt', 'sichtbar': 'vorschau'}), encoding='utf-8')
+    (k / 'semester/zu-wise.json').write_text(json.dumps(
+        {'id': 'zu-wise', 'label': 'WiSe', 'moses': 'WiSe 2026/27', 'anker': '2026-10-12', 'hochschule': 'zu-hs'}),
+        encoding='utf-8')
+    (k / 'studiengaenge/cc-bsc.json').write_text(json.dumps(
+        {'id': 'cc-bsc', 'name': 'Gesperrt', 'hochschule': 'zu-hs',
+         'plaene': [{'semester': 'zu-wise', 'fachsemester': 1, 'module': [{'nummer': '99904'}]},
+                    {'semester': 'wise-2026-27', 'fachsemester': 1, 'module': [{'nummer': '99905'}]}]}),
+        encoding='utf-8')
+    return k
+
+
+class VorschauUndSperreTests(unittest.TestCase):
+    """Silas, 05.10.2026: Live und Vorschau aus demselben Katalog; der tägliche Lauf holt nur Live.
+    Punkt 7411bed1: Was eine Hochschule sperrt, holt der Abruf nie, auch nicht mit --mit-vorschau."""
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.kat = katalog_mit_vorschau_und_sperre(self._t.name)
+        self.roh = Path(self._t.name) / 'roh'
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def laufe(self, **kw):
+        welt = Welt()
+        abruf.lauf(katalog=self.kat, roh=self.roh, client_fabrik=welt.client, uhr=uhr(), log=still,
+                   schlaf=lambda s: None, **kw)
+        return {u.rsplit('=', 1)[1] for u in welt.abrufe if 'ansehen.html?number=' in u}
+
+    def test_ohne_schalter_keine_vorschau(self):
+        self.assertEqual(abruf.module_je_semester(abruf.lade_katalog(self.kat))['wise-2026-27'], ['99901', '99902'])
+        self.assertEqual(self.laufe(), {'99901', '99902'})
+
+    def test_mit_schalter_vorschau_aber_nie_gesperrt(self):
+        self.assertEqual(self.laufe(mit_vorschau=True), {'99901', '99902', '99903'})
+        self.assertFalse((self.roh / 'zu-wise').exists())
+
+    def test_gesperrtes_semester_ausdruecklich_verlangt(self):
+        with self.assertRaisesRegex(abruf.KatalogFehler, 'nicht zugestimmt'):
+            self.laufe(semester=['zu-wise'], mit_vorschau=True)
+        self.assertFalse(self.roh.exists())  # nichts geschrieben, auch kein _lauf.json
+
+    def test_vorschau_semester_ohne_schalter_ausdruecklich_verlangt(self):
+        g = json.loads((self.kat / 'studiengaenge/aa-bsc.json').read_text(encoding='utf-8'))
+        g['sichtbar'] = 'vorschau'
+        (self.kat / 'studiengaenge/aa-bsc.json').write_text(json.dumps(g), encoding='utf-8')
+        with self.assertRaisesRegex(abruf.KatalogFehler, '--mit-vorschau'):
+            self.laufe(semester=['wise-2026-27'])
+
+    def test_befehl_kennt_den_schalter(self):
+        welt = Welt()
+        with mock.patch.object(moses, 'Client', welt.client), mock.patch.object(abruf.time, 'sleep'), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            rc = abruf.main(['--katalog', str(self.kat), '--roh', str(self.roh), '--mit-vorschau'])
+        self.assertEqual(rc, 0)
+        geholt = {u.rsplit('=', 1)[1] for u in welt.abrufe if 'ansehen.html?number=' in u}
+        self.assertEqual(geholt, {'99901', '99902', '99903'})
+
+    def test_der_echte_katalog_holt_taeglich_nur_live(self):
+        # Der tägliche Lauf (betrieb/lauf.py) ruft ohne Schalter auf: nur die Module von WI 1. FS.
+        kat = abruf.lade_katalog()
+        self.assertEqual({p['id'] for p in kat['plaene']}, {'wi-bsc:stupo-2025:wise-2026-27:fs1'})
 
 
 class LaufTests(unittest.TestCase):
@@ -124,6 +199,8 @@ class LaufTests(unittest.TestCase):
         self._t.cleanup()
 
     def laufe(self, welt, start=0, **kw):
+        # Die Pause zwischen Modulen wird nur aufgezeichnet, nicht abgewartet.
+        kw.setdefault('schlaf', lambda s: welt.abrufe.append(('pause', s)))
         return abruf.lauf(katalog=KATALOG, roh=self.roh, client_fabrik=welt.client,
                           uhr=uhr(start), log=still, **kw)
 
@@ -133,9 +210,20 @@ class LaufTests(unittest.TestCase):
     def test_jedes_modul_wird_einmal_geholt(self):
         welt = Welt()
         self.laufe(welt)
-        versionsseiten = [u for u in welt.abrufe if 'ansehen.html?number=' in u]
+        versionsseiten = [u for u in welt.abrufe if isinstance(u, str) and 'ansehen.html?number=' in u]
         self.assertEqual(sorted(versionsseiten), sorted(
             moses.MTS + 'ansehen.html?number=' + n for n in ('99901', '99902', '99903')))
+
+    def test_pause_zwischen_modulen_nicht_davor_und_auch_nach_fehler(self):
+        # Punkt aed3e76c: Der Abstand in moses.Client gilt nur innerhalb eines Moduls. Zwischen zwei
+        # Modulen wartet der Lauf mindestens 2 s, vor dem ersten nicht, und nacheinander, nie parallel.
+        self.assertGreaterEqual(abruf.PAUSE_MODULE, 2.0)
+        welt = Welt(scheitert={'99901:901'})
+        self.laufe(welt)
+        folge = ['pause' if isinstance(u, tuple) else u.rsplit('=', 1)[1]
+                 for u in welt.abrufe if isinstance(u, tuple) or 'ansehen.html?number=' in u]
+        self.assertEqual(folge, ['99901', 'pause', '99902', 'pause', '99903'])
+        self.assertEqual({u[1] for u in welt.abrufe if isinstance(u, tuple)}, {abruf.PAUSE_MODULE})
 
     def test_rohstand_im_format_der_architektur(self):
         ergebnis = self.laufe(Welt())
@@ -206,7 +294,7 @@ class LaufTests(unittest.TestCase):
 
     def test_main_exit_code_und_roh_von_anderswo(self):
         def main(*argv, welt):
-            with mock.patch.object(moses, 'Client', welt.client), \
+            with mock.patch.object(moses, 'Client', welt.client), mock.patch.object(abruf.time, 'sleep'), \
                     contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                 return abruf.main(['--katalog', str(KATALOG), '--roh', str(self.roh), *argv])
         self.assertEqual(main(welt=Welt()), 0)

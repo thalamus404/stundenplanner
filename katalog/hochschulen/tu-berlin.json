@@ -1,0 +1,10 @@
+{
+  "id": "tu-berlin",
+  "kurz": "TU Berlin",
+  "name": "Technische Universität Berlin",
+  "quelle": {
+    "name": "MOSES",
+    "url": "https://moseskonto.tu-berlin.de",
+    "text": "Modul- und Veranstaltungssystem der TU Berlin, öffentlich und ohne Login: Modulbeschreibungen, Vorlesungsverzeichnis und der CSV-Export der Einzelbuchungen (docs/SYSTEM.md §3)"
+  }
+}

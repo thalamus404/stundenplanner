@@ -1,0 +1,20 @@
+{ "quelle": "https://moseskonto.tu-berlin.de/moses/modultransfersystem/studiengaenge/anzeigen.html?studiengang=1&mkg=2&semester=3",
+  "abgerufen_am": "2030-10-01T06:00:00+02:00",
+  "studiengang": { "moses_id": 1, "name": "Wahllehre", "kurz": "WL", "abschluss": "Bachelor of Science", "turnus": "Wintersemester" },
+  "stupo": { "moses_id": 2, "label": "Ordnung 2030" }, "liste": { "moses_id": 3, "label": "WiSe 2030/31" },
+  "bereiche": [
+    { "name": "Pflichtbereich", "liste": "WiSe 2030/31", "schluessel": "0_0", "lp_min": 6, "lp_max": 6, "regeln": [], "bereiche": [],
+      "module": [ { "nummer": "90001", "version": 1, "titel": "Pflicht A", "lp": 6, "benotet": "Benotet", "pruefungsform": "Schriftliche Prüfung", "turnus": "WiSe", "gewicht": "1.0", "url": null } ] },
+    { "name": "Wahlpflichtbereich", "liste": "WiSe 2030/31", "schluessel": "0_1", "lp_min": 12, "lp_max": 21, "regeln": [], "module": [],
+      "bereiche": [
+        { "name": "Vertiefung", "liste": "WiSe 2030/31", "schluessel": "0_1_0", "lp_min": 12, "lp_max": 21,
+          "regeln": ["Es müssen mindestens 12 Leistungspunkte bestanden werden.", "Es dürfen höchstens 21 Leistungspunkte bestanden werden."],
+          "module": [ { "nummer": "90013", "version": 1, "titel": "Ohne gültige Version", "lp": 6, "benotet": "Benotet", "pruefungsform": "Portfolioprüfung", "turnus": "k.A.", "gewicht": "1.0", "url": null } ],
+          "bereiche": [
+            { "name": "Seminare", "liste": "WiSe 2030/31", "schluessel": "0_1_0_0", "lp_min": 3, "lp_max": null, "regeln": [], "bereiche": [],
+              "module": [ { "nummer": "90010", "version": 2, "titel": "Seminar: Erfundene Themen der Informatik", "lp": 3, "benotet": "Benotet", "pruefungsform": "Referat", "turnus": "WiSe", "gewicht": "1.0", "url": null },
+                          { "nummer": "90011", "version": 1, "titel": "Nur im Sommer", "lp": 6, "benotet": "Benotet", "pruefungsform": "Referat", "turnus": "SoSe", "gewicht": "1.0", "url": null } ] },
+            { "name": "Projekte", "liste": "WiSe 2030/31", "schluessel": "0_1_0_1", "lp_min": 6, "lp_max": null, "regeln": [], "bereiche": [],
+              "module": [ { "nummer": "90012", "version": 1, "titel": "Projekt nach Vereinbarung", "lp": 9, "benotet": "Benotet", "pruefungsform": "Portfolioprüfung", "turnus": "WiSe/SoSe", "gewicht": "1.0", "url": null },
+                          { "nummer": "90001", "version": 1, "titel": "Pflicht A", "lp": 6, "benotet": "Benotet", "pruefungsform": "Schriftliche Prüfung", "turnus": "WiSe", "gewicht": "1.0", "url": null },
+                          { "nummer": "90010", "version": 2, "titel": "Seminar: Erfundene Themen der Informatik", "lp": 3, "benotet": "Benotet", "pruefungsform": "Referat", "turnus": "WiSe", "gewicht": "1.0", "url": null } ] } ] } ] } ] }

@@ -1,7 +1,8 @@
 # Abruf und Lesemodell
 
-Holt die öffentlichen MOSES-Daten je Modul (`abruf.py`, `moses.py`) und rechnet daraus die Daten,
-die die Seite liest (`plan.py`, `bauen.py`). Formate und Befehle: [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md)
+Holt die öffentlichen Daten je Modul aus MOSES (`moses.py`) oder HIS LSF (`lsf.py`), gewählt in
+`abruf.py`, und rechnet daraus die Daten, die die Seite liest (`plan.py`, `bauen.py`). Den Katalog
+lesen beide über `katalog.py`. Formate und Befehle: [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md)
 §3–§7. Herkunft: Study OS (`stundenplan/moses.py`, `stundenplan/runner.py`, `app/stundenplan.py`), kopiert.
 
 *Im Bau (Programm „Stundenplanner — erste Fassung“, Phase 2). Wer hier baut, schreibt in diese Datei,
@@ -17,7 +18,17 @@ pip install -r abruf/requirements.txt         # nur beautifulsoup4
 python3 abruf/abruf.py                        # jedes Semester des Katalogs, das Pläne hat
 python3 abruf/abruf.py --semester wise-2026-27 --nur 70450   # ein Modul nachholen
 python3 abruf/abruf.py --roh /irgendwo/roh    # Rohstände anderswohin
+python3 abruf/abruf.py --mit-vorschau --roh /irgendwo/roh   # auch Vorschau-Pläne (nie täglich)
 ```
+
+- **Nur Live-Pläne, außer mit `--mit-vorschau`.** Der Katalog kennzeichnet Pläne der Vorschau
+  (`"sichtbar": "vorschau"`, ARCHITEKTUR §3); der tägliche Lauf holt sie nicht. **Gesperrte
+  Hochschulen nie** (`"abruf": "gesperrt"`, heute die HU, Punkt 7411bed1), auch nicht mit dem
+  Schalter. Nennt `--semester` ein Semester, in dem nur Vorschau oder Gesperrtes steht, endet der
+  Aufruf mit 2 und schreibt nichts, auch kein `_lauf.json`.
+- **Den Katalog liest `katalog.py`**, für Abruf und Lesemodell gemeinsam: Hochschulen, Semester,
+  Studiengänge mit Ordnungen, Vertiefungen (die den Grundplan erben) und Plänen (ARCHITEKTUR §3).
+  Geprüft wird jeder Plan, auch Vorschau und Gesperrtes.
 
 - **Aus jedem Arbeitsverzeichnis.** Der Katalog hängt an der Lage von `abruf.py`, die Vorgabe für
   `--roh` an der Repo-Wurzel (`daten/roh`); ein ausdrücklich übergebenes `--roh` gilt relativ zum
@@ -28,8 +39,9 @@ python3 abruf/abruf.py --roh /irgendwo/roh    # Rohstände anderswohin
   Aufruf oder der Katalog nicht stimmt (dann wird nichts geschrieben).
 - Je Modul eine Zeile auf stderr (`✓ 70123 v11: 2 Bestandteile, 5 Gruppen, 63 Buchungen`), am Ende
   je Semester eine auf stdout.
-- **Dauer:** je Modul 2 Seiten, je Bestandteil 5 Anfragen, mit 0,7 s Abstand. WI im 1. Fachsemester
-  (5 Module, 11 Bestandteile) dauert gut eine Minute.
+- **Dauer:** je Modul 2 Seiten, je Bestandteil 5 Anfragen (ein leerer Bestandteil: 2), mit 0,7 s Abstand,
+  dazu 2 s zwischen zwei Modulen. WI im 1. Fachsemester (5 Module, 11 Bestandteile) dauert gut eine
+  Minute, 20 Module mit 44 Bestandteilen (vier TU-Studiengänge, V-0228) gut fünf Minuten.
 
 ### Was schiefgehen kann
 
@@ -64,13 +76,30 @@ die strenge Regel kippte das ganze Modul (19 Gruppen, 277 Termine). Freigegeben 
 05.10.2026; die Regel steht als Docstring an `parse_export()` in `moses.py`, die Tests in
 `tests/test_moses.py`.
 
+**Ein Bestandteil ohne Gruppe im Zielsemester ist leer, kein Fehler** (V-0228). Listet die Seite des
+Vorlesungsverzeichnisses im Zielsemester **keine einzige** Termingruppe, zeigt MOSES nur den leeren
+Kalender, und „Liste als Excel-Datei exportieren“ fehlt, weil es nichts zu listen gibt. Der Bestandteil
+steht dann mit `groups: []` und `status: "unplanned"` im Rohstand, ohne Export; die Seite zeigt ihn als
+„ohne Termine“. Eng gehalten: nur wenn das Zielsemester gewählt ist, kein Gruppenlink, kein
+Kalenderereignis und kein „Liste als Excel-Datei exportieren“ auf der Seite steht und der Kalender
+selbst da ist. Sonst `VVZ ohne Gruppen in unbekanntem Layout`; listet die Seite Gruppen, aber keinen
+Export, bleibt es `VVZ-Export fehlt`. Die Regel gab es zweimal, unabhängig gebaut (V-0228 und V-0227);
+seit V-0233 gilt die Vereinigung beider Prüfungen, also die strengere.
+Anlass: Am 05.10.2026 fehlten so die Übung von Analysis I und Lineare Algebra (20122), die Übung von
+Einführung in die Informatik (40013) und das Labor von Grundlagen der Elektrotechnik (40774), und
+jedes Mal fiel das ganze Modul samt Vorlesung. Regel: Docstring von `empty_component()` in
+`moses.py`, Tests in `tests/test_moses.py`.
+
 ### Höflichkeit
 
 MOSES ist ein öffentlicher Dienst der TU Berlin, kein Angebot an uns. Deshalb:
 
 - **Einmal am Tag** reicht. Die Termine ändern sich selten, und die Seite sagt, wie alt sie sind.
   Kein Lauf in einer Schleife und kein sofortiges Wiederholen nach einem Fehler
-- Zwischen zwei Anfragen derselben Sitzung mindestens **0,7 s** (`Client(delay=0.7)`)
+- Zwischen zwei Anfragen derselben Sitzung mindestens **0,7 s** (`Client(delay=0.7)`), zwischen zwei
+  Modulen mindestens **2 s** (`abruf.PAUSE_MODULE`, Punkt aed3e76c): Jedes Modul hat eine eigene
+  Sitzung, ohne die Pause folgte das nächste Modul sofort auf das vorige. Nie parallel, ein Modul
+  nach dem anderen
 - Der **User-Agent** nennt das Projekt und seine Adresse (`moses.USER_AGENT`), damit MOSES einen
   auffälligen Abruf zuordnen kann, statt ihn zu sperren
 - Je Modul eine frische Sitzung **ohne Login**. Die Exporteinstellungen gelten nur für sie;
@@ -80,16 +109,153 @@ MOSES ist ein öffentlicher Dienst der TU Berlin, kein Angebot an uns. Deshalb:
   `tests/test_abruf.py` mit einer Attrappe des Clients auf erfundenem HTML und einem erfundenen
   Katalog
 
-## Lesemodell
+## Modullisten und Wahlpflicht (V-0227, übernommen in V-0233)
 
-`plan.py` und `bauen.py` (V-0215). Das Format ist der Vertrag mit der Seite und steht in
-[`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5; die Regeln dahinter stehen in den Docstrings
-der beiden Dateien.
+`modulliste.py` liest den **Studiengangsaufbau** eines Studiengangs aus dem MTS von MOSES
+(öffentlich): alle Bereiche mit ihren Modulen (Nummer, Version, LP, benotet, Prüfungsform,
+Turnus, Gewicht) und den „Regeln zum Bestehen“ (daraus `lp_min`, `lp_max`). Was MOSES dort nicht
+sagt, ist das **Fachsemester**: Das steht nur im Studienverlaufsplan der StuPO und bleibt Handarbeit
+im Katalog.
 
 ```sh
-python3 abruf/bauen.py                                   # katalog/ + daten/roh/ → web/daten/
-python3 abruf/bauen.py --roh <ordner> --aus <ordner>     # andere Rohstände, anderes Ziel
+# WI B.Sc. (121), StuPO 2025 (mkg 24980), Modulliste WiSe 2026/27 (semester 77)
+python3 abruf/modulliste.py --studiengang 121 --stupo 24980 --liste 77 \
+    --aus katalog/modullisten/wi-bsc-stupo2025-wise-2026-27.json
 ```
+
+- Die drei Zahlen stehen in der Adresse der Studiengangsseite
+  (`modultransfersystem/studiengaenge/anzeigen.html?studiengang=…&mkg=…&semester=…`); die
+  Auswahllisten der Seite nennen alle StuPOs und Modullisten.
+- **Je Bereich zwei Anfragen**, 1 s Abstand: WI mit 26 Bereichen dauert gut eine Minute. Es gibt
+  keinen täglichen Lauf dafür; eine Liste ändert sich je Semester und wird mit dem Katalog neu
+  erzeugt und committet.
+- Der Baum wird über die **Auswahl je Zeilenschlüssel** (`0_1_4`) gelesen, der Tiefe nach, bis eine
+  Auswahl leer zurückkommt. Das Aufklappen per Ajax gibt in dieser PrimeFaces-Fassung den Baum
+  unverändert zurück. Fehlt eine Spalte der Modulzuordnungen, endet der Abruf mit
+  `Unbekanntes Layout der Modulzuordnungen` (nicht raten).
+
+**Im Katalog** nennt ein Plan seine Wahlpflichtbereiche mit `modulliste` (Datei unter
+`katalog/modullisten/`) und `bereich` (Pfad im Baum, z. B. `Wahlpflichtbereich/Vertiefung
+Informatik`). Der Abruf holt dann zusätzlich jedes Modul des Bereichs, dessen **Turnus** laut MTS
+zum Semester passt (`k.A.` zählt als ja). `--alle-kandidaten` schaltet diesen Filter ab; damit
+wurde am 05.10.2026 gemessen, wie verlässlich der Turnus ist (`docs/forschung/wi-hoehere-fachsemester.md`
+auf dem Strang `vorgang/v-0227`). Die Pläne mit Wahlpflicht (WI FS 2–6) sind Vorschau: Der tägliche
+Lauf holt sie nicht, nur `--mit-vorschau`.
+
+- **Ein Kandidat ohne Angebot ist kein Fehler des Laufs.** „keine gültige Version für …“ ist für ein
+  Wahlpflichtmodul der Normalfall. Sein Scheitern steht im Rohstand und in `_lauf.json` unter
+  `kandidaten: {module, fehler: [...]}`; `status` und `errors` richten sich nur nach Pflichtmodulen.
+- **Ein Bestandteil ohne Termine im Semester** ergibt `status: unplanned` mit leeren `groups`
+  (Regel oben, „Ein Bestandteil ohne Gruppe im Zielsemester ist leer“).
+- **Pause zwischen Modulen: 2 s** (`abruf.PAUSE_MODULE`, Punkt aed3e76c). WI FS 1–6 holt je Semester
+  120–170 Module statt 5; ein Lauf mit `--mit-vorschau` dauert damit etwa eine halbe Stunde je Semester.
+
+Das Lesemodell dazu (`wahlpflicht[]`, Moduldateien unter `module/<semester>/`) steht in
+[`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5 und im Docstring von `bauen.py`. Die Kandidaten
+eines Bereichs löst `katalog.py` auf, für Abruf und Lesemodell an derselben Stelle.
+
+## Die zweite Quelle: HIS LSF (`lsf.py`)
+
+*V-0229 (fernflug), Forschungsstrang HU Berlin, 05.10.2026; übernommen in V-0233. Bericht mit Quellen
+und Problemstellen: `docs/forschung/hu-biologie.md` auf dem Strang `vorgang/v-0229`.*
+
+> **Gesperrt.** Die robots.txt von AGNES sperrt KI-Crawler ausdrücklich (Punkt 7411bed1). Bis Silas
+> entschieden und das AGNES-Team gefragt hat, steht an `katalog/hochschulen/hu-berlin.json`
+> `"abruf": "gesperrt"` mit Grund: `abruf.py` holt die HU dann nie, auch nicht mit `--mit-vorschau`,
+> und `--semester hu-wise-2026-27` endet mit Exit 2, bevor etwas geschrieben wird. Die Vorschau zeigt
+> die Rohstände vom 05.10.2026. Die Quelle bleibt im Code, geprüft mit Tests ohne Netz.
+
+Welche Quelle ein Semester hat, sagt der Katalog, nicht der Code. Ohne `quelle` ist es MOSES (wie
+bisher, Feld `moses`). Mit `"quelle": {"art": "lsf", …}` liest `lsf.py` ein HIS-LSF-System, an der HU
+Berlin AGNES. Gewählt wird allein in `standard_quelle()` in `abruf.py`; beide schreiben denselben
+Rohstand (docs/ARCHITEKTUR.md §4).
+
+```json
+katalog/semester/hu-wise-2026-27.json:
+{ "id": "hu-wise-2026-27", "label": "WiSe 2026/27", "anker": "2026-10-12", "hochschule": "hu-berlin",
+  "quelle": { "art": "lsf", "name": "AGNES", "basis": "https://agnes.hu-berlin.de/lupo/rds",
+              "semester": "20262", "label": "WiSe 2026/27" } }
+
+ein Plan in katalog/studiengaenge/hu-biologie-bsc.json:
+{ "ordnung": "spo-2025", "semester": "hu-wise-2026-27", "fachsemester": 1, "bereich": "Pflichtbereich",
+  "vvz_pfad": ["Lebenswissenschaftliche Fakultät", "Institut für Biologie",
+               "B.Sc. Biologie Monobachelor (SPO 2025)", "Pflichtbereich", "Wintersemester"],
+  "module": [ { "nummer": "BioB-1", "vvz": "BioB 1", "kurz": "Zellbio" } ] }
+```
+
+- **Ein Semester je Hochschule.** `hu-wise-2026-27` ist ein eigenes Semester, auch wenn es wie
+  `wise-2026-27` heißt: eigene Quelle, eigener Anker, eigener Ordner `daten/roh/hu-wise-2026-27/`
+  und eigene Modulnummern. Ein Modul wird je Semester einmal geholt; zwei Hochschulen in einem
+  Semester würden ihre Nummern vermischen.
+- `quelle.semester` ist der LSF-Schlüssel des Semesters (`20262` = WiSe 2026/27, im Parameter
+  `root120262` des Baums), `quelle.label` steht so auf jeder Detailseite und wird geprüft.
+- `nummer` ist bei LSF nur ein Schlüssel (`[A-Za-z0-9-]`, ohne Leerzeichen: Dateiname, Kennung im
+  Teilen-Link). Was LSF anzeigt, steht in `vvz` und wird als `[BioB 1] …` im Baum gesucht, unter
+  dem Pfad aus **Titeln** `vvz_pfad` (Plan oder Modul). Knoten-IDs ändern sich jedes Semester.
+- `bereich` kommt aus der Studienordnung, nicht aus LSF: `Pflichtbereich` macht jeden Bestandteil
+  `required`.
+
+Ein Lauf wäre `python3 abruf/abruf.py --semester hu-wise-2026-27 --mit-vorschau` (4 Module, ~90 s),
+**solange die Sperre steht, verweigert er sich.**
+
+**Was je Veranstaltung geholt wird** (eine eigene Sitzung ohne Login; ≥ 1 s Abstand gilt für den ganzen
+Lauf, auch von einer Sitzung zur nächsten, `Client.letzte`, Punkt aed3e76c): die
+Detailseite, dann je Gruppe „vormerken“ + Semesteransicht des anonymen Stundenplans (dort steht der
+iCalendar-Link mit den Termin-IDs, sonst nirgends), am Ende ein iCalendar-Export für alle Termine.
+Die Termin-IDs, die beim Vormerken einer Gruppe neu dazukommen, gehören zu ihr. Baumseiten holt ein
+Lauf einmal. BioB 1–4 (9 Veranstaltungen, 23 Gruppen): etwa 70 Anfragen.
+
+**Termine nur aus dem Export, nie aus Freitext.** Einzeltermine sind VEVENTs ohne RRULE; Serien
+rechnet `expandiere()` nach RFC 5545 aus, so weit LSF sie schreibt (WEEKLY/DAILY, INTERVAL, UNTIL,
+COUNT, BYDAY), abzüglich EXDATE und „fällt aus am“ der Seite. Jede andere Regel ist ein Fehler.
+
+| Meldung | Was dahintersteckt | Was tun |
+|---|---|---|
+| `Vorlesungsverzeichnis: „…“ fehlt` / `ist mehrdeutig` | Ein Titel aus `vvz_pfad` oder `[vvz]` steht so nicht (mehr) im Baum | Den Baum in LSF ansehen, den Katalog anpassen (Titel ändern sich mit einer neuen SPO) |
+| `Vorlesungsverzeichnis zeigt ein anderes Semester` | LSF zeigt ohne Wahl das „aktuelle“ Semester; ein anderes Semester wählt der Abruf (noch) nicht | Warten, bis LSF umstellt, oder die Semesterwahl in `lsf.py` bauen |
+| `Falsches Semester auf der Detailseite` | Die Veranstaltung gehört zu einem anderen Semester als der Katalog sagt | Katalog prüfen |
+| `iCalendar-Export passt nicht zur Seite`, `… enthält einen fremden Termin` | Terminzeilen der Seite und VEVENTs lassen sich nicht eins zu eins zuordnen (Uhrzeit, Zeitraum) | Seite und Export von Hand vergleichen; nie die Prüfung abschalten |
+| `Unbekannte Wiederholungsregel`, `Unerwartete Zeitzone` | LSF exportiert eine Serie, die `expandiere()` nicht kennt | Mit einem echten Export als Test in `tests/test_lsf.py` erweitern |
+| `Unbekannter Terminstatus` | Eine Zeile steht nicht auf „findet statt“ | Ansehen, was der Status bedeutet, dann bewusst abbilden |
+| `Stundenplan zeigt nicht die Semesteransicht`, `… hat vorgemerkte Termine verloren` | Der anonyme Stundenplan verhält sich anders als am 05.10.2026 | `termine_je_gruppe()` an das neue Verhalten anpassen |
+
+**Freitext wird geschwärzt.** AGNES veröffentlicht in Kommentaren Moodle-Einschreibeschlüssel. Die
+Hinweise (`notes`) übernehmen Belegung, „Wichtige Änderungen“, Kommentar und Bemerkung, aber jeder
+Satz, der nach Zugangsdaten klingt, und jede E-Mail-Adresse werden ersetzt (`schwaerzen()`). Nennt
+ein Freitext selbst Termine, steht davor eine Warnung: Die Seite rechnet damit nicht.
+
+**Tests ohne Netz:** `tests/test_lsf.py` auf echten, gekürzten Ausschnitten vom 05.10.2026 unter
+`tests/fixtures/lsf/` (Namen der Lehrenden entfernt; erfunden ist nur der Kommentar unter „Inhalt“).
+
+## Lesemodell
+
+`plan.py` und `bauen.py` (V-0215, Schema 2 seit V-0233). Das Format ist der Vertrag mit der Seite
+und steht in [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5; die Regeln dahinter stehen in den
+Docstrings der beiden Dateien.
+
+```sh
+python3 abruf/bauen.py                                   # katalog/ + daten/roh/ → web/daten/, nur Live
+python3 abruf/bauen.py --roh <ordner> --aus <ordner>     # andere Rohstände, anderes Ziel
+python3 abruf/bauen.py --mit-vorschau --roh <ordner>     # dazu die Vorschau-Pläne (der Dev-Link)
+```
+
+- **`index.json` trägt den Wahlbaum** (`wahl`): Hochschule → Studiengang → Vertiefung → Fachsemester
+  → Ordnung, je Knoten eine `regel` (`waehlen`, `ueberspringen`, `automatisch`), am Ende der Plan.
+  Daneben `plaene` wie bisher, für die heutige Seite.
+- **Je Plan `kombinationen`**: ob es je Bestandteil eine Gruppe gibt, ohne dass sich zwei an einem
+  Einzeltermin überschneiden (`plan.kombination`, Rückverfolgung mit Abschneiden, Grenze in
+  Schritten). Ist die Antwort nein, steht der Plan in der Ausgabe mit `! keine Wahl ohne
+  Überschneidung: <Grund>`: Ein Mensch sieht nach, ob der Katalog stimmt oder die Hochschule so plant.
+  Am 05.10.2026 so: Informatik B.Sc. 1. FS (Analysis-Vorlesung gegen zwei einmalige Vorlesungen, an
+  16 Tagen) und Nachhaltiges Management 1. FS (Vorschau; die Blockwoche von Organisation und
+  Innovationsmanagement, 14.–16.12., trifft je einmal die Mikroökonomik-Vorlesung und die
+  BuK-Übung).
+- **MOSES-Gruppen sind Planungsgruppen** (V-0227 E5, Punkt 633ed71d). Wo die Gruppen eines
+  Bestandteils Teile sind (`alle`), ein offenes Angebot (`keine`) oder unklar, steht es in
+  `katalog/bestandteile.json`, mit Grund und Quelle. Für alles andere sucht `plan.verdacht` nach
+  Zeichen (Gruppen nacheinander, Namen mit verschiedenen Teilen, Lehrformen oder Rhythmen, eine
+  Gruppe mit Terminen an vielen Tagen weit über den SWS); ein Verdacht macht `sicher: false`. Neue
+  Fälle aus der Ausgabe gehören nach Ansehen in `katalog/bestandteile.json`.
 
 - **Vorgaben hängen an der Repo-Wurzel**, nicht am Arbeitsverzeichnis; ausdrücklich übergebene
   Pfade gelten relativ zum Arbeitsverzeichnis.
@@ -97,10 +263,13 @@ python3 abruf/bauen.py --roh <ordner> --aus <ordner>     # andere Rohstände, an
   `title: null` und `error` im Plan. Die Zeile der Ausgabe nennt es unter „Fehler“. Der Befehl
   endet trotzdem mit 0, denn ein teilweiser Abruf ist ein normaler Tag.
 - **Widerspricht sich der Katalog** (Plan zeigt auf ein unbekanntes Semester, Plan doppelt, Semester
-  ohne `anker`), endet der Befehl mit 2 und schreibt nichts.
+  ohne `anker`, Ordnung gilt im Semester nicht, unbekannte Vertiefung …), endet der Befehl mit 2 und
+  schreibt nichts. Die Fälle stehen in `tests/test_katalog.py`.
 - **Gleiche Eingabe, gleiche Bytes** bis auf `erzeugt_am`. Pläne, die aus dem Katalog verschwinden,
   entfernt der nächste Lauf aus `--aus` (nur Dateien, die das alte `index.json` nannte).
 - Die Ausgabe ist kompaktes JSON; lesbar mit `python3 -m json.tool web/daten/index.json`.
-- Tests: `abruf/tests/test_plan.py` (Rhythmus, Parität, Nachttermine, Kollisionen, Fingerabdruck)
-  und `abruf/tests/test_bauen.py` (Schlüssel exakt wie §5, Determinismus, Katalogfehler) mit
-  erfundenen Daten unter `abruf/tests/fixtures/lesemodell/`.
+- Tests: `abruf/tests/test_plan.py` (Rhythmus, Parität, Nachttermine, Kollisionen, Fingerabdruck,
+  Kombinationen gegen vollständiges Durchprobieren), `abruf/tests/test_bauen.py` (Schlüssel exakt
+  wie §5, Wahlbaum und Regeln, Vorschau, Determinismus, Katalogfehler) und
+  `abruf/tests/test_katalog.py` mit erfundenen Daten unter `abruf/tests/fixtures/lesemodell/` und
+  `abruf/tests/fixtures/auswahl/`.

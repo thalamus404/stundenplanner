@@ -1,0 +1,78 @@
+{
+  "id": "wiing-bsc",
+  "name": "Wirtschaftsingenieurwesen",
+  "abschluss": "B.Sc.",
+  "hochschule": "tu-berlin",
+  "sichtbar": "vorschau",
+  "vertiefung_heisst": "Studienrichtung",
+  "ordnungen": [
+    {
+      "id": "stupo-2015",
+      "label": "StuPO 2015",
+      "name": "Studien- und Prüfungsordnung für den Bachelorstudiengang Wirtschaftsingenieurwesen vom 17. Juni 2015, mit Korrektur 2016, 1. Änderung 2017 (Studienrichtung Energie und Ressourcen) und 2. Änderung 2019",
+      "fundstelle": "AMBl. TU 37/2015, Korrektur 08/2016, 1. Änderung 10/2017, 2. Änderung 26/2019",
+      "url": "https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_VII/Wirtschaftsingenieurwesen_B.Sc._2015.pdf",
+      "gilt_ab": "2016-04-01",
+      "gilt_bis": "2031-03-31",
+      "studienbeginn": { "ab": null, "bis": "WiSe 2026/27" },
+      "fuer_wen": "Studienbeginn bis einschließlich WiSe 2026/27. Ab SoSe 2027 gilt die StuPO 2026.",
+      "quelle": "StuPO 2015 § 2 Abs. 1: tritt zum Sommersemester 2016 in Kraft (gilt_ab = 01.04.2016, Beginn des SoSe); StuPO 2026 § 2 Abs. 3: die StuPO 2015 tritt am 31.03.2031 außer Kraft; StuPO 2026 § 2 Abs. 1: sie gilt für alle, die ab dem SoSe 2027 immatrikuliert werden. Gelesen am 05.10.2026 (V-0233; Recherche querwind, V-0228)"
+    },
+    {
+      "id": "stupo-2026",
+      "label": "StuPO 2026",
+      "name": "Studien- und Prüfungsordnung für den Bachelorstudiengang Wirtschaftsingenieurwesen (2026)",
+      "fundstelle": "AMBl. TU 20/2026",
+      "url": "https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_VII/Wirtschaftsingenieurwesen_B.Sc._2026.pdf",
+      "gilt_ab": "2027-04-01",
+      "gilt_bis": null,
+      "studienbeginn": { "ab": "SoSe 2027", "bis": null },
+      "fuer_wen": "Studienbeginn ab SoSe 2027. Wer vorher begonnen hat, kann wechseln (unwiderruflich).",
+      "quelle": "§ 2 Abs. 1: tritt am 1. April 2027 in Kraft und gilt für Studierende, die ab dem Sommersemester 2027 immatrikuliert werden; Abs. 2 Wechsel. Gelesen am 05.10.2026. Die TU nennt sie auf der Studiengangsseite schon „aktuelle Fassung“ — für das WiSe 2026/27 gilt sie nicht (Erkenntnis 2 aus V-0228). Noch kein Plan im Katalog"
+    }
+  ],
+  "vertiefungen": [
+    { "id": "bi", "name": "Bauingenieurwesen", "kurz": "BI" },
+    { "id": "cvt", "name": "Chemie und Verfahrenstechnik", "kurz": "CVT" },
+    { "id": "et", "name": "Elektrotechnik", "kurz": "ET" },
+    { "id": "er", "name": "Energie und Ressourcen", "kurz": "ER" },
+    { "id": "iks", "name": "Informations- und Kommunikationssysteme", "kurz": "IKS" },
+    { "id": "mb", "name": "Maschinenbau", "kurz": "MB" },
+    { "id": "vw", "name": "Verkehrswesen", "kurz": "VW" }
+  ],
+  "plaene": [
+    {
+      "ordnung": "stupo-2015",
+      "semester": "wise-2026-27",
+      "fachsemester": 1,
+      "waehlbar": false,
+      "quelle": "Exemplarischer Studienverlaufsplan, Studienbeginn im Wintersemester, 1. Semester, Anlage 2 der StuPO 2015: Analysis I und Lineare Algebra für Ingenieurwissenschaften (12 LP), Einführung in die Informatik (Wi-Ing) (6 von 9 LP), Mikroökonomik (4 LP), dazu das Modul der technischen Studienrichtung. Die Studienrichtung wird spätestens mit der Rückmeldung zum 2. FS gewählt (§ 5 Abs. 3), ihr Modul steht aber schon im 1. Semester; deshalb ist dieser Plan nur Grundlage der Studienrichtungen. Modulnummern aus der MOSES-Modulliste WiSe 2026/27 der StuPO 2015 (https://moseskonto.tu-berlin.de/moses/modultransfersystem/studiengaenge/anzeigen.html?studiengang=59&mkg=1761&semester=77). MOSES führt Einführung in die Informatik mit 6 LP, die StuPO mit 9. Von Hand übernommen, Stand 05.10.2026 (querwind, V-0228)",
+      "module": [
+        { "nummer": "20122", "kurz": "Analysis I/LinA" },
+        { "nummer": "40013", "kurz": "Einf. Inf." },
+        { "nummer": "70188", "kurz": "Mikro" }
+      ]
+    },
+    { "ordnung": "stupo-2015", "vertiefung": "bi", "semester": "wise-2026-27", "fachsemester": 1,
+      "quelle": "Anlage 2 der StuPO 2015 (Fassung 2. Änderung 2019), Studienrichtung Bauingenieurwesen, 1. Semester: Statik und elementare Festigkeitslehre; Nummer aus der MOSES-Modulliste WiSe 2026/27 (V-0228)",
+      "module": [ { "nummer": "50583", "kurz": "Statik" } ] },
+    { "ordnung": "stupo-2015", "vertiefung": "cvt", "semester": "wise-2026-27", "fachsemester": 1,
+      "quelle": "Anlage 2 der StuPO 2015, Studienrichtung Chemie und Verfahrenstechnik, 1. Semester: Einführung in die Allgemeine und Anorganische Chemie; Nummer aus der MOSES-Modulliste WiSe 2026/27 (V-0228)",
+      "module": [ { "nummer": "20321", "kurz": "Allg. Chemie" } ] },
+    { "ordnung": "stupo-2015", "vertiefung": "et", "semester": "wise-2026-27", "fachsemester": 1,
+      "quelle": "Anlage 2 der StuPO 2015, Studienrichtung Elektrotechnik, 1. Semester: Grundlagen der Elektrotechnik; Nummer aus der MOSES-Modulliste WiSe 2026/27 (V-0228)",
+      "module": [ { "nummer": "40774", "kurz": "GLET" } ] },
+    { "ordnung": "stupo-2015", "vertiefung": "er", "semester": "wise-2026-27", "fachsemester": 1,
+      "quelle": "Anlage 2 der StuPO 2015 in der Fassung der 1. Änderung 2017, Studienrichtung Energie und Ressourcen, 1. Semester: Mechanik E; Nummer aus der MOSES-Modulliste WiSe 2026/27 (V-0228)",
+      "module": [ { "nummer": "50656", "kurz": "Mechanik E" } ] },
+    { "ordnung": "stupo-2015", "vertiefung": "iks", "semester": "wise-2026-27", "fachsemester": 1,
+      "quelle": "Anlage 2 der StuPO 2015, Studienrichtung Informations- und Kommunikationssysteme, 1. Semester: Rechnerorganisation; Nummer aus der MOSES-Modulliste WiSe 2026/27 (V-0228)",
+      "module": [ { "nummer": "40019", "kurz": "Rechnerorg." } ] },
+    { "ordnung": "stupo-2015", "vertiefung": "mb", "semester": "wise-2026-27", "fachsemester": 1,
+      "quelle": "Anlage 2 der StuPO 2015, Studienrichtung Maschinenbau, 1. Semester: Mechanik E; Nummer aus der MOSES-Modulliste WiSe 2026/27 (V-0228)",
+      "module": [ { "nummer": "50656", "kurz": "Mechanik E" } ] },
+    { "ordnung": "stupo-2015", "vertiefung": "vw", "semester": "wise-2026-27", "fachsemester": 1,
+      "quelle": "Anlage 2 der StuPO 2015, Studienrichtung Verkehrswesen, 1. Semester: Mechanik E; Nummer aus der MOSES-Modulliste WiSe 2026/27 (V-0228)",
+      "module": [ { "nummer": "50656", "kurz": "Mechanik E" } ] }
+  ]
+}
