@@ -53,7 +53,9 @@ Host ins Leere oder in einen fremden Ordner.
 4. **Prüfen:** `sh ops/test.sh`. Ein roter Stand wird nicht ausgeliefert
 5. **Ausliefern:** `web/` ohne `tests/` und `*.md` mit `wrangler pages deploy … --branch main`
    zu Cloudflare. Ohne Token in `betrieb/.env` endet der Lauf hier mit **„kein Token, nicht
-   ausgeliefert“**
+   ausgeliefert“**. Vorher schreibt der Lauf **`/api/stand`** in die Seite: `{"stand": "<commit>",
+   "zweig": "main", "erzeugt_am": …}` (JSON-Typ über `web/_headers`). Dort fragt der TOWER, welcher
+   Stand läuft: der Haken `laeuft` und der Nachweis nach einer Freigabe (V-0230)
 
 Ein verpasster Lauf (NAS aus, Container gestoppt, Neustart) wird nachgeholt, sobald der
 Container wieder läuft. Ein unterbrochener Lauf wird wiederholt. Zwei Läufe zugleich verhindert
