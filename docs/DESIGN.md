@@ -159,7 +159,7 @@ bekommt den Rest. Am Handy scrollt sie (§3.3).
 | **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Modul-Infos“ und „Filter aufheben“, sobald gefiltert ist, und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
 | **Raster** | Tagesreiter bzw. Tageskopf, Zeitachse, Kacheln (§3.2) |
 | **Legende** | klein und zurückgenommen (12 px, `--fuss-text`): die Formate, die im Plan vorkommen, ausgeschrieben („VL Vorlesung“, „IV Integrierte Veranstaltung“), und die Kachelarten als Muster mit einem Wort, was sie heißen (wählbar, eingeplant, Vorschlag, dein Plan, Format gewählt, Überschneidung; V-0243, vorher „umrandet: wählbar“ usw.). Am Rechner links unter den Modulen, die Kachelarten in zwei Spalten; ab sechs Modulen und unter 1024 px unter dem Raster. Immer dieselben Einträge, damit sie ihre Höhe nicht ändert. Am Handy davor die Modulfarben |
-| **Fuß** | aufgeräumt (V-0237): links ein Absatz, klein (12 px) und zurückgenommen (`--fuss-text`, ≥ 4,5:1): „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ (Hochschule und Quelle aus der Plandatei, V-0234, Punkt 8541d9f5; die Quelle ist ein Link auf ihre Seite, V-0243) Daneben immer der Speicherhinweis (ARCHITEKTUR §6). **In der Mitte** des Fußes, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“ (V-0245; vorher hing es unten links am Hinweis). Rechts „Hilfe“, „Impressum“, „Datenschutz“ (davor der Stand, wenn er nicht im Kopf steht). Am Handy steht der Fuß mittig, je Teil eine Zeile |
+| **Fuß** | aufgeräumt (V-0237): links ein Absatz, klein (12 px) und zurückgenommen (`--fuss-text`, ≥ 4,5:1): „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ (Hochschule und Quelle aus der Plandatei, V-0234, Punkt 8541d9f5; die Quelle ist ein Link auf ihre Seite, V-0243) Daneben immer der Speicherhinweis (ARCHITEKTUR §6). **In der Mitte** des Fußes, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“ (V-0245; vorher hing es unten links am Hinweis). Der ganze Fuß steht genau mittig zwischen dem Raster und dem unteren Rand: darüber und darunter gleich viel Luft (V-0246: 24 px, ab 860 px Höhe 32, bis 700 px 20). Rechts „Hilfe“, „Impressum“, „Datenschutz“ (davor der Stand, wenn er nicht im Kopf steht). Am Handy steht der Fuß mittig, je Teil eine Zeile |
 
 Es gibt **keine Kästen um die Zonen**. Abstand gliedert, nicht Rahmen. Kästen haben nur die
 Modulkacheln (eine Gruppe von Bedienelementen je Modul), die Kacheln im Raster und schwebende Ebenen.
@@ -364,6 +364,7 @@ Am Handy bestimmt die Bühne die Höhe des Rasters: Bei 390 × 844 rund 55 px je
 | **Datenstand** | Karte am Stand im Kopf | Blatt (Stand im Fuß) | Quelle MOSES (öffentlich), Abrufzeit, Status, Zahl der Module, Formate, Gruppen, Einzeltermine, „Neu laden“ |
 | **Hilfe** | Dialog, höchstens 66 Zeichen je Zeile | Blatt | „So funktioniert die Planung“ |
 | **Rückfrage** | Dialog | Blatt | „Auswahl zurücksetzen“ und „Übernehmen“ über eine vorhandene Auswahl: sagt, was verloren geht, Hauptaktion mit dem Verb, daneben „Abbrechen“ |
+| **Pfeiltasten-Tipp** (V-0246) | unten mittig, schwebend, so breit wie sein Satz | nie (nur mit Tastatur und Maus) | zwei Tasten ← → und „Mit den Pfeiltasten springst du zurück und vor durch deine letzten Ansichten.“, ein Kreuz. Erscheint einmal je Besuch, wenn man seit 90 s Filter wählt, der Verlauf zwei Ansichten hat und die Pfeile noch nicht benutzt wurden; geht nach 12 s, mit Esc, dem Kreuz oder dem ersten Pfeil. Gespeichert wird nichts (`tippFaellig` in `raster.mjs`) |
 | **Stundenplan speichern** (V-0237, bis V-0243 „Für später speichern“) | Blatt von unten, mittig, höchstens 640 px | Blatt | was der Link enthält, das Feld mit dem Link, „Kopieren“, „Lesezeichen“ (Anleitung je Gerät), „Teilen“ (`navigator.share`, wo es das gibt) |
 | **Meldung** | unten mittig, 3 s, schließt sich selbst oder auf Klick | über dem Umschalter | „Link kopiert“, „Alle 11 Formate eingeplant“, was der Kalender-Export am Gerät tut. Sichtbar fängt sie Klicks |
 
@@ -674,7 +675,7 @@ statt einer Stufe in der Regel, und Kachel und Legende lesen dieselbe:
 
 | Token | Aufgabe | hell | dunkel |
 |---|---|---|---|
-| `--fuss-text` (V-0237) | der Hinweis im Fuß: tritt zurück, ≥ 4,5:1 | `--grau-9` (7,03:1) | `--grau-8` (5,58:1) |
+| `--fuss-text` (V-0237, V-0243, V-0246) | Fuß, Legende, Startbildschirm-Fuß: tritt so weit zurück, wie es geht (Silas: „noch ein bisschen blasser“), und hält gerade 4,5:1 | `#707274` (4,55:1) | `#7c7d80` (4,56:1) |
 | `--ebene`, `--rand-ebene`, `--schatten` | schwebende Ebene | `#fdfdff`, `--grau-5`, zweilagig | `#303234`, `rgb(255 255 255 / .1)`, keiner |
 
 **Für neue Ansichten** (der Hello-Screen, V-0234): nur diese Tokens benutzen, keine Hex-Werte in
@@ -758,7 +759,7 @@ gerechnet am 05.10.2026 (V-0236), nicht gerundet. Ziel für Text 7:1, Pflicht 4,
 | Zweittext auf Karte `--ebene` | 7,35 | 7,13 | 7 |
 | Zweittext auf `--grau-1` | 7,35 | 8,39 | 7 |
 | zurückgenommene Kachel: `--grau-9` auf `--grau-3` | 6,54 | 9,45 | 4,5 |
-| Hinweis im Fuß: `--fuss-text` auf Seite (V-0237; die Kontextkachel ist seit V-0237 durchscheinend und kein Lesetext) | 7,03 | 5,58 | 4,5 |
+| Hinweis im Fuß: `--fuss-text` auf Seite (V-0246; die Kontextkachel ist seit V-0237 durchscheinend und kein Lesetext) | 4,55 | 4,56 | 4,5 |
 | `--grau-1` auf `--grau-9` (Paar in sicht.py) | 7,35 | 8,39 | 7 |
 | `--grau-10` auf `--grau-6` (Paar in sicht.py) | 8,95 | 7,48 | 7 |
 | gewählte Kachel: `--grau-1` auf `tinte` | 11,68 | 9,99 | 7 |
@@ -905,10 +906,10 @@ zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als Symbole
 | | Budget | Begründung |
 |---|---|---|
 | Bibliotheken, Frameworks, Webfonts, CDN | **keine** | ARCHITEKTUR §8 |
-| HTML | ≤ 16 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms, der Schriftzug als Pfad (3,9 KB, inline statt einer eigenen Anfrage vor der ersten Kachel; V-0243). Bis V-0234: 10 KB, bis V-0243: 11 KB |
-| CSS | ≤ 44 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, siehe unten) |
+| HTML | ≤ 17 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms, der Schriftzug als Pfad (3,9 KB, inline statt einer eigenen Anfrage vor der ersten Kachel; V-0243), der Pfeiltasten-Tipp (V-0246). Bis V-0234: 10 KB, bis V-0243: 11 KB, bis V-0246: 16 KB |
+| CSS | ≤ 47 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, bis V-0246: 44 KB; dazu kamen Startbildschirm, Legende links, Fuß und Tipp, siehe unten) |
 | JavaScript | ≤ 128 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB, bis V-0237: 120 KB). `ics.mjs` lädt erst bei der ersten Bedienung und zählt hier nicht |
-| Code zusammen, komprimiert | **≤ 64 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB; dazu kamen der Schriftzug, 1,9 KB, und der Verlauf der Ansichten) |
+| Code zusammen, komprimiert | **≤ 66 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB, bis V-0246: 64 KB; dazu kamen der Schriftzug, 1,9 KB, der Verlauf der Ansichten und der Tipp) |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
 | Anfragen bis zum fertigen Raster | ≤ 10, alle vom eigenen Ort und **ohne Kaskade**: Das HTML nennt CSS und jedes Modul (`modulepreload`), sie laden parallel | HTML, CSS, die Module, `index.json`, Plan-Datei (bis 05.10.2026: 6) |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
@@ -1177,6 +1178,10 @@ machen.“
 36. **„Auswahl zurücksetzen“ mittig im Fuß** (§3.1).
 37. **Der Plan etwas kürzer**: 16 px Luft unter der letzten Stunde (§3.4).
 38. **Der Rahmen um das aufgeschlagene Modul ist zurück** (§3.1).
+39. **Ein kleiner Tipp zeigt die Pfeiltasten**, nachdem man ein, zwei Minuten herumgeklickt hat, damit
+    man das Blättern entdeckt (§3.5).
+40. **Der Fuß mittig zwischen Raster und unterem Rand, der Hinweis noch blasser** (§3.1, §5.2: so blass,
+    wie 4,5:1 erlaubt).
 
 ---
 
