@@ -169,6 +169,10 @@ button:active::after { opacity: .1; }
 /* Gefiltert (Silas' zweiter Test, V-0237): kein Rahmen mehr um die Modulkachel; der Farbkreis ist ein
    Ring und füllt sich, wenn das Modul aufgeschlagen ist. */
 .modul.aktiv .punkt { background: var(--rand); }
+/* Der Rahmen um das aufgeschlagene Modul ist zurück (Silas, 05.10.2026, V-0245; in V-0237 entfallen):
+   „Sonst ist es manchmal ein bisschen schwierig zu sehen, welches Modul man gerade ausgewählt hat.“
+   Tinte, also hell dunkel und dunkel weiß; 2 px aus Rand und outline, ohne dass die Kachel springt. */
+.modul.aktiv { border-color: var(--grau-10); outline: 1px solid var(--grau-10); }
 .modul-name { display: flex; align-items: center; gap: 8px; min-width: 0; height: var(--zm); padding: 0 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
 .m-kurz { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .punkt { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--rand); flex: none; }
@@ -194,6 +198,8 @@ button:active::after { opacity: .1; }
 .format.hinweis .f-pille { outline: 2px solid var(--hinweis); outline-offset: 1px; }
 
 .buehne { min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Unter der letzten Stunde (die 20) etwas Luft bis zum Fuß, der Plan wird etwas kürzer (Silas, V-0245). */
+@media (min-width: 768px) { .buehne { padding-bottom: 16px; } }
 
 /* Oben im Plan (V-0234): das Schild für Ersatztermine (Bernstein, deutlich) und der ruhige Satz, wenn
    es keine Wahl ohne Überschneidung gibt (neutrale Fläche, nur das Symbol rot). Je eine Zeile, der
@@ -391,11 +397,18 @@ button:active::after { opacity: .1; }
 /* Der Fuß (Silas' zweiter Test, V-0237): links der Hinweis in einem Absatz, klein und zurückgenommen
    (--fuss-text, ≥ 4,5:1), rechts die Links. Vorher drei Teile mit eigener Anordnung je Breite. */
 .fuss {
-  flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 24px;
+  flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 4px 24px;
   font-size: 12px; line-height: 16px;
 }
-.fuss-hinweis { flex: 1 1 480px; max-width: 840px; color: var(--fuss-text); }
-.fuss-hinweis .leise { margin-left: 8px; color: var(--grau-9); }
+.fuss-hinweis { max-width: 840px; color: var(--fuss-text); }
+/* „Auswahl zurücksetzen“ steht mittig im Fuß (Silas, V-0245: „unten links … komisch gelayoutet“). */
+.fuss-mitte { justify-self: center; }
+.fuss-mitte .leise { color: var(--grau-9); }
+.fuss-links { justify-self: end; }
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .fuss { grid-template-columns: minmax(0, 1fr) auto; }
+  .fuss-mitte { grid-column: 1 / -1; grid-row: 2; }
+}
 /* Der Link im Satz (MOSES, V-0243): ohne Polster zur Seite, aber 24 px hoch als Ziel (WCAG 2.5.8). */
 .fuss .fuss-hinweis a { display: inline-block; min-height: 0; margin: -4px 0; padding: 4px 0; }
 .fuss-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; color: var(--fuss-text); }
@@ -524,9 +537,10 @@ details[open] > summary::before { transform: rotate(45deg); }
   .unter:has(> .steuer:empty) { display: none; }
   .steuer:empty { display: none; }
   .legende { margin-top: 32px; display: grid; gap: 8px; }
-  .fuss { margin-top: 48px; display: grid; gap: 8px; }
-  .fuss-hinweis .leise { display: flex; margin: 0; }
-  .fuss-links { gap: 0 16px; }
+  /* Am Handy steht der Fuß mittig: Hinweis, Zurücksetzen, Stand und Links je eine Zeile (V-0245). */
+  .fuss { margin-top: 48px; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 8px; text-align: center; }
+  .fuss-links { justify-self: center; justify-content: center; gap: 0 16px; }
+  .fuss-mitte .leise { margin: 0; }
   #stand-fuss { flex-basis: 100%; }
   .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; justify-content: center; }
   .meldung { bottom: calc(var(--schalter-zone) + 8px); }
