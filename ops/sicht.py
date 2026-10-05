@@ -39,6 +39,9 @@ Ohne Haken lässt sich nicht zählen, was ein Chip oder eine Kachel ist; dann he
     data-sicht="stunde"                            jede Stundenmarke der Zeitachse („08“ …)
     data-sicht="tag" data-tag="0…6"                jeder Tageskopf bzw. Tagesreiter
     data-sicht="kopf|module|werkzeug|raster|fuss"  die Zonen aus §3.1
+    data-sicht="umschalter"                        der Umschalter Tag/Woche mit den Knöpfen „Tag“ und
+                                                   „Woche“ (am Handy schwebend, V-0225)
+    data-sicht="legende"                           die Legende; Modulfarben dürfen dort stehen
 Schwebende Ebenen (Karte, Blatt, Dialog) sind `role="dialog"` oder `<dialog>`. Die Tokens aus §5
 stehen als Variablen auf :root: `--grau-1` … `--grau-10`, `--m1-hauch|rand|flaeche|tinte` …
 `--m8-…`, `--konflikt`, `--konflikt-text`, `--konflikt-flaeche`, `--hinweis`, `--hinweis-text`,
@@ -222,7 +225,10 @@ KONTRAST_PAARE = [
     ('Text auf Karte --grau-1', '--grau-10', '--grau-1', 7),
     ('Zweittext --grau-9 auf Seite', '--grau-9', '--grau-2', 7),
     ('Zweittext auf Karte', '--grau-9', '--grau-1', 7),
-    ('Kontextkachel: --grau-9 auf --grau-3', '--grau-9', '--grau-3', 4.5),
+    ('Zurückgenommene Kachel: --grau-9 auf --grau-3', '--grau-9', '--grau-3', 4.5),
+    ('Kontextkachel hell: --grau-1 auf --grau-9', '--grau-1', '--grau-9', 7),
+    ('Kontextkachel dunkel: --grau-10 auf --grau-6', '--grau-10', '--grau-6', 7),
+    ('gewählte Kachel hell: --grau-1 auf tinte', '--grau-1', '--mN-tinte', 7),
     ('Text --grau-10 auf hauch', '--grau-10', '--mN-hauch', 7),
     ('tinte auf flaeche', '--mN-tinte', '--mN-flaeche', 7),
     ('rand auf Seite', '--mN-rand', '--grau-2', 3),
@@ -590,7 +596,7 @@ const schwebend = (el) => {
   const v = cs(el).position === 'fixed' || el.matches(DIALOG + ', [popover]') || schwebend(el.parentElement);
   _sw.set(el, v); return v;
 };
-const MODULFARBE_OK = '[data-sicht="chip"], [data-sicht="kachel"], [data-sicht="module"]';
+const MODULFARBE_OK = '[data-sicht="chip"], [data-sicht="kachel"], [data-sicht="module"], [data-sicht="legende"]';
 const STOPP = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT', 'HEAD', 'META', 'LINK', 'TITLE', 'BR', 'WBR']);
 for (const el of [de, body]) {
   const s = cs(el);

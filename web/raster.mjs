@@ -151,12 +151,15 @@ export function legende(parts) {
   return out;
 }
 
-/** Die Gruppennummer für schmale Kacheln: "Termingruppe 12" und "1. Termingruppe" → "12", "1". */
+/**
+ * Die Gruppennummer, nur aus „Termingruppe 12“, „1. Termingruppe“ oder „Gruppe 3“; sonst null, und
+ * die Kachel zeigt den Namen. Vorher galt jede Zahl im Namen: „AnaLinA Space im E-N 004, Mo. 8-10
+ * Uhr“ wurde „Gruppe 004“, die Raumnummer (querwind, Punkt 16a7b0e5).
+ */
 export function gruppenNummer(name) {
   const t = String(name || '').trim();
-  const m = t.match(/\d+/);
-  if (m) return m[0];
-  return t.length > 6 ? t.slice(0, 5) + '…' : t;
+  const m = t.match(/^(?:termin)?gruppe\s+(\d+)\b/i) || t.match(/^(\d+)\.?\s*(?:termin)?gruppe\b/i);
+  return m ? m[1] : null;
 }
 
 const TYPEN = { VL: 'Vorlesung', UE: 'Übung', TUT: 'Tutorium', IV: 'Integrierte Veranstaltung' };

@@ -1,7 +1,5 @@
-/* Der Stundenplanner: docs/DESIGN.md ist der Brief, die Werte stehen dort in §5. Am Rechner füllt
-   die Seite genau das Fenster, am Handy scrollt sie (V-0225). Die Stunde teilt sich die Höhe des
-   Rasters (Prozent, kein Skript beim Größerziehen), die Beschriftung der Kacheln wählen
-   Container-Abfragen. Farbe trägt Bedeutung: Grau, die Tinte, Modulfarben, Rot, Bernstein. */
+/* Der Brief ist docs/DESIGN.md, die Werte stehen dort in §5. Die Stunde teilt sich die Höhe des
+   Rasters (Prozent, kein Skript beim Größerziehen), die Kacheln beschriften Container-Abfragen. */
 
 :root {
   color-scheme: light dark;
@@ -15,15 +13,16 @@
   --aus: cubic-bezier(.3, 0, 1, 1);
   --h-min: 20.5px;
   --ziel: 32px;
+  --zm: 28px;
   --rand-x: 24px;
-  --m1-hauch: #ebf5ff; --m1-rand: #488acb; --m1-flaeche: #b4d8ff; --m1-tinte: #0e375c;
-  --m2-hauch: #fbf2e3; --m2-rand: #ac7d1b; --m2-flaeche: #eecf9c; --m2-tinte: #483000;
-  --m3-hauch: #eaf8ec; --m3-rand: #4a9a5e; --m3-flaeche: #b2e3bb; --m3-tinte: #0d401e;
-  --m4-hauch: #ffeef5; --m4-rand: #bb6690; --m4-flaeche: #fbc1db; --m4-tinte: #53223b;
-  --m5-hauch: #e3f8f9; --m5-rand: #03999f; --m5-flaeche: #98e4e8; --m5-tinte: #003e41;
-  --m6-hauch: #f5f1ff; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
-  --m7-hauch: #fff0e8; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
-  --m8-hauch: #f3f6e5; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
+  --m1-hauch: #fdfdff; --m1-rand: #488acb; --m1-flaeche: #b4d8ff; --m1-tinte: #0e375c;
+  --m2-hauch: #fdfdff; --m2-rand: #ac7d1b; --m2-flaeche: #eecf9c; --m2-tinte: #483000;
+  --m3-hauch: #fdfdff; --m3-rand: #4a9a5e; --m3-flaeche: #b2e3bb; --m3-tinte: #0d401e;
+  --m4-hauch: #fdfdff; --m4-rand: #bb6690; --m4-flaeche: #fbc1db; --m4-tinte: #53223b;
+  --m5-hauch: #fdfdff; --m5-rand: #03999f; --m5-flaeche: #98e4e8; --m5-tinte: #003e41;
+  --m6-hauch: #fdfdff; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
+  --m7-hauch: #fdfdff; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
+  --m8-hauch: #fdfdff; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
   font: 14px/20px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -54,7 +53,7 @@
 .m7 { --hauch: var(--m7-hauch); --rand: var(--m7-rand); --flaeche: var(--m7-flaeche); --tinte: var(--m7-tinte); }
 .m8 { --hauch: var(--m8-hauch); --rand: var(--m8-rand); --flaeche: var(--m8-flaeche); --tinte: var(--m8-tinte); }
 /* Je Stunde mindestens 20 px, Touch 22 px, plus 0,5 px für die Luft über jeder Kachel (§3.2). */
-@media (pointer: coarse) { :root { --h-min: 22.5px; --ziel: 44px; } }
+@media (pointer: coarse) { :root { --h-min: 22.5px; --ziel: 44px; --zm: 44px; } }
 
 *, *::before, *::after { box-sizing: border-box; }
 /* [hidden] verliert sonst gegen display:flex der Klassen (Spezifität schlägt Attribut). */
@@ -121,18 +120,19 @@ button:active::after { opacity: .1; }
 @media (prefers-color-scheme: dark) { .zahl { color: var(--grau-2); background: var(--hinweis); } .zahl.rot { background: var(--konflikt); } }
 .leise { display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; padding: 0 4px; border-radius: 4px; text-decoration: underline; text-underline-offset: 2px; }
 
-/* Je Modul eine Kachel, darunter so klein wie möglich seine Formate (V-0225: einzelne Module statt
-   einer Chip-Wand). Die Kachel ist eine Gruppe von Bedienelementen, keine Zone. */
-.module { flex: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: 8px; }
-.modul { min-width: 0; display: flex; flex-direction: column; padding: 4px; border-radius: 12px; background: var(--grau-1); border: 1px solid var(--grau-5); }
+/* Je Modul eine Kachel, darunter seine Formate mit der Zahl der Gruppen (V-0225). Am Rechner
+   stehen die Kacheln als Spalte links neben der Woche, unter 1024 px oben (Silas, 05.10.2026). */
+.mitte { flex: 1 1 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 8px 24px; }
+.module { grid-row: 1 / 3; display: grid; align-content: start; gap: 8px; }
+.modul { min-width: 0; display: flex; flex-direction: column; padding: 2px 4px; border-radius: 12px; background: var(--grau-1); border: 1px solid var(--grau-5); }
 .modul.aktiv { border-color: var(--grau-10); outline: 1px solid var(--grau-10); }
-.modul-name { display: flex; align-items: center; gap: 8px; min-width: 0; height: var(--ziel); padding: 0 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+.modul-name { display: flex; align-items: center; gap: 8px; min-width: 0; height: var(--zm); padding: 0 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
 .m-kurz { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .punkt { width: 12px; height: 12px; border-radius: 50%; background: var(--rand); flex: none; }
 .formate { display: flex; flex-wrap: wrap; gap: 0 4px; padding: 0 4px; }
-/* Ein Format: das Ziel ist 32 px (Touch 44 px), sichtbar nur die Pille darin. Überlage, Zustände
+/* Ein Format: das Ziel ist 28 px (Touch 44 px), sichtbar nur die Pille darin. Überlage, Zustände
    und Ringe liegen auf der Pille, der Fokusring um das Ziel. */
-.format { height: var(--ziel); min-width: var(--ziel); display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.format { height: var(--zm); min-width: var(--zm); display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
 .format::after { display: none; }
 .f-pille {
   position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 2px;
@@ -150,7 +150,7 @@ button:active::after { opacity: .1; }
 .format.konflikt .f-pille { outline: 2px solid var(--konflikt); outline-offset: 1px; }
 .format.hinweis .f-pille { outline: 2px solid var(--hinweis); outline-offset: 1px; }
 
-.buehne { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.buehne { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 
 .werkzeug { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-height: 40px; }
 .lage { flex: 1 1 320px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
@@ -190,7 +190,7 @@ button:active::after { opacity: .1; }
 .tag { display: flex; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
 .tag .datum, .tag .zaehl { font-size: 12px; font-weight: 400; color: var(--grau-9); }
 .tag .lang { display: none; }
-.ein-tag .tage { grid-column: 1 / -1; padding: 2px; border-radius: 8px; background: var(--grau-3); }
+.ein-tag .tage { padding: 2px; border-radius: 8px; background: var(--grau-3); }
 .ein-tag .tag { border: 1px solid transparent; border-radius: 6px; }
 .ein-tag .tag[aria-pressed="true"] { background: var(--grau-1); border-color: var(--grau-6); }
 @media (min-width: 1280px) { .tag .kurz { display: none; } .tag .lang { display: inline; } }
@@ -206,75 +206,100 @@ button:active::after { opacity: .1; }
 .spaet { visibility: hidden; animation: zeigen 0s 300ms forwards; }
 @keyframes zeigen { to { visibility: visible; } }
 
-/* Kacheln sind Container, die Beschriftung folgt ihrer Größe (§3.2): M (Typ, Nummer) ohne Abfrage,
-   L ab 96 px (Modul, Format, Gruppe, Zeit und Raum, soweit die Höhe reicht), ab 200 px das Format
-   ausgeschrieben, S unter 44 px (Typ), unter 24 px (Woche am Handy) nur Farbe. */
+/* Kacheln sind Container, die Beschriftung folgt ihrer Größe (§3.2). Oben immer das Modul, dann
+   die Einheit ausgeschrieben, Gruppe mit Zeit, Raum (Silas, V-0225). M (Modul, Kürzel und Nummer)
+   ohne Abfrage, L ab 96 px, ab 240 px der volle Modultitel, S unter 44 px, unter 24 px nur Farbe.
+   Möglich: weiße Kachel mit Rand in Modulfarbe. Gewählt: kräftig gefüllt. Anderswo gewählt
+   (Kontext): dunkelgrau. Zurückgenommen (die übrigen Gruppen eines gewählten Formats): hellgrau. */
 .kachel { position: absolute; container: kachel / size; color: var(--grau-10); }
-.kachel.gewaehlt { color: var(--tinte); }
-.kachel.kontext { color: var(--grau-9); }
+.kachel.gewaehlt { color: var(--grau-1); }
+.kachel.kontext { color: var(--grau-1); }
+.kachel.zurueck { color: var(--grau-9); }
 .kachel:focus-within, .kachel.zeigen { z-index: 2; }
 .k-flaeche {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden;
-  padding: 2px 4px; border: 1px solid var(--rand); border-radius: 4px; background: var(--hauch);
+  padding: 4px; border: 1px solid var(--rand); border-radius: 4px; background: var(--hauch);
   font-size: 12px; line-height: 16px; text-align: left;
 }
 .k-flaeche:focus-visible { outline-offset: 4px; }
-.gewaehlt > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); }
-.kontext > .k-flaeche { background: var(--grau-3); border-color: var(--grau-5); }
+.gewaehlt > .k-flaeche { background: var(--tinte); border-color: var(--tinte); }
+.kontext > .k-flaeche { background: var(--grau-9); border-color: var(--grau-9); }
+.zurueck > .k-flaeche { background: var(--grau-3); border-color: var(--grau-5); }
+@media (prefers-color-scheme: dark) {
+  .kachel.gewaehlt { color: var(--tinte); }
+  .gewaehlt > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); }
+  .kachel.kontext { color: var(--grau-10); }
+  .kontext > .k-flaeche { background: var(--grau-6); border-color: var(--grau-6); }
+}
+.moeglich .k-2 { color: var(--grau-9); }
+/* Automatisch eingeplant, die einzige Gruppe eines Formats: gestrichelt (Silas, 05.10.2026). */
+.kachel.auto { color: var(--tinte); }
+/* Der gestrichelte Rand als outline nach innen: Ein 2-px-Rand nähme schmalen Kacheln den Platz. */
+.auto > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
+.format.auto .f-pille { border: 1px dashed var(--tinte); }
 .kachel.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; border-radius: 4px; }
 .kachel.zeigen { outline: 2px solid var(--grau-10); outline-offset: 1px; border-radius: 4px; }
 .k-flaeche > span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mit-sym > .k-flaeche > span { max-width: calc(100% - 16px); }
-.k-typ, .k-mod, .k-name { font-weight: 600; }
-.k-mod, .k-lang, .k-name, .k-zeit, .k-ort, .k-akt, .kl { display: none; }
-.teil .k-typ { display: none; }
-.teil .k-ort { display: block; }
+.k-typ, .k-mod, .k-titel { font-weight: 600; }
+.k-typ, .k-nr, .k-titel, .k-lang, .k-info, .k-ort, .k-akt { display: none; }
 .k-sym { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; }
 .k-akt {
-  position: absolute; left: 4px; bottom: 4px; height: 24px; padding: 0 8px; border: 1px solid currentColor; border-radius: 6px;
+  position: absolute; right: 4px; top: 4px; height: 24px; padding: 0 8px; border: 1px solid currentColor; border-radius: 6px;
   font-size: 12px; line-height: 16px; align-items: center; white-space: nowrap;
 }
 @container kachel (min-width: 96px) {
   .k-flaeche { padding: 4px 8px; }
-  .k-typ, .k-nr { display: none; }
-  .k-mod, .k-lang { display: block; }
-  .k-mod { font-size: 14px; line-height: 20px; }
-  .teil .k-mod, .teil .k-lang { display: none; }
-  .teil .k-name { display: block; font-size: 14px; line-height: 20px; }
+  .k-kurz { display: none; }
+  .k-lang { display: block; }
+  .k-mod, .k-titel { font-size: 14px; line-height: 20px; }
   .k-sym { top: 8px; right: 8px; }
 }
-@container kachel (min-width: 200px) { .kz { display: none; } .kl { display: inline; } }
+@container kachel (min-width: 240px) { .k-mod { display: none; } .k-titel { display: block; } }
+@container kachel (min-width: 96px) and (min-height: 60px) { .k-info { display: block; } }
+@container kachel (min-width: 96px) and (min-height: 76px) { .k-ort { display: block; } }
 /* Breit, aber niedrig (unter 52 px, Zoom): beide Zeilen in 12 px statt abgeschnitten (§4.4). */
 @container kachel (min-width: 96px) and (max-height: 51.9px) {
   .k-flaeche { padding-block: 2px; }
-  .k-mod, .teil .k-name { font-size: 12px; line-height: 16px; }
+  .k-mod, .k-titel { font-size: 12px; line-height: 16px; }
 }
-@container kachel (min-width: 96px) and (min-height: 72px) { .k-ort { display: block; } }
-@container kachel (min-width: 96px) and (min-height: 92px) { .k-zeit { display: block; } }
-@container kachel (min-width: 96px) and (min-height: 76px) { .aktionen .k-akt { display: inline-flex; } }
-@container kachel (min-width: 96px) and (min-height: 72px) and (max-height: 103.9px) { .aktionen .k-ort { display: none; } }
-@container kachel (min-width: 96px) and (max-height: 119.9px) { .aktionen .k-zeit { display: none; } }
+/* Der Knopf sitzt ruhig oben rechts neben dem Titel, nur auf breiten Kacheln (Silas, V-0225). */
+@container kachel (min-width: 160px) and (min-height: 52px) {
+  .aktionen .k-akt { display: inline-flex; }
+  .aktionen .k-mod, .aktionen .k-titel { max-width: calc(100% - 80px); }
+  .aktionen .k-sym { top: auto; bottom: 8px; }
+}
+/* Schmaler als 80 px passt der Modulname nicht (er hieße „Stati…“): Kürzel und Nummer, fett. */
+@container kachel (max-width: 79.9px) { .k-mod, .k-kurz { display: none; } .k-typ, .k-nr { display: block; } }
 @container kachel (max-width: 43.9px) {
   .k-flaeche { padding: 4px 2px; }
-  .k-nr, .k-sym, .teil .k-ort { display: none; }
-  .teil .k-nr { display: block; }
+  .k-nr, .k-sym { display: none; }
+  .mit-sym > .k-flaeche > span { max-width: 100%; }
   .k-flaeche span { text-overflow: clip; }
 }
 @container kachel (max-width: 23.9px) {
   .k-flaeche { padding: 0; }
-  .k-flaeche > span, .teil .k-nr { display: none; }
+  .k-flaeche > span { display: none; }
 }
+/* Gerade gewählt (Silas, V-0225): die gewählte Kachel setzt sich kurz, die übrigen Gruppen des
+   Formats verblassen von der möglichen Kachel ins Hellgrau. Nur transform und opacity, 200 ms. */
+.frisch.gewaehlt { animation: setzen 200ms var(--ein); }
+.frisch.zurueck > .k-flaeche::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid var(--rand); background: var(--hauch); animation: verblassen 200ms var(--aus) forwards; }
+@keyframes setzen { from { transform: scale(.96); } }
+@keyframes verblassen { to { opacity: 0; } }
 
 /* ── Legende und Fuß */
 /* Die Formate, die vorkommen, und was gefüllt und umrandet heißt; am Handy die Modulfarben dazu. */
-.unter { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+.unter { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 8px; }
 .legende { display: flex; flex-wrap: wrap; gap: 4px 24px; font-size: 12px; line-height: 16px; color: var(--grau-9); }
 .lg-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
 .lg-zeile > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .lg-zeile b { color: var(--grau-10); }
 .lg-k { width: 16px; height: 12px; border-radius: 4px; border: 1px solid var(--grau-8); flex: none; }
-.lg-k.gewaehlt { background: var(--grau-6); border-color: var(--grau-6); }
-.lg-k.kontext { background: var(--grau-3); border-color: var(--grau-5); }
+.lg-k.gewaehlt { background: var(--grau-10); border-color: var(--grau-10); }
+.lg-k.kontext { background: var(--grau-9); border-color: var(--grau-9); }
+.lg-k.zurueck { background: var(--grau-3); border-color: var(--grau-5); }
+.lg-k.auto { border-style: dashed; border-color: var(--grau-10); }
 .lg-k.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; }
 .lg-zeile .punkt { width: 8px; height: 8px; }
 
@@ -340,17 +365,23 @@ details[open] > summary::before { transform: rotate(45deg); }
 .ohne-js { position: fixed; inset: auto 16px 16px; padding: 12px; border-radius: 8px; background: var(--hinweis-flaeche); color: var(--hinweis-text); }
 @media (prefers-reduced-motion: reduce) {
   .ebene, .ebene.blatt, .meldung, .hinter { transform: none !important; transition: opacity 100ms linear !important; }
+  .frisch.gewaehlt { animation: none; }
+  .frisch.zurueck > .k-flaeche::before { animation-duration: 100ms; }
   .meldung, .meldung.da { transform: translateX(-50%) !important; }
 }
 
 /* Solange die Daten fehlen, halten die Zonen ihren Platz, damit nichts springt (CLS, §6). */
-.laedt .module { min-height: 74px; }
 
 /* ── Tablet, unter 1024 px: Werkzeugzeile und Module dürfen zweizeilig sein */
 @media (max-width: 1023.98px) {
-  .laedt .module { min-height: 156px; }
+  .mitte { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .module { grid-row: auto; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); }
+  .unter { grid-column: auto; }
+  .laedt .module { min-height: 132px; }
   .laedt .werkzeug { min-height: 80px; }
   .sg-hinweis { display: none; }
+  .lage { flex-basis: 100%; }
+  .umschalter { margin-left: auto; }
 }
 
 /* ── Handy, unter 768 px (Silas' Test am Handy, 05.10.2026, V-0225) */
@@ -374,8 +405,9 @@ details[open] > summary::before { transform: rotate(45deg); }
   .sg-reiter { padding-inline: 0; border-radius: 0; }
   .sg-name { white-space: normal; }
   .sg-hinweis { display: block; flex-basis: 100%; }
+  .mitte { display: block; }
   .module { margin-top: 24px; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
-  .f-pille { height: 28px; }
+  .f-pille { height: 28px; padding: 0 4px; }
   .buehne {
     flex: none; margin-top: 32px; gap: 8px;
     min-height: calc(100vh - var(--schalter-zone) - 8px); min-height: calc(100svh - var(--schalter-zone) - 8px);
@@ -385,7 +417,7 @@ details[open] > summary::before { transform: rotate(45deg); }
   .l-titel { font-size: 16px; line-height: 24px; }
   .werkzeug { min-height: 0; }
   .raster { flex: 1 1 auto; grid-template-rows: 44px minmax(0, 1fr); row-gap: 8px; min-height: calc(52px + var(--stunden, 12) * var(--h-min)); }
-  .ein-tag .tage { padding: 0; }
+  .ein-tag .tage { grid-column: 1 / -1; padding: 0; }
   .ein-tag .tag { border-radius: 8px; }
   .tag { flex-direction: column; gap: 0; line-height: 16px; }
   .umschalter {
@@ -399,8 +431,11 @@ details[open] > summary::before { transform: rotate(45deg); }
   .fuss { margin-top: 48px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b" "c"; row-gap: 8px; font-size: 14px; line-height: 20px; }
   .fuss-b, .fuss-c { flex-wrap: wrap; gap: 0 16px; align-items: center; }
   .fuss-c { justify-content: flex-start; }
+  #stand-fuss { flex-basis: 100%; }
   .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; }
   .meldung { bottom: calc(var(--schalter-zone) + 8px); }
   .laedt .studiengang { min-height: 66px; }
-  .laedt .module { min-height: 310px; }
+  .laedt .module { min-height: 298px; }
 }
+/* Unter 390 px bricht die dritte Pille einer Modulkachel um (WI: BuK), die Module werden höher. */
+@media (max-width: 389.98px) { .laedt .module { min-height: 342px; } }

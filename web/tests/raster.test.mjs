@@ -127,8 +127,12 @@ test('Legende: jedes Format einmal, in der Reihenfolge des ersten Auftretens, au
 test('Gruppennummer, Typ ausgeschrieben, Rhythmus nur wenn nicht wöchentlich', () => {
   assert.equal(R.gruppenNummer('Termingruppe 12'), '12');
   assert.equal(R.gruppenNummer('1. Termingruppe'), '1');
-  assert.equal(R.gruppenNummer('Gruppe'), 'Gruppe');
-  assert.equal(R.gruppenNummer('Freitagsgruppe'), 'Freit…');
+  assert.equal(R.gruppenNummer('Termingruppe 2 Keiper'), '2');
+  assert.equal(R.gruppenNummer('Gruppe 3'), '3');
+  // Eine Zahl im Namen ist nicht die Gruppennummer: Hier ist es der Raum (querwind, 16a7b0e5).
+  assert.equal(R.gruppenNummer('AnaLinA Space im E-N 004, Mo. 8-10 Uhr'), null);
+  assert.equal(R.gruppenNummer('Gruppe'), null);
+  assert.equal(R.gruppenNummer('Freitagsgruppe'), null);
   assert.equal(R.typLang('TUT'), 'Tutorium');
   assert.equal(R.typLang('SE'), 'SE');
   assert.equal(R.rhythmusHinweis({ rhythm: 'wöchentlich mit Ausnahmen' }), '');
