@@ -8,7 +8,9 @@ für genau eines (docs/ARCHITEKTUR.md §2).
 
 Wer das Ergebnis liest: `abruf/bauen.py` schreibt `key`, `digest` und `slots` je Gruppe ins
 Lesemodell (docs/ARCHITEKTUR.md §5). `conflicts` rechnet im Betrieb die Seite (die Auswahl liegt im
-Browser); hier steht sie als geprüfte Referenz, an der sich der Nachbau messen lässt.
+Browser); hier steht sie als geprüfte Referenz, an der sich der Nachbau messen lässt. Neu (V-0233):
+`kombination` sagt je Plan, ob es überhaupt eine Wahl ohne Überschneidung gibt — gerechnet mit
+`conflicts`, also gegen dieselben Einzeltermine wie die Seite.
 
 Die Regeln, die Fehler gekostet hätten (aus dem Vorbild, dort entstanden):
 - SWS bleiben die offizielle Anforderung des Moduls, keine Summe der angebotenen Alternativen.
@@ -22,6 +24,12 @@ import hashlib
 import json
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+
+# Wie viele Wahlschritte `kombination` höchstens versucht. Eine Grenze in Schritten statt in Sekunden:
+# Gleiche Eingabe gibt dasselbe Ergebnis auf jedem Rechner (bauen.py verspricht gleiche Bytes). Die
+# echten Pläne vom 05.10.2026 (zehn TU-Pläne, bis 66 Gruppen) brauchen höchstens einige hundert.
+GRENZE = 200_000
+TAGE = ('Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So')
 
 
 def fingerprint(group):
@@ -97,3 +105,119 @@ def conflicts(groups):
             if dates:
                 out.append({'a': a['key'], 'b': b['key'], 'dates': sorted(dates)})
     return out
+
+
+class _Grenze(Exception):
+    pass
+
+
+def _name(c):
+    titel = c.get('title') or c.get('id')
+    return f"{titel} ({c['type']})" if c.get('type') else str(titel)
+
+
+def _zeit(a, b):
+    """Die erste echte Überschneidung zweier Gruppen, lesbar: „Di 13.10.2026 16:00–18:00“."""
+    paare = [(max(x['start'], y['start']), min(x['end'], y['end']))
+             for x in a['bookings'] for y in b['bookings'] if x['start'] < y['end'] and y['start'] < x['end']]
+    if not paare:
+        return ''
+    s, e = (datetime.fromisoformat(z) for z in min(paare))
+    return f"{TAGE[s.weekday()]} {s:%d.%m.%Y} {s:%H:%M}–{e:%H:%M}"
+
+
+def kombination(components, grenze=GRENZE):
+    """Gibt es je Bestandteil eine Gruppe, sodass sich keine zwei gewählten Gruppen überschneiden?
+
+    `components` wie im Lesemodell: je Bestandteil `id`, `title`, `type` und `groups`, je Gruppe `id`,
+    `key`, `name` und `bookings`. Ergebnis (docs/ARCHITEKTUR.md §5, Feld `kombinationen`):
+
+        {"loesbar": true,  "beispiel": {"<component_id>": "<group_id>", …}}
+        {"loesbar": false, "grund": "…"}
+        {"loesbar": null,  "grund": "…"}   noch keine Gruppe im Plan, oder die Suche stieß an `grenze`
+
+    Regeln, an denen etwas hängt:
+    - **Ein Bestandteil ohne Gruppe zählt nicht** (Punkt db561642): MOSES listet im Semester keine,
+      also lässt er sich weder einplanen noch verhindert er etwas.
+    - **Ein Bestandteil mit genau einer Gruppe ist fest**: Es gibt nichts zu wählen.
+    - **Überschneidung heißt `conflicts`**: echte Einzeltermine, direkt anschließend ist keine.
+    - Gesucht wird mit Rückverfolgung: immer zuerst der Bestandteil mit den wenigsten noch passenden
+      Gruppen; nach jeder Wahl fallen bei den übrigen die Gruppen weg, die sich mit ihr
+      überschneiden, und bleibt bei einem keine, geht es sofort zurück. Die Reihenfolge ist die der
+      Daten, das Beispiel also bei gleicher Eingabe dasselbe.
+    - Der Grund nennt, wenn er sich so sagen lässt, die festen Termine, an denen es scheitert
+      (Anlass: Informatik B.Sc., 1. FS, am 05.10.2026 — jede Gruppe der Analysis-Vorlesung liegt auf
+      einer Pflichtvorlesung, die es nur einmal gibt; V-0228). Er wird veröffentlicht: nur Titel,
+      Gruppennamen und Zeiten aus MOSES.
+    """
+    teile = [c for c in components if c.get('groups')]
+    if not teile:
+        return {'loesbar': None, 'grund': 'Im Plan steht noch keine Termingruppe.'}
+    gruppe, teil_von = {}, {}
+    for i, c in enumerate(teile):
+        for g in c['groups']:
+            gruppe[g['key']] = g
+            teil_von[g['key']] = i
+    feind = defaultdict(set)
+    for k in conflicts([g for c in teile for g in c['groups']]):
+        if teil_von[k['a']] != teil_von[k['b']]:
+            feind[k['a']].add(k['b'])
+            feind[k['b']].add(k['a'])
+    schritte = 0
+
+    def suche(offen, gewaehlt):
+        nonlocal schritte
+        if not offen:
+            return gewaehlt
+        i = min(offen, key=lambda j: (len(offen[j]), j))
+        for k in offen[i]:
+            schritte += 1
+            if schritte > grenze:
+                raise _Grenze
+            rest = {}
+            for j, d in offen.items():
+                if j != i:
+                    rest[j] = [x for x in d if x not in feind[k]]
+                    if not rest[j]:
+                        break
+            else:
+                gefunden = suche(rest, {**gewaehlt, i: k})
+                if gefunden is not None:
+                    return gefunden
+        return None
+
+    try:
+        gefunden = suche({i: [g['key'] for g in c['groups']] for i, c in enumerate(teile)}, {})
+    except _Grenze:
+        return {'loesbar': None, 'grund': f'Die Suche hat nach {grenze} Schritten aufgehört; ob es eine Wahl '
+                                          'ohne Überschneidung gibt, ist offen.'}
+    if gefunden is not None:
+        return {'loesbar': True, 'beispiel': {teile[i]['id']: gruppe[gefunden[i]]['id'] for i in sorted(gefunden)}}
+    return {'loesbar': False, 'grund': _grund(teile, gruppe, feind)}
+
+
+def _grund(teile, gruppe, feind):
+    """Warum es keine Wahl ohne Überschneidung gibt — so konkret, wie es sich sagen lässt."""
+    fest = {c['groups'][0]['key']: i for i, c in enumerate(teile) if len(c['groups']) == 1}
+    saetze = []
+    for a, i in fest.items():
+        for b, j in fest.items():
+            if i < j and b in feind[a]:
+                saetze.append(f'Die einzigen Gruppen von {_name(teile[i])} und {_name(teile[j])} '
+                              f'überschneiden sich ({_zeit(gruppe[a], gruppe[b])}).')
+    for i, c in enumerate(teile):
+        if len(c['groups']) < 2:
+            continue
+        stoerer = []
+        for g in c['groups']:
+            b = next((x for x in sorted(feind[g['key']], key=lambda x: fest.get(x, -1)) if x in fest), None)
+            if b is None:
+                break
+            stoerer.append(f"{g.get('name') or g['id']} mit {_name(teile[fest[b]])}, {_zeit(g, gruppe[b])}")
+        else:
+            saetze.append(f'Jede Gruppe von {_name(c)} überschneidet sich mit einer Veranstaltung, die es nur '
+                          f'einmal gibt: ' + '; '.join(stoerer) + '.')
+    if saetze:
+        return ' '.join(saetze)
+    return (f'Keine Wahl aus je einer Gruppe pro Bestandteil ist frei von Überschneidungen '
+            f'({len(teile)} Bestandteile mit {len(gruppe)} Gruppen geprüft).')
