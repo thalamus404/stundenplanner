@@ -34,6 +34,8 @@ export function wahlBaum(index, pfadOk = () => true) {
       const opt = { id: o.id == null ? null : text(o.id), label: text(o.label) || text(o.id) || 'ohne Namen', zusatz: text(o.zusatz) };
       if (o.semester != null) opt.semester = text(o.semester);
       if (o.fachsemester != null) opt.fachsemester = Number(o.fachsemester);
+      // Die Farbe einer Hochschule (V-0243): nur #rrggbb, sonst keine. Sie landet im CSSOM, nie im HTML.
+      if (typeof o.farbe === 'string' && /^#[0-9a-f]{6}$/i.test(o.farbe)) opt.farbe = o.farbe;
       if (o.plan) {
         const p = o.plan;
         if (!p || !gueltigeId(p.id) || typeof p.datei !== 'string' || !pfadOk(p.datei)) continue;

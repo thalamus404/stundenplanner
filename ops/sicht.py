@@ -277,7 +277,8 @@ def token_namen() -> list[str]:
 
 # Was die Seite immer ohne Scrollen zeigen muss (§3.3, §4.2 Schritt 11). Kleinbuchstaben.
 PFLICHT = [
-    {'id': 'teilen', 'name': '„Teilen“', 'texte': ['teilen'], 'bedien': True},
+    # Seit V-0243 heißt „Teilen“ „Stundenplan speichern“ (am Handy nur das Symbol, der Name im aria-label).
+    {'id': 'teilen', 'name': '„Stundenplan speichern“', 'texte': ['stundenplan speichern'], 'bedien': True},
     {'id': 'inoffiziell', 'name': '„Kein offizielles Angebot“', 'texte': ['kein offizielles angebot'], 'bedien': False},
     {'id': 'impressum', 'name': 'Impressum', 'texte': ['impressum'], 'bedien': True},
     {'id': 'datenschutz', 'name': 'Datenschutz', 'texte': ['datenschutz'], 'bedien': True},
@@ -816,22 +817,21 @@ zeigbar(false);
 return p;
 }"""
 
-# Der Startbildschirm (V-0234): die Leiste (data-sicht="fortschritt") und jede Option
+# Der Startbildschirm (V-0234): die Fortschrittslinie (data-sicht="fortschritt") und jede Option
 # (data-sicht="option"). Am Handy wird jede Option ins Bild gescrollt (wie es Finger und Tastatur
-# tun) und muss dann ganz und frei sein, also nicht unter der klebenden Leiste liegen; danach muss
-# die Leiste noch ganz im Fenster stehen.
+# tun) und muss dann ganz und frei sein. Bis V-0243 klebte die Leiste unten und musste danach noch
+# ganz im Fenster stehen; seit V-0243 steht sie als schlanke Linie unter dem Schriftzug (DESIGN §3.6).
 HALLO_JS = "(opt) => {\n" + HELFER_JS + r"""
 zeigbar(true);
 const leiste = [...document.querySelectorAll('[data-sicht="fortschritt"]')].find(vis);
 const lage = () => { if (!leiste) return null; const r = box(leiste.getBoundingClientRect()); return { t: r.t, b: r.b, ganz: ganz(r), frei: !verdeckt(leiste, r) }; };
-const out = { leiste: lage(), optionen: [], nachher: null };
+const out = { leiste: lage(), optionen: [] };
 for (const o of [...document.querySelectorAll('[data-sicht="option"]')].filter(vis)) {
   if (opt.scrollen) o.scrollIntoView({ block: 'nearest' });
   const r = box(o.getBoundingClientRect());
   const ecken = [[r.l + 2, r.t + 2], [r.r - 2, r.t + 2], [r.l + 2, r.b - 2], [r.r - 2, r.b - 2], [(r.l + r.r) / 2, (r.t + r.b) / 2]];
   out.optionen.push({ name: name(o), ganz: ganz(r), frei: !ecken.some(([x, y]) => verdecktAn(o, x, y)), b: r.r - r.l, h: r.b - r.t });
 }
-if (opt.scrollen) out.nachher = lage();
 window.scrollTo(0, 0);
 zeigbar(false);
 return out;
@@ -2306,8 +2306,6 @@ def bewerten_hallo(bf: Befund, spec: dict, r: dict, plan_id):
             teile.append('keine Leiste (data-sicht="fortschritt")')
         elif not (lst['ganz'] and lst['frei']):
             teile.append('Leiste nicht ganz im Fenster oder verdeckt')
-        elif hl.get('nachher') and not (hl['nachher']['ganz'] and hl['nachher']['frei']):
-            teile.append('Leiste nach dem Scrollen nicht mehr ganz im Fenster')
         opts = hl.get('optionen') or []
         if name != 'fertig' and not opts:
             teile.append('keine Option (data-sicht="option")')

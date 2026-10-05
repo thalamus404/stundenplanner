@@ -12,6 +12,19 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 05.10.2026 — Silas' dritter Blick: Schriftzug, Startbildschirm, Luft (V-0243)
+
+- Silas: Bis der API-Token da ist, ändert sich am Umfang nichts; jetzt zählt, dass die Bedienung
+  „wirklich komplett streamlined und schön“ wird.
+- **Marke entschieden:** kein Zeichen, nur der Schriftzug „stundenplanner“ in Rubik 600 als Pfad
+  (aus V-0239, Entwurf B), mittig in der Kopfzeile. Die drei Zeichen-Entwürfe entfallen.
+- **Startbildschirm neu:** oben der Schriftzug, eine schlanke Fortschrittslinie, dann nur Hochschule
+  (Karte im Rot der TU, `farbe` im Katalog, ohne Logo), Studiengang, Fachsemester, „Stundenplan
+  öffnen“. Leiste unten, Zusammenfassung, „Weitere folgen“ und „Zurück“ sind weg.
+- **Plan:** Legende klein links unter den Modulen, mehr Abstand überall, MOSES im Hinweis als Link,
+  der Fuß blasser, „Teilen“ heißt „Stundenplan speichern“. Gemessen in zehn Fenstergrößen von 360 bis
+  1920 px, hell und dunkel (`ops/sicht.py` grün).
+
 ## 05.10.2026 — Keine Zugriffe auf die TU mehr ohne Silas' Genehmigung (V-0241, V-0242)
 
 - innoCampus (TU Berlin) antwortete auf Silas' Anfrage: Eine REST-API mit Token gibt es, das Abrufen der

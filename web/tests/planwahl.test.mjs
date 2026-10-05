@@ -195,3 +195,12 @@ test('Ohne Lösung: nur loesbar === false ist eine Aussage; unsicher heißt „v
   assert.deepEqual(v.verdacht, ['Gruppen liegen nacheinander']);
   assert.deepEqual(v.fehlen, ['70123']);
 });
+
+test('Farbe der Hochschule (V-0243): nur #rrggbb kommt in den Baum, alles andere fällt weg', () => {
+  const i = index();
+  i.wahl.optionen[0].farbe = '#C50E1F';
+  if (i.wahl.optionen[1]) i.wahl.optionen[1].farbe = 'red; background:url(x)';
+  const baum = P.wahlBaum(i, (d) => PFAD.test(d));
+  assert.equal(baum.optionen[0].farbe, '#C50E1F');
+  if (baum.optionen[1]) assert.equal(baum.optionen[1].farbe, undefined);
+});

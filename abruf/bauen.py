@@ -324,7 +324,8 @@ def wahlbaum(eintraege):
                                'zusatz': v['kurz'] if v else None, 'weiter': _knoten('fachsemester', fs_opt)})
             sg_opt.append({'id': gid, 'label': g['name'], 'zusatz': g.get('abschluss'),
                            'weiter': _knoten('vertiefung', vt_opt, g['vertiefung_heisst'])})
-        hs_opt.append({'id': hid, 'label': h['kurz'], 'zusatz': h['name'], 'weiter': _knoten('studiengang', sg_opt)})
+        hs_opt.append({'id': hid, 'label': h['kurz'], 'zusatz': h['name'], **({'farbe': h['farbe']} if h.get('farbe') else {}),
+                       'weiter': _knoten('studiengang', sg_opt)})
     return _knoten('hochschule', hs_opt)
 
 
