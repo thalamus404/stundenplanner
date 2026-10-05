@@ -122,6 +122,30 @@ def _datei_passt(obj, pfad):
         raise KatalogFehler(f'{pfad.name}: „id“ {obj["id"]!r} passt nicht zum Dateinamen')
 
 
+def _kontrast_weiss(hexwert):
+    """WCAG-Kontrast von Weiß auf einer Farbe #rrggbb."""
+    def kanal(c):
+        c = c / 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (int(hexwert[i:i + 2], 16) for i in (1, 3, 5))
+    lum = 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b)
+    return 1.05 / (lum + 0.05)
+
+
+def _farbe(h, wo):
+    """Die Farbe einer Hochschule (V-0243): Ihre Karte im Startbildschirm ist damit gefüllt, die Schrift
+    darauf weiß. Silas, 05.10.2026: „gerne das Rot benutzen, was die TU Berlin benutzt“, ohne Logo und
+    ohne Nachahmung. Eine Farbe, auf der Weiß unter 4,5:1 fällt (WCAG AA), lässt der Katalog nicht zu."""
+    f = h.get('farbe')
+    if f is None:
+        return None
+    if not (isinstance(f, str) and re.fullmatch(r'#[0-9a-fA-F]{6}', f)):
+        raise KatalogFehler(f'{wo}: „farbe“ muss #rrggbb sein')
+    if _kontrast_weiss(f) < 4.5:
+        raise KatalogFehler(f'{wo}: weiße Schrift auf „farbe“ {f} hat nur {_kontrast_weiss(f):.2f}:1 (mindestens 4,5:1)')
+    return f.lower()
+
+
 def _hochschulen(ordner):
     out = {}
     for pfad in sorted((ordner / 'hochschulen').glob('*.json')):
@@ -134,7 +158,7 @@ def _hochschulen(ordner):
         # Eine Sperre ohne Grund wird eines Tages aufgehoben, ohne dass jemand weiß, warum es sie gab.
         grund = _text(h, 'abruf_grund', pfad.name) if abruf == 'gesperrt' else None
         out[h['id']] = {'id': h['id'], 'kurz': _text(h, 'kurz', pfad.name), 'name': _text(h, 'name', pfad.name),
-                        'quelle': quelle, 'abruf': abruf, 'abruf_grund': grund,
+                        'quelle': quelle, 'abruf': abruf, 'abruf_grund': grund, 'farbe': _farbe(h, pfad.name),
                         'sichtbar': _wahl(h, 'sichtbar', SICHTBAR, 'live', pfad.name)}
     return out
 
