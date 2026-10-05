@@ -1,11 +1,10 @@
-// Die Seite als One-Pager (docs/DESIGN.md, V-0220): liest das Lesemodell (web/daten/,
-// ARCHITEKTUR §5), hält die Auswahl im Browser (§6) und zeichnet fünf Zonen, die genau das Fenster
-// füllen. Die reine Logik steht in den .mjs (getestet mit node --test); hier wird nur gezeichnet und
+// Die Seite (docs/DESIGN.md; V-0220, Bedienung nach Silas' Test am Handy V-0225): liest das
+// Lesemodell (web/daten/, ARCHITEKTUR §5) und hält die Auswahl im Browser (§6). Die reine Logik steht in den .mjs (getestet mit node --test); hier wird nur gezeichnet und
 // verdrahtet. Kein Text aus der Datendatei wird HTML: alles durch esc(), Links nur über link().
 // Die Content-Security-Policy verbietet Inline-Stil: Lage und Größe der Kacheln setzt diese Datei
 // über element.style (CSSOM), Farben über Klassen (m0 … m7).
 
-import { esc, link, stamp, plusTage, tagMonat } from './text.mjs';
+import { esc, link, stamp, plusTage, tagMonat, abschlussLang } from './text.mjs';
 import * as A from './auswahl.mjs';
 import * as W from './woche.mjs';
 import * as R from './raster.mjs';
@@ -13,7 +12,6 @@ import * as R from './raster.mjs';
 const $ = (id) => document.getElementById(id);
 const TAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 const KURZ = TAGE.map((t) => t.slice(0, 2));
-const ANSICHTEN = [['all', 'Alle'], ['open', 'Noch offen'], ['selected', 'Mein Plan']];
 const ic = (n, k = 'i') => `<svg class="${k}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const mehrzahl = (n, eins, viele) => `${n} ${n === 1 ? eins : viele}`;
 const handy = matchMedia('(max-width: 767.98px)');
@@ -24,15 +22,16 @@ const grob = matchMedia('(pointer: coarse)');
 // Laden allein schreibt nichts (auswahl.mjs, Regel 1). Ob Schreiben geht, zeigt die erste Wahl.
 const speicher = (() => { try { return window.localStorage; } catch { return null; } })();
 
-// Was die Seite zeigt (Zustand der Bedienung, nur im Speicher der Seite, DESIGN §4.1).
-const z = { ansicht: 'open', modul: '', teil: '', zeitraum: 'skeleton', ab: 0, tag: null, handyTag: R.startTag(new Date()), fokus: '' };
+// Was die Seite zeigt (nur im Speicher der Seite, DESIGN §4.1). Filter: modul, teil, ueber
+// (raster.mjs). modus: 'tag', 'woche' oder null (Vorgabe).
+const z = { ...R.KEIN_FILTER, zeitraum: 'skeleton', ab: 0, tag: R.startTag(new Date()), modus: null, fokus: '' };
 let plaene = [], plan = null, bestand = { groups: [], parts: [] }, schluessel = '', eigene = {}, gespeichert = true;
 let vorschau = null;      // ein geöffneter Teilen-Link: { link, auswahl, unbekannt }
 let selected = [], missing = [], paare = [], partner = new Map(), ax = { von: 8, bis: 18 }, tageZahl = 5, wochen = [], hatAB = false;
 let wocheMq = null;       // passt die ganze Woche in dieses Fenster? (DESIGN §3.3)
 let navi = [];            // Kacheln je sichtbarer Spalte, für die Pfeiltasten
 
-// ── Laden ──────────────────────────────────────────────────────────────────────────────────────
+// ── Laden
 
 // Nur relative Pfade unterhalb von daten/: Eine Plandatei kommt nie von woanders her.
 const SICHERER_PFAD = /^[A-Za-z0-9_-][A-Za-z0-9._-]*(\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*\.json$/;
@@ -43,10 +42,9 @@ async function holeJson(pfad) {
   return r.json();
 }
 
-const planName = (p) => {
-  const sg = typeof p.studiengang === 'object' && p.studiengang ? p.studiengang : { id: p.studiengang, name: p.name, abschluss: p.abschluss };
-  return `${sg.name || sg.id}${sg.abschluss ? ' ' + sg.abschluss : ''}, ${p.fachsemester}. Fachsemester, ${p.label || p.semester}`;
-};
+const sgVon = (p) => (typeof p.studiengang === 'object' && p.studiengang ? p.studiengang : { id: p.studiengang, name: p.name, abschluss: p.abschluss });
+const sgName = (p) => { const sg = sgVon(p); return `${sg.name || sg.id}${sg.abschluss ? ', ' + abschlussLang(sg.abschluss) : ''}`; };
+const planName = (p) => `${sgName(p)}, ${p.fachsemester}. Fachsemester, ${p.label || p.semester}`;
 
 function rasterText(html) {
   $('koerper').innerHTML = `<div class="raster-text">${html}</div>`;
@@ -91,13 +89,11 @@ async function planLaden(eintrag, verweis) {
   }
   setzePlan(p);
   vorschau = verweis ? { link: verweis, ...A.geteilteAuswahl(bestand, verweis.paare) } : null;
-  // Erst Kopf, Module und Werkzeug, das Raster in einer eigenen Aufgabe danach: So blockiert keine
-  // einzelne Aufgabe den Browser lange (TBT, DESIGN §6); gemessen halbiert das die längste Aufgabe.
+  // Das Raster in einer eigenen Aufgabe: halbiert die längste Aufgabe beim Laden (TBT, DESIGN §6).
   render(false);
   await new Promise((weiter) => setTimeout(weiter));
   render();
   $('seite').classList.remove('laedt');
-  if (!selected.length && !vorschau && grob.matches) melde('Tippe auf eine Gruppe, um sie einzuplanen.');
 }
 
 function setzePlan(p) {
@@ -112,15 +108,15 @@ function setzePlan(p) {
   tageZahl = R.tagesZahl(bestand.groups);
   wochen = W.wochen(bestand.groups);
   hatAB = W.hatAB(plan, bestand.groups);
-  if (vorher !== schluessel) Object.assign(z, { modul: '', teil: '', zeitraum: 'skeleton', ab: 0, fokus: '' });
+  if (vorher !== schluessel) Object.assign(z, R.KEIN_FILTER, { zeitraum: 'skeleton', ab: 0, fokus: '' });
   if (!wochen.includes(z.zeitraum)) z.zeitraum = 'skeleton';
-  if (z.handyTag >= tageZahl) z.handyTag = 0;
+  if (z.tag >= tageZahl) z.tag = 0;
   if (wocheMq) wocheMq.removeEventListener('change', render);
   wocheMq = matchMedia(`(min-width: ${R.wochenBreite(R.dichteste(bestand.groups), tageZahl)}px)`);
   wocheMq.addEventListener('change', render);
 }
 
-// ── Auswahl ändern — nur auf Handlung des Nutzers, nur hier wird geschrieben ───────────────────
+// ── Auswahl ändern — nur auf Handlung des Nutzers, nur hier wird geschrieben
 
 function aendere(neu) {
   eigene = neu;
@@ -142,7 +138,7 @@ function waehle(key) {
   }
   aendere(A.waehle(eigene, g.component_id, g));
   sage(`${titel(g)}: ${g.name} eingeplant.`);
-  if (selected.length === n && vorher < n) melde(`Alle ${n} Bestandteile eingeplant. ${paare.length ? 'Bitte die Überschneidungen prüfen.' : 'Keine Überschneidung.'}`);
+  if (selected.length === n && vorher < n) melde(`Alle ${n} Formate eingeplant. ${paare.length ? 'Bitte die Überschneidungen prüfen.' : 'Keine Überschneidung.'}`);
 }
 
 /** Nur was es im Angebot gibt, geht in den Link — eine verschwundene Gruppe hilft niemandem. */
@@ -200,12 +196,10 @@ async function teilen() {
   }
 }
 
-// ── Zeichnen ───────────────────────────────────────────────────────────────────────────────────
+// ── Zeichnen
 
-// Die Zonen werden per innerHTML neu gezeichnet; das Element mit dem Fokus verschwände dabei, und
-// der Fokus fiele auf <body>. Mit der Tastatur hieß das: Chip, Segment oder ‹ › einmal auslösen,
-// dann ist man raus, ein zweites Enter tut nichts (V-0224, gefunden beim Paritätsdurchlauf). Deshalb
-// merkt render() sich, welches Bedienelement den Fokus hatte, und gibt ihn dem neuen Gegenstück.
+// innerHTML ersetzt das Element mit dem Fokus, der Fokus fiele auf <body> und die Tastatur finge von
+// vorn an (V-0224). render() merkt sich das Bedienelement und gibt den Fokus dem neuen Gegenstück.
 const MERKMALE = ['data-act', 'data-set', 'data-teil', 'data-k', 'data-v', 'data-d', 'data-tag', 'data-m', 'data-ebene'];
 
 function fokusMerken() {
@@ -213,7 +207,7 @@ function fokusMerken() {
   if (!f || !$('seite').contains(f)) return null;
   if (f.closest('#koerper')) return 'kachel';
   // Kopf und Fuß stehen fest im HTML und werden nicht ersetzt: Dort bleibt der Fokus von selbst.
-  return f.closest('#module, #werkzeug, #tage, #leiste') ? MERKMALE.map((a) => f.getAttribute(a)) : null;
+  return f.closest('#studiengang, #module, #werkzeug, #tage, #leiste, #unter') ? MERKMALE.map((a) => f.getAttribute(a)) : null;
 }
 
 function fokusZurueck(sig) {
@@ -224,9 +218,9 @@ function fokusZurueck(sig) {
     return;
   }
   const passt = [...$('seite').querySelectorAll('button, select')].find((x) => MERKMALE.every((a, i) => x.getAttribute(a) === sig[i]));
-  // Wird das Gegenstück gesperrt (› in der letzten Woche) oder fällt es weg („Ganze Woche“), geht
-  // der Fokus an das, womit man weitermacht: Zeitraum-Feld bzw. Tageskopf.
-  const ersatz = sig[0] === 'zeit' ? $('seite').querySelector('select[data-set="zeitraum"]') : sig[0] === 'woche' ? $('tage').querySelector('.tag') : null;
+  // Gesperrt oder weg (› in der letzten Woche, „Filter aufheben“, Tageskopf): dahin, wo es weitergeht.
+  const sichtbarer = (sel) => [...$('seite').querySelectorAll(sel)].find((x) => x.offsetParent !== null);
+  const ersatz = sig[0] === 'zeit' ? sichtbarer('select[data-set="zeitraum"]') : sig[0] === 'aufheben' || sig[0] === 'info' ? sichtbarer('.modul-name') : sig[0] === 'tag' ? sichtbarer('#tage .tag[aria-pressed="true"]') : null;
   const ziel = passt && !passt.disabled && passt.offsetParent !== null ? passt : ersatz;
   if (ziel) ziel.focus({ preventScroll: true });
 }
@@ -250,6 +244,7 @@ function zeichne(mitRaster) {
   renderWerkzeug();
   renderLeiste();
   if (mitRaster) renderRaster();
+  renderUnter();
   renderFuss();
   auffrischen();
 }
@@ -260,81 +255,91 @@ function standText() {
   return { alt, html: `${alt ? ic('hinweis') : ''}Stand ${t ? stamp(t) : 'unbekannt'}${alt ? ', veraltet' : ''}` };
 }
 
+const planIndex = () => (plan ? plaene.findIndex((p) => A.passtZuPlan({ studiengang: plan.studiengang.id, semester: plan.semester, fachsemester: plan.fachsemester }, p)) : -1);
+
 function renderKopf() {
   const s = standText();
-  $('plan').textContent = planName(plan);
-  $('plan').disabled = false;
-  $('stand').innerHTML = s.html;
-  $('stand').classList.toggle('alt', s.alt);
-  $('stand').disabled = false;
-  $('stand-fuss').innerHTML = s.html;
-  $('stand-fuss').classList.toggle('alt', s.alt);
+  for (const el of [$('stand'), $('stand-fuss')]) {
+    el.innerHTML = s.html;
+    el.classList.toggle('alt', s.alt);
+    el.disabled = false;
+  }
+  // Ein Reiter je Plan aus index.json (Silas, 05.10.2026); der Code nennt keinen Studiengang.
+  const i = planIndex();
+  const reiter = plaene.length > 4 ? planWahl() : plaene.map((p, j) => `<button type="button" class="sg-reiter" data-act="plan" data-i="${j}" aria-pressed="${j === i}"><span class="sg-name">${esc(sgName(p))}</span><span class="sg-fs">${esc(`${p.fachsemester}. Fachsemester, ${p.label || p.semester}`)}</span></button>`).join('');
+  $('studiengang').innerHTML = reiter + (plaene.length < 2 ? '<span class="sg-hinweis">Weitere Studiengänge folgen</span>' : '');
   const t = $('teilen');
   // Nie gesperrt: Ohne Wahl oder in der Vorschau sagt ein Klick, was fehlt (teilenWeg in auswahl.mjs).
   t.disabled = false;
   t.title = vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : selected.length ? 'Link zu deiner Auswahl teilen' : 'Erst eine Gruppe wählen';
-  const zahl = hinweise().zahl + paare.length;
-  $('mehr-zahl').hidden = !zahl;
-  $('mehr-zahl').textContent = zahl;
-  $('mehr-zahl').classList.toggle('rot', !!paare.length);
-  $('mehr').setAttribute('aria-label', zahl ? `Mehr, ${mehrzahl(zahl, 'Hinweis', 'Hinweise')}` : 'Mehr');
 }
 
-function chip(c, m) {
+/** Ein Format: umrandet offen, gefüllt mit Haken gewählt, Tinte gefiltert. */
+function format(c, m) {
   const g = c.groups.find((x) => x.selected);
   const n = c.groups.filter((x) => x.slots.length).length;
   const fehlt = missing.some((x) => x.component_id === c.id);
   const kon = g && partner.has(g.key);
   const hin = (g && g.changed) || fehlt;
-  const s = g && g.slots[0];
   const sym = kon ? ic('warn') : hin ? ic(g && g.changed ? 'neu' : 'hinweis') : g || fehlt ? ic('haken') : '';
-  const zahl = !g && !fehlt && n > 1 ? `<span class="c-zahl">${n}</span>` : '';
-  const mehr = s ? `<span class="c-mehr">${KURZ[s.day]} ${esc(s.start)}</span>` : n > 1 && !fehlt ? '<span class="c-mehr">Gruppen</span>' : '';
-  const was = g ? `gewählt: ${g.name}` : fehlt ? 'gewählte Gruppe nicht mehr im Angebot' : n ? mehrzahl(n, 'Gruppe', 'Gruppen') : 'noch ohne veröffentlichte Termine';
+  const was = g ? `gewählt: ${g.name}` : fehlt ? 'gewählte Gruppe nicht mehr im Angebot' : n ? `offen, ${mehrzahl(n, 'Gruppe', 'Gruppen')}` : 'noch ohne veröffentlichte Termine';
   const tipp = `${m.short}, ${R.typLang(c.type)}, ${c.sws} SWS, ${c.required ? 'Pflichtbereich' : c.section || ''}${n ? '' : '. Noch ohne veröffentlichte Termine'}`;
-  return `<button type="button" data-sicht="chip" class="chip${g || fehlt ? ' gewaehlt' : ''}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${m.short}, ${R.typLang(c.type)}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}>${sym}<span class="c-modul">${esc(m.short)}</span>${esc(c.type)}${zahl}${mehr}</button>`;
+  return `<button type="button" data-sicht="chip" class="format${g || fehlt ? ' gewaehlt' : ''}${kon ? ' konflikt' : hin ? ' hinweis' : ''}" data-act="teil" data-teil="${esc(c.id)}" aria-pressed="${z.teil === c.id}" title="${esc(tipp)}" aria-label="${esc(`${R.typLang(c.type)}, ${was}${kon ? ', Überschneidung' : ''}${g && g.changed ? ', geändert' : ''}`)}"${n || g || fehlt ? '' : ' disabled'}><span class="f-pille">${sym}${esc(c.type)}</span></button>`;
 }
 
 function renderModule() {
   $('module').innerHTML = plan.modules.map((m, i) => {
     const warn = m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : '';
-    return `<div class="modul m${(i % 8) + 1}"><button type="button" class="modul-name" data-act="modul" data-m="${i}" aria-label="${esc(m.short)}: Modul-Infos${warn ? ', mit Hinweis' : ''}"><span class="punkt"></span>${esc(m.short)}${warn}</button>${m.components.map((c) => chip(c, m)).join('')}</div>`;
+    const an = z.modul === m.number;
+    return `<div class="modul m${(i % 8) + 1}${an ? ' aktiv' : ''}" role="group" aria-label="${esc(m.title || m.short)}"><button type="button" class="modul-name" data-act="modul" data-m="${i}" aria-pressed="${an}" title="${esc(m.title || m.short)}" aria-label="${esc(`${m.title || m.short}: alle Formate zeigen${warn ? ', mit Hinweis' : ''}`)}"><span class="punkt"></span><span class="m-kurz">${esc(m.short)}</span>${warn}</button><div class="formate">${m.components.map((c) => format(c, m)).join('')}</div></div>`;
   }).join('');
 }
 
-const filterModul = () => z.modul || (z.teil ? (bestand.parts.find((c) => c.id === z.teil) || { module: {} }).module.number || '' : '');
-const tagAnsicht = () => (handy.matches || !(wocheMq && wocheMq.matches) ? { woche: false, tag: z.handyTag } : { woche: true, tag: z.tag });
+/** Tag oder Woche. Vorgabe: am Handy der Tag, sonst die Woche, wenn sie passt (§3.3). */
+const modus = () => z.modus || (handy.matches || !(wocheMq && wocheMq.matches) ? 'tag' : 'woche');
+const tagAnsicht = () => (modus() === 'tag' ? { woche: false, tag: z.tag } : { woche: true, tag: null });
 
-/** Die Steuerung der Ansicht: in der Werkzeugleiste und (am Handy) im Blatt „Ansicht“. */
+/** Zeitraum und A/B: am Rechner in der Werkzeugzeile, am Handy unter dem Raster. */
 function steuerung() {
-  const seg = (name, wert, text, an) => `<button class="seg" data-act="setze" data-k="${name}" data-v="${wert}" aria-pressed="${an}">${text}</button>`;
+  const seg = (name, wert, text, an) => `<button type="button" class="seg" data-act="setze" data-k="${name}" data-v="${wert}" aria-pressed="${an}">${text}</button>`;
   const i = wochen.indexOf(z.zeitraum);
-  const fm = filterModul();
-  let html = `<div class="w-gruppe"><div class="segmente" role="group" aria-label="Ansicht">${ANSICHTEN.map(([w, t]) => seg('ansicht', w, t, z.ansicht === w)).join('')}</div></div>`;
-  html += `<div class="w-gruppe"><span class="wahl"><select data-set="modul" aria-label="Modul"><option value="">Alle Module</option>${plan.modules.map((m) => `<option value="${esc(m.number)}"${fm === m.number ? ' selected' : ''}>${esc(m.short)}</option>`).join('')}</select>${ic('unten')}</span></div>`;
-  html += `<div class="w-gruppe"><button type="button" class="knopf rund" data-act="zeit" data-d="-1" aria-label="Vorige Woche"${i < 0 ? ' disabled' : ''}>${ic('links')}</button><span class="wahl"><select data-set="zeitraum" aria-label="Zeitraum"><option value="skeleton">Wochenskelett</option>${wochen.map((w) => `<option value="${w}"${w === z.zeitraum ? ' selected' : ''}>Woche ab ${tagMonat(w)}</option>`).join('')}</select>${ic('unten')}</span><button type="button" class="knopf rund" data-act="zeit" data-d="1" aria-label="Nächste Woche"${i === wochen.length - 1 || !wochen.length ? ' disabled' : ''}>${ic('rechts')}</button></div>`;
+  let html = `<div class="w-gruppe"><button type="button" class="knopf rund" data-act="zeit" data-d="-1" aria-label="Vorige Woche"${i < 0 ? ' disabled' : ''}>${ic('links')}</button><span class="wahl"><select data-set="zeitraum" aria-label="Zeitraum"><option value="skeleton">Alle Wochen</option>${wochen.map((w) => `<option value="${w}"${w === z.zeitraum ? ' selected' : ''}>Woche ab ${tagMonat(w)}</option>`).join('')}</select>${ic('unten')}</span><button type="button" class="knopf rund" data-act="zeit" data-d="1" aria-label="Nächste Woche"${i === wochen.length - 1 || !wochen.length ? ' disabled' : ''}>${ic('rechts')}</button></div>`;
   if (hatAB && z.zeitraum === 'skeleton') html += `<div class="w-gruppe"><div class="segmente" role="group" aria-label="A- oder B-Woche">${seg('ab', 0, 'Woche A', z.ab === 0)}${seg('ab', 1, 'Woche B', z.ab === 1)}</div></div>`;
   return html;
 }
 
+/** Die Lage: was gezeigt wird, wie man zurückkommt, was gewählt ist (V-0225). */
 function renderWerkzeug() {
   const n = bestand.parts.length, k = selected.length, h = hinweise();
+  const mi = plan.modules.findIndex((x) => x.number === z.modul);
+  const m = plan.modules[mi];
+  const c = z.teil ? bestand.parts.find((x) => x.id === z.teil) : null;
+  const gruppen = (cs) => cs.reduce((s, x) => s + x.groups.filter((g) => g.slots.length).length, 0);
+  let titel, unter;
+  if (m) {
+    // Am Handy erklärt der volle Titel den Kurznamen, am Rechner steht der Kurzname direkt darüber.
+    titel = `<span class="nur-breit">${esc(m.short)}</span><span class="nur-handy">${esc(m.title || m.short)}</span>${c ? ', ' + esc(R.typLang(c.type)) : ''}`;
+    const gew = c ? c.groups.find((g) => g.selected) : null;
+    unter = c ? `${mehrzahl(gruppen([c]), 'Gruppe', 'Gruppen')}, ${gew ? 'gewählt: ' + esc(gew.name) : 'noch keine gewählt'}`
+      : `Alle Formate, ${mehrzahl(gruppen(m.components), 'Gruppe', 'Gruppen')}, ${m.components.filter((x) => x.groups.some((g) => g.selected)).length} von ${m.components.length} gewählt`;
+  } else if (vorschau) {
+    titel = 'Geteilter Plan';
+    unter = `${k} von ${n} Formaten im geteilten Plan`;
+  } else if (n && k === n) {
+    titel = `Alle ${n} Formate gewählt`;
+    unter = paare.length ? 'Bitte die Überschneidungen prüfen.' : 'Keine Überschneidung.';
+  } else {
+    titel = 'Noch offen';
+    // Ohne Wahl derselbe Satz wie im HTML: Er steht vor den Daten (größter Inhalt früh, LCP §6).
+    unter = k ? `${k} von ${n} Formaten gewählt` : 'Wähle je Format eine Gruppe: hier im Plan oder oben über ein Modul.';
+  }
+  const knoepfe = m ? `<button type="button" class="knopf" data-act="info" data-m="${mi}">${ic('info')}Modul-Infos</button><button type="button" class="knopf" data-act="aufheben">${ic('kreuz')}Filter aufheben</button>` : '';
+  const rechts = knoepfe + marken(h);
+  $('lage').innerHTML = `<p class="l-text"><span class="l-titel">${titel}</span> <span class="l-unter">${unter}</span></p>${rechts ? `<span class="l-knoepfe">${rechts}</span>` : ''}`;
+  $(handy.matches ? 'steuer' : 'steuer-handy').innerHTML = '';
+  $(handy.matches ? 'steuer-handy' : 'steuer').innerHTML = steuerung();
   const t = tagAnsicht();
-  let stand = k === n && n ? `<span class="marke gut">${ic('haken')}Alle ${n} eingeplant</span>` : `<span>${k} von ${n} ${vorschau ? 'im geteilten Plan' : 'gewählt'}</span>`;
-  if (!k && !vorschau) stand += `<span class="tipp">${grob.matches ? 'Tippe' : 'Klicke'} auf eine Gruppe, um sie einzuplanen.</span>`;
-  stand += marken(h);
-  $('werkzeug').innerHTML = steuerung() + (t.woche && t.tag !== null ? '<div class="w-gruppe"><button type="button" class="knopf" data-act="woche">Ganze Woche</button></div>' : '') + `<div class="w-stand">${stand}</div>`;
-  // Am Handy steht die Steuerung im Blatt; der Knopf nennt die Ansicht und was davon abweicht.
-  const ab = [];
-  const c = bestand.parts.find((x) => x.id === z.teil);
-  if (c) ab.push(`${c.module.short} ${c.type}`);
-  else if (z.modul) ab.push((plan.modules.find((m) => m.number === z.modul) || {}).short);
-  if (z.zeitraum !== 'skeleton') ab.push(`Woche ab ${tagMonat(z.zeitraum)}`);
-  else if (hatAB) ab.push(z.ab ? 'Woche B' : 'Woche A');
-  $('ansicht-a').textContent = ANSICHTEN.find(([w]) => w === z.ansicht)[1];
-  $('ansicht-b').textContent = ab.join(', ');
-  $('ansicht').disabled = false;
-  $('ansicht').setAttribute('aria-label', `Ansicht: ${$('ansicht-a').textContent}${ab.length ? ', ' + ab.join(', ') : ''}`);
+  for (const b of $('umschalter').querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(b.dataset.v === (t.woche ? 'woche' : 'tag')));
 }
 
 function marken(h) {
@@ -371,7 +376,7 @@ function renderRaster() {
   const week = W.wocheAus(z.zeitraum);
   const par = !week && hatAB ? z.ab : null;
   const t = tagAnsicht();
-  const spalten = t.tag === null ? [...Array(tageZahl).keys()] : [t.tag];
+  const spalten = t.woche ? [...Array(tageZahl).keys()] : [t.tag];
   const modIndex = new Map(plan.modules.map((m, i) => [m, i]));
   let eintraege = R.sichtbar(bestand.groups, z);
   // Vorschau eines geteilten Plans: Wo die eigene Auswahl abweicht, steht sie grau daneben (§4.2, 10).
@@ -393,17 +398,21 @@ function renderRaster() {
       jeTag.get(s.day).push({ ...e, s, start: R.minuten(s.start), end: R.minuten(s.end), gewaehlt: e.art === 'moeglich' ? 0 : 1, modul: modIndex.get(e.g.component.module), name: e.g.name });
     }
   }
-  r.classList.toggle('ein-tag', t.tag !== null);
+  // Die Woche am Handy ist eine Übersicht (Silas: „die ganze Woche klein“): Ein Tipp auf eine
+  // Kachel zeigt ihren Tag groß, statt eine Karte an einer 12 px schmalen Kachel zu öffnen.
+  const mini = t.woche && handy.matches;
+  r.classList.toggle('ein-tag', !t.woche);
+  r.classList.toggle('mini', mini);
   r.classList.toggle('teil', !!z.teil);
   r.classList.toggle('aktionen', fein.matches && !handy.matches && !vorschau);
   r.style.setProperty('--tage', tageZahl);
   r.style.setProperty('--stunden', ax.bis - ax.von);
   k.style.setProperty('--spalten', spalten.length);
-  r.setAttribute('aria-label', t.tag === null ? 'Woche' : TAGE[t.tag]);
+  r.setAttribute('aria-label', t.woche ? 'Woche' : TAGE[t.tag]);
 
   $('tage').innerHTML = [...Array(tageZahl).keys()].map((d) => {
-    const unter = t.tag !== null && z.teil ? `<span class="zaehl">${zaehl.get(d) || 0}</span>` : week ? `<span class="datum">${tagMonat(plusTage(week.start, d))}</span>` : '';
-    const name = t.woche && t.tag === null ? `${TAGE[d]}, nur diesen Tag zeigen` : TAGE[d] + (z.teil && t.tag !== null ? `, ${mehrzahl(zaehl.get(d) || 0, 'Gruppe', 'Gruppen')}` : '');
+    const unter = !t.woche && z.teil ? `<span class="zaehl">${zaehl.get(d) || 0}</span>` : week ? `<span class="datum">${tagMonat(plusTage(week.start, d))}</span>` : '';
+    const name = t.woche ? `${TAGE[d]}, als Tag zeigen` : TAGE[d] + (z.teil ? `, ${mehrzahl(zaehl.get(d) || 0, 'Gruppe', 'Gruppen')}` : '');
     return `<button type="button" class="tag" data-sicht="tag" data-act="tag" data-tag="${d}" aria-pressed="${t.tag === d}" aria-label="${esc(name)}"><span class="kurz">${KURZ[d]}</span><span class="lang">${TAGE[d]}</span>${unter}</button>`;
   }).join('');
 
@@ -415,11 +424,11 @@ function renderRaster() {
   for (const d of spalten) {
     const tag = R.spuren(jeTag.get(d).sort(R.ordnung));
     tag.sort((a, b) => a.start - b.start || a.spur - b.spur);
-    html += `<div class="spalte" role="group" aria-label="${TAGE[d]}${week ? ' ' + tagMonat(plusTage(week.start, d)) : ''}"><div class="innen">${tag.map(kachel).join('')}</div></div>`;
+    html += `<div class="spalte" role="group" aria-label="${TAGE[d]}${week ? ' ' + tagMonat(plusTage(week.start, d)) : ''}"><div class="innen">${tag.map((e) => kachel(e, mini)).join('')}</div></div>`;
     liste.push(...tag);
   }
   if (!liste.length) {
-    const leer = z.ansicht === 'selected' ? 'Noch keine Gruppe eingeplant.' : z.ansicht === 'open' && !z.teil && !z.modul && selected.length === bestand.parts.length ? 'Alles eingeplant.' : t.tag !== null ? 'An diesem Tag liegt nichts.' : 'Keine Termine für diese Auswahl.';
+    const leer = !z.teil && !z.modul && selected.length === bestand.parts.length ? 'Alles eingeplant.' : !t.woche ? 'An diesem Tag liegt nichts.' : 'Keine Termine für diese Auswahl.';
     html += `<p class="raster-text">${leer}</p>`;
   }
   k.innerHTML = html;
@@ -441,7 +450,7 @@ function renderRaster() {
   if (ziel) ziel.tabIndex = 0;
 }
 
-function kachel(e) {
+function kachel(e, mini) {
   const { g, s, art } = e;
   const week = W.wocheAus(z.zeitraum);
   const mit = art === 'moeglich' ? selected.filter((x) => x.component_id !== g.component_id && W.overlap(g, x)) : partner.get(g.key) || [];
@@ -453,10 +462,21 @@ function kachel(e) {
   const rh = R.rhythmusHinweis(s);
   const zeit = s.start.endsWith(':00') ? '' : s.start + ' ';
   const zustand = art === 'moeglich' ? 'nicht gewählt' : vorschau && art === 'kontext' ? 'deine Auswahl' : 'gewählt';
-  const name = `${titel(g)}, ${g.name}, ${TAGE[s.day]} ${s.start} bis ${s.end}${raum ? ', Raum ' + raum : ''}${rh ? ', ' + rh : ''}, ${zustand}${neu ? ', geändert seit deiner Wahl' : ''}${mit.length ? ', überschneidet sich mit ' + mit.map((x) => `${x.module_short} ${R.typLang(x.type)}`).join(' und ') : ''}`;
+  const name = `${titel(g)}, ${g.name}, ${TAGE[s.day]} ${s.start} bis ${s.end}${raum ? ', Raum ' + raum : ''}${rh ? ', ' + rh : ''}, ${zustand}${neu ? ', geändert seit deiner Wahl' : ''}${mit.length ? ', überschneidet sich mit ' + mit.map((x) => `${x.module_short} ${R.typLang(x.type)}`).join(' und ') : ''}${mini ? '. Zeigt den Tag groß' : ''}`;
   const akt = g.selected ? ['Lösen', 'Auswahl lösen'] : g.component.selection ? ['Wechseln', 'Gruppe wechseln'] : ['Einplanen', 'Einplanen'];
-  const knopf = vorschau || art === 'kontext' && !g.selected ? '' : `<button type="button" class="k-akt" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${akt[0]}</button>`;
-  return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${art === 'kontext' ? '' : 'm' + (g.farbe + 1)} ${art}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="kachel" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-lang">${esc(zeit + g.type + ', ' + (/\d/.test(g.name) ? 'Gruppe ' + nr : g.name))}</span><span class="k-name">${esc(zeit + g.name)}</span><span class="k-nr">${esc(nr)}</span><span class="k-ort">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
+  const knopf = vorschau || mini || (art === 'kontext' && !g.selected) ? '' : `<button type="button" class="k-akt" tabindex="-1" data-act="waehlen" data-key="${esc(g.key)}" aria-label="${esc(`${akt[1]}: ${titel(g)}, ${g.name}`)}">${akt[0]}</button>`;
+  const gruppe = /\d/.test(g.name) ? 'Gruppe ' + nr : g.name;
+  return `<div data-sicht="kachel" data-tag="${s.day}" data-start="${esc(s.start)}" data-ende="${esc(s.end)}" class="kachel ${art === 'kontext' ? '' : 'm' + (g.farbe + 1)} ${art}${kon ? ' konflikt' : ''}${sym ? ' mit-sym' : ''}" data-key="${esc(g.key)}"><button type="button" class="k-flaeche" tabindex="-1" data-act="${mini ? 'tag' : 'kachel'}" data-key="${esc(g.key)}" data-tag="${s.day}" data-fokus="${esc(g.key + '@' + s.day + s.start)}" aria-label="${esc(name)}"><span class="k-mod">${esc(g.module_short)}</span><span class="k-typ">${esc(g.type)}</span><span class="k-lang">${esc(zeit)}<span class="kz">${esc(g.type)}</span><span class="kl">${esc(R.typLang(g.type))}</span>, ${esc(gruppe)}</span><span class="k-name">${esc(zeit + g.name)}</span><span class="k-nr">${esc(nr)}</span><span class="k-zeit">${esc(s.start)}–${esc(s.end)}</span><span class="k-ort">${esc(rh || raum)}</span>${sym ? ic(sym, 'i k-sym') : ''}</button>${knopf}</div>`;
+}
+
+/** Die Legende unter dem Raster (Silas, 05.10.2026). */
+function renderUnter() {
+  const module = plan.modules.map((m, i) => `<span class="m${(i % 8) + 1}"><span class="punkt"></span>${esc(m.short)}</span>`).join('');
+  const formate = R.legende(bestand.parts).map((x) => `<span><b>${esc(x.kurz)}</b>${esc(x.lang)}</span>`).join('');
+  let zustand = '<span><span class="lg-k"></span>umrandet: wählbar</span><span><span class="lg-k gewaehlt"></span>gefüllt: gewählt</span>';
+  if (z.modul || vorschau) zustand += `<span><span class="lg-k kontext"></span>grau: ${vorschau ? 'deine eigene Auswahl' : 'anderswo gewählt'}</span>`;
+  if (paare.length) zustand += '<span><span class="lg-k gewaehlt konflikt"></span>roter Ring: Überschneidung</span>';
+  $('legende').innerHTML = `<p class="lg-zeile nur-handy">${module}</p><p class="lg-zeile">${formate}</p><p class="lg-zeile">${zustand}</p>`;
 }
 
 function renderFuss() {
@@ -467,7 +487,7 @@ function renderFuss() {
   $('zuruecksetzen').hidden = !!vorschau || !Object.keys(eigene).length;
 }
 
-// ── Hinweise, Karten und Blätter ───────────────────────────────────────────────────────────────
+// ── Hinweise, Karten und Blätter
 
 function hinweise() {
   const geaendert = vorschau ? [] : selected.filter((g) => g.changed);
@@ -501,7 +521,7 @@ function inhaltHinweise() {
 function inhaltStand() {
   const run = plan.last_run;
   const lauf = !run ? 'noch kein Abruf' : run.status === 'ok' ? 'vollständig' : run.status === 'partial' ? 'mit Fehlern bei einzelnen Modulen' : 'fehlgeschlagen';
-  return `<p>${esc(planName(plan))}</p>${planWahl()}<p>Quelle: MOSES der TU Berlin, öffentliche Seiten. Abgerufen ${run ? stamp(run.finished_at) : 'noch nie'}, ${lauf}.</p><p class="klein">${mehrzahl(plan.modules.length, 'Modul', 'Module')}, ${mehrzahl(bestand.parts.length, 'Bestandteil', 'Bestandteile')}, ${mehrzahl(plan.group_count ?? bestand.groups.length, 'Termingruppe', 'Termingruppen')}, ${esc(plan.booking_count ?? '')} Einzeltermine.</p>${handy.matches ? '' : '<p class="klein">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>'}<div class="e-aktionen"><button type="button" class="knopf" data-act="neu-laden">Neu laden</button></div>`;
+  return `<p>${esc(planName(plan))}</p>${planWahl()}<p>Quelle: MOSES der TU Berlin, öffentliche Seiten. Abgerufen ${run ? stamp(run.finished_at) : 'noch nie'}, ${lauf}.</p><p class="klein">${mehrzahl(plan.modules.length, 'Modul', 'Module')}, ${mehrzahl(bestand.parts.length, 'Format', 'Formate')}, ${mehrzahl(plan.group_count ?? bestand.groups.length, 'Termingruppe', 'Termingruppen')}, ${esc(plan.booking_count ?? '')} Einzeltermine.</p><div class="e-aktionen"><button type="button" class="knopf" data-act="neu-laden">Neu laden</button></div>`;
 }
 
 function inhaltModul(m) {
@@ -542,20 +562,9 @@ function inhaltGruppe(g, s) {
   return teile.join('');
 }
 
-function inhaltMehr() {
-  return `<p class="klein">Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.</p>
-<section><h3>Hinweise</h3>${inhaltHinweise()}</section>
-<section><h3>Module</h3>${plan.modules.map((m, i) => `<button type="button" class="zeile-knopf m${(i % 8) + 1}" data-act="modul" data-m="${i}"><span class="punkt"></span>${esc(m.title || m.short)}${m.error || A.veraltet(m.success_at) ? ic('hinweis', 'i warn-i') : ''}</button>`).join('')}</section>
-<section><h3>Datenstand</h3>${inhaltStand()}</section>
-<div class="e-aktionen">${Object.keys(eigene).length && !vorschau ? '<button type="button" class="knopf" data-act="zuruecksetzen">Auswahl zurücksetzen</button>' : ''}<button type="button" class="knopf" data-act="ebene" data-ebene="hilfe">Hilfe</button></div>
-<p class="links"><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></p>`;
-}
-
 const EBENEN = {
   hinweise: () => ['karte', 'Hinweise', inhaltHinweise],
   stand: () => ['karte', 'Datenstand', inhaltStand],
-  mehr: () => ['karte', 'Mehr', inhaltMehr],
-  ansicht: () => ['karte', 'Ansicht', () => `<div class="ansicht-blatt">${steuerung()}</div>`],
   hilfe: () => ['dialog', 'So funktioniert die Planung', () => $('hilfe-text').innerHTML, 'lesen'],
 };
 
@@ -586,9 +595,7 @@ function schliesse(sofort = false) {
   if (sofort) $('ebenen').innerHTML = '';
   else setTimeout(() => { if (ebeneNr === nr && !offen) $('ebenen').innerHTML = ''; }, 200);
   if (!sofort) {
-    // Zurück zum Auslöser. Gibt es ihn nicht mehr oder ist er versteckt („Auswahl zurücksetzen“ nach
-    // dem Zurücksetzen, die Teilen-Leiste nach „Übernehmen“), dann an den Tabulatorhalt des Rasters:
-    // Sonst fiele der Fokus auf <body>, und die Tastatur finge von vorn an (V-0224).
+    // Zurück zum Auslöser, ist er weg oder versteckt, an den Tabulatorhalt des Rasters (V-0224).
     const a = zurueck && zurueck();
     const ziel = a && a.isConnected && a.offsetParent !== null ? a : $('koerper').querySelector('.k-flaeche[tabindex="0"]');
     if (ziel) ziel.focus({ preventScroll: true });
@@ -676,45 +683,47 @@ function sage(text) {
   setTimeout(() => { el.textContent = text; }, 50);
 }
 
-// ── Bedienung ──────────────────────────────────────────────────────────────────────────────────
+// ── Bedienung
 
-function filterTeil(id) {
-  z.teil = z.teil === id ? '' : id;
-  z.modul = '';
+/** Den Filter setzen (raster.mjs) und ansagen, was zu sehen ist. */
+function filtern(neu) {
+  Object.assign(z, neu);
   const c = bestand.parts.find((x) => x.id === z.teil);
+  const m = plan.modules.find((x) => x.number === z.modul);
   render();
-  sage(c ? `Nur ${c.module.short} ${R.typLang(c.type)}: ${mehrzahl(c.groups.length, 'Gruppe', 'Gruppen')}.` : 'Filter aufgehoben.');
+  sage(c ? `Nur ${c.module.short} ${R.typLang(c.type)}: ${mehrzahl(c.groups.length, 'Gruppe', 'Gruppen')}.` : m ? `${m.title || m.short}: alle Formate.` : 'Filter aufgehoben. Zu sehen ist, was noch offen ist.');
 }
 
 const AKTIONEN = {
   start: () => start(),
-  teil: (b) => filterTeil(b.dataset.teil),
-  modul: (b) => karteModul(Number(b.dataset.m), b),
+  teil: (b) => {
+    const c = bestand.parts.find((x) => x.id === b.dataset.teil);
+    if (c) filtern(R.tippeFormat(z, c.id, c.module.number));
+  },
+  modul: (b) => { const m = plan.modules[Number(b.dataset.m)]; if (m) filtern(R.tippeModul(z, m.number)); },
+  aufheben: () => filtern(R.KEIN_FILTER),
+  info: (b) => karteModul(Number(b.dataset.m), b),
+  plan: (b) => { const i = Number(b.dataset.i); if (i !== planIndex()) planWechseln(i); },
   kachel: (b) => karteGruppe(b),
   waehlen: (b) => {
     const key = b.dataset.key;
     const zurueck = offen && offen.zurueck;
     if (offen) schliesse(true);
     waehle(key);
-    // Aus der Karte zurück zur Kachel; gibt es sie nicht mehr (in „Mein Plan“ gelöst), dann an den
-    // Tabulatorhalt des Rasters, damit der Fokus nicht auf <body> fällt.
+    // Aus der Karte zurück zur Kachel, gibt es sie nicht mehr, an den Tabulatorhalt des Rasters.
     const ziel = (zurueck && zurueck()) || $('koerper').querySelector('.k-flaeche[tabindex="0"]');
     if (ziel && b.closest('.ebene')) ziel.focus({ preventScroll: true });
   },
   geprueft: (b) => { const g = finde(b.dataset.key); if (g && !vorschau) aendere(A.bestaetige(eigene, g.component_id, g)); },
   loesen: (b) => { if (!vorschau) aendere(A.loese(eigene, b.dataset.teil)); },
+  // Reiter, Tageskopf der Woche oder Kachel der Wochenübersicht: zeigt den Tag groß.
   tag: (b) => {
-    const d = Number(b.dataset.tag), t = tagAnsicht();
-    if (t.woche) z.tag = z.tag === d ? null : d;
-    else z.handyTag = d;
+    z.tag = Number(b.dataset.tag);
+    if (modus() === 'woche') z.modus = 'tag';
     render();
   },
-  woche: () => { z.tag = null; render(); },
-  setze: (b) => {
-    if (b.dataset.k === 'ab') z.ab = Number(b.dataset.v);
-    else z.ansicht = b.dataset.v;
-    render();
-  },
+  modus: (b) => { z.modus = b.dataset.v; render(); sage(b.dataset.v === 'woche' ? 'Die ganze Woche.' : `${TAGE[z.tag]}.`); },
+  setze: (b) => { if (b.dataset.k === 'ab') z.ab = Number(b.dataset.v); render(); },
   zeit: (b) => {
     const i = wochen.indexOf(z.zeitraum) + Number(b.dataset.d);
     z.zeitraum = i < 0 ? 'skeleton' : wochen[Math.min(i, wochen.length - 1)] || 'skeleton';
@@ -722,8 +731,7 @@ const AKTIONEN = {
   },
   ebene: (b) => ebene(b.dataset.ebene, b),
   zu: () => schliesse(),
-  // Erst handeln, dann schließen: So sucht schliesse() den Fokus im neuen Zustand (der Auslöser kann
-  // dabei verschwunden sein).
+  // Erst handeln, dann schließen: schliesse() sucht den Fokus im neuen Zustand.
   ja: () => { const o = offen, f = o && o.ja; if (f) f(); if (offen === o) schliesse(); },
   teilen: () => teilen(),
   zuruecksetzen: () => zuruecksetzen(),
@@ -764,7 +772,6 @@ document.addEventListener('change', (e) => {
   const t = e.target, k = t.dataset.set;
   if (!k) return;
   if (k === 'plan') { planWechseln(Number(t.value)); return; }
-  if (k === 'modul') { z.modul = t.value; z.teil = ''; }
   if (k === 'zeitraum') z.zeitraum = t.value;
   render();
 });
@@ -780,7 +787,7 @@ async function planWechseln(i) {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (offen) { e.preventDefault(); schliesse(); } else if (z.teil) filterTeil(z.teil);
+    if (offen) { e.preventDefault(); schliesse(); } else if (z.teil || z.modul) filtern(R.stufeZurueck(z));
     return;
   }
   if (e.key === 'Tab' && offen) {
@@ -829,8 +836,7 @@ $('koerper').addEventListener('pointerleave', () => $('koerper').querySelectorAl
 handy.addEventListener('change', () => { schliesse(true); render(); });
 fein.addEventListener('change', render);
 
-// Eine zweite Registerkarte ändert die Auswahl: hier nachziehen, statt sie beim nächsten Klick
-// zu überschreiben (im Vorbild verhinderte das eine Revision mit 409 auf dem Server).
+// Eine zweite Registerkarte ändert die Auswahl: nachziehen, statt sie beim nächsten Klick zu überschreiben.
 addEventListener('storage', (e) => {
   if (!plan || (e.key !== null && e.key !== schluessel)) return;
   eigene = A.ladeAuswahl(speicher, schluessel);
