@@ -390,6 +390,10 @@ Seite (Schlüssel wie in Schema 1), bis die Seite umgestellt ist.
   aktiv die erste Gruppe wählt; Laden schreibt nichts. Gespeichert werden nur Kennungen und was die
   Funktion braucht: kein Zeitstempel, keine Nutzer-ID. Sichtbar steht „Deine Auswahl wird nur in
   diesem Browser gespeichert.“, und „Auswahl zurücksetzen“ löscht den Schlüssel nach Rückfrage
+- **Neben der Auswahl** (V-0234, V-0251): `stundenplanner:v1:plan` = die Kennung des zuletzt im
+  Startbildschirm gewählten Plans (geschrieben bei der letzten Wahl dort) und `stundenplanner:v1:tipp`
+  = `pfeile`, wenn jemand den Pfeiltasten-Tipp mit dem X geschlossen hat (geschrieben nur bei diesem
+  Klick). Beides ohne Zeitstempel, beides steht in der Datenschutzerklärung
 - **Eine Gruppe je Bestandteil.** Eine neue Wahl ersetzt die alte
 - **Geändert seit deiner Wahl:** gewählt, aber `digest` der Auswahl ≠ `digest` der Gruppe.
   „Änderung geprüft“ übernimmt den neuen Digest

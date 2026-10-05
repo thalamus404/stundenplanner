@@ -12,6 +12,22 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 05.10.2026 abends — Silas klickt sich durch (V-0251)
+
+- **Pfeiltasten-Tipp:** Silas hatte ihn nie gesehen (90 s nach dem ersten Filter, nach 12 s weg). Jetzt
+  eine Minute nach dem Plan, er bleibt bis zum X; geschlossen kommt er nicht wieder
+  (`stundenplanner:v1:tipp`, in der Datenschutzerklärung).
+- **← → wirken immer:** Nach einem Klick auf eine Kachel hielten die offene Karte und der Fokus im
+  Raster die Pfeile fest. Jetzt schließt sich die Karte, und der Schritt geschieht; Kachel zu Kachel
+  nur nach Tab.
+- **Startbildschirm:** Block mittig, Schriftzug höher, die Wahl des Fachsemesters öffnet den Plan
+  („Stundenplan öffnen“ entfällt).
+- **Heller Modus:** Silas sah ihn zum ersten Mal: eingeplante Termine „hässlich … matschig dunkel“.
+  Jetzt Pastell wie die Formate links, Vorschläge heller; der dunkle Modus ist pixelgleich (eigene
+  Tokens je Schema).
+- **Ausgegraut:** Schrift und Plus der übrigen Gruppen verlieren Deckkraft. **Modul-Infos** ist ein
+  Info-Symbol in der aufgeschlagenen Modulkachel. **Legende** links: Formate übereinander.
+
 ## 05.10.2026 abends — Der Schriftzug in Sora (V-0250)
 
 - Silas: „Sora 2 Gewichte. Mit Stunden schwer, Planner leicht, Name zerfällt in seine zwei Worte ohne

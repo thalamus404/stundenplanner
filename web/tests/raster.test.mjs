@@ -194,13 +194,14 @@ test('Verlauf: dieselbe Ansicht zählt nicht doppelt, höchstens 50 Einträge, n
   assert.deepEqual(Object.keys(v.liste[0]).sort(), ['modul', 'teil', 'ueber']);
 });
 
-test('Pfeiltasten-Tipp (V-0246): nach 90 s, mit zwei Ansichten, nur mit Tastatur, nur einmal, nie nach Benutzung', () => {
-  const lage = { seit: R.TIPP_NACH_MS, schritte: 2, gezeigt: false, benutzt: false, tastatur: true, frei: true };
+test('Pfeiltasten-Tipp (V-0251): eine Minute nach dem Plan, nur mit Tastatur, nur einmal, nie nach Benutzung oder X', () => {
+  const lage = { seit: R.TIPP_NACH_MS, gezeigt: false, benutzt: false, geschlossen: false, tastatur: true, frei: true };
+  assert.equal(R.TIPP_NACH_MS, 60000, 'eine Minute (Silas)');
   assert.equal(R.tippFaellig(lage), true);
   assert.equal(R.tippFaellig({ ...lage, seit: R.TIPP_NACH_MS - 1 }), false, 'zu früh');
-  assert.equal(R.tippFaellig({ ...lage, schritte: 1 }), false, '← täte noch nichts');
   assert.equal(R.tippFaellig({ ...lage, gezeigt: true }), false, 'nur einmal');
   assert.equal(R.tippFaellig({ ...lage, benutzt: true }), false, 'schon benutzt');
+  assert.equal(R.tippFaellig({ ...lage, geschlossen: true }), false, 'mit dem X geschlossen, auch in einem früheren Besuch');
   assert.equal(R.tippFaellig({ ...lage, tastatur: false }), false, 'Touch ohne Tastatur');
   assert.equal(R.tippFaellig({ ...lage, frei: false }), false, 'eine Karte ist offen');
 });

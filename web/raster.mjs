@@ -177,14 +177,17 @@ export function verlaufSchritt(v, richtung) {
 }
 
 // Der Pfeiltasten-Tipp (Silas, 05.10.2026, V-0246): „sobald man ein, zwei Minuten da rumgeklickt hat,
-// soll unten so ein kleines Pop-up kommen, wo quasi die Pfeiltasten angezeigt werden“. Er kommt einmal je
-// Besuch, nur mit Tastatur und Maus, nur wenn ← schon etwas täte (zwei Ansichten im Verlauf) und nur,
-// wenn die Pfeile noch nicht benutzt wurden. Gemerkt wird nichts: Der nächste Besuch fragt neu.
-export const TIPP_NACH_MS = 90000;
+// soll unten so ein kleines Pop-up kommen, wo quasi die Pfeiltasten angezeigt werden“. Bis V-0251 kam er
+// 90 s nach der ersten Wahl eines Filters, erst mit zwei Ansichten im Verlauf, und ging nach 12 s von
+// selbst: Silas hat ihn so nie gesehen. Seit V-0251 („nach einer Minute auf der Seite … mit so einem
+// kleinen X wegdrücken … nicht nur kurz auftauchen“): eine Minute, nachdem der Plan zu sehen ist, und er
+// bleibt, bis man ihn schließt. Nur mit Tastatur und Maus und nur, solange die Pfeile nicht benutzt
+// wurden. Wer ihn mit dem X schließt, sieht ihn nicht wieder (stundenplanner:v1:tipp, auswahl.mjs).
+export const TIPP_NACH_MS = 60000;
 
-/** Ob der Tipp jetzt erscheinen soll. `seit`: ms seit der ersten Wahl eines Filters in diesem Besuch. */
-export function tippFaellig({ seit, schritte, gezeigt, benutzt, tastatur, frei }) {
-  return !gezeigt && !benutzt && !!tastatur && !!frei && schritte >= 2 && seit >= TIPP_NACH_MS;
+/** Ob der Tipp jetzt erscheinen soll. `seit`: ms, seit der Plan in diesem Besuch zu sehen ist. */
+export function tippFaellig({ seit, gezeigt, benutzt, geschlossen, tastatur, frei }) {
+  return !gezeigt && !benutzt && !geschlossen && !!tastatur && !!frei && seit >= TIPP_NACH_MS;
 }
 
 /**
