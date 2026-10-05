@@ -147,6 +147,35 @@ export function stufeZurueck(f) {
   return f.teil && f.ueber ? { modul: f.modul, teil: '', ueber: false } : { ...KEIN_FILTER };
 }
 
+// Der Verlauf der Ansichten (Silas, 05.10.2026, V-0245): Pfeil links und rechts gehen durch die zuletzt
+// geöffneten Filter zurück und vor, wie Zurück und Vor im Browser („man drückt auf Vorlesung und dann
+// auf Übung […] mit Pfeiltaste zurück wieder zur Vorlesung, mit Pfeiltaste nach vorne wieder zur
+// Übung“). Wer zurückgeht und dann etwas Neues anklickt, schneidet den Rest dahinter ab. Gemerkt wird
+// nur der Filter { modul, teil, ueber }, nie eine Auswahl; der Verlauf lebt nur im offenen Fenster.
+const VERLAUF_MAX = 50;
+const filterVon = (f) => ({ modul: f.modul || '', teil: f.teil || '', ueber: !!f.ueber });
+const gleicherFilter = (a, b) => a.modul === b.modul && a.teil === b.teil;
+
+/** Ein neuer Verlauf, der mit dieser Ansicht beginnt (beim Öffnen eines Plans: „Mein Stundenplan“). */
+export function verlaufNeu(f = KEIN_FILTER) {
+  return { liste: [filterVon(f)], i: 0 };
+}
+
+/** Eine Ansicht merken. Dieselbe wie die aktuelle zählt nicht; was hinter der Stelle lag, fällt weg. */
+export function verlaufMerken(v, f) {
+  const neu = filterVon(f);
+  if (gleicherFilter(v.liste[v.i], neu)) return { liste: v.liste.map((x, j) => (j === v.i ? neu : x)), i: v.i };
+  const liste = [...v.liste.slice(0, v.i + 1), neu].slice(-VERLAUF_MAX);
+  return { liste, i: liste.length - 1 };
+}
+
+/** Ein Schritt zurück (-1) oder vor (+1): { v, filter }, oder null, wenn es dort nichts gibt. */
+export function verlaufSchritt(v, richtung) {
+  const i = v.i + richtung;
+  if (i < 0 || i >= v.liste.length) return null;
+  return { v: { liste: v.liste, i }, filter: { ...v.liste[i] } };
+}
+
 /**
  * Die Legende unter dem Raster: jedes Format, das im Plan vorkommt, einmal, in der Reihenfolge, in
  * der es zuerst auftaucht, mit Kürzel und ausgeschrieben („nur was vorkommt“, Silas, 05.10.2026).

@@ -155,11 +155,11 @@ bekommt den Rest. Am Handy scrollt sie (§3.3).
 |---|---|
 | **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18, unter 390 px 16), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter. Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
 | **Hinweise oben** (V-0234) | nur wenn nötig, je eine Zeile über die volle Breite: ein deutliches Schild in Bernstein, wenn die Termine Ersatz aus dem Vorjahr sind („Termine aus dem Vorjahr, Ersatz.“ mit Semester und wofür), und ein ruhiger Satz auf neutraler Fläche mit rotem Warnsymbol, wenn es keine Wahl ohne Überschneidung gibt („Mit den veröffentlichten Terminen gibt es keine Wahl ohne Überschneidung.“, unsicher mit „vermutlich“). „Warum“ öffnet eine Karte mit dem Grund aus dem Lesemodell (Zeiten, Tage), dem Verdacht und fehlenden Modulen. Der Grund steht nicht in der Zeile: Er ist bis 400 Zeichen lang und nähme der Woche am Rechner die Höhe |
-| **Module** | je Modul eine **Modulkachel**: Farbkreis und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“). Der Farbkreis ist ein Ring und füllt sich, wenn das Modul aufgeschlagen ist; einen Rahmen um die Kachel gibt es dafür nicht mehr (V-0237) |
+| **Module** | je Modul eine **Modulkachel**: Farbkreis und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“). Der Farbkreis ist ein Ring und füllt sich, wenn das Modul aufgeschlagen ist; dazu trägt die Kachel wieder einen Rahmen in Tinte (2 px, hell dunkel, dunkel weiß; V-0237 entfernt, V-0245 zurück: sonst sah man schlecht, welches Modul offen ist) |
 | **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Modul-Infos“ und „Filter aufheben“, sobald gefiltert ist, und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
 | **Raster** | Tagesreiter bzw. Tageskopf, Zeitachse, Kacheln (§3.2) |
 | **Legende** | klein und zurückgenommen (12 px, `--fuss-text`): die Formate, die im Plan vorkommen, ausgeschrieben („VL Vorlesung“, „IV Integrierte Veranstaltung“), und die Kachelarten als Muster mit einem Wort, was sie heißen (wählbar, eingeplant, Vorschlag, dein Plan, Format gewählt, Überschneidung; V-0243, vorher „umrandet: wählbar“ usw.). Am Rechner links unter den Modulen, die Kachelarten in zwei Spalten; ab sechs Modulen und unter 1024 px unter dem Raster. Immer dieselben Einträge, damit sie ihre Höhe nicht ändert. Am Handy davor die Modulfarben |
-| **Fuß** | aufgeräumt (V-0237): links ein Absatz, klein (12 px) und zurückgenommen (`--fuss-text`, ≥ 4,5:1): „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ (Hochschule und Quelle aus der Plandatei, V-0234, Punkt 8541d9f5; die Quelle ist ein Link auf ihre Seite, V-0243) Daneben immer der Speicherhinweis (ARCHITEKTUR §6) und, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“. Dann „Hilfe“, „Impressum“, „Datenschutz“ (am Handy davor der Stand) |
+| **Fuß** | aufgeräumt (V-0237): links ein Absatz, klein (12 px) und zurückgenommen (`--fuss-text`, ≥ 4,5:1): „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ (Hochschule und Quelle aus der Plandatei, V-0234, Punkt 8541d9f5; die Quelle ist ein Link auf ihre Seite, V-0243) Daneben immer der Speicherhinweis (ARCHITEKTUR §6). **In der Mitte** des Fußes, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“ (V-0245; vorher hing es unten links am Hinweis). Rechts „Hilfe“, „Impressum“, „Datenschutz“ (davor der Stand, wenn er nicht im Kopf steht). Am Handy steht der Fuß mittig, je Teil eine Zeile |
 
 Es gibt **keine Kästen um die Zonen**. Abstand gliedert, nicht Rahmen. Kästen haben nur die
 Modulkacheln (eine Gruppe von Bedienelementen je Modul), die Kacheln im Raster und schwebende Ebenen.
@@ -346,7 +346,7 @@ passt (WI 1. FS: ja).
 
 ### 3.4 Höhen
 
-Am Rechner: Rand 12 px (ab 860 px Höhe 16 px), Kopf 48, Werkzeugzeile 40, Tageskopf 32, Legende
+Am Rechner (Stand V-0243/V-0245: Kopf 56, 16 px zwischen den Zonen, unter dem Raster 16 px Luft bis zum Fuß; die Zahlen dahinter sind von V-0225): Rand 12 px (ab 860 px Höhe 16 px), Kopf 48, Werkzeugzeile 40, Tageskopf 32, Legende
 16 bis 36 (eine oder zwei Zeilen) mit 8 px Abstand, Fuß 24 (unter 1280 px zwei Zeilen), Abstände
 8 px. Gemessen mit dem Bau (V-0225): 1280 × 720 rund 39 px je Stunde, 1366 × 657 rund 33 px,
 1440 × 900 rund 54 px; die Mindesthöhe (20,5 px) hält jedes Fenster ab 1024 × 657.
@@ -577,6 +577,13 @@ Nichts aus dem Vorbild fällt weg, ohne dass die Tabelle den Grund nennt.
 
 ### 4.4 Tastatur und Screenreader
 
+- **Pfeil links und rechts: der Verlauf der Ansichten** (Silas, 05.10.2026, V-0245). Jede Ansicht, die
+  man öffnet („Mein Stundenplan“, ein Modul, ein Format), kommt in einen Verlauf; ← geht zurück, →
+  wieder vor, wie im Browser. Wer zurückgeht und etwas Neues öffnet, schneidet den Rest dahinter ab.
+  Zweck: Vorlesung und Übung schnell vergleichen. Die Pfeile gehören dem Verlauf überall, außer wo sie
+  schon etwas tun: in Feldern und Auswahllisten, im Raster (Kachel zu Kachel), in einer offenen Karte
+  und im Startbildschirm. Gemerkt wird nur der Filter, höchstens 50 Schritte, nur im offenen Fenster
+  (`verlaufNeu`, `verlaufMerken`, `verlaufSchritt` in `raster.mjs`).
 - Reihenfolge: Kopf, Module, Werkzeugzeile, Raster, Legende, Fuß.
 - **Das Raster ist ein Tabulatorhalt.** Darin wandern ↑ ↓ zur vorigen/nächsten Kachel des Tages,
   ← → zur zeitlich nächsten Kachel im Nachbartag, Pos1/Ende zur ersten/letzten Kachel des Tages.
@@ -901,7 +908,7 @@ zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als Symbole
 | HTML | ≤ 16 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms, der Schriftzug als Pfad (3,9 KB, inline statt einer eigenen Anfrage vor der ersten Kachel; V-0243). Bis V-0234: 10 KB, bis V-0243: 11 KB |
 | CSS | ≤ 44 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, siehe unten) |
 | JavaScript | ≤ 128 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB, bis V-0237: 120 KB). `ics.mjs` lädt erst bei der ersten Bedienung und zählt hier nicht |
-| Code zusammen, komprimiert | **≤ 62 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB) |
+| Code zusammen, komprimiert | **≤ 64 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB; dazu kamen der Schriftzug, 1,9 KB, und der Verlauf der Ansichten) |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
 | Anfragen bis zum fertigen Raster | ≤ 10, alle vom eigenen Ort und **ohne Kaskade**: Das HTML nennt CSS und jedes Modul (`modulepreload`), sie laden parallel | HTML, CSS, die Module, `index.json`, Plan-Datei (bis 05.10.2026: 6) |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
@@ -1162,6 +1169,14 @@ machen.“
     Kopfzeile (§0 Punkt 10). Die Zeichen aus V-0239 (Feld, Anschluss, Kuhle) entfallen.
 34. **Der Startbildschirm, neu und aufgeräumt**: oben mittig der Schriftzug, dann nur Hochschule (die
     Karte im Rot der TU, ohne Logo), Studiengang, Fachsemester; alles Unnötige entfällt (§3.6, §4.5).
+
+**Danach, 05.10.2026** (Punkt d9e877d0, gebaut in V-0245):
+
+35. **Mit ← und → durch die zuletzt geöffneten Ansichten**, um etwa Vorlesung und Übung schnell zu
+    vergleichen (§4.4).
+36. **„Auswahl zurücksetzen“ mittig im Fuß** (§3.1).
+37. **Der Plan etwas kürzer**: 16 px Luft unter der letzten Stunde (§3.4).
+38. **Der Rahmen um das aufgeschlagene Modul ist zurück** (§3.1).
 
 ---
 
