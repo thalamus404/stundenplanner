@@ -338,7 +338,7 @@ function renderPlanHinweise() {
   const el = $('plan-hinweise');
   const teile = [];
   if (plan.ersatz_fuer) {
-    teile.push(`<p class="ph gelb">${ic('hinweis')}<span><b>Termine aus dem Vorjahr, Ersatz.</b> ${esc(`Die Termine sind aus dem ${plan.label || plan.semester} und stehen für das ${plan.ersatz_fuer}, bis die Hochschule dessen Termine veröffentlicht.`)}</span></p>`);
+    teile.push(`<p class="ph gelb">${ic('hinweis')}<span><b>Termine aus dem Vorjahr, Ersatz.</b> ${esc(`Sie stehen für das ${plan.ersatz_fuer}, bis die Hochschule dessen Termine veröffentlicht. Zeiten und Räume können sich noch ändern.`)}</span></p>`);
   }
   const o = P.ohneLoesung(plan.kombinationen);
   if (o) teile.push(`<p class="ph">${ic('warn', 'i ph-warn')}<span><b>${esc(o.satz)}</b> <button type="button" class="leise" data-act="ebene" data-ebene="loesung">Warum</button></span></p>`);

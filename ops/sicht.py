@@ -2208,7 +2208,7 @@ def bewerten_leistung(bf: Befund, p: dict):
     else:
         zu_viel = p['anfragen_bis_kachel'] > BUDGET['anfragen']
         bf.add('12b', FEHLER if zu_viel else OK,
-               f"{p['anfragen_bis_kachel']} Anfragen bis zur ersten Kachel nach {zahl(p['kachel'], 0)} ms (Budget 6)"
+               f"{p['anfragen_bis_kachel']} Anfragen bis zur ersten Kachel nach {zahl(p['kachel'], 0)} ms (Budget {BUDGET['anfragen']})"
                + (': ' + ', '.join(p.get('anfragen_liste', [])) if zu_viel else ''), wo, p['anfragen_bis_kachel'])
     bf.add('12c', FEHLER if p['fremd'] else OK, ('fremd: ' + ', '.join(p['fremd'][:3])) if p['fremd'] else 'nur eigene Anfragen', wo)
     # Inline-Stil und -Skript im ausgelieferten HTML (§6, CSP)

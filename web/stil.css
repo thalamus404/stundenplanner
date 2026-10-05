@@ -250,6 +250,9 @@ button:active::after { opacity: .1; }
 /* Der gestrichelte Rand als outline nach innen: Ein 2-px-Rand nähme schmalen Kacheln den Platz. */
 .auto > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
 .format.auto .f-pille { border: 1px dashed var(--tinte); }
+/* Der Fokus schlägt den gestrichelten Rand: Sonst blieb die automatisch eingeplante Kachel mit dem
+   Fokus unverändert, der Fokus unsichtbar (gemessen am Plan der HU Biologie, §8 #10, V-0234). */
+.auto > .k-flaeche:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 4px; }
 /* Ein offenes Angebot (`gruppen: keine`, V-0234) ist keine Wahl: neutral umrandet, nicht in Modulfarbe. */
 .format.frei .f-pille { border-color: var(--grau-6); color: var(--grau-9); }
 .kachel.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; border-radius: 4px; }
@@ -296,6 +299,10 @@ button:active::after { opacity: .1; }
   .k-flaeche { padding: 0; }
   .k-flaeche > span { display: none; }
 }
+/* Niedriger als zwei Zeilen (ein 1,5-h-Termin bei 20 px je Stunde, etwa im Zoom 200 %): nur die erste
+   Zeile. Sonst teilten sich beide Zeilen die Höhe und würden beide angeschnitten (§8 #14, gemessen am
+   Plan der HU Biologie, V-0234). */
+@container kachel (max-height: 39.9px) { .k-kurz, .k-nr, .k-lang, .k-info, .k-ort { display: none; } }
 /* Gerade gewählt (Silas, V-0225): die gewählte Kachel setzt sich kurz, die übrigen Gruppen des
    Formats verblassen von der möglichen Kachel ins Hellgrau. Nur transform und opacity, 200 ms. */
 .frisch.gewaehlt { animation: setzen 200ms var(--ein); }
