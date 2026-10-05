@@ -1,7 +1,8 @@
 # Abruf und Lesemodell
 
-Holt die öffentlichen MOSES-Daten je Modul (`abruf.py`, `moses.py`) und rechnet daraus die Daten,
-die die Seite liest (`plan.py`, `bauen.py`). Formate und Befehle: [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md)
+Holt die öffentlichen Daten je Modul aus MOSES (`moses.py`) oder HIS LSF (`lsf.py`), gewählt in
+`abruf.py`, und rechnet daraus die Daten, die die Seite liest (`plan.py`, `bauen.py`). Den Katalog
+lesen beide über `katalog.py`. Formate und Befehle: [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md)
 §3–§7. Herkunft: Study OS (`stundenplan/moses.py`, `stundenplan/runner.py`, `app/stundenplan.py`), kopiert.
 
 *Im Bau (Programm „Stundenplanner — erste Fassung“, Phase 2). Wer hier baut, schreibt in diese Datei,
@@ -97,6 +98,79 @@ MOSES ist ein öffentlicher Dienst der TU Berlin, kein Angebot an uns. Deshalb:
 - Die Tests laufen **ohne Netz**: `tests/test_moses.py` auf einem echten, öffentlichen CSV-Export,
   `tests/test_abruf.py` mit einer Attrappe des Clients auf erfundenem HTML und einem erfundenen
   Katalog
+
+## Die zweite Quelle: HIS LSF (`lsf.py`)
+
+*V-0229 (fernflug), Forschungsstrang HU Berlin, 05.10.2026; übernommen in V-0233. Bericht mit Quellen
+und Problemstellen: `docs/forschung/hu-biologie.md` auf dem Strang `vorgang/v-0229`.*
+
+> **Gesperrt.** Die robots.txt von AGNES sperrt KI-Crawler ausdrücklich (Punkt 7411bed1). Bis Silas
+> entschieden und das AGNES-Team gefragt hat, steht an `katalog/hochschulen/hu-berlin.json`
+> `"abruf": "gesperrt"` mit Grund: `abruf.py` holt die HU dann nie, auch nicht mit `--mit-vorschau`,
+> und `--semester hu-wise-2026-27` endet mit Exit 2, bevor etwas geschrieben wird. Die Vorschau zeigt
+> die Rohstände vom 05.10.2026. Die Quelle bleibt im Code, geprüft mit Tests ohne Netz.
+
+Welche Quelle ein Semester hat, sagt der Katalog, nicht der Code. Ohne `quelle` ist es MOSES (wie
+bisher, Feld `moses`). Mit `"quelle": {"art": "lsf", …}` liest `lsf.py` ein HIS-LSF-System, an der HU
+Berlin AGNES. Gewählt wird allein in `standard_quelle()` in `abruf.py`; beide schreiben denselben
+Rohstand (docs/ARCHITEKTUR.md §4).
+
+```json
+katalog/semester/hu-wise-2026-27.json:
+{ "id": "hu-wise-2026-27", "label": "WiSe 2026/27", "anker": "2026-10-12", "hochschule": "hu-berlin",
+  "quelle": { "art": "lsf", "name": "AGNES", "basis": "https://agnes.hu-berlin.de/lupo/rds",
+              "semester": "20262", "label": "WiSe 2026/27" } }
+
+ein Plan in katalog/studiengaenge/hu-biologie-bsc.json:
+{ "ordnung": "spo-2025", "semester": "hu-wise-2026-27", "fachsemester": 1, "bereich": "Pflichtbereich",
+  "vvz_pfad": ["Lebenswissenschaftliche Fakultät", "Institut für Biologie",
+               "B.Sc. Biologie Monobachelor (SPO 2025)", "Pflichtbereich", "Wintersemester"],
+  "module": [ { "nummer": "BioB-1", "vvz": "BioB 1", "kurz": "Zellbio" } ] }
+```
+
+- **Ein Semester je Hochschule.** `hu-wise-2026-27` ist ein eigenes Semester, auch wenn es wie
+  `wise-2026-27` heißt: eigene Quelle, eigener Anker, eigener Ordner `daten/roh/hu-wise-2026-27/`
+  und eigene Modulnummern. Ein Modul wird je Semester einmal geholt; zwei Hochschulen in einem
+  Semester würden ihre Nummern vermischen.
+- `quelle.semester` ist der LSF-Schlüssel des Semesters (`20262` = WiSe 2026/27, im Parameter
+  `root120262` des Baums), `quelle.label` steht so auf jeder Detailseite und wird geprüft.
+- `nummer` ist bei LSF nur ein Schlüssel (`[A-Za-z0-9-]`, ohne Leerzeichen: Dateiname, Kennung im
+  Teilen-Link). Was LSF anzeigt, steht in `vvz` und wird als `[BioB 1] …` im Baum gesucht, unter
+  dem Pfad aus **Titeln** `vvz_pfad` (Plan oder Modul). Knoten-IDs ändern sich jedes Semester.
+- `bereich` kommt aus der Studienordnung, nicht aus LSF: `Pflichtbereich` macht jeden Bestandteil
+  `required`.
+
+Ein Lauf wäre `python3 abruf/abruf.py --semester hu-wise-2026-27 --mit-vorschau` (4 Module, ~90 s),
+**solange die Sperre steht, verweigert er sich.**
+
+**Was je Veranstaltung geholt wird** (eine eigene Sitzung ohne Login; ≥ 1 s Abstand gilt für den ganzen
+Lauf, auch von einer Sitzung zur nächsten, `Client.letzte`, Punkt aed3e76c): die
+Detailseite, dann je Gruppe „vormerken“ + Semesteransicht des anonymen Stundenplans (dort steht der
+iCalendar-Link mit den Termin-IDs, sonst nirgends), am Ende ein iCalendar-Export für alle Termine.
+Die Termin-IDs, die beim Vormerken einer Gruppe neu dazukommen, gehören zu ihr. Baumseiten holt ein
+Lauf einmal. BioB 1–4 (9 Veranstaltungen, 23 Gruppen): etwa 70 Anfragen.
+
+**Termine nur aus dem Export, nie aus Freitext.** Einzeltermine sind VEVENTs ohne RRULE; Serien
+rechnet `expandiere()` nach RFC 5545 aus, so weit LSF sie schreibt (WEEKLY/DAILY, INTERVAL, UNTIL,
+COUNT, BYDAY), abzüglich EXDATE und „fällt aus am“ der Seite. Jede andere Regel ist ein Fehler.
+
+| Meldung | Was dahintersteckt | Was tun |
+|---|---|---|
+| `Vorlesungsverzeichnis: „…“ fehlt` / `ist mehrdeutig` | Ein Titel aus `vvz_pfad` oder `[vvz]` steht so nicht (mehr) im Baum | Den Baum in LSF ansehen, den Katalog anpassen (Titel ändern sich mit einer neuen SPO) |
+| `Vorlesungsverzeichnis zeigt ein anderes Semester` | LSF zeigt ohne Wahl das „aktuelle“ Semester; ein anderes Semester wählt der Abruf (noch) nicht | Warten, bis LSF umstellt, oder die Semesterwahl in `lsf.py` bauen |
+| `Falsches Semester auf der Detailseite` | Die Veranstaltung gehört zu einem anderen Semester als der Katalog sagt | Katalog prüfen |
+| `iCalendar-Export passt nicht zur Seite`, `… enthält einen fremden Termin` | Terminzeilen der Seite und VEVENTs lassen sich nicht eins zu eins zuordnen (Uhrzeit, Zeitraum) | Seite und Export von Hand vergleichen; nie die Prüfung abschalten |
+| `Unbekannte Wiederholungsregel`, `Unerwartete Zeitzone` | LSF exportiert eine Serie, die `expandiere()` nicht kennt | Mit einem echten Export als Test in `tests/test_lsf.py` erweitern |
+| `Unbekannter Terminstatus` | Eine Zeile steht nicht auf „findet statt“ | Ansehen, was der Status bedeutet, dann bewusst abbilden |
+| `Stundenplan zeigt nicht die Semesteransicht`, `… hat vorgemerkte Termine verloren` | Der anonyme Stundenplan verhält sich anders als am 05.10.2026 | `termine_je_gruppe()` an das neue Verhalten anpassen |
+
+**Freitext wird geschwärzt.** AGNES veröffentlicht in Kommentaren Moodle-Einschreibeschlüssel. Die
+Hinweise (`notes`) übernehmen Belegung, „Wichtige Änderungen“, Kommentar und Bemerkung, aber jeder
+Satz, der nach Zugangsdaten klingt, und jede E-Mail-Adresse werden ersetzt (`schwaerzen()`). Nennt
+ein Freitext selbst Termine, steht davor eine Warnung: Die Seite rechnet damit nicht.
+
+**Tests ohne Netz:** `tests/test_lsf.py` auf echten, gekürzten Ausschnitten vom 05.10.2026 unter
+`tests/fixtures/lsf/` (Namen der Lehrenden entfernt; erfunden ist nur der Kommentar unter „Inhalt“).
 
 ## Lesemodell
 

@@ -1,0 +1,36 @@
+{
+  "id": "hu-biologie-bsc",
+  "name": "Biologie",
+  "abschluss": "B.Sc.",
+  "hochschule": "hu-berlin",
+  "ordnungen": [
+    {
+      "id": "spo-2025",
+      "label": "SPO 2025",
+      "name": "Fachspezifische Studien- und Prüfungsordnung für das Bachelorstudium im Fach Biologie (Monostudiengang)",
+      "fundstelle": "Amtliches Mitteilungsblatt der HU Berlin Nr. 27/2025 vom 18.07.2025",
+      "url": "https://doi.org/10.18452/34250",
+      "gilt_ab": "2025-10-01",
+      "gilt_bis": null,
+      "studienbeginn": { "ab": "WiSe 2025/26", "bis": null },
+      "fuer_wen": "Studienbeginn ab WiSe 2025/26 (Studienbeginn nur im Wintersemester). Frühere Jahrgänge studieren übergangsweise bis 30.09.2027 nach der SPO 2021.",
+      "quelle": "StO § 10 Abs. 2 und 3, § 2; gelesen von fernflug (V-0229) am 05.10.2026 über den Dokumentenserver edoc der HU (docs/forschung/hu-biologie.md §4 auf vorgang/v-0229). Hier nicht erneut gelesen: kein Agent auf HU-Seiten bis zu Silas' Entscheidung (Punkt 7411bed1)"
+    }
+  ],
+  "plaene": [
+    {
+      "ordnung": "spo-2025",
+      "semester": "hu-wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Studienordnung (AMB 27/2025) §6 (a) Pflichtbereich und Anlage 3.1, idealtypischer Studienverlaufsplan Monostudiengang, 1. Semester (WiSe): BioB 1 bis BioB 4, 18 SWS, 30 LP. Lehrveranstaltungen je Modul nach Anlage 1. Der überfachliche Wahlpflichtbereich (5 LP) fehlt. Von Hand übernommen am 05.10.2026 (fernflug, V-0229)",
+      "bereich": "Pflichtbereich",
+      "vvz_pfad": ["Lebenswissenschaftliche Fakultät", "Institut für Biologie", "B.Sc. Biologie Monobachelor (SPO 2025)", "Pflichtbereich", "Wintersemester"],
+      "module": [
+        { "nummer": "BioB-1", "vvz": "BioB 1", "kurz": "Zellbio", "lp": 10, "lehrformen": "VL 4 SWS, SE 1 SWS, UE 1 SWS" },
+        { "nummer": "BioB-2", "vvz": "BioB 2", "kurz": "Evolution", "lp": 5, "lehrformen": "VL 2 SWS, UE 2 SWS" },
+        { "nummer": "BioB-3", "vvz": "BioB 3", "kurz": "Mathe 1", "lp": 5, "lehrformen": "VL 2 SWS, UE 2 SWS" },
+        { "nummer": "BioB-4", "vvz": "BioB 4", "kurz": "Chemie", "lp": 5, "lehrformen": "VL 3 SWS, SE 1 SWS" }
+      ]
+    }
+  ]
+}
