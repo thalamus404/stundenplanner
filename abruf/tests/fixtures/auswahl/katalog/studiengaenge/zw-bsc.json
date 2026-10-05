@@ -1,0 +1,3 @@
+{ "id": "zw-bsc", "name": "Zweitfach", "abschluss": "B.A.", "hochschule": "zweite-hs",
+  "plaene": [ { "semester": "zw-ws-2030-31", "fachsemester": 1, "quelle": "erfunden",
+                "module": [ { "nummer": "90001", "kurz": "Mod A" } ] } ] }

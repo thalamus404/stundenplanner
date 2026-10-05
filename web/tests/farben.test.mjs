@@ -59,8 +59,11 @@ test('Jedes Schema setzt dieselben Tokens', () => {
   assert.deepEqual(Object.keys(dunkel(stil)).sort(), h);
 });
 
-test('Legende und Kachel teilen sich die Regel (grau, blass)', () => {
-  for (const art of ['kontext', 'zurueck']) {
+test('Legende und Kachel teilen sich die Regel (durchscheinend, blass)', () => {
+  // Seit V-0237 ist die Kontextkachel durchscheinend (.kachel.kontext), nicht mehr grau gefüllt.
+  const k = stil.match(/([^{}]*\.kachel\.kontext[^{}]*)\{/);
+  assert.ok(k && k[1].split(',').map((s) => s.trim()).includes('.lg-k.kontext'), '.lg-k.kontext steht nicht in derselben Regel wie .kachel.kontext');
+  for (const art of ['zurueck']) {
     const regel = stil.match(new RegExp(`([^{}]*\\.${art} > \\.k-flaeche[^{}]*)\\{`));
     assert.ok(regel, `.${art} > .k-flaeche fehlt`);
     assert.ok(regel[1].split(',').map((s) => s.trim()).includes(`.lg-k.${art}`), `.lg-k.${art} steht nicht in derselben Regel wie die Kachel`);

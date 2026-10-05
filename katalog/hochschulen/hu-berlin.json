@@ -1,0 +1,13 @@
+{
+  "id": "hu-berlin",
+  "kurz": "HU Berlin",
+  "name": "Humboldt-Universität zu Berlin",
+  "sichtbar": "vorschau",
+  "abruf": "gesperrt",
+  "abruf_grund": "Punkt 7411bed1 (fernflug, V-0229, 05.10.2026): Die robots.txt von AGNES sperrt KI-Crawler (ClaudeBot, anthropic-ai, GPTBot u. a.) ausdrücklich. Bis Silas entschieden und das AGNES-Team gefragt hat, gibt es keinen Abruf bei AGNES, weder von Hand noch täglich. Die Vorschau zeigt die Rohstände vom 05.10.2026",
+  "quelle": {
+    "name": "AGNES",
+    "url": "https://agnes.hu-berlin.de",
+    "text": "Vorlesungsverzeichnis der HU Berlin (HIS LSF), öffentlich und ohne Login; Einzeltermine aus dem iCalendar-Export des anonymen Stundenplans (V-0229)"
+  }
+}

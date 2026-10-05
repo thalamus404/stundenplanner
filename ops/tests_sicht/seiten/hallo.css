@@ -1,0 +1,11 @@
+/* Prüfseite für §8 #19: fünf Optionen, die Leiste klebt unten. Mit scroll-padding liegt eine ins
+   Bild gescrollte Option über der Leiste; „?zu“ nimmt es weg, dann liegt die letzte darunter. */
+html { scroll-padding-bottom: 96px; background: #fff; color: #111; font: 14px/20px sans-serif; }
+html.zu { scroll-padding-bottom: 0; }
+body { margin: 0; }
+.hallo { padding: 0 16px; }
+.frage { margin: 0; padding: 16px 0; }
+.o { display: block; width: 100%; height: 120px; margin: 0 0 8px; border: 1px solid #888; border-radius: 8px; background: #fff; font: inherit; }
+.leiste { position: sticky; bottom: 0; height: 80px; padding: 8px 0; background: #fff; border-top: 1px solid #888; }
+.recht { margin: 0; padding: 16px 0; }
+.recht a { display: inline-block; min-height: 24px; }

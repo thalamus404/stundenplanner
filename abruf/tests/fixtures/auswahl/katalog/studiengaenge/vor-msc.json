@@ -1,0 +1,3 @@
+{ "id": "vor-msc", "name": "Vorschaukunde", "abschluss": "M.Sc.", "hochschule": "test-uni", "sichtbar": "vorschau",
+  "plaene": [ { "semester": "ws-2030-31", "fachsemester": 1, "quelle": "erfunden",
+                "module": [ { "nummer": "90003", "kurz": "Mod C" } ] } ] }

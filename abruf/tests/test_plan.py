@@ -8,7 +8,10 @@ Ferienlücken, versetzte A/B-Gruppen, Mitternacht.
 import unittest
 from datetime import date
 
-from plan import conflicts, fingerprint, slots
+import itertools
+import random
+
+from plan import conflicts, fingerprint, kombination, slots, verdacht
 
 ANKER = date(2026, 10, 12)  # ein Montag; nur Testparameter, der Code kennt kein Datum
 
@@ -215,6 +218,154 @@ class FingerabdruckTests(unittest.TestCase):
         self.assertEqual(len(h), 64)
         self.assertEqual(h, fingerprint(group('b', [])))
 
+
+
+def teil(cid, *gruppen, title=None, typ='UE'):
+    """Ein Bestandteil wie im Lesemodell; jede Gruppe ist (gid, [(datum, beginn, ende), …])."""
+    gs = []
+    for gid, termine in gruppen:
+        gs.append({'id': gid, 'key': f'{cid}:{gid}', 'name': f'Gruppe {gid}',
+                   'bookings': [{'id': f'{gid}-{i}', 'start': f'{d}T{s}:00', 'end': f'{d}T{e}:00', 'room': 'R'}
+                                for i, (d, s, e) in enumerate(termine)]})
+    return {'id': cid, 'title': title or f'Teil {cid}', 'type': typ, 'groups': gs}
+
+
+MO = '2026-10-12'
+DI = '2026-10-13'
+
+
+class KombinationTests(unittest.TestCase):
+    """Gibt es je Bestandteil eine Gruppe ohne Überschneidung? (V-0233, Anlass Informatik 1. FS)"""
+
+    def test_loesbar_mit_beispiel(self):
+        a = teil('m:1', ('a1', [(MO, '10:00', '12:00')]), ('a2', [(DI, '10:00', '12:00')]))
+        b = teil('m:2', ('b1', [(MO, '11:00', '13:00')]))
+        self.assertEqual(kombination([a, b]), {'loesbar': True, 'sicher': True, 'beispiel': {'m:1': 'a2', 'm:2': 'b1'}})
+
+    def test_feste_termine_verhindern_jede_gruppe(self):
+        # Wie Informatik am 05.10.2026: jede Gruppe der Analysis-VL liegt auf einer einmaligen Pflicht-VL.
+        ana = teil('ana', ('g1', [(DI, '16:00', '18:00')]), ('g2', [(DI, '10:00', '12:00')]), title='Analysis', typ='VL')
+        inf = teil('inf', ('x', [(DI, '16:00', '18:00')]), title='Informatik als Disziplin', typ='VL')
+        prog = teil('prog', ('y', [(DI, '10:00', '12:00')]), title='Programmierung', typ='VL')
+        r = kombination([ana, inf, prog])
+        self.assertIs(r['loesbar'], False)
+        self.assertIs(r['sicher'], True)
+        self.assertNotIn('beispiel', r)
+        self.assertIn('Jede Gruppe von Analysis (VL)', r['grund'])
+        self.assertIn('Gruppe g1 mit Informatik als Disziplin (VL), Di 13.10.2026 16:00–18:00', r['grund'])
+        ana['groups'][0]['bookings'].append({'id': 'x', 'start': '2026-10-20T16:00:00', 'end': '2026-10-20T18:00:00', 'room': 'R'})
+        inf['groups'][0]['bookings'].append({'id': 'y', 'start': '2026-10-20T16:00:00', 'end': '2026-10-20T18:00:00', 'room': 'R'})
+        self.assertIn('Gruppe g1 mit Informatik als Disziplin (VL), an 2 Tagen, erstmals Di 13.10.2026', kombination([ana, inf, prog])['grund'])
+        self.assertIn('Gruppe g2 mit Programmierung (VL), Di 13.10.2026 10:00–12:00', r['grund'])
+
+    def test_zwei_feste_ueberschneiden_sich(self):
+        a = teil('a', ('1', [(MO, '10:00', '12:00')]), title='A')
+        b = teil('b', ('1', [(MO, '11:30', '12:30')]), title='B')
+        r = kombination([a, b])
+        self.assertIs(r['loesbar'], False)
+        self.assertIn('Die einzigen Gruppen von A (UE) und B (UE) überschneiden sich (Mo 12.10.2026 11:30–12:00)', r['grund'])
+
+    def test_bestandteil_ohne_gruppe_zaehlt_nicht(self):
+        # Punkt db561642: Übung ohne Gruppe im Semester — weder einplanbar noch ein Hindernis.
+        leer = teil('leer')
+        a = teil('a', ('1', [(MO, '10:00', '12:00')]))
+        self.assertEqual(kombination([leer, a]), {'loesbar': True, 'sicher': True, 'beispiel': {'a': '1'}})
+
+    def test_ohne_jede_gruppe_ist_offen(self):
+        r = kombination([teil('leer')])
+        self.assertIsNone(r['loesbar'])
+        self.assertTrue(r['grund'])
+        self.assertIsNone(kombination([])['loesbar'])
+
+    def test_direkt_anschliessend_und_alternativen_desselben_teils(self):
+        a = teil('a', ('1', [(MO, '10:00', '12:00')]), ('2', [(MO, '10:00', '12:00')]))
+        b = teil('b', ('1', [(MO, '12:00', '14:00')]))
+        self.assertIs(kombination([a, b])['loesbar'], True)
+
+    def test_ohne_einfachen_grund_ein_allgemeiner(self):
+        # Drei Teile, je zwei Gruppen in denselben zwei Zeitfenstern: Schubfach, kein fester Termin schuld.
+        z = [(MO, '10:00', '12:00')], [(DI, '10:00', '12:00')]
+        teile = [teil(c, ('1', z[0]), ('2', z[1])) for c in 'abc']
+        r = kombination(teile)
+        self.assertIs(r['loesbar'], False)
+        self.assertIn('3 Bestandteile mit 6 Gruppen', r['grund'])
+
+    def test_grenze_in_schritten_nicht_in_sekunden(self):
+        z = [[(MO, f'{h}:00', f'{h}:30')] for h in range(10, 16)]
+        teile = [teil(c, *[(str(i), z[i]) for i in range(5)]) for c in 'abcdef']  # 6 Teile, 5 Fenster
+        self.assertIs(kombination(teile)['loesbar'], False)
+        r = kombination(teile, grenze=10)
+        self.assertIsNone(r['loesbar'])
+        self.assertIn('10 Schritten', r['grund'])
+        self.assertEqual(kombination(teile, grenze=10), r)
+
+    def test_gruppen_alle_sind_teile_und_zaehlen_zusammen(self):
+        # 70202 im WiSe 2026/27: Vorlesung wöchentlich bis Dezember, dann ein Block — man besucht beide.
+        vl = teil('vl', ('w', [(MO, '10:00', '12:00')]), ('blk', [(DI, '10:00', '12:00')]), typ='VL')
+        ue = teil('ue', ('1', [(MO, '10:00', '12:00')]))
+        self.assertIs(kombination([vl, ue])['loesbar'], True)          # als Alternativen gelesen: lösbar
+        vl['gruppen'] = 'alle'
+        r = kombination([vl, ue])
+        self.assertIs(r['loesbar'], False)                              # als Teile: Montag kollidiert
+        self.assertIn('Die einzigen Gruppen von Teil vl (VL) und Teil ue (UE)', r['grund'])
+        ue['groups'][0]['bookings'][0]['start'] = MO + 'T14:00:00'
+        ue['groups'][0]['bookings'][0]['end'] = MO + 'T16:00:00'
+        self.assertEqual(kombination([vl, ue])['beispiel'], {'vl': ['w', 'blk'], 'ue': '1'})
+
+    def test_gruppen_keine_und_unklar_zaehlen_nicht(self):
+        a = teil('a', ('1', [(MO, '10:00', '12:00')]))
+        li = teil('li', ('x', [(MO, '10:00', '12:00')]), ('y', [(MO, '10:30', '11:00')]), typ='LI')
+        li['gruppen'] = 'keine'
+        r = kombination([a, li])
+        self.assertEqual((r['loesbar'], r['sicher']), (True, True))
+        self.assertEqual(r['ausgenommen'], [{'component': 'li', 'gruppen': 'keine', 'grund': 'offenes Angebot, keine Wahl'}])
+        li['gruppen'] = 'unklar'
+        r = kombination([a, li])
+        self.assertEqual((r['loesbar'], r['sicher']), (True, False))   # was unklar ist, könnte stören
+
+    def test_verdacht_macht_ein_unloesbar_unsicher(self):
+        # Wie die Übung von 41285: eine Gruppe mit Terminen an vier Tagen bei 2 SWS — Wahltermine?
+        ue = teil('ue', ('ex', [(d, '10:00', '12:00') for d in ('2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15')]))
+        ue['sws'] = 2
+        vl = teil('vl', ('1', [(DI, '10:00', '12:00')]), typ='VL')
+        self.assertIn('weit mehr Termine', verdacht(ue))
+        r = kombination([ue, vl])
+        self.assertEqual((r['loesbar'], r['sicher']), (False, False))
+        self.assertEqual([v['component'] for v in r['verdacht']], ['ue'])
+
+    def test_verdacht_aus_namen_und_zeitspannen(self):
+        haelften = teil('m', ('1', [(MO, '10:00', '12:00'), ('2026-10-19', '10:00', '12:00')]),
+                        ('2', [('2026-12-14', '10:00', '12:00'), ('2026-12-21', '10:00', '12:00')]), typ='VL')
+        self.assertIn('nacheinander', verdacht(haelften))
+        haelften['groups'][0]['name'], haelften['groups'][1]['name'] = '1. Hälfte', '2. Teil: Blockveranstaltung'
+        self.assertIn('verschiedene Teile', verdacht(haelften))
+        parallel = teil('u', ('1', [(MO, '10:00', '12:00')]), ('2', [(DI, '10:00', '12:00')]))
+        parallel['groups'][0]['name'], parallel['groups'][1]['name'] = '1. Hälfte, Gruppe 1', '1. Hälfte, Gruppe 2'
+        self.assertIsNone(verdacht(parallel))
+        formen = teil('k', ('a', [(MO, '10:00', '12:00')]), ('b', [(DI, '10:00', '12:00')]))
+        formen['groups'][0]['name'], formen['groups'][1]['name'] = 'Vorlesung', 'Übung'
+        self.assertIn('Lehrformen', verdacht(formen))
+        formen['groups'][0]['name'], formen['groups'][1]['name'] = 'Vorlesung wöchentlich', 'Vorlesung Ungerade Wochen'
+        self.assertIn('Rhythmen', verdacht(formen))
+        formen['groups'][0]['name'], formen['groups'][1]['name'] = 'Termingruppe 1', 'Termingruppe 2'
+        self.assertIsNone(verdacht(formen))
+
+    def test_stimmt_mit_vollstaendiger_aufzaehlung(self):
+        # Gegenprobe gegen das Durchprobieren aller Kombinationen, mit festem Zufall.
+        rnd = random.Random(20261005)
+        fenster = [(d, f'{h:02d}:00', f'{h + 2:02d}:00') for d in (MO, DI) for h in (8, 10, 11, 14)]
+        for _ in range(300):
+            teile = [teil(f't{i}', *[(f'g{j}', rnd.sample(fenster, rnd.randint(1, 2))) for j in range(rnd.randint(0, 3))])
+                     for i in range(rnd.randint(1, 5))]
+            mit = [c for c in teile if c['groups']]
+            erwartet = None if not mit else any(
+                not conflicts(list(wahl)) for wahl in itertools.product(*[c['groups'] for c in mit]))
+            r = kombination(teile)
+            self.assertEqual(r['loesbar'], erwartet)
+            if r['loesbar']:
+                wahl = [next(g for g in c['groups'] if g['id'] == r['beispiel'][c['id']]) for c in mit]
+                self.assertEqual(conflicts(wahl), [])
+                self.assertEqual(list(r['beispiel']), [c['id'] for c in mit])
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,6 +17,7 @@ import unittest
 from pathlib import Path
 
 import bauen
+import katalog as K
 from plan import fingerprint, slots
 
 HIER = Path(__file__).resolve().parent
@@ -24,15 +25,22 @@ FIX = HIER / 'fixtures' / 'lesemodell'
 ABRUF = HIER.parent
 
 # docs/ARCHITEKTUR.md §5 — genau diese Schlüssel, nicht mehr.
-INDEX_KEYS = {'schema', 'erzeugt_am', 'plaene'}
+INDEX_KEYS = {'schema', 'erzeugt_am', 'stufen', 'wahl', 'plaene'}
 INDEX_PLAN_KEYS = {'studiengang', 'name', 'abschluss', 'semester', 'label', 'fachsemester', 'datei'}
 PLAN_KEYS = {'schema', 'erzeugt_am', 'studiengang', 'semester', 'label', 'anchor', 'fachsemester', 'modules',
-             'has_fortnightly', 'group_count', 'booking_count', 'last_run'}
+             'has_fortnightly', 'group_count', 'booking_count', 'last_run',
+             'id', 'hochschule', 'vertiefung', 'ordnung', 'kombinationen'}
+HOCHSCHULE_KEYS = {'id', 'kurz', 'name', 'quelle'}
+ORDNUNG_KEYS = {'id', 'label', 'name', 'fundstelle', 'url', 'gilt_ab', 'gilt_bis', 'studienbeginn', 'fuer_wen'}
+KNOTEN_KEYS = {'stufe', 'regel', 'optionen'}  # dazu `label` nur am Knoten der Vertiefung
+OPTION_KEYS = {'id', 'label', 'zusatz'}       # dazu `weiter`, oder `plan` an der letzten Stufe
 STUDIENGANG_KEYS = {'id', 'name', 'abschluss'}
 MODULE_KEYS = {'number', 'short', 'title', 'version', 'valid_from', 'valid_to', 'valid_versions', 'url', 'isis_url',
                'notes', 'checked_at', 'success_at', 'error', 'components'}
 LAST_RUN_KEYS = {'finished_at', 'status', 'modules', 'bookings', 'errors'}
 GROUP_EXTRA = {'key', 'digest', 'slots'}
+COMPONENT_EXTRA = {'format'}  # V-0238: {kuerzel, lang, kategorie} aus katalog/formate.json
+FORMAT_KEYS = {'kuerzel', 'lang', 'kategorie'}  # dazu `unbekannt: true`, wenn der Katalog es nicht kennt
 SLOT_KEYS = {'day', 'start', 'end', 'dates', 'rooms', 'occurrences', 'fortnightly', 'parity', 'rhythm'}
 # Was vom Betrachter abhängt, rechnet die Seite — es darf nirgends im Lesemodell stehen.
 VIEWER_KEYS = {'selected', 'changed', 'revision', 'selection', 'missing', 'selected_count', 'conflicts', 'stale'}
@@ -77,7 +85,7 @@ class LesemodellTests(unittest.TestCase):
     def test_index_keys_and_order(self):
         self.assertEqual(lies(self.aus / 'index.json'), self.index)
         self.assertEqual(set(self.index), INDEX_KEYS)
-        self.assertEqual(self.index['schema'], 1)
+        self.assertEqual(self.index['schema'], 2)
         self.assertEqual(self.index['erzeugt_am'], T)
         for p in self.index['plaene']:
             self.assertEqual(set(p), INDEX_PLAN_KEYS)
@@ -120,8 +128,9 @@ class LesemodellTests(unittest.TestCase):
         self.assertEqual((m['checked_at'], m['success_at'], m['error']),
                          (roh['abruf']['geprueft_am'], roh['abruf']['erfolg_am'], None))
         for rc, c in zip(roh['components'], m['components']):
-            self.assertEqual(set(c), set(rc))
-            self.assertEqual({k: v for k, v in c.items() if k != 'groups'}, {k: v for k, v in rc.items() if k != 'groups'})
+            self.assertEqual(set(c), set(rc) | COMPONENT_EXTRA)
+            self.assertEqual({k: v for k, v in c.items() if k not in {'groups'} | COMPONENT_EXTRA},
+                             {k: v for k, v in rc.items() if k != 'groups'})
             for rg, g in zip(rc['groups'], c['groups']):
                 self.assertEqual(set(g), set(rg) | GROUP_EXTRA)
                 self.assertEqual({k: g[k] for k in rg}, rg)
@@ -176,6 +185,41 @@ class LesemodellTests(unittest.TestCase):
         self.assertEqual(self.fs1['last_run'], {'finished_at': lauf['beendet_am'], 'status': lauf['status'],
                                                 'modules': lauf['modules'], 'bookings': lauf['bookings'],
                                                 'errors': lauf['errors']})
+
+    def test_format_je_bestandteil(self):
+        # fixtures/lesemodell/katalog/formate.json kennt VL, UE und SE, absichtlich nicht das Praktikum.
+        fs1 = [c['format'] for c in self.modul(self.fs1, '90001')['components']]
+        self.assertEqual(fs1, [{'kuerzel': 'VL', 'lang': 'Vorlesung', 'kategorie': 'vorlesung'},
+                               {'kuerzel': 'UE', 'lang': 'Übung', 'kategorie': 'uebung'}])
+        seminar, praktikum = [c['format'] for c in self.modul(self.fs3, '90003')['components']]
+        self.assertEqual(seminar, {'kuerzel': 'SE', 'lang': 'Seminar', 'kategorie': 'sonstige'})
+        self.assertEqual(praktikum, {'kuerzel': 'Praktikum', 'lang': 'Praktikum', 'kategorie': 'sonstige',
+                                     'unbekannt': True})
+        for plan in (self.fs1, self.fs3):
+            for m in plan['modules']:
+                for c in m['components']:
+                    self.assertEqual(set(c['format']) - {'unbekannt'}, FORMAT_KEYS)
+
+    def test_unbekanntes_format_steht_in_der_ausgabe(self):
+        aus = io.StringIO()
+        with contextlib.redirect_stdout(aus), contextlib.redirect_stderr(io.StringIO()):
+            rc = bauen.main(['--katalog', str(FIX / 'katalog'), '--roh', str(FIX / 'roh'), '--aus', str(self.tmp / 'main')])
+        self.assertEqual(rc, 0)
+        zeilen = [z for z in aus.getvalue().splitlines() if 'Format unbekannt' in z]
+        self.assertEqual(len(zeilen), 1, aus.getvalue())
+        self.assertIn('„Praktikum“', zeilen[0])
+        self.assertIn('90003:530', zeilen[0])
+        self.assertIn('katalog/formate.json', zeilen[0])
+
+    def test_ohne_formate_json_ist_alles_sonstige(self):
+        kat = self.tmp / 'ohne-formate'
+        shutil.copytree(FIX / 'katalog', kat)
+        (kat / 'formate.json').unlink()
+        bauen.bauen(kat, FIX / 'roh', self.tmp / 'ohne', erzeugt_am=T)
+        m = next(m for m in lies(self.tmp / 'ohne/test-bsc/ws-2030-31-fs1.json')['modules'] if m['number'] == '90001')
+        self.assertEqual([c['format'] for c in m['components']],
+                         [{'kuerzel': 'Vorlesung', 'lang': 'Vorlesung', 'kategorie': 'sonstige', 'unbekannt': True},
+                          {'kuerzel': 'Übung', 'lang': 'Übung', 'kategorie': 'sonstige', 'unbekannt': True}])
 
     def test_overnight_and_unplanned_group(self):
         c = self.modul(self.fs3, '90003')['components']
@@ -315,6 +359,175 @@ class KaputteRohstaendeTests(unittest.TestCase):
         self.assertIn('_lauf.json', fehler)
 
 
+AUSWAHL = HIER / 'fixtures' / 'auswahl' / 'katalog'
+
+
+def knoten_pfad(index, *ids):
+    """Folgt dem Wahlbaum über die Kennungen der Optionen; gibt die letzte Option zurück."""
+    k, option = index['wahl'], None
+    for i in ids:
+        option = next(o for o in k['optionen'] if o['id'] == i)
+        k = option.get('weiter')
+    return option
+
+
+class AuswahlTests(unittest.TestCase):
+    """Schema 2 (V-0233): die fünf Stufen als Baum, Erbe der Vertiefungen, Vorschau, Kombinationen.
+    Katalog im neuen Format, erfunden: fixtures/auswahl/katalog, Rohstände aus fixtures/lesemodell."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def bau(self, aus='aus', **kw):
+        with contextlib.redirect_stderr(io.StringIO()):
+            return bauen.bauen(AUSWAHL, FIX / 'roh', self.tmp / aus, erzeugt_am=T, **kw)
+
+    def test_ohne_vorschau_kein_vorschauplan(self):
+        index = self.bau()
+        dateien = [p['datei'] for p in index['plaene']]
+        self.assertEqual(dateien, ['ein-bsc/ws-2030-31-fs1.json', 'ing-bsc/o-neu/bau/ws-2030-31-fs1.json',
+                                   'ing-bsc/o-neu/chemie/ws-2030-31-fs1.json', 'ing-bsc/o-alt/ws-2030-31-fs3.json'])
+        self.assertEqual([o['id'] for o in index['wahl']['optionen']], ['test-uni'])  # zweite-hs ist Vorschau
+        self.assertNotIn('vor-msc', json.dumps(index))
+        self.assertEqual(sorted(str(p.relative_to(self.tmp / 'aus')) for p in (self.tmp / 'aus').rglob('*.json')),
+                         sorted(dateien + ['index.json']))
+
+    def test_mit_vorschau_alle_waehlbaren_plaene(self):
+        index = self.bau(mit_vorschau=True)
+        self.assertEqual(len(index['plaene']), 7)  # 8 Pläne, davon ein Grundplan nur als Grundlage
+        # Hochschulen nach Namen: „Andere erfundene …“ vor „Erfundene Test-Universität“.
+        self.assertEqual([o['id'] for o in index['wahl']['optionen']], ['zweite-hs', 'test-uni'])
+        self.assertIn('zw-bsc/zw-ws-2030-31-fs1.json', [p['datei'] for p in index['plaene']])
+
+    def test_baum_form_und_regeln(self):
+        index = self.bau()
+        self.assertEqual([s['id'] for s in index['stufen']],
+                         ['hochschule', 'studiengang', 'vertiefung', 'fachsemester', 'ordnung'])
+
+        def pruefe(k, tiefe=0):
+            self.assertEqual(set(k) - {'label'}, KNOTEN_KEYS)
+            self.assertEqual(k['stufe'], index['stufen'][tiefe]['id'])
+            for o in k['optionen']:
+                self.assertEqual(set(o) - {'weiter', 'plan', 'semester', 'fachsemester'}, OPTION_KEYS)
+                if tiefe == 4:
+                    self.assertEqual(set(o['plan']), {'id', 'datei', 'kombinationen'})
+                else:
+                    pruefe(o['weiter'], tiefe + 1)
+        pruefe(index['wahl'])
+        sg = knoten_pfad(index, 'test-uni', 'ein-bsc')
+        # Kein Studiengang ohne Vertiefung fragt nach ihr; ohne Ordnung im Katalog auch nicht danach.
+        self.assertEqual(sg['weiter']['regel'], 'ueberspringen')
+        fs = knoten_pfad(index, 'test-uni', 'ein-bsc', None, 'ws-2030-31:fs1')
+        self.assertEqual((fs['label'], fs['zusatz'], fs['weiter']['regel']), ('1. Fachsemester', 'WS 2030/31', 'ueberspringen'))
+        # Mit Vertiefungen: wählen, beschriftet wie im Katalog; „ohne“ nur, wo es einen Plan ohne gibt.
+        ing = knoten_pfad(index, 'test-uni', 'ing-bsc')['weiter']
+        self.assertEqual((ing['regel'], ing['label']), ('waehlen', 'Studienrichtung'))
+        self.assertEqual([(o['id'], o['label'], o['zusatz']) for o in ing['optionen']],
+                         [(None, 'Ohne Studienrichtung', None), ('bau', 'Bauwesen', 'BW'), ('chemie', 'Chemie', None)])
+        # Nur eine Ordnung gilt: automatisch gewählt, mit dem Satz, für wen sie gilt.
+        o = knoten_pfad(index, 'test-uni', 'ing-bsc', 'bau', 'ws-2030-31:fs1')['weiter']
+        self.assertEqual(o['regel'], 'automatisch')
+        self.assertEqual((o['optionen'][0]['id'], o['optionen'][0]['zusatz']), ('o-neu', 'Studienbeginn ab WS 2030/31'))
+        self.assertEqual(o['optionen'][0]['plan']['id'], 'ing-bsc:o-neu:ws-2030-31:fs1:bau')
+
+    def test_zwei_ordnungen_mit_vorschau_wollen_eine_wahl(self):
+        index = self.bau(mit_vorschau=True)
+        o = knoten_pfad(index, 'test-uni', 'ing-bsc', None, 'ws-2030-31:fs3')['weiter']
+        self.assertEqual(o['regel'], 'waehlen')
+        self.assertEqual([x['id'] for x in o['optionen']], ['o-neu', 'o-alt'])  # Reihenfolge des Katalogs
+
+    def test_plandatei_traegt_alle_stufen(self):
+        self.bau()
+        bau = lies(self.tmp / 'aus/ing-bsc/o-neu/bau/ws-2030-31-fs1.json')
+        self.assertEqual(set(bau), PLAN_KEYS)
+        self.assertEqual(bau['id'], 'ing-bsc:o-neu:ws-2030-31:fs1:bau')
+        self.assertEqual(set(bau['hochschule']), HOCHSCHULE_KEYS)
+        self.assertEqual(bau['hochschule']['kurz'], 'Test-Uni')
+        self.assertEqual(set(bau['ordnung']), ORDNUNG_KEYS)
+        self.assertEqual((bau['ordnung']['id'], bau['ordnung']['gilt_ab']), ('o-neu', '2030-10-01'))
+        self.assertEqual(bau['vertiefung'], {'id': 'bau', 'name': 'Bauwesen', 'kurz': 'BW', 'heisst': 'Studienrichtung'})
+        # Erbe: zuerst die Module des Grundplans, dann die eigenen.
+        self.assertEqual([m['number'] for m in bau['modules']], ['90001', '90003'])
+        ein = lies(self.tmp / 'aus/ein-bsc/ws-2030-31-fs1.json')
+        self.assertEqual((ein['ordnung'], ein['vertiefung']), (None, None))
+
+    def test_kombinationen_im_plan_und_im_baum(self):
+        index = self.bau()
+        bau = lies(self.tmp / 'aus/ing-bsc/o-neu/bau/ws-2030-31-fs1.json')
+        # 90003:520 hat Seminar 1 (mit Terminen) und Seminar 2 (ohne): beides wählbar.
+        self.assertIs(bau['kombinationen']['loesbar'], True)
+        self.assertEqual(list(bau['kombinationen']['beispiel']), ['90001:500', '90001:510', '90003:520', '90003:530'])
+        blatt = knoten_pfad(index, 'test-uni', 'ing-bsc', 'bau', 'ws-2030-31:fs1', 'o-neu')['plan']
+        self.assertEqual(blatt['kombinationen'], bau['kombinationen'])
+        # 90002 hat keinen Rohstand mit Bestandteilen: Die Aussage gilt nur für den Rest.
+        chemie = lies(self.tmp / 'aus/ing-bsc/o-neu/chemie/ws-2030-31-fs1.json')
+        self.assertEqual(chemie['kombinationen']['fehlen'], ['90002'])
+
+    def test_bestandteile_aus_dem_katalog_im_plan_und_in_der_kombination(self):
+        kat = self.tmp / 'katalog'
+        shutil.copytree(AUSWAHL, kat)
+        (kat / 'bestandteile.json').write_text(json.dumps({'bestandteile': [
+            {'id': '90001:510', 'gruppen': 'alle', 'semester': None, 'grund': 'erfunden: A und B gehören zusammen'}]}),
+            encoding='utf-8')
+        with contextlib.redirect_stderr(io.StringIO()):
+            bauen.bauen(kat, FIX / 'roh', self.tmp / 'aus', erzeugt_am=T)
+        plan = lies(self.tmp / 'aus/ein-bsc/ws-2030-31-fs1.json')
+        ue = plan['modules'][0]['components'][1]
+        self.assertEqual((ue['id'], ue['gruppen'], ue['gruppen_grund']), ('90001:510', 'alle', 'erfunden: A und B gehören zusammen'))
+        self.assertNotIn('gruppen', plan['modules'][0]['components'][0])  # ohne Eintrag: wie im Rohstand
+        self.assertEqual(plan['kombinationen']['beispiel']['90001:510'], ['602', '603'])
+        self.assertIs(plan['kombinationen']['sicher'], True)
+
+    def test_alte_liste_unterscheidet_vertiefung_und_ordnung(self):
+        index = self.bau(mit_vorschau=True)
+        for p in index['plaene']:
+            self.assertEqual(set(p), INDEX_PLAN_KEYS)
+        namen = {p['datei']: p['name'] for p in index['plaene']}
+        # Mit Vorschau zwei Hochschulen: Sie steht vorn im Namen.
+        self.assertEqual(namen['ing-bsc/o-neu/bau/ws-2030-31-fs1.json'], 'Testingenieurwesen (Test-Uni, Bauwesen, Ordnung neu)')
+        self.assertEqual(namen['ing-bsc/o-alt/ws-2030-31-fs3.json'], 'Testingenieurwesen (Test-Uni, Ordnung alt)')
+        self.assertEqual(namen['zw-bsc/zw-ws-2030-31-fs1.json'], 'Zweitfach (Zweite HS)')
+        # Ohne Vorschau eine Hochschule: Sie fehlt im Namen; ein Studiengang mit einer Ordnung hat
+        # Namen wie in Schema 1.
+        namen = {p['datei']: p['name'] for p in self.bau('ohne')['plaene']}
+        self.assertEqual(namen['ing-bsc/o-neu/bau/ws-2030-31-fs1.json'], 'Testingenieurwesen (Bauwesen, Ordnung neu)')
+        self.assertEqual(namen['ein-bsc/ws-2030-31-fs1.json'], 'Einfachlehre')
+
+    def test_vorschau_verschwindet_samt_leeren_ordnern(self):
+        self.bau(mit_vorschau=True)
+        self.assertTrue((self.tmp / 'aus/zw-bsc/zw-ws-2030-31-fs1.json').exists())
+        (self.tmp / 'aus/fremd.json').write_text('{}')
+        self.bau()
+        self.assertFalse((self.tmp / 'aus/zw-bsc').exists())
+        self.assertFalse((self.tmp / 'aus/vor-msc').exists())
+        self.assertFalse((self.tmp / 'aus/ing-bsc/o-neu/ws-2030-31-fs3.json').exists())
+        self.assertTrue((self.tmp / 'aus/ing-bsc/o-neu/bau/ws-2030-31-fs1.json').exists())
+        self.assertTrue((self.tmp / 'aus/fremd.json').exists())
+
+    def test_gleiche_bytes(self):
+        self.bau('a', mit_vorschau=True)
+        self.bau('b', mit_vorschau=True)
+        a = {str(p.relative_to(self.tmp / 'a')): p.read_bytes() for p in (self.tmp / 'a').rglob('*') if p.is_file()}
+        b = {str(p.relative_to(self.tmp / 'b')): p.read_bytes() for p in (self.tmp / 'b').rglob('*') if p.is_file()}
+        self.assertEqual(a, b)
+
+    def test_befehl_mit_vorschau_und_meldung_ohne_loesung(self):
+        aus = io.StringIO()
+        with contextlib.redirect_stdout(aus), contextlib.redirect_stderr(io.StringIO()):
+            rc = bauen.main(['--katalog', str(AUSWAHL), '--roh', str(FIX / 'roh'), '--aus', str(self.tmp / 'aus')])
+        self.assertEqual(rc, 0)
+        self.assertNotIn('zw-bsc', aus.getvalue())
+        with contextlib.redirect_stdout(io.StringIO()) as aus2, contextlib.redirect_stderr(io.StringIO()):
+            bauen.main(['--katalog', str(AUSWAHL), '--roh', str(FIX / 'roh'), '--aus', str(self.tmp / 'aus'), '--mit-vorschau'])
+        self.assertIn('zw-bsc', aus2.getvalue())
+        # Ohne Rohstand im Semester der zweiten Hochschule: keine Gruppe, also nichts zu melden;
+        # gemeldet wird nur, was ein Mensch prüfen sollte.
+        self.assertNotIn('keine Wahl ohne Überschneidung', aus2.getvalue())
+
+
 class BefehlTests(unittest.TestCase):
 
     def test_defaults_hang_on_repo_root_not_cwd(self):
@@ -324,14 +537,16 @@ class BefehlTests(unittest.TestCase):
             r = subprocess.run([sys.executable, str(ABRUF / 'bauen.py'), '--roh', str(Path(tmp) / 'leer'),
                                 '--aus', str(Path(tmp) / 'aus')], cwd=tmp, capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
-            plaene = sum(len(lies(p).get('plaene', [])) for p in (ABRUF.parent / 'katalog/studiengaenge').glob('*.json'))
-            self.assertEqual(len(lies(Path(tmp) / 'aus/index.json')['plaene']), plaene)
+            kat = K.lesen(ABRUF.parent / 'katalog')
+            self.assertEqual([p['datei'] for p in lies(Path(tmp) / 'aus/index.json')['plaene']],
+                             [p['datei'] for p in K.zur_wahl(kat)])
+            self.assertTrue(all(p['sichtbar'] == 'live' for p in K.zur_wahl(kat)))
         self.assertEqual(bauen.WURZEL, ABRUF.parent)
 
     def test_code_names_no_programme_semester_or_date(self):
         # docs/ARCHITEKTUR.md §2 als Prüfung statt als Satz: Wer eine Konstante einbaut, wird hier rot.
         verboten = re.compile(r'(19|20)\d\d-\d\d-\d\d|\b(WiSe|SoSe|WS|SS) ?\d{2,4}|\bwise-|\bsose-|\bwi-bsc\b', re.I)
-        for name in ('plan.py', 'bauen.py'):
+        for name in ('plan.py', 'bauen.py', 'katalog.py'):
             for nr, zeile in enumerate((ABRUF / name).read_text(encoding='utf-8').splitlines(), 1):
                 self.assertIsNone(verboten.search(zeile), f'{name}:{nr}: {zeile.strip()}')
 

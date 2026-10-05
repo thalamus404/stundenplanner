@@ -1,0 +1,11 @@
+{
+  "id": "sose-2026",
+  "label": "SoSe 2026 (Ersatz für SoSe 2027)",
+  "hochschule": "tu-berlin",
+  "moses": "SoSe 2026",
+  "anker": "2026-04-13",
+  "anker_quelle": "Vorlesungszeit SoSe 2026: 13.04.–18.07.2026 (TU Berlin, Studierendensekretariat, „Fristen und Termine“, abgerufen 05.10.2026; steigflug, V-0227)",
+  "ersatz_fuer": "SoSe 2027",
+  "ersatz_anker": "2027-04-12",
+  "ersatz_quelle": "Ersatzdaten: MOSES gibt das SoSe 2027 im Vorlesungsverzeichnis noch nicht frei (Semesterwahl gesperrt, geprüft 05.10.2026); die Termine sind die echten des SoSe 2026, nicht die des kommenden Sommers. ersatz_anker = erster Vorlesungstag des SoSe 2027 (12.04.2027, ebd.); an ihm misst katalog.py, ob eine Ordnung für den Plan gilt"
+}

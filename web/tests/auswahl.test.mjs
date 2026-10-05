@@ -95,8 +95,8 @@ test('Eine Gruppe je Bestandteil: eine neue Wahl ersetzt die alte', () => {
   assert.deepEqual(Object.keys(a), ['10001:200']);
   assert.equal(a['10001:200'].group, '22');
   const r = geladen(a);
-  // 10001:100 hat nur eine Gruppe und ist ohne Eintrag automatisch eingeplant (V-0225).
-  assert.deepEqual(r.selected.map((g) => g.key), ['10001:100:11', '10001:200:22']);
+  // 10001:100 hat nur eine Gruppe: ohne Eintrag ein Vorschlag, nicht eingeplant (V-0237).
+  assert.deepEqual(r.selected.map((g) => g.key), ['10001:200:22']);
   assert.equal(r.gruppe('10001:200:21').selected, false);
   assert.equal(r.gruppe('10001:200:22').component.selection, '22');
   assert.deepEqual(A.loese(a, '10001:200'), {});
@@ -156,7 +156,7 @@ test('Teilen-Link hin und zurück: Studiengang, Semester, Fachsemester, Paare', 
   assert.doesNotMatch(frag, new RegExp(gruppe('10001:100:11').digest));
   assert.doesNotMatch(frag, /Termingruppe/);
   const link = A.teilenLesen(frag);
-  assert.deepEqual(link, { studiengang: 'test-bsc', semester: 'wise-2026-27', fachsemester: 1, paare: { '10001:100': '11', '10002:500': '52' } });
+  assert.deepEqual(link, { plan: null, studiengang: 'test-bsc', semester: 'wise-2026-27', fachsemester: 1, paare: { '10001:100': '11', '10002:500': '52' } });
   assert.equal(A.passtZuPlan(link, p), true);
   assert.equal(A.passtZuPlan(link, { studiengang: 'test-bsc', semester: 'wise-2026-27', fachsemester: 2 }), false);
   // Übernommen ergibt er dieselbe Auswahl (Fingerabdruck und Name aus dem aktuellen Plan).
@@ -217,57 +217,56 @@ test('Teilen ist nie stumm: ohne Wahl und in der Vorschau sagt der Knopf, was fe
   assert.equal(A.teilenWeg({ anzahl: 3, share: false, grob: true }), 'kopieren');
 });
 
-test('Einzige Gruppe: automatisch eingeplant, berechnet und nie gespeichert (Silas, V-0225)', () => {
+test('Einzige Gruppe: ein Vorschlag, nicht eingeplant, berechnet und nie gespeichert (Silas, V-0237)', () => {
   const s = new Speicher();
   const auswahl = A.ladeAuswahl(s, KEY);
   const r = geladen(auswahl);
-  assert.deepEqual(r.selected.map((g) => [g.key, g.auto]), [['10001:100:11', true]]);
-  assert.equal(r.gruppe('10001:100:11').component.selection, '11');
-  assert.equal(r.gruppe('10001:100:11').changed, false);
+  assert.deepEqual(r.selected, []);                                       // zählt nicht als eingeplant
+  assert.equal(r.gruppe('10001:100:11').vorschlag, true);
+  assert.equal(r.gruppe('10001:100:11').selected, false);
+  assert.equal(r.gruppe('10001:100:11').component.selection, null);
   assert.deepEqual(s.schreibvorgaenge, []);                              // Laden schreibt nichts
-  // Formate mit mehreren Gruppen bleiben offen; eine Gruppe ohne Termine zählt nicht mit.
+  // Formate mit mehreren Gruppen schlagen nichts vor; eine Gruppe ohne Termine zählt nicht mit.
+  assert.equal(r.gruppe('10001:200:21').vorschlag, false);
   assert.equal(A.einzige(r.gruppe('10001:200:21').component), null);
   assert.equal(A.einzige({ groups: [{ slots: [1] }, { slots: [] }] }).slots.length, 1);
-  // ausdrücklich gewählt: kein „auto“ mehr, der Rand ist durchgezogen
+  // „Einplanen“: eingeplant, kein Vorschlag mehr
   const fest = geladen(A.waehle({}, '10001:100', r.gruppe('10001:100:11')));
-  assert.equal(fest.gruppe('10001:100:11').auto, false);
+  assert.equal(fest.gruppe('10001:100:11').vorschlag, false);
   assert.equal(fest.gruppe('10001:100:11').selected, true);
 });
 
-test('Einzige Gruppe lösen: die Abwahl wird gespeichert (group: null), sonst käme sie wieder', () => {
-  const s = new Speicher();
-  const ab = A.loese({}, '10001:100', true);
-  assert.deepEqual(ab, { '10001:100': { group: null, digest: '', name: '' } });
-  assert.equal(A.speichereAuswahl(s, KEY, ab), true);
-  const gelesen = A.ladeAuswahl(s, KEY);
-  assert.deepEqual(gelesen, ab);
-  const r = geladen(gelesen);
+test('Lösen: der Eintrag fällt weg, die einzige Gruppe ist wieder ein Vorschlag; group: null aus V-0225 gilt wie keiner', () => {
+  const { gruppe } = geladen();
+  const a = A.waehle({}, '10001:100', gruppe('10001:100:11'));
+  assert.deepEqual(A.loese(a, '10001:100'), {});
+  const r = geladen({ '10001:100': { group: null, digest: '', name: '' } });
   assert.deepEqual(r.selected, []);
-  assert.equal(r.gruppe('10001:100:11').component.selection, null);      // wieder offen
-  assert.deepEqual(r.missing, []);                                        // eine Abwahl fehlt nicht
-  // Formate mit mehreren Gruppen lösen wie bisher: der Eintrag verschwindet
+  assert.equal(r.gruppe('10001:100:11').vorschlag, true);
+  assert.deepEqual(r.missing, []);                                        // eine alte Abwahl fehlt nicht
   assert.deepEqual(A.loese({ '10001:200': { group: '21' } }, '10001:200'), {});
 });
 
-test('Einzige Gruppe bekommt eine zweite: nicht mehr automatisch, wieder offen', () => {
+test('Einzige Gruppe bekommt eine zweite: kein Vorschlag mehr, das Format ist offen', () => {
   const p = plan();
   const c = p.modules[0].components[0];
   c.groups.push({ ...structuredClone(c.groups[0]), id: '12', key: undefined, name: 'Termingruppe 2' });
   const b = A.bestand(p);
   const { selected } = A.auswerten(p, b, {});
   assert.deepEqual(selected.map((g) => g.key), []);
+  assert.ok(c.groups.every((g) => !g.vorschlag));
   assert.equal(c.selection, null);
 });
 
-test('Wirksame Auswahl für den Export: ausdrücklich gewählt und automatisch, im Speicherformat', () => {
+test('Wirksame Auswahl für den Export: nur Eingeplantes, Vorschläge erst nach „Einplanen“ (V-0237)', () => {
   const { gruppe } = geladen();
   const a = A.waehle({}, '10001:200', gruppe('10001:200:22'));
   const r = geladen(a);
   assert.deepEqual(A.wirksameAuswahl(r.selected), {
-    '10001:100': { group: '11', digest: r.gruppe('10001:100:11').digest, name: r.gruppe('10001:100:11').name },
     '10001:200': { group: '22', digest: r.gruppe('10001:200:22').digest, name: r.gruppe('10001:200:22').name },
   });
-  assert.deepEqual(A.wirksameAuswahl(geladen(A.loese({}, '10001:100', true)).selected), {});
+  const mit = geladen(A.waehle(a, '10001:100', gruppe('10001:100:11')));
+  assert.deepEqual(Object.keys(A.wirksameAuswahl(mit.selected)).sort(), ['10001:100', '10001:200']);
 });
 
 test('Fortschritt: Formate ohne Termine in diesem Semester zählen nicht (querwind, db561642)', () => {
@@ -275,10 +274,126 @@ test('Fortschritt: Formate ohne Termine in diesem Semester zählen nicht (querwi
   p.modules[2].components = [{ id: '10003:1', type: 'SE', groups: [] }, { id: '10003:2', type: 'PJ', groups: [{ id: '1', slots: [], bookings: [] }] }];
   const b = A.bestand(p);
   A.auswerten(p, b, {});
-  // drei Formate mit Terminen; 10001:100 ist automatisch eingeplant
-  assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 1 });
+  // drei Formate mit Terminen; 10001:100 ist nur ein Vorschlag und zählt nicht (V-0237)
+  assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 0 });
   const g = (key) => b.groups.find((x) => x.key === key);
-  A.auswerten(p, b, { '10001:200': { group: '21', digest: '', name: '' }, '10002:500': { group: '51', digest: '', name: '' } });
+  A.auswerten(p, b, { '10001:100': { group: '11', digest: '', name: '' }, '10001:200': { group: '21', digest: '', name: '' }, '10002:500': { group: '51', digest: '', name: '' } });
   assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 3 });               // alle eingeplant, trotz zweier Formate ohne Termine
   assert.equal(g('10001:200:21').selected, true);
+});
+
+// ── V-0234: Schlüssel je plan.id, Umzug des alten Schlüssels, Planwahl, Teilen-Link mit plan.id ──
+
+const ID = 'test-bsc:stupo-test:wise-2026-27:fs1';
+const NEU = 'stundenplanner:v1:' + ID;
+const mitId = () => ({ ...plan(), id: ID });
+
+test('Schlüssel je plan.id; ohne id (erstes Katalogformat) bleibt der alte', () => {
+  assert.equal(A.speicherSchluessel(mitId()), NEU);
+  assert.equal(A.alterSchluessel(mitId()), KEY);
+  assert.equal(A.speicherSchluessel(plan()), KEY);
+  // Eine Kennung, die kein Dateiname sein darf, gilt nicht als Kennung.
+  assert.equal(A.speicherSchluessel({ ...plan(), id: '../x' }), KEY);
+  // Die Planwahl hat einen eigenen Schlüssel, den kein Plan haben kann (Kennungen haben ≥ 3 Teile).
+  assert.equal(A.PLAN_SCHLUESSEL, 'stundenplanner:v1:plan');
+});
+
+test('Umzug: die alte Auswahl gilt, solange unter dem neuen Schlüssel nichts liegt — Laden schreibt dabei nichts', () => {
+  const alt = JSON.stringify({ '10001:200': { group: '22', digest: 'd', name: 'Termingruppe 2' } });
+  const s = new Speicher({ [KEY]: alt });
+  const r = A.ladeAuswahlFuer(s, mitId(), true);
+  assert.deepEqual(r, { auswahl: { '10001:200': { group: '22', digest: 'd', name: 'Termingruppe 2' } }, alt: KEY });
+  assert.deepEqual(s.schreibvorgaenge, []);
+  // Nicht eindeutig (mehrere Pläne teilen sich den alten Schlüssel): nicht übernehmen.
+  assert.deepEqual(A.ladeAuswahlFuer(s, mitId(), false), { auswahl: {}, alt: null });
+  // Unter dem neuen Schlüssel liegt etwas: Das gilt, der alte bleibt unberührt.
+  const s2 = new Speicher({ [KEY]: alt, [NEU]: JSON.stringify({ '10001:200': { group: '23', digest: 'e', name: 'Termingruppe 3' } }) });
+  assert.equal(A.ladeAuswahlFuer(s2, mitId(), true).auswahl['10001:200'].group, '23');
+  assert.equal(A.ladeAuswahlFuer(s2, mitId(), true).alt, null);
+});
+
+test('Umzug: die erste aktive Änderung schreibt unter den neuen Schlüssel und entfernt den alten', () => {
+  const s = new Speicher({ [KEY]: JSON.stringify({ '10001:200': { group: '22', digest: 'd', name: 'Termingruppe 2' } }), andere: 'x' });
+  const { auswahl, alt } = A.ladeAuswahlFuer(s, mitId(), true);
+  const neu = A.waehle(auswahl, '10002:500', { id: '52', digest: 'f', name: 'Termingruppe 2' });
+  assert.equal(A.speichereUndZiehUm(s, NEU, alt, neu), true);
+  assert.equal(s.getItem(KEY), null);
+  assert.deepEqual(Object.keys(JSON.parse(s.getItem(NEU))).sort(), ['10001:200', '10002:500']);
+  assert.equal(s.getItem('andere'), 'x');
+  assert.deepEqual(s.schreibvorgaenge.map(([art, k]) => [art, k]), [['set', NEU], ['remove', KEY]]);
+  // Ohne Speicher: false, nichts wirft.
+  assert.equal(A.speichereUndZiehUm(gesperrt, NEU, KEY, neu), false);
+});
+
+test('Planwahl: nur eine Kennung, geschrieben nur auf Aufruf, gelesen ohne zu schreiben', () => {
+  const s = new Speicher();
+  assert.equal(A.ladePlanwahl(s), null);
+  assert.equal(A.ladePlanwahl(null), null);
+  assert.equal(A.ladePlanwahl(gesperrt), null);
+  assert.deepEqual(s.schreibvorgaenge, []);
+  assert.equal(A.speicherePlanwahl(s, ID), true);
+  assert.deepEqual(s.schreibvorgaenge, [['set', 'stundenplanner:v1:plan', ID]]);
+  assert.equal(A.ladePlanwahl(s), ID);
+  // Keine Kennung, kein Schreiben: was kein Dateiname sein darf, kommt nicht in den Speicher.
+  assert.equal(A.speicherePlanwahl(s, 'x y'), false);
+  assert.equal(A.speicherePlanwahl(s, '<script>'), false);
+  assert.equal(A.speicherePlanwahl(gesperrt, ID), false);
+  assert.equal(A.ladePlanwahl(new Speicher({ 'stundenplanner:v1:plan': '../../etc' })), null);
+});
+
+test('Teilen-Link mit plan.id: #plan=<id>&w=…; alte Links bleiben lesbar', () => {
+  const { gruppe } = geladen();
+  const p = mitId();
+  const a = A.waehle({}, '10001:200', gruppe('10001:200:21'));
+  const frag = A.teilenFragment(p, a);
+  assert.equal(frag, `#plan=${ID}&w=10001:200~21`);
+  const link = A.teilenLesen(frag);
+  assert.deepEqual(link, { plan: ID, studiengang: null, semester: null, fachsemester: null, paare: { '10001:200': '21' } });
+  assert.equal(A.passtZuPlan(link, p), true);
+  assert.equal(A.passtZuPlan(link, { ...p, id: 'test-bsc:andere:wise-2026-27:fs1' }), false);
+  // Der alte Link passt über Studiengang, Semester und Fachsemester.
+  assert.equal(A.passtZuPlan(A.teilenLesen('#studiengang=test-bsc&semester=wise-2026-27&fs=1'), p), true);
+  // Eine Kennung mit fremden Zeichen ist kein Link.
+  assert.equal(A.teilenLesen('#plan=a%20b'), null);
+  assert.equal(A.teilenLesen('#plan='), null);
+  assert.equal(A.teilenFragment(p, {}), `#plan=${ID}`);
+});
+
+// ── V-0234: Regeln der Gruppen aus katalog/bestandteile.json (V-0233) ──────────────────────────
+
+function mitGruppen(regel, cid = '10001:200') {
+  const p = plan();
+  for (const m of p.modules) for (const c of m.components) if (c.id === cid) { c.gruppen = regel; c.gruppen_grund = 'erfunden'; }
+  return p;
+}
+
+test('gruppen: alle — alle Gruppen sind ein Vorschlag; eingeplant wird das Format als Ganzes (V-0237)', () => {
+  const p = mitGruppen('alle');
+  const b = A.bestand(p);
+  const c = b.parts.find((x) => x.id === '10001:200');
+  const mit = c.groups.filter((g) => g.slots.length);
+  let r = A.auswerten(p, b, {});
+  assert.ok(mit.length > 1);
+  assert.ok(mit.every((g) => g.vorschlag && !g.selected));
+  assert.equal(r.selected.filter((g) => g.component_id === c.id).length, 0);
+  // „Einplanen“ auf einer Gruppe plant alle ein; im Fortschritt eins, im Export eine Liste.
+  r = A.auswerten(p, b, A.waehle({}, c.id, mit[0]));
+  assert.ok(mit.every((g) => g.selected && !g.vorschlag));
+  assert.deepEqual(A.wirksameAuswahl(r.selected)['10001:200'].group, mit.map((g) => g.id));
+  assert.equal(A.fortschritt(b.parts).k, 1);
+  // Lösen: wieder ein Vorschlag.
+  r = A.auswerten(p, b, A.loese(A.waehle({}, c.id, mit[0]), c.id));
+  assert.ok(mit.every((g) => g.vorschlag && !g.selected));
+  assert.deepEqual(r.missing, []);
+});
+
+test('gruppen: keine — nie vorgeschlagen, zählt nicht zum Fortschritt', () => {
+  const p = mitGruppen('keine', '10001:100');   // VL mit genau einer Gruppe: wäre sonst ein Vorschlag
+  const b = A.bestand(p);
+  const c = b.parts.find((x) => x.id === '10001:100');
+  assert.equal(A.einzige(c), null);
+  A.auswerten(p, b, {});
+  assert.ok(c.groups.every((g) => !g.selected && !g.vorschlag));
+  const ohne = A.fortschritt(A.bestand(plan()).parts).n;
+  assert.equal(A.fortschritt(b.parts).n, ohne - 1);
 });

@@ -1,0 +1,14 @@
+{
+  "id": "hu-wise-2026-27",
+  "label": "WiSe 2026/27",
+  "hochschule": "hu-berlin",
+  "anker": "2026-10-12",
+  "anker_quelle": "Vorlesungszeit der HU Berlin 12.10.2026 bis 13.02.2027, am 12.10.2026 Dies academicus (hu-berlin.de, Fristen und Termine; die Seite selbst ist hinter einer Bot-Sperre, gelesen über den Suchauszug am 05.10.2026). Gegenprobe in AGNES: Montagsserien beginnen am 19.10.2026, Dienstagsserien am 13.10.2026, eine Zeile ohne Termin endet am 13.02.2027",
+  "quelle": {
+    "art": "lsf",
+    "name": "AGNES",
+    "basis": "https://agnes.hu-berlin.de/lupo/rds",
+    "semester": "20262",
+    "label": "WiSe 2026/27"
+  }
+}

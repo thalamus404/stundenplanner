@@ -1,0 +1,35 @@
+{
+  "id": "in-bsc",
+  "name": "Informatik",
+  "abschluss": "B.Sc.",
+  "hochschule": "tu-berlin",
+  "sichtbar": "vorschau",
+  "ordnungen": [
+    {
+      "id": "stupo-2025",
+      "label": "StuPO 2025",
+      "name": "Neufassung der Studien- und Prüfungsordnung für den Bachelorstudiengang Informatik an der Fakultät IV der Technischen Universität Berlin",
+      "fundstelle": "AMBl. TU 08/2026",
+      "url": "https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_IV/Informatik_B.Sc._2025.pdf",
+      "gilt_ab": "2026-10-01",
+      "gilt_bis": null,
+      "studienbeginn": { "ab": "WiSe 2026/27", "bis": null },
+      "fuer_wen": "Studienbeginn ab WiSe 2026/27. Wer vorher begonnen hat, studiert nach der StuPO 2014, außer er wechselt (bis 30.09.2032, unwiderruflich).",
+      "quelle": "§ 2 Abs. 1: tritt am 1. Oktober 2026 in Kraft und gilt für Studierende, die ab dem Wintersemester 2026/2027 immatrikuliert werden; Abs. 2 Wechsel bis 30.09.2032; Abs. 3 die StuPO vom 28.05.2014 tritt am 30.09.2032 außer Kraft. Gelesen am 05.10.2026"
+    }
+  ],
+  "plaene": [
+    {
+      "ordnung": "stupo-2025",
+      "semester": "wise-2026-27",
+      "fachsemester": 1,
+      "quelle": "Exemplarischer Studienverlaufsplan der StuPO 2025, Anlage 2. ANNAHME: Der Plan trägt keine Semesterbeschriftung; die erste Zeile ist als 1. Semester gelesen (jede der drei oberen Zeilen umfasst 30 LP, der Plan der StuPO 2014 hat dieselbe Gliederung mit Beschriftung; querwind, V-0228, docs/forschung/tu-studiengaenge.md §3.2). Modulnummern aus der MOSES-Modulliste WiSe 2026/27 der StuPO 2025 (https://moseskonto.tu-berlin.de/moses/modultransfersystem/studiengaenge/anzeigen.html?studiengang=31&mkg=24983&semester=77). Keine Wahl im 1. Semester. Von Hand übernommen, Stand 05.10.2026",
+      "module": [
+        { "nummer": "20122", "kurz": "Analysis I/LinA" },
+        { "nummer": "41319", "kurz": "Inf. als Diszipl." },
+        { "nummer": "41320", "kurz": "Grundl. Prog." },
+        { "nummer": "41313", "kurz": "RO/BS" }
+      ]
+    }
+  ]
+}
