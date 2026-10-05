@@ -1,5 +1,12 @@
 # Betrieb — wie der Stundenplanner online bleibt
 
+> **⛔ Keine Zugriffe auf Systeme der TU Berlin ohne Silas’ ausdrückliche Genehmigung**
+> (Silas, 05.10.2026; [AGENTS.md §2 ⑦](../AGENTS.md#2-die-regeln)). Das gilt für jeden Weg: Abruf-Code, Skript, `curl`,
+> Browser-Automatisierung, `WebFetch` eines Agenten, auch für eine einzelne Seite „nur zum Nachsehen“.
+> Genehmigt ist allein der tägliche Lauf um 05:20 im Container `stundenplanner-abruf`. Wer mehr braucht,
+> fragt Silas **vorher** und nennt **Umfang**, **Maßnahmen gegen Last** und **Grund**. Dasselbe gilt für
+> die Vorlesungsverzeichnisse anderer Hochschulen. Der Code sperrt selbst (`abruf/zugang.py`).
+
 > **Das Muster (Silas, 05.10.2026): „Der NAS crawlt, Cloudflare liefert aus.“** Ein eigener
 > Container auf dem NAS holt einmal am Tag die Termine aus MOSES, baut das Lesemodell und lädt die
 > fertige Seite zu Cloudflare Pages hoch. Der NAS baut dafür nur **ausgehende** Verbindungen auf
@@ -64,7 +71,11 @@ Sperre träfe den Heimanschluss, auf dem der NAS steht. Seitdem bauen `live` und
 Rohstand im Volume (`lauf.py --jetzt --ohne-abruf`, Schritt 2 entfällt). Der Zeitplan richtet sich
 nach `letzter_abruf_am` im Zustand, nicht nach dem letzten Lauf: Eine Auslieferung nach 05:20
 verdeckt einen verpassten Tagesabruf nicht und löst keinen aus (`abruf/tests/test_lauf.py`). Einen
-Abruf von Hand gibt es nur ausdrücklich: `sh ops/bauen.sh lauf --mit-abruf`.
+Abruf von Hand gibt es nur ausdrücklich: `sh ops/bauen.sh lauf --mit-abruf`, und nur mit Silas'
+Genehmigung. **Dieser Schritt trägt als einziger die Genehmigung** für Anfragen an MOSES (V-0242):
+`lauf.py` setzt `STUNDENPLANNER_ABRUF_GENEHMIGT` nur für `abruf.py`, nie für Test oder Bauen, und
+nimmt sie aus jeder anderen Umgebung heraus. Ohne sie endet jeder Weg zu MOSES in
+`abruf/zugang.py`, bevor eine Anfrage rausgeht (AGENTS.md §2 ⑦).
 
 Ein verpasster Lauf (NAS aus, Container gestoppt, Neustart) wird nachgeholt, sobald der
 Container wieder läuft. Ein unterbrochener Lauf wird wiederholt. Zwei Läufe zugleich verhindert
@@ -118,7 +129,7 @@ Arbeitsbaum, das Skript rechnet den Hauptklon selbst aus):
 | `sh ops/bauen.sh live <stand>` | dasselbe aus einem bestimmten Commit (so ruft es die Freigabe auf: `befehle.bau_live`) |
 | `sh ops/bauen.sh live <stand> --probe` | nur prüfen, bis vor `docker build` (`befehle.bau_probe`) |
 | `sh ops/bauen.sh lauf` | jetzt bauen und ausliefern, ohne neues Image und **ohne Abruf**. Läuft schon einer, wartet er und meldet dessen Ergebnis |
-| `sh ops/bauen.sh lauf --mit-abruf` | dasselbe **mit** Abruf bei MOSES. Nur, wenn es nötig ist: Der Zeitplan holt die Termine ohnehin um 05:20 |
+| `sh ops/bauen.sh lauf --mit-abruf` | dasselbe **mit** Abruf bei MOSES. **Nur mit Silas' Genehmigung** (AGENTS.md §2 ⑦): Der Zeitplan holt die Termine ohnehin um 05:20 |
 | `sh ops/bauen.sh status` | Zustand des letzten Laufs |
 | `sh ops/bauen.sh rueckweg` | Container auf das Image vor dem letzten Bau zurücksetzen |
 | `sh ops/bauen.sh zugang` | Cloudflare-Token und Account-ID **unsichtbar** abfragen und nach `<hauptklon>/betrieb/.env` schreiben (Rechte 600). Braucht ein Terminal: über ssh mit `-t`, in einen Container mit `docker exec -it` |

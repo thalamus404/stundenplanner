@@ -1,5 +1,12 @@
 # Scope — was der Stundenplanner können und abdecken soll
 
+> **⛔ Keine Zugriffe auf Systeme der TU Berlin ohne Silas’ ausdrückliche Genehmigung**
+> (Silas, 05.10.2026; [AGENTS.md §2 ⑦](../AGENTS.md#2-die-regeln)). Das gilt für jeden Weg: Abruf-Code, Skript, `curl`,
+> Browser-Automatisierung, `WebFetch` eines Agenten, auch für eine einzelne Seite „nur zum Nachsehen“.
+> Genehmigt ist allein der tägliche Lauf um 05:20 im Container `stundenplanner-abruf`. Wer mehr braucht,
+> fragt Silas **vorher** und nennt **Umfang**, **Maßnahmen gegen Last** und **Grund**. Dasselbe gilt für
+> die Vorlesungsverzeichnisse anderer Hochschulen. Der Code sperrt selbst (`abruf/zugang.py`).
+
 > **Stand: festgelegt am 04.10.2026** (V-0210). Silas hat die Fragen aus §6 entschieden, E10
 > bestätigt er vor dem Bau des Zählens. Die Datei ändert sich nur mit einem Vorgang und einem
 > Eintrag in der [`CHRONIK.md`](../CHRONIK.md).

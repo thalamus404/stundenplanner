@@ -1,9 +1,28 @@
 # Chronik — der Stundenplanner
 
+> **⛔ Keine Zugriffe auf Systeme der TU Berlin ohne Silas’ ausdrückliche Genehmigung**
+> (Silas, 05.10.2026; [AGENTS.md §2 ⑦](AGENTS.md#2-die-regeln)). Das gilt für jeden Weg: Abruf-Code, Skript, `curl`,
+> Browser-Automatisierung, `WebFetch` eines Agenten, auch für eine einzelne Seite „nur zum Nachsehen“.
+> Genehmigt ist allein der tägliche Lauf um 05:20 im Container `stundenplanner-abruf`. Wer mehr braucht,
+> fragt Silas **vorher** und nennt **Umfang**, **Maßnahmen gegen Last** und **Grund**. Dasselbe gilt für
+> die Vorlesungsverzeichnisse anderer Hochschulen. Der Code sperrt selbst (`abruf/zugang.py`).
+
 Was wann passiert ist, das Neueste oben. Ein Eintrag sagt, was entschieden wurde und warum,
 nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
+
+## 05.10.2026 — Keine Zugriffe auf die TU mehr ohne Silas' Genehmigung (V-0241, V-0242)
+
+- innoCampus (TU Berlin) antwortete auf Silas' Anfrage: Eine REST-API mit Token gibt es, das Abrufen der
+  Weboberfläche wird „gar nicht gerne gesehen“, auffällige Adressen werden gesperrt. Beim Nachsehen zeigte
+  sich: Agenten hatten beim Bauen am 4. und 5.10. einige tausend MOSES-Seiten abgerufen, und jede
+  Auslieferung fuhr einen Abruf mehr. Silas wusste davon nicht.
+- V-0241: Eine Auslieferung fragt MOSES nicht mehr, nur der tägliche Lauf um 05:20.
+- V-0242: **Silas: „Ab jetzt sind keine Zugriffe mehr auf das TU-System erlaubt, solange ich es nicht
+  ausdrücklich genehmigt habe.“** Regel AGENTS.md §2 ⑦, ein Hinweis oben in jeder Anleitung, und eine
+  Sperre im Code (`abruf/zugang.py`): MOSES und LSF fragen nur mit der Genehmigung, die allein der
+  tägliche Lauf trägt. Wer mehr braucht, nennt Silas Umfang, Maßnahmen gegen Last und Grund.
 
 ## 05.10.2026 — Der Brief für den One-Pager und drei Entscheidungen
 

@@ -1,5 +1,12 @@
 # Abruf und Lesemodell
 
+> **⛔ Keine Zugriffe auf Systeme der TU Berlin ohne Silas’ ausdrückliche Genehmigung**
+> (Silas, 05.10.2026; [AGENTS.md §2 ⑦](../AGENTS.md#2-die-regeln)). Das gilt für jeden Weg: Abruf-Code, Skript, `curl`,
+> Browser-Automatisierung, `WebFetch` eines Agenten, auch für eine einzelne Seite „nur zum Nachsehen“.
+> Genehmigt ist allein der tägliche Lauf um 05:20 im Container `stundenplanner-abruf`. Wer mehr braucht,
+> fragt Silas **vorher** und nennt **Umfang**, **Maßnahmen gegen Last** und **Grund**. Dasselbe gilt für
+> die Vorlesungsverzeichnisse anderer Hochschulen. Der Code sperrt selbst (`abruf/zugang.py`).
+
 Holt die öffentlichen Daten je Modul aus MOSES (`moses.py`) oder HIS LSF (`lsf.py`), gewählt in
 `abruf.py`, und rechnet daraus die Daten, die die Seite liest (`plan.py`, `bauen.py`). Den Katalog
 lesen beide über `katalog.py`. Formate und Befehle: [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md)
@@ -15,6 +22,8 @@ wie man es benutzt und was beim Abruf schiefgehen kann.*
 
 ```sh
 pip install -r abruf/requirements.txt         # nur beautifulsoup4
+# GESPERRT ohne Silas' Genehmigung (AGENTS.md §2 ⑦): Nur der tägliche Lauf trägt sie (abruf/zugang.py).
+# Ohne sie endet abruf.py mit Exit 2, bevor eine Anfrage rausgeht. Zum Entwickeln: vorhandene Rohdaten.
 python3 abruf/abruf.py                        # jedes Semester des Katalogs, das Pläne hat
 python3 abruf/abruf.py --semester wise-2026-27 --nur 70450   # ein Modul nachholen
 python3 abruf/abruf.py --roh /irgendwo/roh    # Rohstände anderswohin
