@@ -1,0 +1,24 @@
+# Jeder Push und jeder Pull Request: dieselbe Prüfung wie in der Werkstatt (sh ops/test.sh) —
+# die Regeln des öffentlichen Repos und alle Tests der Teile (docs/ARCHITEKTUR.md §7).
+name: test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Abhängigkeiten
+        run: |
+          if [ -f abruf/requirements.txt ]; then pip install -r abruf/requirements.txt; else pip install beautifulsoup4==4.12.3; fi
+      - name: Test
+        run: sh ops/test.sh

@@ -1,0 +1,3 @@
+{ "id": "aa-bsc", "name": "Erfundener Studiengang A", "abschluss": "B.Sc.", "hochschule": "TU Berlin",
+  "plaene": [ { "semester": "wise-2026-27", "fachsemester": 1, "quelle": "erfunden für die Tests",
+                "module": [ { "nummer": "99901", "kurz": "Eins" }, { "nummer": "99902", "kurz": "Zwei" } ] } ] }
