@@ -7,6 +7,9 @@
   --grau-6: #bcbec0; --grau-7: #7f8083; --grau-8: #6d6f71; --grau-9: #545557; --grau-10: #1d1e20;
   --konflikt: #cc2827; --konflikt-text: #a51f1e; --konflikt-flaeche: #ffebe8;
   --hinweis: #c17a00; --hinweis-text: #7b4c00; --hinweis-flaeche: #fef0d4;
+  /* Rollen (V-0236, §5.2): Kachel und Legende lesen dieselben Tokens. */
+  --kontext-flaeche: var(--grau-9); --kontext-text: var(--grau-1);
+  --ebene: #fdfdff;
   --rand-ebene: var(--grau-5);
   --schatten: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12);
   --ein: cubic-bezier(.2, 0, 0, 1);
@@ -25,22 +28,27 @@
   --m8-hauch: #fdfdff; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
   font: 14px/20px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
 }
+/* Dunkel (V-0236, §5.2): vier Flächen, je höher, desto heller — Seite 0,18, eingelassen 0,225,
+   erhöht 0,27, schwebend 0,315. Die mögliche Kachel ist neutral (vorher je Modul getönt, ein
+   Flickenteppich), eingeplant die hellste Fläche. Hier stehen NUR Tokens (web/tests/farben). */
 @media (prefers-color-scheme: dark) {
   :root {
-    --grau-1: #292a2c; --grau-2: #111213; --grau-3: #1b1c1e; --grau-4: #202224; --grau-5: #2d2e30;
-    --grau-6: #414244; --grau-7: #737477; --grau-8: #8b8c8f; --grau-9: #b6b7ba; --grau-10: #e9ebee;
+    --grau-1: #252628; --grau-2: #111213; --grau-3: #1b1c1e; --grau-4: #202224; --grau-5: #2f3032;
+    --grau-6: #46484a; --grau-7: #737477; --grau-8: #8b8c8f; --grau-9: #bfc1c3; --grau-10: #e6e8ea;
     --konflikt: #ef675c; --konflikt-text: #f8a59b; --konflikt-flaeche: #3b1c19;
     --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
-    --rand-ebene: rgb(255 255 255 / .08);
+    --kontext-flaeche: var(--grau-6); --kontext-text: var(--grau-10);
+    --ebene: #303234;
+    --rand-ebene: rgb(255 255 255 / .1);
     --schatten: none;
-    --m1-hauch: #131f2c; --m1-rand: #619dda; --m1-flaeche: #254a6e; --m1-tinte: #e9f3ff;
-    --m2-hauch: #261c0d; --m2-rand: #bc9041; --m2-flaeche: #5d420e; --m2-tinte: #fbf0e0;
-    --m3-hauch: #142216; --m3-rand: #63ab74; --m3-flaeche: #265331; --m3-tinte: #e7f7e9;
-    --m4-hauch: #291820; --m4-rand: #cb7ba2; --m4-flaeche: #65364d; --m4-tinte: #ffecf4;
-    --m5-hauch: #0a2224; --m5-rand: #20acb3; --m5-flaeche: #005356; --m5-tinte: #dff7f8;
-    --m6-hauch: #201b2a; --m6-rand: #a388d2; --m6-flaeche: #4e3e6a; --m6-tinte: #f4efff;
-    --m7-hauch: #2a1a11; --m7-rand: #cf8358; --m7-flaeche: #683b20; --m7-tinte: #ffeee5;
-    --m8-hauch: #1e200f; --m8-rand: #96a04c; --m8-flaeche: #474c17; --m8-tinte: #f1f4e1;
+    --m1-hauch: #252628; --m1-rand: #70a3d8; --m1-flaeche: #233c56; --m1-tinte: #bad8f8;
+    --m2-hauch: #252628; --m2-rand: #bd9857; --m2-flaeche: #4a3716; --m2-tinte: #e8d1ac;
+    --m3-hauch: #252628; --m3-rand: #72af7f; --m3-flaeche: #24432b; --m3-tinte: #bcdfc2;
+    --m4-hauch: #252628; --m4-rand: #cb86a7; --m4-flaeche: #502e3f; --m4-tinte: #f2c6d9;
+    --m5-hauch: #252628; --m5-rand: #48b0b6; --m5-flaeche: #0a4346; --m5-tinte: #aae0e2;
+    --m6-hauch: #252628; --m6-rand: #a791d1; --m6-flaeche: #3f3453; --m6-tinte: #d9cdf4;
+    --m7-hauch: #252628; --m7-rand: #ce8d68; --m7-flaeche: #52321f; --m7-tinte: #f3cbb5;
+    --m8-hauch: #252628; --m8-rand: #9ca65f; --m8-flaeche: #3a3e1a; --m8-tinte: #d2d9b0;
   }
 }
 /* Ein Modul bekommt seine Farbe über die Klasse m1 … m8 (Stelle im Plan, reihum, §5.3). */
@@ -98,7 +106,9 @@ button:active::after { opacity: .1; }
 
 /* Der Studiengang-Reiter (Silas, 05.10.2026): ein Reiter je Plan aus index.json, der gewählte mit
    einer Linie in Tinte darunter. */
-.studiengang { display: flex; align-items: center; gap: 4px 16px; min-width: 0; }
+/* Der Reiter füllt den freien Platz, sonst war der Rand links vom Knopfpaar ein Rest (53 px bei
+   865 px Breite, außerhalb des 4-px-Rasters, V-0236). */
+.studiengang { flex: 1 1 auto; display: flex; align-items: center; gap: 4px 16px; min-width: 0; }
 .sg-reiter {
   display: grid; align-content: center; min-width: 0; min-height: 44px; padding: 4px 8px;
   border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; text-align: left;
@@ -115,9 +125,6 @@ button:active::after { opacity: .1; }
 .knopf.haupt { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); font-weight: 600; }
 .knopf.rund { padding: 0; width: var(--ziel); }
 .knopf:disabled, .format:disabled { opacity: .38; cursor: default; }
-.zahl { min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; font-size: 12px; line-height: 20px; font-weight: 600; text-align: center; color: #fff; background: var(--hinweis-text); }
-.zahl.rot { background: var(--konflikt-text); }
-@media (prefers-color-scheme: dark) { .zahl { color: var(--grau-2); background: var(--hinweis); } .zahl.rot { background: var(--konflikt); } }
 .leise { display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; padding: 0 4px; border-radius: 4px; text-decoration: underline; text-underline-offset: 2px; }
 
 /* Je Modul eine Kachel, darunter seine Formate mit der Zahl der Gruppen (V-0225). Am Rechner
@@ -209,11 +216,11 @@ button:active::after { opacity: .1; }
 /* Kacheln sind Container, die Beschriftung folgt ihrer Größe (§3.2). Oben immer das Modul, dann
    die Einheit ausgeschrieben, Gruppe mit Zeit, Raum (Silas, V-0225). M (Modul, Kürzel und Nummer)
    ohne Abfrage, L ab 96 px, ab 240 px der volle Modultitel, S unter 44 px, unter 24 px nur Farbe.
-   Möglich: weiße Kachel mit Rand in Modulfarbe. Gewählt: kräftig gefüllt. Anderswo gewählt
-   (Kontext): dunkelgrau. Zurückgenommen (die übrigen Gruppen eines gewählten Formats): hellgrau. */
+   Die Zustände gelten in beiden Schemata mit derselben Regel (V-0236, §3.2); vorher hatte das
+   Dunkle eigene, und eingeplant sah dort aus wie automatisch. */
 .kachel { position: absolute; container: kachel / size; color: var(--grau-10); }
 .kachel.gewaehlt { color: var(--grau-1); }
-.kachel.kontext { color: var(--grau-1); }
+.kachel.kontext { color: var(--kontext-text); }
 .kachel.zurueck { color: var(--grau-9); }
 .kachel:focus-within, .kachel.zeigen { z-index: 2; }
 .k-flaeche {
@@ -223,14 +230,9 @@ button:active::after { opacity: .1; }
 }
 .k-flaeche:focus-visible { outline-offset: 4px; }
 .gewaehlt > .k-flaeche { background: var(--tinte); border-color: var(--tinte); }
-.kontext > .k-flaeche { background: var(--grau-9); border-color: var(--grau-9); }
-.zurueck > .k-flaeche { background: var(--grau-3); border-color: var(--grau-5); }
-@media (prefers-color-scheme: dark) {
-  .kachel.gewaehlt { color: var(--tinte); }
-  .gewaehlt > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); }
-  .kachel.kontext { color: var(--grau-10); }
-  .kontext > .k-flaeche { background: var(--grau-6); border-color: var(--grau-6); }
-}
+/* Legende und Kachel in einer Regel: Sie können nicht auseinanderlaufen (V-0236). */
+.kontext > .k-flaeche, .lg-k.kontext { background: var(--kontext-flaeche); border-color: var(--kontext-flaeche); }
+.zurueck > .k-flaeche, .lg-k.zurueck { background: var(--grau-3); border-color: var(--grau-5); }
 .moeglich .k-2 { color: var(--grau-9); }
 /* Automatisch eingeplant, die einzige Gruppe eines Formats: gestrichelt (Silas, 05.10.2026). */
 .kachel.auto { color: var(--tinte); }
@@ -289,7 +291,8 @@ button:active::after { opacity: .1; }
 @keyframes verblassen { to { opacity: 0; } }
 
 /* ── Legende und Fuß */
-/* Die Formate, die vorkommen, und was gefüllt und umrandet heißt; am Handy die Modulfarben dazu. */
+/* Die Formate, die vorkommen, und was gefüllt und umrandet heißt; am Handy die Modulfarben dazu.
+   Die Wörter nennen die Rolle („grau“, „blass“), keinen Farbton, der nur in einem Schema stimmt. */
 .unter { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 8px; }
 .legende { display: flex; flex-wrap: wrap; gap: 4px 24px; font-size: 12px; line-height: 16px; color: var(--grau-9); }
 .lg-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
@@ -297,8 +300,6 @@ button:active::after { opacity: .1; }
 .lg-zeile b { color: var(--grau-10); }
 .lg-k { width: 16px; height: 12px; border-radius: 4px; border: 1px solid var(--grau-8); flex: none; }
 .lg-k.gewaehlt { background: var(--grau-10); border-color: var(--grau-10); }
-.lg-k.kontext { background: var(--grau-9); border-color: var(--grau-9); }
-.lg-k.zurueck { background: var(--grau-3); border-color: var(--grau-5); }
 .lg-k.auto { border-style: dashed; border-color: var(--grau-10); }
 .lg-k.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; }
 .lg-zeile .punkt { width: 8px; height: 8px; }
@@ -323,7 +324,7 @@ button:active::after { opacity: .1; }
 .hinter.da { opacity: 1; }
 .ebene {
   position: fixed; z-index: 21; width: 320px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px);
-  display: flex; flex-direction: column; background: var(--grau-1); border: 1px solid var(--rand-ebene); border-radius: 12px;
+  display: flex; flex-direction: column; background: var(--ebene); border: 1px solid var(--rand-ebene); border-radius: 12px;
   box-shadow: var(--schatten); opacity: 0; transform: translateY(4px); transition: opacity 100ms var(--aus), transform 100ms var(--aus);
 }
 .ebene.da { opacity: 1; transform: none; transition-duration: 150ms; transition-timing-function: var(--ein); }
