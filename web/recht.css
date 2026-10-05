@@ -11,7 +11,8 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --grau-2: #111213; --grau-5: #2d2e30; --grau-9: #b6b7ba; --grau-10: #e9ebee;
+    /* Dieselben Werte wie stil.css (V-0236): Wer dort eine Stufe ändert, ändert sie hier mit. */
+    --grau-2: #111213; --grau-5: #2f3032; --grau-9: #bfc1c3; --grau-10: #e6e8ea;
     --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
   }
 }

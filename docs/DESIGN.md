@@ -139,7 +139,7 @@ bekommt den Rest. Am Handy scrollt sie (§3.3).
 | **Module** | je Modul eine **Modulkachel**: Farbpunkt und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“) |
 | **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Modul-Infos“ und „Filter aufheben“, sobald gefiltert ist, und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
 | **Raster** | Tagesreiter bzw. Tageskopf, Zeitachse, Kacheln (§3.2) |
-| **Legende** | die Formate, die im Plan vorkommen, ausgeschrieben („VL Vorlesung“, „IV Integrierte Veranstaltung“), und was die Kachelarten heißen (umrandet, gefüllt, gestrichelt, dunkelgrau, hellgrau, roter Ring). Immer dieselben Einträge, damit sie ihre Höhe nicht ändert. Am Handy davor die Modulfarben |
+| **Legende** | die Formate, die im Plan vorkommen, ausgeschrieben („VL Vorlesung“, „IV Integrierte Veranstaltung“), und was die Kachelarten heißen (umrandet, gefüllt, gestrichelt, grau, blass, roter Ring; nach der Rolle benannt, nicht nach einem Farbton, der nur in einem Schema stimmt, V-0236). Immer dieselben Einträge, damit sie ihre Höhe nicht ändert. Am Handy davor die Modulfarben |
 | **Fuß** | „Kein offizielles Angebot der TU Berlin. Verbindlich sind MOSES und die Anmeldungen dort.“ Daneben immer der Speicherhinweis (ARCHITEKTUR §6) und, sobald es eine Auswahl gibt, „Auswahl zurücksetzen“. Dann „Hilfe“, „Impressum“, „Datenschutz“ (am Handy davor der Stand) |
 
 Es gibt **keine Kästen um die Zonen**. Abstand gliedert, nicht Rahmen. Kästen haben nur die
@@ -202,11 +202,11 @@ blasse Pastellflächen):
 
 | Art | wann | Aussehen |
 |---|---|---|
-| **möglich** | eine Gruppe, die man wählen kann | weiß (`--mN-hauch`, hell `#fdfdff`, dunkel getönt), 1 px Rand in Modulfarbe, Schrift `--grau-10` |
-| **gewählt** | die ausdrücklich gewählte Gruppe eines Formats | kräftig gefüllt: hell Fläche in der `tinte` des Modultons mit Schrift `--grau-1`, dunkel `flaeche` mit `tinte`; Haken |
-| **automatisch eingeplant** | die einzige Gruppe eines Formats (§4.1) | Fläche `flaeche`, 2 px Rand **gestrichelt** in `tinte`, Haken; in Zeile 3 „Einzige Gruppe“ |
-| **Kontext** | eingeplante Gruppen außerhalb des aktiven Filters | dunkelgrau: hell `--grau-9` mit Schrift `--grau-1`, dunkel `--grau-6` mit `--grau-10`. Sie zeigen, wo die Woche belegt ist |
-| **zurückgenommen** | die übrigen Gruppen eines schon gewählten Formats (nur mit Filter zu sehen) | hellgrau: `--grau-3`, Rand `--grau-5`, Schrift `--grau-9`, Knopf „Wechseln“ |
+| **möglich** | eine Gruppe, die man wählen kann | neutral (`--mN-hauch` = `--grau-1`, in beiden Schemata ohne Tönung, V-0236), 1 px Rand in Modulfarbe, Schrift `--grau-10` |
+| **gewählt** | die ausdrücklich gewählte Gruppe eines Formats | kräftig gefüllt: Fläche in der `tinte` des Modultons mit Schrift `--grau-1`, in beiden Schemata (hell die dunkelste, dunkel die hellste Fläche); Haken |
+| **automatisch eingeplant** | die einzige Gruppe eines Formats (§4.1) | eine Stufe leiser gefüllt: Fläche `flaeche`, Schrift und 2 px Rand **gestrichelt** in `tinte`, Haken; in Zeile 3 „Einzige Gruppe“ |
+| **Kontext** | eingeplante Gruppen außerhalb des aktiven Filters | grau gefüllt: `--kontext-flaeche` mit `--kontext-text` (hell `--grau-9`/`--grau-1`, dunkel `--grau-6`/`--grau-10`). Sie zeigen, wo die Woche belegt ist |
+| **zurückgenommen** | die übrigen Gruppen eines schon gewählten Formats (nur mit Filter zu sehen) | blass: eingelassen `--grau-3`, Rand `--grau-5`, Schrift `--grau-9`, Knopf „Wechseln“ |
 | **Überschneidung** | gewählte Gruppen, die sich an mindestens einem echten Termin überschneiden | wie gewählt (bzw. Kontext), dazu ein roter Ring mit 1 px Luft und das Warnsymbol |
 | **würde sich überschneiden** | mögliche Gruppe, die mit einer eingeplanten kollidiert | wie möglich, dazu das Warnsymbol |
 | **geändert** | gewählt, aber der Fingerabdruck hat sich geändert | wie gewählt, Hinweissymbol |
@@ -495,7 +495,7 @@ eingebauten Bedienelemente an. `theme-color` hell `#f7f8fb`, dunkel `#111213`.
 | Farbe | Aufgabe | nie |
 |---|---|---|
 | Grautreppe | Flächen, Linien, Text, Symbole, Bedienelemente | — |
-| **Tinte** (`--grau-10`) | Text. Als Fläche nur für das eine, das gerade gilt: die Hauptaktion einer Karte, das gedrückte Format, die Meldung, den Ring um die gefilterte Modulkachel, hell die Fläche der gewählten Kachel im Farbton ihres Moduls (`tinte`). Fokusring | nicht als Fläche einer Zone, nicht für mehr als eine Aktion je Karte |
+| **Tinte** (`--grau-10`) | Text. Als Fläche nur für das eine, das gerade gilt: die Hauptaktion einer Karte, das gedrückte Format, die Meldung, den Ring um die gefilterte Modulkachel, die Fläche der gewählten Kachel im Farbton ihres Moduls (`tinte`: hell dunkel, dunkel hell). Fokusring | nicht als Fläche einer Zone, nicht für mehr als eine Aktion je Karte |
 | Modulfarben | **Kategorie Modul:** Kacheln, Formate, Farbpunkt vor dem Modulnamen, Legende | nicht für Knöpfe, Links, Überschriften, Hintergründe von Zonen |
 | Rot (Konflikt) | Überschneidung: Ring, Symbol auf neutraler Fläche, Text in Hinweisen | nicht für Löschen oder Fehler beim Laden |
 | Bernstein (Hinweis) | geändert, nicht mehr im Angebot, veraltet, Abruffehler, Speicher fehlt | nicht als Dekoration |
@@ -505,25 +505,47 @@ Signale. Ein farbiger Akzent wäre der elfte und würde mit einem Modul verwechs
 eindeutig, kontraststark und lässt den Modulen die Farbe. Violett und Indigo als Akzent sind
 ohnehin ausgeschlossen (§7).
 
-### 5.2 Grautreppe
+### 5.2 Grautreppe und Flächen
 
-Ein Hauch kühl (Ton 260, Chroma 0,004), keine Creme. Zehn Stufen, jede mit einer Aufgabe.
+Ein Hauch kühl (Ton 260, Chroma 0,004), keine Creme. Zehn Stufen und eine schwebende Fläche, jede
+mit einer Aufgabe. Dunkel neu gerechnet in V-0236 (Silas, 05.10.2026: „im Darkmode irgendwie etwas
+unstimmig“): vorher lagen Seite, Schiene, getönte Kacheln und Karten auf 0,18/0,225/0,235/0,285
+ohne Ordnung, die Karte auf derselben Stufe wie die Modulkachel.
 
 | Token | Aufgabe | hell OKLCH L | hell | dunkel OKLCH L | dunkel |
 |---|---|---|---|---|---|
-| `--grau-1` | schwebende Flächen: Karte, Blatt, Dialog, gewähltes Segment | 0,995 | `#fdfdff` | 0,285 | `#292a2c` |
-| `--grau-2` | Seite | 0,980 | `#f7f8fb` | 0,180 | `#111213` |
-| `--grau-3` | Kontextkachel, Segment-Schiene, Fläche der Tagesansicht beim Zeigen | 0,955 | `#eef0f3` | 0,225 | `#1b1c1e` |
-| `--grau-4` | Stunden- und Tageslinien | 0,925 | `#e5e6e9` | 0,250 | `#202224` |
-| `--grau-5` | Trennlinien, Rand schwebender Flächen | 0,885 | `#d7d9dc` | 0,300 | `#2d2e30` |
-| `--grau-6` | Rand von Knöpfen ohne Modul (Segmente, Teilen); dunkel die Fläche der Kontextkachel | 0,800 | `#bcbec0` | 0,380 | `#414244` |
-| `--grau-7` | Rand von Eingabefeldern und Auswahlfeldern (3:1) | 0,600 | `#7f8083` | 0,560 | `#737477` |
-| `--grau-8` | Symbole | 0,540 | `#6d6f71` | 0,640 | `#8b8c8f` |
-| `--grau-9` | Zweittext: Zeitachse, Zähler, Datenstand, Fußzeile | 0,450 | `#545557` | 0,780 | `#b6b7ba` |
-| `--grau-10` | Text, Tinte, Fokusring, Hauptaktion | 0,235 | `#1d1e20` | 0,940 | `#e9ebee` |
+| `--grau-1` | erhöhte Fläche in der Seite: Modulkachel, mögliche Kachel (`hauch`), gewähltes Segment, Auswahl- und Eingabefeld | 0,995 | `#fdfdff` | 0,27 | `#252628` |
+| `--ebene` | schwebende Flächen: Karte, Blatt, Dialog. Hell gleich `--grau-1`, die Höhe macht der Schatten | 0,995 | `#fdfdff` | 0,315 | `#303234` |
+| `--grau-2` | Seite | 0,980 | `#f7f8fb` | 0,18 | `#111213` |
+| `--grau-3` | eingelassen: Segment-Schiene, Leiste, zurückgenommene Kachel | 0,955 | `#eef0f3` | 0,225 | `#1b1c1e` |
+| `--grau-4` | Stunden- und Tageslinien | 0,925 | `#e5e6e9` | 0,25 | `#202224` |
+| `--grau-5` | Trennlinien, Rand der Modulkachel und der zurückgenommenen Kachel | 0,885 | `#d7d9dc` | 0,31 | `#2f3032` |
+| `--grau-6` | Rand von Knöpfen ohne Modul (Segmente, Teilen); dunkel die Fläche der Kontextkachel | 0,800 | `#bcbec0` | 0,40 | `#46484a` |
+| `--grau-7` | Rand von Eingabefeldern und Auswahlfeldern (3:1) | 0,600 | `#7f8083` | 0,56 | `#737477` |
+| `--grau-8` | Symbole | 0,540 | `#6d6f71` | 0,64 | `#8b8c8f` |
+| `--grau-9` | Zweittext: Zeitachse, Zähler, Datenstand, Fußzeile; hell die Fläche der Kontextkachel | 0,450 | `#545557` | 0,81 | `#bfc1c3` |
+| `--grau-10` | Text, Tinte, Fokusring, Hauptaktion | 0,235 | `#1d1e20` | 0,93 | `#e6e8ea` |
 
-Im dunklen Schema heißt höher heller: Karten liegen auf `--grau-1` (heller als die Seite) mit
-1 px Rand `rgb(255 255 255 / .08)`, nicht mit Schatten.
+**Dunkel: je höher, desto heller, vier Stufen im Abstand 0,045** — Seite 0,18 (Ton 6, nie reines
+Schwarz), eingelassen 0,225, erhöht 0,27, schwebend 0,315. Schwebende Flächen tragen dunkel keinen
+Schatten, sondern 1 px `--rand-ebene` (`rgb(255 255 255 / .1)`). **Schrift** 0,93 und 0,81 statt
+etwa 87/60 % Weiß aus dem Masterfile: Bei 60 % (L ≈ 0,70) fiele der Zweittext auf der Karte unter
+7:1 (5,0); mit 0,81 hält er 7,13:1 auf `--ebene` und bleibt deutlich unter der Hauptschrift.
+
+**Rollen-Tokens** (V-0236): Wo ein Zustand je Schema eine andere Stufe braucht, steht eine Rolle
+statt einer Stufe in der Regel, und Kachel und Legende lesen dieselbe:
+
+| Token | Aufgabe | hell | dunkel |
+|---|---|---|---|
+| `--kontext-flaeche`, `--kontext-text` | Kontextkachel und ihr Feld in der Legende | `--grau-9`, `--grau-1` | `--grau-6`, `--grau-10` |
+| `--ebene`, `--rand-ebene`, `--schatten` | schwebende Ebene | `#fdfdff`, `--grau-5`, zweilagig | `#303234`, `rgb(255 255 255 / .1)`, keiner |
+
+**Für neue Ansichten** (der Hello-Screen, V-0234): nur diese Tokens benutzen, keine Hex-Werte in
+Regeln. Seite `--grau-2`; Karte oder Zeile in der Seite `--grau-1` mit Rand `--grau-5`; schwebend
+`--ebene` mit `--rand-ebene` und `--schatten`; Schiene `--grau-3`, gewähltes Segment `--grau-1` mit
+Rand `--grau-6`; Text `--grau-10`, Zweittext `--grau-9`; die eine Hauptaktion `--grau-10` mit
+Schrift `--grau-1`. Im dunklen Block von `web/stil.css` stehen **nur Tokens**, keine Regel
+(`web/tests/farben.test.mjs` prüft es): Was ein Schema anders braucht, wird ein Token.
 
 ### 5.3 Modulfarben
 
@@ -532,25 +554,42 @@ Acht Farbtöne, je vier Rollen. Ein Modul bekommt die Farbe nach seiner Stelle i
 ist so gelegt, dass Nachbarn sich stark unterscheiden. Für fünf Module: Blau, Sand, Grün, Rosé,
 Türkis. Rot (um 27) und reines Gelb bleiben den Signalen.
 
-Regel (Chroma wird gesenkt, bis die Farbe in sRGB liegt):
+Regel (Chroma wird gesenkt, bis die Farbe in sRGB liegt). Dunkel entsättigt (V-0236: Rand 0,095
+statt 0,11, Flächen 0,055 statt 0,075), damit nichts flimmert; der Ton bleibt, nur die Helligkeit
+folgt dem Schema, so dass ein Modul in beiden gleich erkennbar ist.
 
 | Rolle | Aufgabe | hell L / C | dunkel L / C |
 |---|---|---|---|
-| `hauch` | Fläche der möglichen Kachel. Hell seit V-0225 ohne Tönung (`#fdfdff`, Silas: weniger blasse Pastellflächen) | 0,995 / 0 | 0,235 / 0,030 |
-| `rand` | Rand der möglichen Kachel und des offenen Formats, Farbpunkt | 0,62 / ≤ 0,12 | 0,68 / 0,11 |
-| `flaeche` | Fläche des gewählten Formats, der automatisch eingeplanten Kachel, dunkel auch der gewählten Kachel | 0,87 / ≤ 0,075 | 0,40 / ≤ 0,075 |
-| `tinte` | Schrift und Symbole auf `flaeche`, gestrichelter Rand der automatischen Kachel; hell die Fläche der gewählten Kachel (Schrift `--grau-1`) | 0,33 / ≤ 0,08 | 0,96 / ≤ 0,025 |
+| `hauch` | Fläche der möglichen Kachel, **neutral**: gleich `--grau-1`, in beiden Schemata ohne Tönung (hell seit V-0225, Silas: weniger blasse Pastellflächen; dunkel seit V-0236, vorher je Modul getönt, ein Flickenteppich) | 0,995 / 0 | 0,27 / 0 |
+| `rand` | Rand der möglichen Kachel und des offenen Formats, Farbpunkt | 0,62 / ≤ 0,12 | 0,70 / 0,095 |
+| `flaeche` | Fläche des gewählten Formats und der automatisch eingeplanten Kachel | 0,87 / ≤ 0,075 | 0,35 / 0,055 |
+| `tinte` | Fläche der gewählten Kachel (Schrift `--grau-1`); Schrift und Symbole auf `flaeche`, gestrichelter Rand der automatischen Kachel | 0,33 / ≤ 0,08 | 0,87 / 0,055 |
 
 | | Ton | hell `hauch` | `rand` | `flaeche` | `tinte` | dunkel `hauch` | `rand` | `flaeche` | `tinte` |
 |---|---|---|---|---|---|---|---|---|---|
-| `--m1` Blau | 250 | `#fdfdff` | `#488acb` | `#b4d8ff` | `#0e375c` | `#131f2c` | `#619dda` | `#254a6e` | `#e9f3ff` |
-| `--m2` Sand | 80 | `#fdfdff` | `#ac7d1b` | `#eecf9c` | `#483000` | `#261c0d` | `#bc9041` | `#5d420e` | `#fbf0e0` |
-| `--m3` Grün | 150 | `#fdfdff` | `#4a9a5e` | `#b2e3bb` | `#0d401e` | `#142216` | `#63ab74` | `#265331` | `#e7f7e9` |
-| `--m4` Rosé | 350 | `#fdfdff` | `#bb6690` | `#fbc1db` | `#53223b` | `#291820` | `#cb7ba2` | `#65364d` | `#ffecf4` |
-| `--m5` Türkis | 200 | `#fdfdff` | `#03999f` | `#98e4e8` | `#003e41` | `#0a2224` | `#20acb3` | `#005356` | `#dff7f8` |
-| `--m6` Violett | 300 | `#fdfdff` | `#9274c3` | `#dbcaff` | `#3c2a58` | `#201b2a` | `#a388d2` | `#4e3e6a` | `#f4efff` |
-| `--m7` Orange | 50 | `#fdfdff` | `#bf6e3e` | `#fec7a9` | `#552707` | `#2a1a11` | `#cf8358` | `#683b20` | `#ffeee5` |
-| `--m8` Oliv | 115 | `#fdfdff` | `#848e2d` | `#d2dba2` | `#343900` | `#1e200f` | `#96a04c` | `#474c17` | `#f1f4e1` |
+| `--m1` Blau | 250 | `#fdfdff` | `#488acb` | `#b4d8ff` | `#0e375c` | `#252628` | `#70a3d8` | `#233c56` | `#bad8f8` |
+| `--m2` Sand | 80 | `#fdfdff` | `#ac7d1b` | `#eecf9c` | `#483000` | `#252628` | `#bd9857` | `#4a3716` | `#e8d1ac` |
+| `--m3` Grün | 150 | `#fdfdff` | `#4a9a5e` | `#b2e3bb` | `#0d401e` | `#252628` | `#72af7f` | `#24432b` | `#bcdfc2` |
+| `--m4` Rosé | 350 | `#fdfdff` | `#bb6690` | `#fbc1db` | `#53223b` | `#252628` | `#cb86a7` | `#502e3f` | `#f2c6d9` |
+| `--m5` Türkis | 200 | `#fdfdff` | `#03999f` | `#98e4e8` | `#003e41` | `#252628` | `#48b0b6` | `#0a4346` | `#aae0e2` |
+| `--m6` Violett | 300 | `#fdfdff` | `#9274c3` | `#dbcaff` | `#3c2a58` | `#252628` | `#a791d1` | `#3f3453` | `#d9cdf4` |
+| `--m7` Orange | 50 | `#fdfdff` | `#bf6e3e` | `#fec7a9` | `#552707` | `#252628` | `#ce8d68` | `#52321f` | `#f3cbb5` |
+| `--m8` Oliv | 115 | `#fdfdff` | `#848e2d` | `#d2dba2` | `#343900` | `#252628` | `#9ca65f` | `#3a3e1a` | `#d2d9b0` |
+
+**Zustandslogik, in beiden Schemata dieselbe Regel** (V-0236; vorher hatte das dunkle Schema eigene
+Regeln, dort waren eingeplant und automatisch gleich gefüllt und kaum von wählbar zu trennen). Ein
+Schema tauscht nur Tokens. Die Stärke ist die Entfernung zur Seite:
+
+| Zustand | Regel | hell | dunkel |
+|---|---|---|---|
+| wählbar | neutral `hauch`, 1 px `rand` | weiß, Rand farbig | erhöht 0,27, Rand farbig |
+| eingeplant | gefüllt `tinte`, Schrift `--grau-1` — die stärkste Fläche | dunkelste (0,33) | hellste (0,87) |
+| automatisch | gefüllt `flaeche`, Schrift und gestrichelter Rand `tinte` — eine Stufe leiser | 0,87 | 0,35 |
+| anderswo eingeplant | `--kontext-flaeche`, `--kontext-text` — grau gefüllt | 0,45 | 0,40 |
+| Format schon gewählt | `--grau-3`, Rand `--grau-5`, Schrift `--grau-9` — blass, eingelassen | 0,955 | 0,225 |
+
+Die Legende benennt die Zustände nach der Rolle („grau“, „blass“), nicht nach einem Farbton, und
+ihre Felder für grau und blass stehen in derselben CSS-Regel wie die Kachel.
 
 Farbe ist nie das einzige Merkmal: Die Kachel nennt Modul oder Typ als Text (Stufe L/M), der
 Format steht unter seinem Modulnamen, und gewählt/möglich
@@ -569,27 +608,31 @@ unterscheidet sich durch gefüllt/umrandet und den Haken. Das trägt auch bei Fa
 
 ### 5.5 Kontraste, nachgerechnet
 
-WCAG-2-Kontrast aus den Hex-Werten oben, kleinster Wert über alle acht Modulfarben. Gerechnet am
-05.10.2026, nicht gerundet. Ziel für Text 7:1, Pflicht 4,5:1, Nicht-Text 3:1.
+WCAG-2-Kontrast aus den Hex-Werten oben, kleinster Wert über alle acht Modulfarben. Dunkel neu
+gerechnet am 05.10.2026 (V-0236), nicht gerundet. Ziel für Text 7:1, Pflicht 4,5:1, Nicht-Text 3:1.
+`ops/sicht.py` prüft die Paare in beiden Schemata (Prüfung 8a) und jeden sichtbaren Text (8b).
 
 | Paar | hell | dunkel | Ziel |
 |---|---|---|---|
-| Text `--grau-10` auf Seite `--grau-2` | 15,71 | 15,70 | 7 |
-| Text auf Karte `--grau-1` | 16,42 | 12,03 | 7 |
-| Zweittext `--grau-9` auf Seite | 7,03 | 9,35 | 7 |
-| Zweittext auf Karte | 7,35 | 7,16 | 7 |
-| zurückgenommene Kachel: `--grau-9` auf `--grau-3` | 6,54 | 8,50 | 4,5 |
-| Kontextkachel hell: `--grau-1` auf `--grau-9` | 7,35 | 7,16 | 7 |
-| Kontextkachel dunkel: `--grau-10` auf `--grau-6` | 8,95 | 8,42 | 7 |
-| gewählte Kachel hell: `--grau-1` auf `tinte` | 11,68 | 12,69 | 7 |
-| Text `--grau-10` auf `hauch` (mögliche Kachel) | 16,42 | 13,84 | 7 |
-| `tinte` auf `flaeche` (gewählte Kachel, Haken) | 8,25 | 7,93 | 7 |
-| `rand` auf Seite (Kachelrand, Chiprand, Farbpunkt) | 3,26 | 6,16 | 3 |
-| `rand` auf Karte | 3,40 | 4,72 | 3 |
+| Text `--grau-10` auf Seite `--grau-2` | 15,71 | 15,27 | 7 |
+| Text auf Karte `--ebene` | 16,42 | 10,48 | 7 |
+| Text auf erhöhter Fläche `--grau-1` | 16,42 | 12,33 | 7 |
+| Zweittext `--grau-9` auf Seite | 7,03 | 10,39 | 7 |
+| Zweittext auf Karte `--ebene` | 7,35 | 7,13 | 7 |
+| Zweittext auf `--grau-1` | 7,35 | 8,39 | 7 |
+| zurückgenommene Kachel: `--grau-9` auf `--grau-3` | 6,54 | 9,45 | 4,5 |
+| Kontextkachel: `--kontext-text` auf `--kontext-flaeche` | 7,35 | 7,48 | 7 |
+| `--grau-1` auf `--grau-9` (Paar in sicht.py) | 7,35 | 8,39 | 7 |
+| `--grau-10` auf `--grau-6` (Paar in sicht.py) | 8,95 | 7,48 | 7 |
+| gewählte Kachel: `--grau-1` auf `tinte` | 11,68 | 9,99 | 7 |
+| Text `--grau-10` auf `hauch` (mögliche Kachel) | 16,42 | 12,33 | 7 |
+| `tinte` auf `flaeche` (automatische Kachel, gewähltes Format) | 8,25 | 7,57 | 7 |
+| `rand` auf Seite (Kachelrand, Chiprand, Farbpunkt) | 3,26 | 6,70 | 3 |
+| `rand` auf `--grau-1` (Modulkachel, mögliche Kachel) | 3,40 | 5,41 | 3 |
 | Rand der Eingabefelder `--grau-7` auf Seite | 3,72 | 4,01 | 3 |
 | Symbole `--grau-8` auf Seite | 4,75 | 5,58 | 3 |
-| Fokusring `--grau-10` auf Seite | 15,71 | 15,70 | 3 |
-| Hauptaktion: `--grau-1` auf `--grau-10` | 16,42 | 12,03 | 7 |
+| Fokusring `--grau-10` auf Seite | 15,71 | 15,27 | 3 |
+| Hauptaktion: `--grau-1` auf `--grau-10` | 16,42 | 12,33 | 7 |
 | Konfliktring auf Seite | 5,07 | 6,04 | 3 |
 | Konflikttext auf Seite | 7,03 | 9,69 | 4,5 |
 | Konflikttext auf Konfliktfläche | 6,50 | 7,94 | 4,5 |
@@ -597,9 +640,10 @@ WCAG-2-Kontrast aus den Hex-Werten oben, kleinster Wert über alle acht Modulfar
 | Hinweistext auf Hinweisfläche | 6,48 | 9,55 | 4,5 |
 
 Zwei Folgerungen stehen schon in §3.2: Der Konfliktring liegt **außen mit 1 px Luft** in
-Seitenfarbe, weil Rot neben der dunklen Modulfläche nur 2,85:1 hätte. Symbole in Kacheln haben
-die Schriftfarbe der Kachel. Auf farbigen Flächen steht nie Grau, sondern die `tinte` desselben
-Tons. Ändert jemand einen Wert, rechnet er diese Tabelle neu.
+Seitenfarbe, weil Rot neben der gefüllten Kachel nur 2,20:1 (hell) bzw. 2,05:1 (dunkel) hätte.
+Symbole in Kacheln haben die Schriftfarbe der Kachel. Auf farbigen Flächen steht nie ein mittleres
+Grau, sondern die `tinte` desselben Tons oder, auf `tinte` selbst, `--grau-1` (hell fast weiß,
+dunkel fast schwarz). Ändert jemand einen Wert, rechnet er diese Tabelle neu.
 
 ### 5.6 Abstände
 
@@ -632,13 +676,14 @@ gelten für Werbeseiten, nicht für dieses Werkzeug.
 ### 5.8 Radien und Tiefe
 
 - **Radien:** 4 px (Kacheln), 6 px (Formate), 8 px (Knöpfe, Segmente, Auswahlfelder, Meldung),
-  12 px (Modulkacheln, Karten, Dialog, obere Ecken des Blatts), rund (Farbpunkt, Zahl am Knopf). Verschachtelt gilt:
+  12 px (Modulkacheln, Karten, Dialog, obere Ecken des Blatts), rund (Farbpunkt). Verschachtelt gilt:
   innen = außen − Innenabstand (Segment in einer Schiene mit 8 px und 2 px Rand: 6 px).
 - **Ringe** (Überschneidung rot, Hinweis Bernstein, Gruppe beim Zeigen Tinte) sind `outline` mit
   1 px Abstand, kein Schatten: Schatten gehören nur den schwebenden Ebenen.
 - **Tiefe:** Die Seite ist flach. Schatten haben nur schwebende Ebenen (Karte, Blatt, Dialog,
   Meldung), zweilagig aus einer Lichtquelle: `0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12)`,
-  dazu 1 px Rand `--grau-5`. Dunkel: kein Schatten, Höhe über `--grau-1` und den hellen 1-px-Rand.
+  dazu 1 px Rand `--grau-5`. Dunkel: kein Schatten, Höhe über die hellere Fläche `--ebene` und den
+  hellen 1-px-Rand `rgb(255 255 255 / .1)` (§5.2).
   Kein Schein, kein Glas, keine Unschärfe.
 
 ### 5.9 Zustände
@@ -941,3 +986,18 @@ findet.
   Ohne Speichern ist nicht zu wissen, dass ein Format früher nur eine Gruppe hatte; gespeichert
   werden darf je Format nur `group`, `digest`, `name` (ARCHITEKTUR §6). Das Format erscheint dann
   einfach wieder als offen.
+- **V-0236, dunkles Schema neu geordnet** (Silas, 05.10.2026: „im Darkmode irgendwie etwas
+  unstimmig“; gemessen in beiden Schemata, alle Flächen und Zustände): die mögliche Kachel dunkel
+  neutral statt je Modul getönt; eingeplant dunkel die hellste Fläche (`tinte`, vorher `flaeche`
+  wie automatisch); eine eigene schwebende Stufe `--ebene` für Karte, Blatt und Dialog; Rollen
+  `--kontext-flaeche`/`--kontext-text`; Akzente dunkel entsättigt; Schrift 0,93/0,81 statt der
+  87/60 % des Masterfiles, damit der Zweittext auf der Karte 7:1 hält (§5.2). Die Legende sagt
+  „grau“ und „blass“ statt „dunkelgrau“ und „hellgrau“ (§3.1). Der dunkle Block in `web/stil.css`
+  enthält nur Tokens; `web/tests/farben.test.mjs` hält das fest, dazu neutrale `hauch`, gleiche
+  Werte in `recht.css` und eine gemeinsame Regel für Kachel und Legendenfeld. Die nicht mehr
+  benutzte Klasse `.zahl` (Zahl am Knopf, seit V-0225 ohne Markup) ist entfernt. Der Studiengang
+  füllt die Kopfzeile, sonst blieb links vom Knopfpaar ein Rest außerhalb des 4-px-Rasters (53 px
+  bei 865 px, §5.6).
+- **Nicht geändert (V-0236):** das helle Schema (Werte und Aussehen wie von Silas getestet) und der
+  schwebende Umschalter am Handy; er bleibt dunkel auf `--grau-3` mit hellem Rand, damit das
+  gewählte Segment heller ist als seine Schiene.
