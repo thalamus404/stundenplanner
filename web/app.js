@@ -199,8 +199,42 @@ async function teilen() {
 
 // ── Zeichnen ───────────────────────────────────────────────────────────────────────────────────
 
+// Die Zonen werden per innerHTML neu gezeichnet; das Element mit dem Fokus verschwände dabei, und
+// der Fokus fiele auf <body>. Mit der Tastatur hieß das: Chip, Segment oder ‹ › einmal auslösen,
+// dann ist man raus, ein zweites Enter tut nichts (V-0224, gefunden beim Paritätsdurchlauf). Deshalb
+// merkt render() sich, welches Bedienelement den Fokus hatte, und gibt ihn dem neuen Gegenstück.
+const MERKMALE = ['data-act', 'data-set', 'data-teil', 'data-k', 'data-v', 'data-d', 'data-tag', 'data-m', 'data-ebene'];
+
+function fokusMerken() {
+  const f = document.activeElement;
+  if (!f || !$('seite').contains(f)) return null;
+  if (f.closest('#koerper')) return 'kachel';
+  // Kopf und Fuß stehen fest im HTML und werden nicht ersetzt: Dort bleibt der Fokus von selbst.
+  return f.closest('#module, #werkzeug, #tage, #leiste') ? MERKMALE.map((a) => f.getAttribute(a)) : null;
+}
+
+function fokusZurueck(sig) {
+  if (!sig || (document.activeElement && document.activeElement !== document.body)) return;
+  if (sig === 'kachel') {
+    const k = $('koerper').querySelector('.k-flaeche[tabindex="0"]');
+    if (k) k.focus({ preventScroll: true });
+    return;
+  }
+  const passt = [...$('seite').querySelectorAll('button, select')].find((x) => MERKMALE.every((a, i) => x.getAttribute(a) === sig[i]));
+  // Wird das Gegenstück gesperrt (› in der letzten Woche) oder fällt es weg („Ganze Woche“), geht
+  // der Fokus an das, womit man weitermacht: Zeitraum-Feld bzw. Tageskopf.
+  const ersatz = sig[0] === 'zeit' ? $('seite').querySelector('select[data-set="zeitraum"]') : sig[0] === 'woche' ? $('tage').querySelector('.tag') : null;
+  const ziel = passt && !passt.disabled && passt.offsetParent !== null ? passt : ersatz;
+  if (ziel) ziel.focus({ preventScroll: true });
+}
+
 function render(mitRaster = true) {
   if (!plan) return;
+  const sig = fokusMerken();
+  try { zeichne(mitRaster); } finally { fokusZurueck(sig); }
+}
+
+function zeichne(mitRaster) {
   ({ selected, missing } = A.auswerten(plan, bestand, vorschau ? vorschau.auswahl : eigene));
   paare = W.conflictPairs(selected);
   partner = new Map();
@@ -594,7 +628,10 @@ function ebene(name, anker) {
 function karteGruppe(b) {
   const g = finde(b.dataset.key);
   if (!g) return;
-  const s = g.slots.find((x) => String(x.day) === b.dataset.tag) || g.slots[0];
+  // Tag UND Beginn: Eine Gruppe kann an einem Tag zwei Termine haben, und Raum und Termine der
+  // Karte gehören zu dem, der angeklickt wurde.
+  const k = b.closest('.kachel');
+  const s = g.slots.find((x) => String(x.day) === b.dataset.tag && (!k || x.start === k.dataset.start)) || g.slots.find((x) => String(x.day) === b.dataset.tag) || g.slots[0];
   const fokus = b.dataset.fokus;
   z.fokus = fokus;
   const zurueck = () => $('koerper').querySelector(`.k-flaeche[data-fokus="${CSS.escape(fokus)}"]`);
@@ -651,7 +688,9 @@ const AKTIONEN = {
     const zurueck = offen && offen.zurueck;
     if (offen) schliesse(true);
     waehle(key);
-    const ziel = zurueck && zurueck();
+    // Aus der Karte zurück zur Kachel; gibt es sie nicht mehr (in „Mein Plan“ gelöst), dann an den
+    // Tabulatorhalt des Rasters, damit der Fokus nicht auf <body> fällt.
+    const ziel = (zurueck && zurueck()) || $('koerper').querySelector('.k-flaeche[tabindex="0"]');
     if (ziel && b.closest('.ebene')) ziel.focus({ preventScroll: true });
   },
   geprueft: (b) => { const g = finde(b.dataset.key); if (g && !vorschau) aendere(A.bestaetige(eigene, g.component_id, g)); },
