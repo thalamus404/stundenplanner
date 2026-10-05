@@ -261,6 +261,14 @@ def lauf_innen(zustand):
                                 for m in re.findall(r'data-luecke="([^"]+)"', p.read_text(encoding='utf-8', errors='replace')))
     for luecke in zustand['luecken']:
         log.warning('Lücke in der Seite: %s', luecke)
+    # DER STAND DER SEITE (V-0230, Punkt 0c0eed42): /api/stand sagt, welcher Commit ausgeliefert
+    # ist. Der TOWER fragt dort (Haken `laeuft`, Nachweis der Freigabe) — eine statische Seite hat
+    # keine Route, also liefert sie eine Datei an genau dieser Stelle aus; `_headers` gibt ihr den
+    # JSON-Typ. Bis V-0230 antwortete dort nichts, und der Nachweis der ersten Freigabe fiel rot,
+    # obwohl die Seite den neuen Stand trug.
+    (AUSLIEFERN / 'api').mkdir(parents=True, exist_ok=True)
+    (AUSLIEFERN / 'api' / 'stand').write_text(json.dumps(
+        {'stand': commit, 'zweig': STAND, 'erzeugt_am': jetzt_iso()}, ensure_ascii=False) + '\n', encoding='utf-8')
     return ausliefern(commit, protokoll)
 
 
