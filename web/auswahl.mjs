@@ -36,7 +36,7 @@ export function alterSchluessel(plan) {
 }
 
 /** Nur die erlaubten Felder, nur Zeichenketten. Alles andere (auch ein altes `at`) fällt weg.
- *  `group: null` heißt ausdrücklich abgewählt (die einzige Gruppe eines Formats, siehe auswerten). */
+ *  `group: null` stammt aus V-0225 (abgewählte einzige Gruppe); seit V-0237 heißt es dasselbe wie kein Eintrag. */
 function bereinigt(roh) {
   const out = {};
   if (!roh || typeof roh !== 'object' || Array.isArray(roh)) return out;
@@ -145,12 +145,12 @@ export function waehle(auswahl, componentId, gruppe) {
   return { ...auswahl, [componentId]: { group: gruppe.id, digest: gruppe.digest || '', name: gruppe.name || '' } };
 }
 
-/** Lösen. Hat das Format nur eine Gruppe (einzig), wird die Abwahl gespeichert, sonst wäre sie
- *  gleich wieder automatisch eingeplant: eine aktive Wahl, also darf sie in den Speicher. */
-export function loese(auswahl, componentId, einzig = false) {
+/** Lösen: Der Eintrag fällt weg. Hat das Format nur eine Gruppe, ist sie danach wieder ein Vorschlag
+ *  (V-0237); bis dahin wurde die Abwahl als `group: null` gespeichert, weil sie sonst automatisch
+ *  wieder eingeplant war. */
+export function loese(auswahl, componentId) {
   const out = { ...auswahl };
-  if (einzig) out[componentId] = { group: null, digest: '', name: '' };
-  else delete out[componentId];
+  delete out[componentId];
   return out;
 }
 
@@ -161,16 +161,17 @@ export function fortschritt(parts) {
   return { n: mit.length, k: mit.filter((c) => c.groups.some((g) => g.selected)).length };
 }
 
-/** Die einzige Gruppe mit Terminen eines Formats, sonst null (Silas, 05.10.2026, V-0225). Ein offenes
- *  Angebot (`gruppen: keine`, V-0233) ist keine Wahl und wird auch mit einer Gruppe nicht eingeplant. */
+/** Die einzige Gruppe mit Terminen eines Formats, sonst null: ein Vorschlag (V-0237). Ein offenes
+ *  Angebot (`gruppen: keine`, V-0233) ist keine Wahl und wird auch mit einer Gruppe nicht vorgeschlagen. */
 export function einzige(c) {
   if (c.gruppen === 'keine') return null;
   const mit = (c.groups || []).filter((g) => (g.slots || []).length);
   return mit.length === 1 ? mit[0] : null;
 }
 
-/** Die wirksame Auswahl (ausdrücklich gewählt und automatisch), im Speicherformat: für den Export.
- *  Bei `gruppen: alle` gelten mehrere Gruppen eines Bestandteils: `group` ist dann eine Liste. */
+/** Die wirksame Auswahl, im Speicherformat: für den Export. Nur Eingeplantes; Vorschläge zählen
+ *  erst nach „Einplanen“ (Silas, 05.10.2026, V-0237). Bei `gruppen: alle` gelten mehrere Gruppen
+ *  eines Bestandteils: `group` ist dann eine Liste. */
 export function wirksameAuswahl(selected) {
   const out = {};
   for (const g of selected) {
@@ -220,10 +221,13 @@ export function bestand(plan) {
 }
 
 /**
- * Wendet eine Auswahl auf den Bestand an: selected, changed, selection und missing, mit den
- * Regeln von load() im Vorbild. Neu (Silas, 05.10.2026): Ein Format mit genau einer Gruppe ohne
- * Eintrag ist automatisch eingeplant (g.auto). Berechnet, nie gespeichert: Laden schreibt nichts.
- * Hat es später eine zweite Gruppe, ist es wieder offen. `group: null` heißt ausdrücklich abgewählt.
+ * Wendet eine Auswahl auf den Bestand an: selected, changed, selection, vorschlag und missing, mit
+ * den Regeln von load() im Vorbild. Berechnet, nie gespeichert: Laden schreibt nichts.
+ * - selected: eingeplant, also ausdrücklich gewählt. Nur das zählt im Fortschritt, in den
+ *   Überschneidungen und im Export.
+ * - vorschlag (Silas, 05.10.2026, V-0237; ersetzt „automatisch eingeplant“ aus V-0225): Ein Format
+ *   mit genau einer Gruppe ohne Eintrag schlägt sie vor; bei `gruppen: alle` alle Gruppen mit
+ *   Terminen. Gestrichelt, nicht eingeplant, bis jemand „Einplanen“ drückt.
  * - changed: gewählt, aber der Fingerabdruck der Auswahl ≠ dem der Gruppe
  * - missing: eine gespeicherte Gruppe, die es nicht mehr gibt (Bestandteil da, Gruppe weg) oder
  *   deren Bestandteil ganz fehlt. Sie bleibt mit ihrem gespeicherten Namen sichtbar, bis man sie löst.
@@ -233,29 +237,28 @@ export function auswerten(plan, { groups, parts }, auswahl) {
   const ids = new Set();
   for (const c of parts) {
     ids.add(c.id);
-    const e = auswahl[c.id];
-    // `gruppen: alle` (V-0233): Die Gruppen sind Teile, man besucht alle. Keine Wahl: alle mit
-    // Terminen gelten als eingeplant (gestrichelt wie automatisch), bis jemand das Format löst
-    // (`group: null`). Eine einzelne gespeicherte Gruppe aus der Zeit davor zählt nicht mehr.
+    // `group: null` (V-0225, abgewählte einzige Gruppe) gilt wie kein Eintrag: wieder ein Vorschlag.
+    const e = auswahl[c.id] && auswahl[c.id].group !== null ? auswahl[c.id] : null;
+    const mit = c.groups.filter((g) => g.slots.length);
+    // `gruppen: alle` (V-0233): Die Gruppen sind Teile, man besucht alle. Eingeplant wird das Format
+    // als Ganzes: Steht irgendeine seiner Gruppen in der Auswahl, gelten alle.
     if (c.gruppen === 'alle') {
-      const ab = !!e && e.group === null;
-      const mit = c.groups.filter((g) => g.slots.length);
-      c.selection = !ab && mit.length ? mit[0].id : null;
+      c.selection = e && mit.length ? mit[0].id : null;
       for (const g of c.groups) {
-        g.auto = !ab && mit.includes(g);
-        g.selected = g.auto;
+        g.selected = !!e && mit.includes(g);
+        g.vorschlag = !e && mit.includes(g);
         g.changed = false;
       }
       continue;
     }
-    const auto = e ? null : einzige(c);
-    c.selection = e ? e.group : auto && auto.id;
+    const vor = e ? null : einzige(c);
+    c.selection = e ? e.group : null;
     for (const g of c.groups) {
-      g.auto = g === auto;
-      g.selected = g.auto || (!!e && e.group === g.id);
-      g.changed = !!e && g.selected && e.digest !== g.digest;
+      g.selected = !!e && e.group === g.id;
+      g.vorschlag = g === vor;
+      g.changed = g.selected && e.digest !== g.digest;
     }
-    if (e && e.group !== null && !c.groups.some((g) => g.selected)) {
+    if (e && !c.groups.some((g) => g.selected)) {
       missing.push({ component_id: c.id, module_short: c.module.short, type: c.type, group_id: e.group, name: e.name });
     }
   }

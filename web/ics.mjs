@@ -114,8 +114,8 @@ export function dateiName(plan) {
 
 /**
  * Die Einzeltermine der gewählten Gruppen, in der Reihenfolge des Plans, jeder Termin einmal.
- * `auswahl` ist die WIRKSAME Auswahl der Seite: ausdrücklich gewählte Gruppen und die, die von
- * selbst eingeplant sind, weil ihr Bestandteil nur eine Gruppe hat (Silas, 05.10.2026). Eine
+ * `auswahl` ist die WIRKSAME Auswahl der Seite: die eingeplanten Gruppen. Vorschläge (die einzige
+ * Gruppe eines Formats) zählen erst nach „Einplanen“ (Silas, 05.10.2026, V-0237). Eine
  * bewusste Abwahl steht dort als `group: null` und liefert nichts, ebenso eine Gruppe ohne Termine
  * und eine gespeicherte Gruppe, die es im Plan nicht mehr gibt (die Seite nennt sie schon als
  * „nicht mehr im Angebot“). Liest den Plan nur, auch nach bestand() (mit Rückverweisen).

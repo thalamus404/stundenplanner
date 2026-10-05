@@ -214,11 +214,17 @@ class Stressfall(unittest.TestCase):
         self.assertEqual(len(plan['modules']), 8)
         self.assertEqual(len(sicht.bestandteile(plan)), 20)
         self.assertTrue(plan['has_fortnightly'])
-        erw = sicht.erwartung(plan, {})
+        # Gemessen wird mit aufgeschlagenem Modul A (V-0237): seine Gruppen alle, die übrigen Module
+        # mit „Mein Stundenplan“ (ohne Auswahl: die Vorschläge, Formate mit genau einer Gruppe).
+        a = plan['modules'][0]['number']
+        erw = sicht.erwartung(plan, {}, modul=a)
         self.assertEqual(erw['achse'], [7, 21])
         self.assertEqual(erw['tage'], [0, 1, 2, 3, 4, 5])
-        # höchstens 6 gleichzeitig, und an einer Stelle genau 6 (Woche A, alles offen)
-        slots = [s for c in sicht.bestandteile(plan) for g in c['groups'] for s in g['slots'] if 0 in s['parity']]
+        gezeigt = [g for m in plan['modules'] for c in m['components']
+                   for g in (c['groups'] if m['number'] == a else sicht.im_plan(c, {}))]
+        self.assertEqual(len(gezeigt), 10 + 7, 'Modul A: 1 + 3 + 6 Gruppen; dazu je übriges Modul die VL als Vorschlag')
+        # höchstens 6 gleichzeitig, und an einer Stelle genau 6 (Woche A)
+        slots = [s for g in gezeigt for s in g['slots'] if 0 in s['parity']]
         spitze = 0
         for s in slots:
             t = sicht.stunde(s['start']) + 0.01

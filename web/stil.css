@@ -7,8 +7,9 @@
   --grau-6: #bcbec0; --grau-7: #7f8083; --grau-8: #6d6f71; --grau-9: #545557; --grau-10: #1d1e20;
   --konflikt: #cc2827; --konflikt-text: #a51f1e; --konflikt-flaeche: #ffebe8;
   --hinweis: #c17a00; --hinweis-text: #7b4c00; --hinweis-flaeche: #fef0d4;
-  /* Rollen (V-0236, §5.2): Kachel und Legende lesen dieselben Tokens. */
-  --kontext-flaeche: var(--grau-9); --kontext-text: var(--grau-1);
+  /* Rollen (V-0236, §5.2). Der Hinweis im Fuß tritt zurück (V-0237): hell der Zweittext, dunkel eine
+     Stufe dunkler; beide ≥ 4,5:1 auf der Seite (§5.5). */
+  --fuss-text: var(--grau-9);
   --ebene: #fdfdff;
   --rand-ebene: var(--grau-5);
   --schatten: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12);
@@ -37,7 +38,7 @@
     --grau-6: #46484a; --grau-7: #737477; --grau-8: #8b8c8f; --grau-9: #bfc1c3; --grau-10: #e6e8ea;
     --konflikt: #ef675c; --konflikt-text: #f8a59b; --konflikt-flaeche: #3b1c19;
     --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
-    --kontext-flaeche: var(--grau-6); --kontext-text: var(--grau-10);
+    --fuss-text: var(--grau-8);
     --ebene: #303234;
     --rand-ebene: rgb(255 255 255 / .1);
     --schatten: none;
@@ -132,10 +133,12 @@ button:active::after { opacity: .1; }
 .mitte { flex: 1 1 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 8px 24px; }
 .module { grid-row: 1 / 3; display: grid; align-content: start; gap: 8px; }
 .modul { min-width: 0; display: flex; flex-direction: column; padding: 2px 4px; border-radius: 12px; background: var(--grau-1); border: 1px solid var(--grau-5); }
-.modul.aktiv { border-color: var(--grau-10); outline: 1px solid var(--grau-10); }
+/* Gefiltert (Silas' zweiter Test, V-0237): kein Rahmen mehr um die Modulkachel; der Farbkreis ist ein
+   Ring und füllt sich, wenn das Modul aufgeschlagen ist. */
+.modul.aktiv .punkt { background: var(--rand); }
 .modul-name { display: flex; align-items: center; gap: 8px; min-width: 0; height: var(--zm); padding: 0 8px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
 .m-kurz { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.punkt { width: 12px; height: 12px; border-radius: 50%; background: var(--rand); flex: none; }
+.punkt { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--rand); flex: none; }
 .formate { display: flex; flex-wrap: wrap; gap: 0 4px; padding: 0 4px; }
 /* Ein Format: das Ziel ist 28 px (Touch 44 px), sichtbar nur die Pille darin. Überlage, Zustände
    und Ringe liegen auf der Pille, der Fokusring um das Ziel. */
@@ -231,7 +234,6 @@ button:active::after { opacity: .1; }
    Dunkle eigene, und eingeplant sah dort aus wie automatisch. */
 .kachel { position: absolute; container: kachel / size; color: var(--grau-10); }
 .kachel.gewaehlt { color: var(--grau-1); }
-.kachel.kontext { color: var(--kontext-text); }
 .kachel.zurueck { color: var(--grau-9); }
 .kachel:focus-within, .kachel.zeigen { z-index: 2; }
 .k-flaeche {
@@ -242,17 +244,27 @@ button:active::after { opacity: .1; }
 .k-flaeche:focus-visible { outline-offset: 4px; }
 .gewaehlt > .k-flaeche { background: var(--tinte); border-color: var(--tinte); }
 /* Legende und Kachel in einer Regel: Sie können nicht auseinanderlaufen (V-0236). */
-.kontext > .k-flaeche, .lg-k.kontext { background: var(--kontext-flaeche); border-color: var(--kontext-flaeche); }
+/* Mit Filter tritt „Mein Stundenplan“ außerhalb ganz zurück (Silas: etwa 20 % Deckkraft, V-0237):
+   dieselbe Kachel, nur durchscheinend. Vorher grau gefüllt. */
+.kachel.kontext, .lg-k.kontext { opacity: .2; }
+.lg-k.kontext { background: var(--grau-10); border-color: var(--grau-10); }
 .zurueck > .k-flaeche, .lg-k.zurueck { background: var(--grau-3); border-color: var(--grau-5); }
 .moeglich .k-2 { color: var(--grau-9); }
 /* Automatisch eingeplant, die einzige Gruppe eines Formats: gestrichelt (Silas, 05.10.2026). */
-.kachel.auto { color: var(--tinte); }
+/* Ein Vorschlag (V-0237, vorher „automatisch eingeplant“): die einzige Gruppe eines Formats, gestrichelt,
+   noch nicht eingeplant. */
+.kachel.vorschlag { color: var(--tinte); }
 /* Der gestrichelte Rand als outline nach innen: Ein 2-px-Rand nähme schmalen Kacheln den Platz. */
-.auto > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
-.format.auto .f-pille { border: 1px dashed var(--tinte); }
+.vorschlag > .k-flaeche { background: var(--flaeche); border-color: var(--flaeche); outline: 2px dashed var(--tinte); outline-offset: -2px; }
+.format.vorschlag .f-pille { border: 1px dashed var(--tinte); }
 /* Der Fokus schlägt den gestrichelten Rand: Sonst blieb die automatisch eingeplante Kachel mit dem
    Fokus unverändert, der Fokus unsichtbar (gemessen am Plan der HU Biologie, §8 #10, V-0234). */
-.auto > .k-flaeche:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 4px; }
+.vorschlag > .k-flaeche:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 4px; }
+/* Formate nach Sättigung (Silas' zweiter Test, V-0237): Vorlesung voll, Übung 70 %, alles andere 50 %.
+   saturate() hält die Helligkeit, die Kontraste aus §5.5 bleiben; Ringe (Überschneidung, Fokus) liegen
+   außerhalb und behalten ihre Farbe. */
+.kat-uebung > .k-flaeche, .format.kat-uebung .f-pille { filter: saturate(.7); }
+.kat-sonstige > .k-flaeche, .format.kat-sonstige .f-pille { filter: saturate(.5); }
 /* Ein offenes Angebot (`gruppen: keine`, V-0234) ist keine Wahl: neutral umrandet, nicht in Modulfarbe. */
 .format.frei .f-pille { border-color: var(--grau-6); color: var(--grau-9); }
 .kachel.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; border-radius: 4px; }
@@ -262,10 +274,15 @@ button:active::after { opacity: .1; }
 .k-typ, .k-mod, .k-titel { font-weight: 600; }
 .k-typ, .k-nr, .k-titel, .k-lang, .k-info, .k-ort, .k-akt { display: none; }
 .k-sym { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; }
+/* Der Knopf auf der Kachel (Silas' zweiter Test, V-0237): ein abgerundetes Quadrat in der Tinte des
+   Moduls mit einem Plus (Einplanen, Wechseln) bzw. hell mit einem Kreuz (Lösen), 24 px. Nur am Rechner
+   (feiner Zeiger, .aktionen); er passt auch auf schmale Kacheln, dort unten rechts. */
 .k-akt {
-  position: absolute; right: 4px; top: 4px; height: 24px; padding: 0 8px; border: 1px solid currentColor; border-radius: 6px;
-  font-size: 12px; line-height: 16px; align-items: center; white-space: nowrap;
+  position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border-radius: 8px;
+  place-items: center; background: var(--tinte); color: var(--grau-1);
 }
+.k-akt .i { width: 16px; height: 16px; stroke-width: 2.25; }
+.k-akt.kreuz { background: var(--grau-1); color: var(--tinte); }
 @container kachel (min-width: 96px) {
   .k-flaeche { padding: 4px 8px; }
   .k-kurz { display: none; }
@@ -282,10 +299,15 @@ button:active::after { opacity: .1; }
   .k-mod, .k-titel { font-size: 12px; line-height: 16px; }
 }
 /* Der Knopf sitzt ruhig oben rechts neben dem Titel, nur auf breiten Kacheln (Silas, V-0225). */
-@container kachel (min-width: 160px) and (min-height: 52px) {
-  .aktionen .k-akt { display: inline-flex; }
-  .aktionen .k-mod, .aktionen .k-titel { max-width: calc(100% - 80px); }
-  .aktionen .k-sym { top: auto; bottom: 8px; }
+@container kachel (min-width: 96px) and (min-height: 32px) {
+  .aktionen .k-akt { display: grid; }
+  .aktionen .mit-akt .k-mod, .aktionen .mit-akt .k-titel { max-width: calc(100% - 32px); }
+  .aktionen .mit-akt .k-sym { top: auto; bottom: 8px; }
+}
+/* Schmal, aber hoch genug (parallele Gruppen quetschen die Spur): das Plus unten rechts. */
+@container kachel (min-width: 32px) and (max-width: 95.9px) and (min-height: 52px) {
+  .aktionen .k-akt { display: grid; top: auto; bottom: 4px; right: 50%; transform: translateX(50%); }
+  .aktionen .mit-akt .k-sym { display: none; }
 }
 /* Schmaler als 80 px passt der Modulname nicht (er hieße „Stati…“): Kürzel und Nummer, fett. */
 @container kachel (max-width: 79.9px) { .k-mod, .k-kurz { display: none; } .k-typ, .k-nr { display: block; } }
@@ -320,23 +342,22 @@ button:active::after { opacity: .1; }
 .lg-zeile b { color: var(--grau-10); }
 .lg-k { width: 16px; height: 12px; border-radius: 4px; border: 1px solid var(--grau-8); flex: none; }
 .lg-k.gewaehlt { background: var(--grau-10); border-color: var(--grau-10); }
-.lg-k.auto { border-style: dashed; border-color: var(--grau-10); }
+.lg-k.vorschlag { border-style: dashed; border-color: var(--grau-10); }
 .lg-k.konflikt { outline: 2px solid var(--konflikt); outline-offset: 1px; }
-.lg-zeile .punkt { width: 8px; height: 8px; }
+.lg-zeile .punkt { width: 8px; height: 8px; border: 0; background: var(--rand); }
 
+/* Der Fuß (Silas' zweiter Test, V-0237): links der Hinweis in einem Absatz, klein und zurückgenommen
+   (--fuss-text, ≥ 4,5:1), rechts die Links. Vorher drei Teile mit eigener Anordnung je Breite. */
 .fuss {
-  flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "a c" "b b";
-  column-gap: 16px; row-gap: 8px; font-size: 12px; line-height: 16px; color: var(--grau-9);
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 24px;
+  font-size: 12px; line-height: 16px;
 }
-.fuss-a { grid-area: a; }
-.fuss-b { grid-area: b; display: flex; flex-wrap: wrap; gap: 0 12px; }
-.fuss-c { grid-area: c; display: flex; gap: 12px; justify-content: flex-end; }
+.fuss-hinweis { flex: 1 1 480px; max-width: 840px; color: var(--fuss-text); }
+.fuss-hinweis .leise { margin-left: 8px; color: var(--grau-10); }
+.fuss-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; color: var(--grau-9); }
 .fuss a { display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; padding: 0 4px; border-radius: 4px; }
 .fuss .alt { color: var(--hinweis-text); }
-@media (min-width: 1280px) {
-  .fuss { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "a b c"; align-items: center; min-height: 24px; }
-}
-@media (pointer: coarse) and (min-width: 768px) { .fuss { row-gap: 0; } .fuss > p { min-height: 44px; align-items: center; display: flex; } .fuss a, .fuss .leise { min-height: 44px; margin: 0; } }
+@media (pointer: coarse) and (min-width: 768px) { .fuss-links { min-height: 44px; } .fuss a, .fuss .leise { min-height: 44px; margin: 0; } }
 
 /* ── Schwebende Ebenen: Karte, Blatt, Dialog, Meldung (§3.5) */
 .hinter { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .32); opacity: 0; transition: opacity 200ms var(--ein); }
@@ -351,6 +372,10 @@ button:active::after { opacity: .1; }
 .ebene.dialog { inset: 0; margin: auto; width: min(560px, calc(100vw - 32px)); height: fit-content; }
 .ebene.blatt { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; max-height: 85dvh; border-radius: 12px 12px 0 0; transform: translateY(100%); transition-duration: 200ms; padding-bottom: env(safe-area-inset-bottom); }
 .ebene.blatt.karte-g { max-height: 70dvh; }
+/* „Für später speichern“ (V-0237) schiebt sich auf jeder Breite von unten herein, am Rechner mittig. */
+.ebene.blatt.speichern { margin: 0 auto; max-width: 640px; }
+.speichern .feld { font-size: 14px; }
+@media (min-width: 768px) { .blatt.speichern .e-aktionen .knopf { flex: 0 1 auto; height: var(--ziel); } }
 .ebene.blatt.da { transform: none; transition-duration: 250ms; }
 .e-kopf { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 0 16px; }
 .e-titel { flex: 1; padding-top: 4px; font-size: 16px; line-height: 24px; font-weight: 600; }
@@ -448,9 +473,9 @@ details[open] > summary::before { transform: rotate(45deg); }
   .unter { margin-top: 24px; display: grid; gap: 24px; }
   .steuer:empty { display: none; }
   .legende { display: grid; gap: 8px; }
-  .fuss { margin-top: 48px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b" "c"; row-gap: 8px; font-size: 14px; line-height: 20px; }
-  .fuss-b, .fuss-c { flex-wrap: wrap; gap: 0 16px; align-items: center; }
-  .fuss-c { justify-content: flex-start; }
+  .fuss { margin-top: 48px; display: grid; gap: 8px; }
+  .fuss-hinweis .leise { display: flex; margin: 0; }
+  .fuss-links { gap: 0 16px; }
   #stand-fuss { flex-basis: 100%; }
   .fuss a, .fuss .leise { min-height: 44px; min-width: 44px; margin: 0; padding: 0; }
   .meldung { bottom: calc(var(--schalter-zone) + 8px); }

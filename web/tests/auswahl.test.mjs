@@ -95,8 +95,8 @@ test('Eine Gruppe je Bestandteil: eine neue Wahl ersetzt die alte', () => {
   assert.deepEqual(Object.keys(a), ['10001:200']);
   assert.equal(a['10001:200'].group, '22');
   const r = geladen(a);
-  // 10001:100 hat nur eine Gruppe und ist ohne Eintrag automatisch eingeplant (V-0225).
-  assert.deepEqual(r.selected.map((g) => g.key), ['10001:100:11', '10001:200:22']);
+  // 10001:100 hat nur eine Gruppe: ohne Eintrag ein Vorschlag, nicht eingeplant (V-0237).
+  assert.deepEqual(r.selected.map((g) => g.key), ['10001:200:22']);
   assert.equal(r.gruppe('10001:200:21').selected, false);
   assert.equal(r.gruppe('10001:200:22').component.selection, '22');
   assert.deepEqual(A.loese(a, '10001:200'), {});
@@ -217,57 +217,56 @@ test('Teilen ist nie stumm: ohne Wahl und in der Vorschau sagt der Knopf, was fe
   assert.equal(A.teilenWeg({ anzahl: 3, share: false, grob: true }), 'kopieren');
 });
 
-test('Einzige Gruppe: automatisch eingeplant, berechnet und nie gespeichert (Silas, V-0225)', () => {
+test('Einzige Gruppe: ein Vorschlag, nicht eingeplant, berechnet und nie gespeichert (Silas, V-0237)', () => {
   const s = new Speicher();
   const auswahl = A.ladeAuswahl(s, KEY);
   const r = geladen(auswahl);
-  assert.deepEqual(r.selected.map((g) => [g.key, g.auto]), [['10001:100:11', true]]);
-  assert.equal(r.gruppe('10001:100:11').component.selection, '11');
-  assert.equal(r.gruppe('10001:100:11').changed, false);
+  assert.deepEqual(r.selected, []);                                       // zählt nicht als eingeplant
+  assert.equal(r.gruppe('10001:100:11').vorschlag, true);
+  assert.equal(r.gruppe('10001:100:11').selected, false);
+  assert.equal(r.gruppe('10001:100:11').component.selection, null);
   assert.deepEqual(s.schreibvorgaenge, []);                              // Laden schreibt nichts
-  // Formate mit mehreren Gruppen bleiben offen; eine Gruppe ohne Termine zählt nicht mit.
+  // Formate mit mehreren Gruppen schlagen nichts vor; eine Gruppe ohne Termine zählt nicht mit.
+  assert.equal(r.gruppe('10001:200:21').vorschlag, false);
   assert.equal(A.einzige(r.gruppe('10001:200:21').component), null);
   assert.equal(A.einzige({ groups: [{ slots: [1] }, { slots: [] }] }).slots.length, 1);
-  // ausdrücklich gewählt: kein „auto“ mehr, der Rand ist durchgezogen
+  // „Einplanen“: eingeplant, kein Vorschlag mehr
   const fest = geladen(A.waehle({}, '10001:100', r.gruppe('10001:100:11')));
-  assert.equal(fest.gruppe('10001:100:11').auto, false);
+  assert.equal(fest.gruppe('10001:100:11').vorschlag, false);
   assert.equal(fest.gruppe('10001:100:11').selected, true);
 });
 
-test('Einzige Gruppe lösen: die Abwahl wird gespeichert (group: null), sonst käme sie wieder', () => {
-  const s = new Speicher();
-  const ab = A.loese({}, '10001:100', true);
-  assert.deepEqual(ab, { '10001:100': { group: null, digest: '', name: '' } });
-  assert.equal(A.speichereAuswahl(s, KEY, ab), true);
-  const gelesen = A.ladeAuswahl(s, KEY);
-  assert.deepEqual(gelesen, ab);
-  const r = geladen(gelesen);
+test('Lösen: der Eintrag fällt weg, die einzige Gruppe ist wieder ein Vorschlag; group: null aus V-0225 gilt wie keiner', () => {
+  const { gruppe } = geladen();
+  const a = A.waehle({}, '10001:100', gruppe('10001:100:11'));
+  assert.deepEqual(A.loese(a, '10001:100'), {});
+  const r = geladen({ '10001:100': { group: null, digest: '', name: '' } });
   assert.deepEqual(r.selected, []);
-  assert.equal(r.gruppe('10001:100:11').component.selection, null);      // wieder offen
-  assert.deepEqual(r.missing, []);                                        // eine Abwahl fehlt nicht
-  // Formate mit mehreren Gruppen lösen wie bisher: der Eintrag verschwindet
+  assert.equal(r.gruppe('10001:100:11').vorschlag, true);
+  assert.deepEqual(r.missing, []);                                        // eine alte Abwahl fehlt nicht
   assert.deepEqual(A.loese({ '10001:200': { group: '21' } }, '10001:200'), {});
 });
 
-test('Einzige Gruppe bekommt eine zweite: nicht mehr automatisch, wieder offen', () => {
+test('Einzige Gruppe bekommt eine zweite: kein Vorschlag mehr, das Format ist offen', () => {
   const p = plan();
   const c = p.modules[0].components[0];
   c.groups.push({ ...structuredClone(c.groups[0]), id: '12', key: undefined, name: 'Termingruppe 2' });
   const b = A.bestand(p);
   const { selected } = A.auswerten(p, b, {});
   assert.deepEqual(selected.map((g) => g.key), []);
+  assert.ok(c.groups.every((g) => !g.vorschlag));
   assert.equal(c.selection, null);
 });
 
-test('Wirksame Auswahl für den Export: ausdrücklich gewählt und automatisch, im Speicherformat', () => {
+test('Wirksame Auswahl für den Export: nur Eingeplantes, Vorschläge erst nach „Einplanen“ (V-0237)', () => {
   const { gruppe } = geladen();
   const a = A.waehle({}, '10001:200', gruppe('10001:200:22'));
   const r = geladen(a);
   assert.deepEqual(A.wirksameAuswahl(r.selected), {
-    '10001:100': { group: '11', digest: r.gruppe('10001:100:11').digest, name: r.gruppe('10001:100:11').name },
     '10001:200': { group: '22', digest: r.gruppe('10001:200:22').digest, name: r.gruppe('10001:200:22').name },
   });
-  assert.deepEqual(A.wirksameAuswahl(geladen(A.loese({}, '10001:100', true)).selected), {});
+  const mit = geladen(A.waehle(a, '10001:100', gruppe('10001:100:11')));
+  assert.deepEqual(Object.keys(A.wirksameAuswahl(mit.selected)).sort(), ['10001:100', '10001:200']);
 });
 
 test('Fortschritt: Formate ohne Termine in diesem Semester zählen nicht (querwind, db561642)', () => {
@@ -275,10 +274,10 @@ test('Fortschritt: Formate ohne Termine in diesem Semester zählen nicht (querwi
   p.modules[2].components = [{ id: '10003:1', type: 'SE', groups: [] }, { id: '10003:2', type: 'PJ', groups: [{ id: '1', slots: [], bookings: [] }] }];
   const b = A.bestand(p);
   A.auswerten(p, b, {});
-  // drei Formate mit Terminen; 10001:100 ist automatisch eingeplant
-  assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 1 });
+  // drei Formate mit Terminen; 10001:100 ist nur ein Vorschlag und zählt nicht (V-0237)
+  assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 0 });
   const g = (key) => b.groups.find((x) => x.key === key);
-  A.auswerten(p, b, { '10001:200': { group: '21', digest: '', name: '' }, '10002:500': { group: '51', digest: '', name: '' } });
+  A.auswerten(p, b, { '10001:100': { group: '11', digest: '', name: '' }, '10001:200': { group: '21', digest: '', name: '' }, '10002:500': { group: '51', digest: '', name: '' } });
   assert.deepEqual(A.fortschritt(b.parts), { n: 3, k: 3 });               // alle eingeplant, trotz zweier Formate ohne Termine
   assert.equal(g('10001:200:21').selected, true);
 });
@@ -368,37 +367,33 @@ function mitGruppen(regel, cid = '10001:200') {
   return p;
 }
 
-test('gruppen: alle — alle Gruppen mit Terminen gelten als eingeplant, Lösen nimmt alle heraus', () => {
+test('gruppen: alle — alle Gruppen sind ein Vorschlag; eingeplant wird das Format als Ganzes (V-0237)', () => {
   const p = mitGruppen('alle');
   const b = A.bestand(p);
   const c = b.parts.find((x) => x.id === '10001:200');
   const mit = c.groups.filter((g) => g.slots.length);
   let r = A.auswerten(p, b, {});
   assert.ok(mit.length > 1);
-  assert.ok(mit.every((g) => g.selected && g.auto));
-  assert.equal(r.selected.filter((g) => g.component_id === c.id).length, mit.length);
-  // Zählt im Fortschritt als gewählt: eins mehr als ohne die Regel.
-  const p0 = plan(), b0 = A.bestand(p0);
-  A.auswerten(p0, b0, {});
-  assert.equal(A.fortschritt(b.parts).k, A.fortschritt(b0.parts).k + 1);
-  // Für den Export: eine Liste der Gruppen.
+  assert.ok(mit.every((g) => g.vorschlag && !g.selected));
+  assert.equal(r.selected.filter((g) => g.component_id === c.id).length, 0);
+  // „Einplanen“ auf einer Gruppe plant alle ein; im Fortschritt eins, im Export eine Liste.
+  r = A.auswerten(p, b, A.waehle({}, c.id, mit[0]));
+  assert.ok(mit.every((g) => g.selected && !g.vorschlag));
   assert.deepEqual(A.wirksameAuswahl(r.selected)['10001:200'].group, mit.map((g) => g.id));
-  // Lösen speichert group: null, dann gilt keine.
-  r = A.auswerten(p, b, A.loese({}, c.id, true));
-  assert.ok(c.groups.every((g) => !g.selected));
+  assert.equal(A.fortschritt(b.parts).k, 1);
+  // Lösen: wieder ein Vorschlag.
+  r = A.auswerten(p, b, A.loese(A.waehle({}, c.id, mit[0]), c.id));
+  assert.ok(mit.every((g) => g.vorschlag && !g.selected));
   assert.deepEqual(r.missing, []);
-  // Eine alte Einzelwahl zählt nicht: Es gelten weiter alle.
-  A.auswerten(p, b, { [c.id]: { group: mit[0].id, digest: '', name: '' } });
-  assert.ok(mit.every((g) => g.selected));
 });
 
-test('gruppen: keine — nie automatisch eingeplant, zählt nicht zum Fortschritt', () => {
-  const p = mitGruppen('keine', '10001:100');   // VL mit genau einer Gruppe: wäre sonst automatisch
+test('gruppen: keine — nie vorgeschlagen, zählt nicht zum Fortschritt', () => {
+  const p = mitGruppen('keine', '10001:100');   // VL mit genau einer Gruppe: wäre sonst ein Vorschlag
   const b = A.bestand(p);
   const c = b.parts.find((x) => x.id === '10001:100');
   assert.equal(A.einzige(c), null);
   A.auswerten(p, b, {});
-  assert.ok(c.groups.every((g) => !g.selected));
+  assert.ok(c.groups.every((g) => !g.selected && !g.vorschlag));
   const ohne = A.fortschritt(A.bestand(plan()).parts).n;
   assert.equal(A.fortschritt(b.parts).n, ohne - 1);
 });
