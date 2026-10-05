@@ -9,6 +9,8 @@ import * as A from './auswahl.mjs';
 import * as W from './woche.mjs';
 import * as R from './raster.mjs';
 import * as P from './planwahl.mjs';
+// Das Modul ist verlinkt und läuft: Der Starthinweis in index.html bleibt verborgen (V-0241, stil.css).
+document.documentElement.dataset.gestartet = 'ja';
 
 const $ = (id) => document.getElementById(id);
 const TAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];

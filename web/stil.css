@@ -226,6 +226,14 @@ button:active::after { opacity: .1; }
 /* Erst nach 300 ms ohne Daten erscheint „wird geladen“ — ohne Skript und ohne Einblenden (§5.9). */
 .spaet { visibility: hidden; animation: zeigen 0s 300ms forwards; }
 @keyframes zeigen { to { visibility: visible; } }
+/* STARTHINWEIS (V-0241). Startet app.js nicht, blieb „Termine werden geladen …“ für immer stehen:
+   So sah es Silas am 05.10.2026 in Safari, als Cloudflare ein altes app.js vier Stunden im
+   Browser hielt und es nicht mehr zu den neuen Modulen passte. Nach 10 s ohne Start erscheint
+   deshalb ein Ausweg. Nur HTML und CSS, ohne eigenes Skript: Er greift auch, wenn gar kein Skript
+   läuft (abgeschaltet, Syntax zu neu für einen alten Browser), und kostet keine Anfrage (§6).
+   app.js setzt data-gestartet, sobald es läuft; dann bleibt er verborgen, auch bei langsamem Netz. */
+.start-fehler { visibility: hidden; animation: zeigen 0s 10s forwards; font-size: 12px; line-height: 16px; }
+:root[data-gestartet] .start-fehler { display: none; }
 
 /* Kacheln sind Container, die Beschriftung folgt ihrer Größe (§3.2). Oben immer das Modul, dann
    die Einheit ausgeschrieben, Gruppe mit Zeit, Raum (Silas, V-0225). M (Modul, Kürzel und Nummer)

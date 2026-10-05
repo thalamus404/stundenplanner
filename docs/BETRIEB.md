@@ -57,6 +57,15 @@ Host ins Leere oder in einen fremden Ordner.
    "zweig": "main", "erzeugt_am": …}` (JSON-Typ über `web/_headers`). Dort fragt der TOWER, welcher
    Stand läuft: der Haken `laeuft` und der Nachweis nach einer Freigabe (V-0230)
 
+**MOSES fragt nur dieser tägliche Lauf (V-0241).** Bis zum 05.10.2026 fuhr auch jede Auslieferung
+(`ops/bauen.sh live`, also jede Freigabe) und jeder Lauf von Hand einen Abruf, an dem Tag mehrere.
+innoCampus (TU) sieht das Abrufen der Weboberfläche nicht gern und sperrt auffällige Adressen; eine
+Sperre träfe den Heimanschluss, auf dem der NAS steht. Seitdem bauen `live` und `lauf` aus dem
+Rohstand im Volume (`lauf.py --jetzt --ohne-abruf`, Schritt 2 entfällt). Der Zeitplan richtet sich
+nach `letzter_abruf_am` im Zustand, nicht nach dem letzten Lauf: Eine Auslieferung nach 05:20
+verdeckt einen verpassten Tagesabruf nicht und löst keinen aus (`abruf/tests/test_lauf.py`). Einen
+Abruf von Hand gibt es nur ausdrücklich: `sh ops/bauen.sh lauf --mit-abruf`.
+
 Ein verpasster Lauf (NAS aus, Container gestoppt, Neustart) wird nachgeholt, sobald der
 Container wieder läuft. Ein unterbrochener Lauf wird wiederholt. Zwei Läufe zugleich verhindert
 eine Dateisperre im Volume.
@@ -105,10 +114,11 @@ Arbeitsbaum, das Skript rechnet den Hauptklon selbst aus):
 
 | Befehl | Was |
 |---|---|
-| `sh ops/bauen.sh live` | Image aus `origin/main` bauen, Container neu starten, Lauf sofort |
+| `sh ops/bauen.sh live` | Image aus `origin/main` bauen, Container neu starten, sofort bauen und ausliefern, **ohne Abruf** (§2) |
 | `sh ops/bauen.sh live <stand>` | dasselbe aus einem bestimmten Commit (so ruft es die Freigabe auf: `befehle.bau_live`) |
 | `sh ops/bauen.sh live <stand> --probe` | nur prüfen, bis vor `docker build` (`befehle.bau_probe`) |
-| `sh ops/bauen.sh lauf` | einen Lauf jetzt, ohne neu zu bauen. Läuft schon einer, wartet er und meldet dessen Ergebnis |
+| `sh ops/bauen.sh lauf` | jetzt bauen und ausliefern, ohne neues Image und **ohne Abruf**. Läuft schon einer, wartet er und meldet dessen Ergebnis |
+| `sh ops/bauen.sh lauf --mit-abruf` | dasselbe **mit** Abruf bei MOSES. Nur, wenn es nötig ist: Der Zeitplan holt die Termine ohnehin um 05:20 |
 | `sh ops/bauen.sh status` | Zustand des letzten Laufs |
 | `sh ops/bauen.sh rueckweg` | Container auf das Image vor dem letzten Bau zurücksetzen |
 | `sh ops/bauen.sh zugang` | Cloudflare-Token und Account-ID **unsichtbar** abfragen und nach `<hauptklon>/betrieb/.env` schreiben (Rechte 600). Braucht ein Terminal: über ssh mit `-t`, in einen Container mit `docker exec -it` |
@@ -172,9 +182,26 @@ In dieser Reihenfolge (Silas, 05.10.2026). Die Domain `stundenplanner.de` liegt 
 8. **In Cloudflare ausgeschaltet lassen:** Web Analytics für das Pages-Projekt und Bot Fight
    Mode. Beide setzen Skripte oder Cookies, und `web/datenschutz.html` sagt, dass es keine gibt.
    Wer eins davon einschaltet, ändert zuerst die Datenschutzseite
-9. **Repo-Variable `SEITE_URL`** auf GitHub auf `https://stundenplanner.de` setzen, sobald die Seite
+9. **Drei Einstellungen der Zone** (`stundenplanner.de` → Scrape Shield bzw. Caching →
+   Configuration), am 05.10.2026 per API gesetzt, weil die Vorgaben von Cloudflare die Seite
+   brachen (V-0241):
+   - **Email Address Obfuscation: aus.** Sonst ersetzt Cloudflare jede E-Mail-Adresse durch
+     „[email protected]“ und ein Skript, das sie im Browser wieder einsetzt. Unsere CSP
+     (`script-src 'self'`) blockt dieses Skript, also stand im Impressum für alle Besucher nur
+     „[email protected]“
+   - **Server Side Excludes: aus.** Gehört zu derselben Gruppe und schreibt ebenfalls ins HTML
+   - **Browser Cache TTL: „Respect Existing Headers“** (API: `0`). Die Vorgabe von 4 Stunden
+     überschrieb `web/_headers` (`max-age=0, must-revalidate`) für `.js` und `.css`, nicht aber für
+     `.mjs` und HTML. Nach einer Auslieferung hielt Safari ein altes `app.js`, das nicht mehr zu den
+     neuen Modulen passte, und die Seite blieb bei „Termine werden geladen …“ stehen. Seitdem zeigt
+     `index.html` nach 10 s einen Ausweg (Neu laden, Kontakt; nur HTML und CSS, `web/stil.css`)
+
+   Prüfen: `curl -sI https://www.stundenplanner.de/app.js` zeigt `cache-control: max-age=0,
+   must-revalidate`, und im Impressum steht `mailto:kontakt@stundenplanner.de`. Der Token des NAS
+   darf Zone-Einstellungen nicht ändern (nur DNS); `einrichten` prüft sie deshalb noch nicht
+10. **Repo-Variable `SEITE_URL`** auf GitHub auf `https://stundenplanner.de` setzen, sobald die Seite
    dort antwortet (§3)
-10. **Die Freigabe nach `main`**: Erst danach liefert der Lauf die Seite aus. `main` braucht dafür
+11. **Die Freigabe nach `main`**: Erst danach liefert der Lauf die Seite aus. `main` braucht dafür
     `abruf/`, `web/index.html` und diese Dateien
 
 Der Container hängt an keinem Pfad des Klons. Zieht der Klon um, läuft er weiter; nur

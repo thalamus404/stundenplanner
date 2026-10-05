@@ -4,8 +4,14 @@
 #
 #   sh ops/bauen.sh live [stand] [--probe]   Image aus dem git-Stand bauen (Standard: origin/main),
 #                                            Container stundenplanner-abruf neu starten, einen Lauf
-#                                            --jetzt auslösen. --probe: alles prüfen, bis vor docker build
-#   sh ops/bauen.sh lauf                     im laufenden Container einen Lauf jetzt auslösen
+#                                            --jetzt --ohne-abruf auslösen. --probe: alles prüfen, bis vor docker build
+#   sh ops/bauen.sh lauf                     im laufenden Container jetzt bauen und ausliefern, OHNE Abruf
+#   sh ops/bauen.sh lauf --mit-abruf         dasselbe MIT Abruf bei MOSES — nur, wenn es nötig ist
+#
+# MOSES FRAGT NUR DER ZEITPLAN, einmal am Tag um 05:20 (V-0241). Bis zum 05.10.2026 holte jede
+# Auslieferung (live) und jeder Lauf von Hand die Termine neu: ein Abruf mehr bei MOSES je
+# Freigabe, und innoCampus (TU) sieht das Abrufen der Weboberfläche nicht gern. Deshalb bauen
+# live und lauf aus dem Rohstand im Volume; einen Abruf von Hand gibt es nur ausdrücklich.
 #   sh ops/bauen.sh status                   Zustand des letzten Laufs
 #   sh ops/bauen.sh rueckweg                 den Container auf das Image vor dem letzten Bau zurücksetzen
 #   sh ops/bauen.sh zugang                   Cloudflare-Token und Account-ID unsichtbar abfragen und in
@@ -32,8 +38,10 @@ HAUPTKLON=$(dirname "$(git -C "$WURZEL" rev-parse --path-format=absolute --git-c
 ENVDATEI="$HAUPTKLON/betrieb/.env"
 
 lauf_jetzt() {
-  echo "  ── Lauf --jetzt (Ausgabe im Container-Protokoll: docker logs $NAME) ──"
-  rc=0; docker exec "$NAME" python3 /opt/stundenplanner/lauf.py --jetzt || rc=$?
+  # $1: leer = ohne Abruf (Standard), --mit-abruf = MOSES fragen
+  if [ "${1:-}" = --mit-abruf ]; then ART=""; else ART="--ohne-abruf"; fi
+  echo "  ── Lauf --jetzt ${ART:-mit Abruf bei MOSES} (Ausgabe im Container-Protokoll: docker logs $NAME) ──"
+  rc=0; docker exec "$NAME" python3 /opt/stundenplanner/lauf.py --jetzt $ART || rc=$?
   docker exec "$NAME" python3 /opt/stundenplanner/lauf.py --status 2>/dev/null \
     | python3 -c 'import json,sys; z=json.load(sys.stdin); print("  Stand", z.get("commit","?"), "·", z.get("status"), "·", z.get("meldung") or ""); [print("  ⚠ Lücke in der Seite:", l) for l in z.get("luecken") or []]' || true
   case "$rc" in
@@ -83,7 +91,8 @@ case "${1:-}" in
     lauf_jetzt
     ;;
   lauf)
-    lauf_jetzt
+    case "${2:-}" in ""|--mit-abruf) ;; *) echo "  ✗ lauf kennt nur --mit-abruf" >&2; exit 2 ;; esac
+    lauf_jetzt "${2:-}"
     ;;
   status)
     docker exec "$NAME" python3 /opt/stundenplanner/lauf.py --status
