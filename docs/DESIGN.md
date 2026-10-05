@@ -54,9 +54,11 @@
    gewählt hat, sieht oben mittig den Schriftzug, darunter eine schlanke Fortschrittslinie und eine
    ruhige Spalte: Hochschule (die Karte in der Farbe der Hochschule), dann Studiengang, dann
    Fachsemester, dann „Stundenplan öffnen“ (§3.6, §4.5).
-10. **Kein Zeichen, nur der Schriftzug** (Silas, 05.10.2026, V-0243): „stundenplanner“ in Rubik 600 als
-    Pfad (V-0239, Entwurf B; SIL Open Font License 1.1), mittig in der Kopfzeile und im
-    Startbildschirm, in Tinte. Die Seite selbst bleibt bei der Systemschrift (§5.7).
+10. **Kein Zeichen, nur der Schriftzug** (Silas, 05.10.2026): „STUNDENPLANNER“ in Barlow Condensed
+    ExtraBold Italic, Versalien, Laufweite 0,01 em, als Pfad (V-0248; aus zehn Entwürfen gewählt, vorher
+    Rubik 600 aus V-0239). Am Rechner und Tablet mittig in der Kopfzeile (Versalhöhe 20 px), am Handy
+    links (16 px), im Startbildschirm oben mittig (30 px, am Handy 24). In Tinte. Barlow steht unter der
+    SIL Open Font License 1.1; die Seite selbst bleibt bei der Systemschrift (§5.7) und lädt keine.
 
 ---
 
@@ -153,7 +155,7 @@ bekommt den Rest. Am Handy scrollt sie (§3.3).
 
 | Zone | Inhalt |
 |---|---|
-| **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter; am Handy steht der Schriftzug links (V-0247). Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
+| **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, Versalhöhe 20 px, am Handy 16), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter; am Handy steht der Schriftzug links (V-0247). Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
 | **Hinweise oben** (V-0234) | nur wenn nötig, je eine Zeile über die volle Breite: ein deutliches Schild in Bernstein, wenn die Termine Ersatz aus dem Vorjahr sind („Termine aus dem Vorjahr, Ersatz.“ mit Semester und wofür), und ein ruhiger Satz auf neutraler Fläche mit rotem Warnsymbol, wenn es keine Wahl ohne Überschneidung gibt („Mit den veröffentlichten Terminen gibt es keine Wahl ohne Überschneidung.“, unsicher mit „vermutlich“). „Warum“ öffnet eine Karte mit dem Grund aus dem Lesemodell (Zeiten, Tage), dem Verdacht und fehlenden Modulen. Der Grund steht nicht in der Zeile: Er ist bis 400 Zeichen lang und nähme der Woche am Rechner die Höhe |
 | **Module** | je Modul eine **Modulkachel**: Farbkreis und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“). Der Farbkreis ist ein Ring und füllt sich, wenn das Modul aufgeschlagen ist; dazu trägt die Kachel wieder einen Rahmen in Tinte (2 px, hell dunkel, dunkel weiß; V-0237 entfernt, V-0245 zurück: sonst sah man schlecht, welches Modul offen ist) |
 | **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Modul-Infos“ und „Filter aufheben“, sobald gefiltert ist, und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
@@ -387,7 +389,7 @@ aus `index.json` (`stufen`, `wahl`, ARCHITEKTUR §5); die Seite kennt keinen Stu
 ┌─ 1536 × 864 ────────────────────────────────────────────────────┐
 │ ‹ Zurück zum Plan                                                │ nur mit offenem Plan, leise
 │                                                                  │ 14 % der Höhe (56–136 px)
-│                        stundenplanner                            │ Schriftzug 34 px (Handy 28 px)
+│                        STUNDENPLANNER                            │ Schriftzug 30 px (Handy 24 px)
 │                         ━━━ ━━━ ───                              │ je Stufe ein Strich, ohne Wörter
 │                                                                  │
 │              Hochschule                                          │ 13 px 600 Zweittext
@@ -1191,6 +1193,10 @@ machen.“
     eigenen Plan beim Filtern (dort öffnet ein Tipp die Karte wie bisher).
 42. **Die Woche ist am Handy die Vorgabe**, nicht der Tag (§0 Punkt 6).
 43. **Der Schriftzug steht am Handy links**, am Rechner und Tablet weiter in der Mitte (§3.1).
+
+**Der Schriftzug, 05.10.2026** (Punkt ac0550d3, gebaut in V-0248):
+
+44. **Barlow Condensed** (Nr. 7 der zehn Entwürfe): ExtraBold, kursiv, Versalien (§0 Punkt 10).
 
 ---
 
