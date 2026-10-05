@@ -16,6 +16,8 @@ from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit, parse_qs
 from urllib.request import build_opener, HTTPCookieProcessor, Request
 from bs4 import BeautifulSoup as BS
 
+import zugang  # Genehmigung vor jeder Anfrage (V-0242)
+
 ORIGIN = 'https://moseskonto.tu-berlin.de'
 MTS = ORIGIN + '/moses/modultransfersystem/bolognamodule/'
 COLUMNS = ['Veranstaltung ID', 'Veranstaltungsname', 'Veranstaltungsformat',
@@ -154,6 +156,8 @@ class Client:
     def request(self,url,data=None,ajax=False):
         if urlsplit(url).netloc != 'moseskonto.tu-berlin.de':
             raise SourceError('Unerwarteter MOSES-Host')
+        # Keine Anfrage an die TU ohne Silas' Genehmigung (V-0242, abruf/zugang.py, AGENTS.md §2 ⑦).
+        zugang.pruefen('moseskonto.tu-berlin.de')
         time.sleep(max(0,self.delay-(time.monotonic()-self.last)))
         # Ein öffentliches Werkzeug sagt, wer fragt, und wo man es findet: MOSES soll einen
         # auffälligen Abruf einem Projekt zuordnen und es erreichen können, statt ihn zu sperren.

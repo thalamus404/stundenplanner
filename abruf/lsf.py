@@ -52,6 +52,8 @@ from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 from bs4 import BeautifulSoup as BS
 
+import zugang  # Genehmigung vor jeder Anfrage (V-0242)
+
 USER_AGENT = 'Stundenplanner/1.0 (+https://github.com/thalamus404/stundenplanner)'
 
 # Kurzformen wie in MOSES, damit die Seite dieselben Kürzel zeigt. Unbekannte Arten bleiben, wie
@@ -115,6 +117,8 @@ class Client:
     def request(self, url: str, data=None) -> str:
         if urlsplit(url).netloc != self.host:
             raise SourceError('Unerwarteter LSF-Host')
+        # Keine Anfrage an eine Hochschule ohne Silas' Genehmigung (V-0242, abruf/zugang.py).
+        zugang.pruefen(self.host)
         time.sleep(max(0.0, self.delay - (time.monotonic() - Client.letzte)))
         body = urlencode(data, doseq=True).encode() if data is not None else None
         try:

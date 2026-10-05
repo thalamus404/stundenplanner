@@ -38,8 +38,11 @@ class LaufOhneAbruf(unittest.TestCase):
         self.gerufen = []
         L = self.L
 
-        def schritt(name, befehl, **_):
+        self.umgebung = {}
+
+        def schritt(name, befehl, **k):
             self.gerufen.append(name)
+            self.umgebung[name] = dict(k.get('env') or {})
             if name == 'bauen':
                 (L.REPO / 'web' / 'daten').mkdir(parents=True, exist_ok=True)
                 (L.REPO / 'web' / 'daten' / 'index.json').write_text('{}', encoding='utf-8')
@@ -77,6 +80,18 @@ class LaufOhneAbruf(unittest.TestCase):
         z = self.L.lies_zustand()
         self.assertEqual(self.gerufen[0], 'abruf')
         self.assertEqual(z['letzter_abruf_am'], z['begonnen_am'])
+
+    def test_nur_der_schritt_abruf_traegt_die_genehmigung(self):
+        # V-0242: Silas hat nur den täglichen Abruf genehmigt. Test und Bauen laufen ohne sie, sonst
+        # könnte ein Test mit echtem Netz im Lauf an MOSES fragen. Die Namen müssen zu zugang.py passen.
+        import sys
+        sys.path.insert(0, str(LAUF_PY.parents[1] / 'abruf'))
+        import zugang
+        self.L.lauf()
+        self.assertEqual(self.L.ABRUF_GENEHMIGT, zugang.VARIABLE)
+        self.assertEqual(self.umgebung['abruf'].get(zugang.VARIABLE), zugang.TAEGLICHER_LAUF)
+        for name in ('bauen', 'test'):
+            self.assertNotIn(zugang.VARIABLE, self.umgebung[name])
 
     def test_lauf_ohne_abruf_traegt_den_letzten_abruf_weiter(self):
         # Ein Zustand von vor V-0241 kennt letzter_abruf_am nicht: Damals fragte jeder Lauf.

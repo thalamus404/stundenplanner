@@ -37,6 +37,7 @@ from urllib.parse import urljoin, urlsplit, parse_qs
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import moses  # noqa: E402
+import zugang  # noqa: E402
 from bs4 import BeautifulSoup as BS  # noqa: E402
 
 SEITE = moses.ORIGIN + '/moses/modultransfersystem/studiengaenge/anzeigen.html'
@@ -252,6 +253,9 @@ def main(argv=None):
     ap.add_argument('--aus', type=Path, help='Zieldatei (Vorgabe: stdout)')
     ap.add_argument('--abstand', type=float, default=1.0, help='Sekunden zwischen Anfragen (mind. 0,7)')
     a = ap.parse_args(argv)
+    if not zugang.genehmigt():
+        print(f'  ✗ modulliste: {zugang.SATZ}', file=sys.stderr)   # V-0242
+        return 2
     client = moses.Client(delay=max(0.7, a.abstand))
     try:
         daten = hole(client, a.studiengang, a.stupo, a.liste,

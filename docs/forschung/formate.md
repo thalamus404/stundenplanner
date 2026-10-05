@@ -1,5 +1,12 @@
 # Forschung: Lehrveranstaltungsformate an TU, HU und FU, in drei Kategorien
 
+> **⛔ Keine Zugriffe auf Systeme der TU Berlin ohne Silas’ ausdrückliche Genehmigung**
+> (Silas, 05.10.2026; [AGENTS.md §2 ⑦](../../AGENTS.md#2-die-regeln)). Das gilt für jeden Weg: Abruf-Code, Skript, `curl`,
+> Browser-Automatisierung, `WebFetch` eines Agenten, auch für eine einzelne Seite „nur zum Nachsehen“.
+> Genehmigt ist allein der tägliche Lauf um 05:20 im Container `stundenplanner-abruf`. Wer mehr braucht,
+> fragt Silas **vorher** und nennt **Umfang**, **Maßnahmen gegen Last** und **Grund**. Dasselbe gilt für
+> die Vorlesungsverzeichnisse anderer Hochschulen. Der Code sperrt selbst (`abruf/zugang.py`).
+
 > V-0238, Rufzeichen `formation`, 05.10.2026. Die Daten stehen in
 > [`katalog/formate.json`](../../katalog/formate.json), das Feld im Lesemodell in
 > [`docs/ARCHITEKTUR.md`](../ARCHITEKTUR.md) §3 und §5. Dieser Bericht sagt, woher jede Zeile

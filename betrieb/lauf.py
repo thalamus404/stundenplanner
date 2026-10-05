@@ -72,6 +72,9 @@ AUSLIEFERN = DATEN / 'ausliefern'
 ZUSTAND = DATEN / 'letzter-lauf.json'
 HERZ = DATEN / 'heartbeat'
 SPERRE = DATEN / 'lauf.lock'
+# Die Genehmigung, MOSES zu fragen (abruf/zugang.py: VARIABLE und TAEGLICHER_LAUF). Hier abgeschrieben,
+# weil lauf.py im Image liegt und das Repo erst holt; abruf/tests/test_lauf.py hält beide gleich.
+ABRUF_GENEHMIGT = 'STUNDENPLANNER_ABRUF_GENEHMIGT'
 
 # Obergrenzen je Schritt in Sekunden. Ein hängender Schritt darf den Tag nicht blockieren;
 # der Abruf wartet höflich zwischen Anfragen und braucht deshalb am längsten.
@@ -147,6 +150,8 @@ def git_umgebung():
     env['GIT_TERMINAL_PROMPT'] = '0'   # ein öffentliches Repo braucht keine Anmeldung; nie fragen
     # Der Token gehört nur dem Ausliefern; kein anderer Schritt bekommt ihn zu sehen.
     env.pop('CLOUDFLARE_API_TOKEN', None)
+    # Die Genehmigung für MOSES bekommt nur der Schritt abruf, auch wenn sie in der Umgebung stünde (V-0242).
+    env.pop(ABRUF_GENEHMIGT, None)
     return env
 
 
@@ -243,7 +248,10 @@ def lauf_innen(zustand):
         zustand['abruf'] = 'ausgelassen'
         log.info('abruf: ausgelassen, gebaut wird aus dem Rohstand im Volume (MOSES wird nicht gefragt)')
     else:
-        rc, _, dauer = schritt('abruf', [sys.executable, 'abruf/abruf.py', '--roh', str(ROH)], cwd=str(REPO), env=env)
+        # Die Genehmigung für Anfragen an MOSES trägt NUR dieser Schritt (V-0242, abruf/zugang.py):
+        # Silas hat den täglichen Lauf genehmigt, sonst nichts. Test und Bauen laufen ohne sie.
+        env_abruf = {**env, ABRUF_GENEHMIGT: 'taeglicher-lauf'}
+        rc, _, dauer = schritt('abruf', [sys.executable, 'abruf/abruf.py', '--roh', str(ROH)], cwd=str(REPO), env=env_abruf)
         protokoll.append({'schritt': 'abruf', 'rc': rc, 'sekunden': dauer})
         if rc == 1:
             # Teilweise gescheitert ist kein Abbruch: Je gescheitertem Modul steht der letzte

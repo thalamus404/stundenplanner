@@ -37,6 +37,7 @@ sys.path.insert(0, str(HIER))  # moses.py liegt daneben, egal von wo aus aufgeru
 import katalog as K  # noqa: E402
 import lsf  # noqa: E402
 import moses  # noqa: E402
+import zugang  # noqa: E402
 
 KATALOG = WURZEL / 'katalog'
 ROH = WURZEL / 'daten' / 'roh'
@@ -332,6 +333,8 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
                 # Je Modul eine frische, loginfreie MOSES-Sitzung wie im Vorbild: Ein verklemmter
                 # JSF-Zustand eines Moduls kann das nächste nicht verderben.
                 daten = holer(client_fabrik(), nummer, ziel)
+            except zugang.Gesperrt:
+                raise   # kein „Modul gescheitert“: ohne Genehmigung bricht der ganze Lauf ab (V-0242)
             except Exception as exc:
                 meldung = fehlertext(exc)
                 log(f'  {"·" if nummer in kandidaten else "✗"} {nummer}: {meldung}', file=sys.stderr)
@@ -352,6 +355,9 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
                 f'{sum(len(c["groups"]) for c in daten["components"])} Gruppen, {n} Buchungen',
                 file=sys.stderr)
         lauf['status'] = 'ok' if not lauf['errors'] else ('partial' if lauf['modules'] else 'error')
+    except zugang.Gesperrt:
+        lauf['errors'].append({'module': None, 'message': 'ohne Genehmigung abgebrochen (V-0242)'})
+        raise
     except Exception as exc:
         lauf['errors'].append({'module': None, 'message': fehlertext(exc)})
         lauf['status'] = 'error'
@@ -414,6 +420,10 @@ def main(argv=None) -> int:
                    help='Wahlpflicht-Kandidaten auch abrufen, wenn ihr MTS-Turnus nicht zum Semester passt')
     p.add_argument('--katalog', type=Path, default=KATALOG, help=argparse.SUPPRESS)
     a = p.parse_args(argv)
+    if not zugang.genehmigt():
+        # Vor dem ersten Modul und ohne eine Datei anzufassen (V-0242, abruf/zugang.py).
+        print(f'abruf: {zugang.SATZ}', file=sys.stderr)
+        return 2
     try:
         ergebnis = lauf(katalog=a.katalog, roh=a.roh.resolve(), semester=a.semester, nur=a.nur,
                         mit_vorschau=a.mit_vorschau, turnusfilter=not a.alle_kandidaten)
