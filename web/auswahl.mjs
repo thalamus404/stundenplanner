@@ -183,6 +183,21 @@ export function teilenFragment(plan, auswahl) {
   return '#' + teile.join('&');
 }
 
+/**
+ * Was „Teilen“ tut. Der Knopf ist nie stumm gesperrt: Im ersten Live-Test tippte Silas am Handy auf
+ * den grauen Knopf, bevor er etwas gewählt hatte, und es geschah nichts (der Grund stand nur im
+ * Tooltip, den es auf Touch nicht gibt; V-0224). Jetzt sagt ein Tipp, was fehlt.
+ * - 'vorschau': ein geteilter Plan wird gerade angesehen, erst übernehmen oder verwerfen
+ * - 'leer': noch keine Gruppe gewählt
+ * - 'system': das Teilen-Menü des Systems (grober Zeiger und navigator.share vorhanden)
+ * - 'kopieren': den Link in die Zwischenablage, ohne sie eine Karte zum Kopieren von Hand
+ */
+export function teilenWeg({ anzahl = 0, vorschau = false, share = false, grob = false } = {}) {
+  if (vorschau) return 'vorschau';
+  if (!anzahl) return 'leer';
+  return share && grob ? 'system' : 'kopieren';
+}
+
 /** Liest ein Fragment; null, wenn es kein Teilen-Link ist. Kaputte Paare fallen still weg. */
 export function teilenLesen(fragment) {
   const roh = String(fragment || '').replace(/^#/, '');

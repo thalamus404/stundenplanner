@@ -182,8 +182,11 @@ function zuruecksetzen() {
 }
 
 async function teilen() {
+  const weg = A.teilenWeg({ anzahl: selected.length, vorschau: !!vorschau, share: typeof navigator.share === 'function', grob: grob.matches });
+  if (weg === 'vorschau') { melde('Erst den geteilten Plan übernehmen oder verwerfen.'); return; }
+  if (weg === 'leer') { melde('Wähle zuerst eine Gruppe. Dann teilt der Knopf deinen Plan als Link.'); return; }
   const url = location.href.split('#')[0] + A.teilenFragment(plan, teilbareAuswahl());
-  if (navigator.share && grob.matches) {
+  if (weg === 'system') {
     try { await navigator.share({ title: 'Stundenplan', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }
   try {
@@ -199,8 +202,42 @@ async function teilen() {
 
 // ── Zeichnen ───────────────────────────────────────────────────────────────────────────────────
 
+// Die Zonen werden per innerHTML neu gezeichnet; das Element mit dem Fokus verschwände dabei, und
+// der Fokus fiele auf <body>. Mit der Tastatur hieß das: Chip, Segment oder ‹ › einmal auslösen,
+// dann ist man raus, ein zweites Enter tut nichts (V-0224, gefunden beim Paritätsdurchlauf). Deshalb
+// merkt render() sich, welches Bedienelement den Fokus hatte, und gibt ihn dem neuen Gegenstück.
+const MERKMALE = ['data-act', 'data-set', 'data-teil', 'data-k', 'data-v', 'data-d', 'data-tag', 'data-m', 'data-ebene'];
+
+function fokusMerken() {
+  const f = document.activeElement;
+  if (!f || !$('seite').contains(f)) return null;
+  if (f.closest('#koerper')) return 'kachel';
+  // Kopf und Fuß stehen fest im HTML und werden nicht ersetzt: Dort bleibt der Fokus von selbst.
+  return f.closest('#module, #werkzeug, #tage, #leiste') ? MERKMALE.map((a) => f.getAttribute(a)) : null;
+}
+
+function fokusZurueck(sig) {
+  if (!sig || (document.activeElement && document.activeElement !== document.body)) return;
+  if (sig === 'kachel') {
+    const k = $('koerper').querySelector('.k-flaeche[tabindex="0"]');
+    if (k) k.focus({ preventScroll: true });
+    return;
+  }
+  const passt = [...$('seite').querySelectorAll('button, select')].find((x) => MERKMALE.every((a, i) => x.getAttribute(a) === sig[i]));
+  // Wird das Gegenstück gesperrt (› in der letzten Woche) oder fällt es weg („Ganze Woche“), geht
+  // der Fokus an das, womit man weitermacht: Zeitraum-Feld bzw. Tageskopf.
+  const ersatz = sig[0] === 'zeit' ? $('seite').querySelector('select[data-set="zeitraum"]') : sig[0] === 'woche' ? $('tage').querySelector('.tag') : null;
+  const ziel = passt && !passt.disabled && passt.offsetParent !== null ? passt : ersatz;
+  if (ziel) ziel.focus({ preventScroll: true });
+}
+
 function render(mitRaster = true) {
   if (!plan) return;
+  const sig = fokusMerken();
+  try { zeichne(mitRaster); } finally { fokusZurueck(sig); }
+}
+
+function zeichne(mitRaster) {
   ({ selected, missing } = A.auswerten(plan, bestand, vorschau ? vorschau.auswahl : eigene));
   paare = W.conflictPairs(selected);
   partner = new Map();
@@ -233,8 +270,9 @@ function renderKopf() {
   $('stand-fuss').innerHTML = s.html;
   $('stand-fuss').classList.toggle('alt', s.alt);
   const t = $('teilen');
-  t.disabled = !!vorschau || !selected.length;
-  t.title = t.disabled ? (vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : 'Erst eine Gruppe wählen') : 'Link zu deiner Auswahl teilen';
+  // Nie gesperrt: Ohne Wahl oder in der Vorschau sagt ein Klick, was fehlt (teilenWeg in auswahl.mjs).
+  t.disabled = false;
+  t.title = vorschau ? 'Erst den geteilten Plan übernehmen oder verwerfen' : selected.length ? 'Link zu deiner Auswahl teilen' : 'Erst eine Gruppe wählen';
   const zahl = hinweise().zahl + paare.length;
   $('mehr-zahl').hidden = !zahl;
   $('mehr-zahl').textContent = zahl;
@@ -547,9 +585,13 @@ function schliesse(sofort = false) {
   if (h) h.classList.remove('da');
   if (sofort) $('ebenen').innerHTML = '';
   else setTimeout(() => { if (ebeneNr === nr && !offen) $('ebenen').innerHTML = ''; }, 200);
-  if (!sofort && zurueck) {
-    const a = zurueck();
-    if (a && a.isConnected) a.focus({ preventScroll: true });
+  if (!sofort) {
+    // Zurück zum Auslöser. Gibt es ihn nicht mehr oder ist er versteckt („Auswahl zurücksetzen“ nach
+    // dem Zurücksetzen, die Teilen-Leiste nach „Übernehmen“), dann an den Tabulatorhalt des Rasters:
+    // Sonst fiele der Fokus auf <body>, und die Tastatur finge von vorn an (V-0224).
+    const a = zurueck && zurueck();
+    const ziel = a && a.isConnected && a.offsetParent !== null ? a : $('koerper').querySelector('.k-flaeche[tabindex="0"]');
+    if (ziel) ziel.focus({ preventScroll: true });
   }
 }
 
@@ -594,7 +636,10 @@ function ebene(name, anker) {
 function karteGruppe(b) {
   const g = finde(b.dataset.key);
   if (!g) return;
-  const s = g.slots.find((x) => String(x.day) === b.dataset.tag) || g.slots[0];
+  // Tag UND Beginn: Eine Gruppe kann an einem Tag zwei Termine haben, und Raum und Termine der
+  // Karte gehören zu dem, der angeklickt wurde.
+  const k = b.closest('.kachel');
+  const s = g.slots.find((x) => String(x.day) === b.dataset.tag && (!k || x.start === k.dataset.start)) || g.slots.find((x) => String(x.day) === b.dataset.tag) || g.slots[0];
   const fokus = b.dataset.fokus;
   z.fokus = fokus;
   const zurueck = () => $('koerper').querySelector(`.k-flaeche[data-fokus="${CSS.escape(fokus)}"]`);
@@ -651,7 +696,9 @@ const AKTIONEN = {
     const zurueck = offen && offen.zurueck;
     if (offen) schliesse(true);
     waehle(key);
-    const ziel = zurueck && zurueck();
+    // Aus der Karte zurück zur Kachel; gibt es sie nicht mehr (in „Mein Plan“ gelöst), dann an den
+    // Tabulatorhalt des Rasters, damit der Fokus nicht auf <body> fällt.
+    const ziel = (zurueck && zurueck()) || $('koerper').querySelector('.k-flaeche[tabindex="0"]');
     if (ziel && b.closest('.ebene')) ziel.focus({ preventScroll: true });
   },
   geprueft: (b) => { const g = finde(b.dataset.key); if (g && !vorschau) aendere(A.bestaetige(eigene, g.component_id, g)); },
@@ -675,7 +722,9 @@ const AKTIONEN = {
   },
   ebene: (b) => ebene(b.dataset.ebene, b),
   zu: () => schliesse(),
-  ja: () => { const f = offen && offen.ja; schliesse(); if (f) f(); },
+  // Erst handeln, dann schließen: So sucht schliesse() den Fokus im neuen Zustand (der Auslöser kann
+  // dabei verschwunden sein).
+  ja: () => { const o = offen, f = o && o.ja; if (f) f(); if (offen === o) schliesse(); },
   teilen: () => teilen(),
   zuruecksetzen: () => zuruecksetzen(),
   uebernehmen: () => uebernehmen(),

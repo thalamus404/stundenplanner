@@ -120,7 +120,9 @@ https://…/#studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=10001:100~11&w=1000
 - **Im Fragment (hinter `#`), nicht in der Abfrage:** Das Fragment schickt der Browser nie an den
   Server.
 - „Teilen“ öffnet am Handy (grober Zeiger) das Teilen-Menü des Systems, sonst kopiert es den Link
-  („Link kopiert“); ohne Clipboard-API zeigt eine Karte den Link zum Kopieren von Hand.
+  („Link kopiert“); ohne Clipboard-API zeigt eine Karte den Link zum Kopieren von Hand. Gesperrt ist
+  der Knopf nie: Ohne gewählte Gruppe oder während einer Vorschau sagt eine Meldung, was fehlt
+  (`teilenWeg()` in `auswahl.mjs`; ein grauer Knopf ohne Antwort hielt Silas am Handy für kaputt).
 - **Öffnen heißt ansehen:** Die Teilen-Leiste über dem Raster nennt den geteilten Plan und wie viele
   Gruppen von der eigenen Auswahl abweichen; die eigenen stehen grau daneben. Kacheln öffnen nur
   ihre Karte („Erst den Plan übernehmen“). „Übernehmen“ fragt nach, wenn eine eigene Auswahl da
