@@ -428,13 +428,34 @@ class AuswahlTests(unittest.TestCase):
         chemie = lies(self.tmp / 'aus/ing-bsc/o-neu/chemie/ws-2030-31-fs1.json')
         self.assertEqual(chemie['kombinationen']['fehlen'], ['90002'])
 
+    def test_bestandteile_aus_dem_katalog_im_plan_und_in_der_kombination(self):
+        kat = self.tmp / 'katalog'
+        shutil.copytree(AUSWAHL, kat)
+        (kat / 'bestandteile.json').write_text(json.dumps({'bestandteile': [
+            {'id': '90001:510', 'gruppen': 'alle', 'semester': None, 'grund': 'erfunden: A und B gehören zusammen'}]}),
+            encoding='utf-8')
+        with contextlib.redirect_stderr(io.StringIO()):
+            bauen.bauen(kat, FIX / 'roh', self.tmp / 'aus', erzeugt_am=T)
+        plan = lies(self.tmp / 'aus/ein-bsc/ws-2030-31-fs1.json')
+        ue = plan['modules'][0]['components'][1]
+        self.assertEqual((ue['id'], ue['gruppen'], ue['gruppen_grund']), ('90001:510', 'alle', 'erfunden: A und B gehören zusammen'))
+        self.assertNotIn('gruppen', plan['modules'][0]['components'][0])  # ohne Eintrag: wie im Rohstand
+        self.assertEqual(plan['kombinationen']['beispiel']['90001:510'], ['602', '603'])
+        self.assertIs(plan['kombinationen']['sicher'], True)
+
     def test_alte_liste_unterscheidet_vertiefung_und_ordnung(self):
         index = self.bau(mit_vorschau=True)
         for p in index['plaene']:
             self.assertEqual(set(p), INDEX_PLAN_KEYS)
         namen = {p['datei']: p['name'] for p in index['plaene']}
+        # Mit Vorschau zwei Hochschulen: Sie steht vorn im Namen.
+        self.assertEqual(namen['ing-bsc/o-neu/bau/ws-2030-31-fs1.json'], 'Testingenieurwesen (Test-Uni, Bauwesen, Ordnung neu)')
+        self.assertEqual(namen['ing-bsc/o-alt/ws-2030-31-fs3.json'], 'Testingenieurwesen (Test-Uni, Ordnung alt)')
+        self.assertEqual(namen['zw-bsc/zw-ws-2030-31-fs1.json'], 'Zweitfach (Zweite HS)')
+        # Ohne Vorschau eine Hochschule: Sie fehlt im Namen; ein Studiengang mit einer Ordnung hat
+        # Namen wie in Schema 1.
+        namen = {p['datei']: p['name'] for p in self.bau('ohne')['plaene']}
         self.assertEqual(namen['ing-bsc/o-neu/bau/ws-2030-31-fs1.json'], 'Testingenieurwesen (Bauwesen, Ordnung neu)')
-        self.assertEqual(namen['ing-bsc/o-alt/ws-2030-31-fs3.json'], 'Testingenieurwesen (Ordnung alt)')
         self.assertEqual(namen['ein-bsc/ws-2030-31-fs1.json'], 'Einfachlehre')
 
     def test_vorschau_verschwindet_samt_leeren_ordnern(self):

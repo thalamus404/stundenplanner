@@ -246,8 +246,16 @@ python3 abruf/bauen.py --mit-vorschau --roh <ordner>     # dazu die Vorschau-Pl�
   Einzeltermin überschneiden (`plan.kombination`, Rückverfolgung mit Abschneiden, Grenze in
   Schritten). Ist die Antwort nein, steht der Plan in der Ausgabe mit `! keine Wahl ohne
   Überschneidung: <Grund>`: Ein Mensch sieht nach, ob der Katalog stimmt oder die Hochschule so plant.
-  Am 05.10.2026 so: Informatik B.Sc. 1. FS (Analysis-Vorlesung gegen zwei einmalige Vorlesungen) und
-  WI StuPO 2025 3. FS (Vorschau; eine Übungsgruppe mit Terminen an mehreren Tagen, V-0227 E5).
+  Am 05.10.2026 so: Informatik B.Sc. 1. FS (Analysis-Vorlesung gegen zwei einmalige Vorlesungen, an
+  16 Tagen) und Nachhaltiges Management 1. FS (Vorschau; die Blockwoche von Organisation und
+  Innovationsmanagement, 14.–16.12., trifft je einmal die Mikroökonomik-Vorlesung und die
+  BuK-Übung).
+- **MOSES-Gruppen sind Planungsgruppen** (V-0227 E5, Punkt 633ed71d). Wo die Gruppen eines
+  Bestandteils Teile sind (`alle`), ein offenes Angebot (`keine`) oder unklar, steht es in
+  `katalog/bestandteile.json`, mit Grund und Quelle. Für alles andere sucht `plan.verdacht` nach
+  Zeichen (Gruppen nacheinander, Namen mit verschiedenen Teilen, Lehrformen oder Rhythmen, eine
+  Gruppe mit Terminen an vielen Tagen weit über den SWS); ein Verdacht macht `sicher: false`. Neue
+  Fälle aus der Ausgabe gehören nach Ansehen in `katalog/bestandteile.json`.
 
 - **Vorgaben hängen an der Repo-Wurzel**, nicht am Arbeitsverzeichnis; ausdrücklich übergebene
   Pfade gelten relativ zum Arbeitsverzeichnis.

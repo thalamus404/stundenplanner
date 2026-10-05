@@ -188,6 +188,37 @@ class FehlerTests(unittest.TestCase):
         with self.assertRaisesRegex(K.KatalogFehler, 'Gibt es nicht'):
             K.lesen(kat)
 
+    def schreib_bestandteile(self, *eintraege):
+        (self.kat / 'bestandteile.json').write_text(json.dumps({'bestandteile': list(eintraege)}), encoding='utf-8')
+
+    def test_bestandteile_je_semester(self):
+        # Punkt 633ed71d: wo die Gruppen eines Bestandteils nicht „wähle eine“ heißen.
+        self.schreib_bestandteile({'id': '90003:520', 'gruppen': 'alle', 'semester': None, 'grund': 'erfunden'},
+                                  {'id': '90001:510', 'gruppen': 'unklar', 'semester': ['ws-2030-31'], 'grund': 'erfunden'})
+        kat = K.lesen(self.kat)
+        self.assertEqual(K.bestandteile_im_semester(kat, 'ws-2030-31'),
+                         {'90003:520': {'gruppen': 'alle', 'grund': 'erfunden'},
+                          '90001:510': {'gruppen': 'unklar', 'grund': 'erfunden'}})
+        self.assertEqual(list(K.bestandteile_im_semester(kat, 'zw-ws-2030-31')), ['90003:520'])
+
+    def test_bestandteil_falsch(self):
+        for eintrag, muster in (({'id': '90003', 'gruppen': 'alle', 'grund': 'x'}, 'Kennung'),
+                                ({'id': '90003:520', 'gruppen': 'zwei', 'grund': 'x'}, 'gruppen'),
+                                ({'id': '90003:520', 'gruppen': 'alle'}, 'grund'),
+                                ({'id': '90003:520', 'gruppen': 'alle', 'grund': 'x', 'semester': ['gibt-es-nicht']}, 'semester')):
+            self.schreib_bestandteile(eintrag)
+            self.fehler(muster)
+        self.schreib_bestandteile({'id': '90003:520', 'gruppen': 'alle', 'grund': 'x'},
+                                  {'id': '90003:520', 'gruppen': 'keine', 'grund': 'y', 'semester': ['ws-2030-31']})
+        self.fehler('doppelt')
+
+    def test_der_echte_katalog_kennt_die_faelle_aus_v0227(self):
+        kat = K.lesen(Path(__file__).resolve().parents[2] / 'katalog')
+        regeln = K.bestandteile_im_semester(kat, 'wise-2026-27')
+        self.assertEqual({k: v['gruppen'] for k, v in regeln.items() if k.split(':')[0] in ('70183', '70202', '41285', '40061', '20122')},
+                         {'70183:266': 'alle', '70183:5680': 'alle', '70183:13776': 'unklar', '70202:1501': 'alle',
+                          '41285:14229': 'alle', '41285:14230': 'unklar', '40061:741': 'alle', '20122:11814': 'keine'})
+
     def test_unlesbare_datei(self):
         (self.kat / 'studiengaenge/ein-bsc.json').write_text('{kaputt', encoding='utf-8')
         self.fehler('nicht lesbar')

@@ -126,6 +126,23 @@ Kennungen (`id`) sind Datei- und Speichernamen: nur `a–z`, `0–9`, `-`, gleic
   Module, die MOSES dem Bereich zuordnet. `frei` (optional): Hinweise ohne Module (Wahlbereich,
   Bachelorarbeit). Eine Vertiefung erbt nur die Pflichtmodule
 - LSF-Pläne tragen dazu `vvz_pfad`, `bereich` und je Modul `vvz` (`abruf/README.md`)
+
+`katalog/bestandteile.json` — **wie die Gruppen eines Bestandteils zu belegen sind**, wo es nicht
+„wähle eine“ heißt (Punkt 633ed71d, V-0227 E5: MOSES-Gruppen sind Planungsgruppen):
+
+```json
+{ "bestandteile": [
+  { "id": "70202:1501", "gruppen": "alle", "semester": null, "grund": "Vorlesung in zwei Teilen: …", "quelle": "…" },
+  { "id": "41285:14230", "gruppen": "unklar", "semester": null, "grund": "Wahltermine in einer Gruppe …", "quelle": "…" },
+  { "id": "20122:11814", "gruppen": "keine", "semester": null, "grund": "Lerninsel: offenes Angebot …", "quelle": "…" } ] }
+```
+
+- `id` ist die Kennung des Bestandteils im Rohstand (`<modulnummer>:<veranstaltungsvorlage>`), gilt
+  in allen Plänen; `semester` (Liste) schränkt auf Semester ein, `null` heißt jedes
+- `gruppen`: `eine` (Vorgabe, ohne Eintrag), `alle` (die Gruppen sind Teile, man besucht alle),
+  `keine` (offenes Angebot, keine Wahl), `unklar` (weder noch, oder die Quelle sagt es nicht).
+  `grund` ist Pflicht, `quelle` sagt, woher. Ob die Seite `alle` als Pflicht zu allen Gruppen oder
+  als Mehrfachwahl zeigt, entscheidet Silas; die Daten bleiben dieselben
 - **Erstes Format** (ohne `ordnungen` und `vertiefungen`, `hochschule` als Kurzname wie „TU Berlin“)
   gilt weiter und ergibt dieselben Dateinamen wie vorher
 
@@ -270,18 +287,30 @@ Seite (Schlüssel wie in Schema 1), bis die Seite umgestellt ist.
   `dates`, `rooms`, `occurrences`, `fortnightly`, `parity`, `rhythm`
 - `vertiefung` = `{ id, name, kurz, heisst }` oder `null`; `ordnung` mit genau den Feldern oben oder
   `null` (Katalog im ersten Format)
+- Ein Bestandteil mit Eintrag in `katalog/bestandteile.json` trägt dazu `gruppen` (`alle`, `keine`,
+  `unklar`, `eine`) und `gruppen_grund`; ohne Eintrag fehlen beide, und es gilt `eine`
 - **`kombinationen`** = `plan.kombination` über alle Bestandteile der Pflichtmodule: Gibt es je
   Bestandteil eine Gruppe, sodass sich keine zwei gewählten an irgendeinem Einzeltermin
   überschneiden (`conflicts`, direkt anschließend ist keine)? Bestandteile ohne Gruppe zählen nicht
-  (Punkt db561642), Bestandteile mit genau einer Gruppe sind fest.
-  - `{ "loesbar": true, "beispiel": { "<component_id>": "<group_id>", … } }`
-  - `{ "loesbar": false, "grund": "Jede Gruppe von … überschneidet sich mit einer Veranstaltung, die es nur einmal gibt: …" }`.
-    Die Seite sagt das ausdrücklich (Silas, 05.10.2026; Anlass Informatik 1. FS)
-  - `{ "loesbar": null, "grund": "…" }`: noch keine Termingruppe, ein Plan nur aus Wahlpflicht, oder
-    die Suche stieß an ihre Grenze (200 000 Schritte, gezählt statt gestoppt: gleiche Eingabe,
-    gleiche Bytes)
-  - dazu `fehlen: [<modulnummer>, …]`, wenn Modulen der Rohstand fehlt: Die Aussage gilt dann nur
-    für die übrigen
+  (Punkt db561642), Bestandteile mit genau einer Gruppe sind fest; `gruppen: alle` zählt als eine
+  feste Gruppe aus allen Terminen, `keine` und `unklar` zählen nicht.
+  - `{ "loesbar": true, "sicher": true, "beispiel": { "<component_id>": "<group_id>" | ["<group_id>", …], … } }`
+    (die Liste bei `gruppen: alle`)
+  - `{ "loesbar": false, "sicher": true, "grund": "Jede Gruppe von … überschneidet sich mit einer Veranstaltung, die es nur einmal gibt: …" }`.
+    Der Grund nennt Zeiten und, wenn es mehrere sind, an wie vielen Tagen. Die Seite sagt das
+    ausdrücklich (Silas, 05.10.2026; Anlass Informatik 1. FS)
+  - `{ "loesbar": null, "sicher": false, "grund": "…" }`: noch keine Termingruppe, ein Plan nur aus
+    Wahlpflicht, oder die Suche stieß an ihre Grenze (200 000 Schritte, gezählt statt gestoppt:
+    gleiche Eingabe, gleiche Bytes)
+  - **`sicher`**: Ein „unlösbar“ ist sicher, wenn keiner der beteiligten Bestandteile verdächtig ist;
+    ein „lösbar“, wenn keiner im Plan verdächtig oder `unklar` ist. Sonst steht `verdacht:
+    [{ component, grund }]` dabei (Gruppen zeitlich nacheinander, Namen nennen verschiedene Teile,
+    Lehrformen oder Rhythmen, eine Gruppe mit Terminen an drei und mehr Tagen weit über ihren SWS;
+    `plan.verdacht`), und die Seite sagt „vermutlich“. Was `katalog/bestandteile.json` regelt, ist
+    kein Verdacht mehr (Punkt 633ed71d)
+  - `ausgenommen: [{ component, gruppen, grund }]` nennt, was nicht zählte (`keine`, `unklar`)
+  - `fehlen: [<modulnummer>, …]`, wenn Modulen der Rohstand fehlt: Die Aussage gilt dann nur für
+    die übrigen
 - **Nicht** im Lesemodell steht, was vom Betrachter abhängt: `selected`, `changed`, `revision`,
   `selection`, `missing`, `selected_count`, `conflicts` und `stale`. Das rechnet die Seite: `stale`
   aus `success_at` (älter als 36 Stunden oder `null`), den Rest aus der lokalen Auswahl

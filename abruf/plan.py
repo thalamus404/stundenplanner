@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
@@ -117,30 +118,96 @@ def _name(c):
 
 
 def _zeit(a, b):
-    """Die erste echte Überschneidung zweier Gruppen, lesbar: „Di 13.10.2026 16:00–18:00“."""
+    """Wann sich zwei Gruppen überschneiden, lesbar: „Di 13.10.2026 16:00–18:00“ an einem Tag, sonst
+    „an 16 Tagen, erstmals Di 13.10.2026 16:00–18:00“. Die Zahl zählt: Eine Blockwoche, die einmal
+    auf eine Vorlesung fällt, ist etwas anderes als ein Termin, der jede Woche kollidiert."""
     paare = [(max(x['start'], y['start']), min(x['end'], y['end']))
              for x in a['bookings'] for y in b['bookings'] if x['start'] < y['end'] and y['start'] < x['end']]
     if not paare:
         return ''
     s, e = (datetime.fromisoformat(z) for z in min(paare))
-    return f"{TAGE[s.weekday()]} {s:%d.%m.%Y} {s:%H:%M}–{e:%H:%M}"
+    tage = len({z[:10] for z, _ in paare})
+    text = f"{TAGE[s.weekday()]} {s:%d.%m.%Y} {s:%H:%M}–{e:%H:%M}"
+    return text if tage == 1 else f'an {tage} Tagen, erstmals {text}'
+
+
+GRUPPEN = ('eine', 'alle', 'keine', 'unklar')
+LEHRFORMEN = re.compile(r'vorlesung|lecture|übung|exercise|tutorium|tutorial|seminar|praktikum|labor')
+
+
+def verdacht(c):
+    """Warum die Gruppen eines Bestandteils vielleicht nicht „wähle eine“ bedeuten — oder None.
+
+    Anlass (steigflug, V-0227, Punkt 633ed71d): MOSES-Gruppen sind Planungsgruppen. Bei 70183,
+    70202, 41285 und 40061 besucht man beide Vorlesungsgruppen; die Übung von 41285 bündelt Termine
+    an vier Tagen in einer Gruppe, von denen man wohl einen besucht. Die Zeichen dafür, aus den
+    Daten gelesen, nie zum Umdeuten, nur zum Warnen (`sicher: false` in `kombination`):
+    - die Gruppen liegen zeitlich nacheinander (eine endet, bevor die nächste beginnt): Teile
+    - die Gruppennamen nennen Teile („Hälfte“, „Teil“, „Block“) oder verschiedene Lehrformen
+      (eine Gruppe „Vorlesung“, eine „Übung“ im selben Bestandteil)
+    - die Gruppennamen nennen verschiedene Rhythmen („wöchentlich“ neben „Ungerade Wochen“)
+    - eine Gruppe hat je Woche mehr als das Zweieinhalbfache der SWS an Terminen: Wahltermine
+    Was der Katalog regelt (`gruppen` am Bestandteil), ist kein Verdacht mehr.
+    """
+    gs = [g for g in c.get('groups') or [] if g.get('bookings')]
+    gruende = []
+    if len(gs) >= 2:
+        # Nur Gruppen mit mehreren Terminen: Eine Einzelgruppe (Klausureinsicht) ist kein Teil.
+        spannen = sorted((min(b['start'] for b in g['bookings']), max(b['end'] for b in g['bookings']))
+                         for g in gs if len(g['bookings']) >= 2)
+        if any(x[1] <= y[0] for x, y in zip(spannen, spannen[1:])):
+            gruende.append('Gruppen liegen zeitlich nacheinander')
+        namen = [str(g.get('name') or '').casefold() for g in gs]
+        # Teile nur, wenn die Gruppen VERSCHIEDENE Teile nennen: „1. Hälfte, Gruppe 1“ und „1. Hälfte,
+        # Gruppe 2“ sind Alternativen (70202, Übung), „1. Hälfte“ und „2. Teil: Block“ nicht.
+        teile = {m.group(0) for n in namen for m in re.finditer(r'\d+\.\s*(?:semester)?(?:h[äa]lfte|teil)|block', n)}
+        if len(teile) >= 2:
+            gruende.append('Gruppennamen nennen verschiedene Teile')
+        if len({m for n in namen for m in LEHRFORMEN.findall(n)}) >= 2:
+            gruende.append('Gruppennamen nennen verschiedene Lehrformen')
+        if any('wöchentlich' in n for n in namen) and any(re.search(r'gerade|14', n) for n in namen):
+            gruende.append('Gruppennamen nennen verschiedene Rhythmen')
+    sws = c.get('sws')
+    if isinstance(sws, (int, float)) and sws > 0:
+        for g in gs:
+            je_woche = defaultdict(set)
+            for x in g['bookings']:
+                d = datetime.fromisoformat(x['start'])
+                je_woche[d.isocalendar()[:2]].add(d.weekday())
+            stunden = sum((datetime.fromisoformat(x['end']) - datetime.fromisoformat(x['start'])).total_seconds()
+                          for x in g['bookings']) / 3600
+            # Beides muss gelten: viel mehr Stunden je Woche als die SWS UND Termine an mindestens drei
+            # Tagen einer Woche. Ein Block (wenige Wochen, lange Termine) ist kein Verdacht, eine
+            # Vorlesung an drei Tagen mit passenden SWS (Analysis, 6 SWS) auch nicht.
+            if stunden / len(je_woche) > 2.5 * sws * 0.75 and max(len(t) for t in je_woche.values()) >= 3:
+                gruende.append(f"Gruppe „{g.get('name') or g['id']}“ hat je Woche weit mehr Termine, als {sws:g} SWS verlangen")
+                break
+    return '; '.join(gruende) or None
 
 
 def kombination(components, grenze=GRENZE):
     """Gibt es je Bestandteil eine Gruppe, sodass sich keine zwei gewählten Gruppen überschneiden?
 
-    `components` wie im Lesemodell: je Bestandteil `id`, `title`, `type` und `groups`, je Gruppe `id`,
-    `key`, `name` und `bookings`. Ergebnis (docs/ARCHITEKTUR.md §5, Feld `kombinationen`):
+    `components` wie im Lesemodell: je Bestandteil `id`, `title`, `type`, `sws`, optional `gruppen`
+    (aus dem Katalog) und `groups`, je Gruppe `id`, `key`, `name` und `bookings`. Ergebnis
+    (docs/ARCHITEKTUR.md §5, Feld `kombinationen`):
 
-        {"loesbar": true,  "beispiel": {"<component_id>": "<group_id>", …}}
-        {"loesbar": false, "grund": "…"}
-        {"loesbar": null,  "grund": "…"}   noch keine Gruppe im Plan, oder die Suche stieß an `grenze`
+        {"loesbar": true,  "sicher": …, "beispiel": {"<component_id>": "<group_id>" | ["<id>", …], …}}
+        {"loesbar": false, "sicher": …, "grund": "…"}
+        {"loesbar": null,  "sicher": false, "grund": "…"}   keine Gruppe im Plan, oder die Grenze
+        dazu, wenn es sie gibt: "ausgenommen": [{component, gruppen, grund}], "verdacht": [{component, grund}]
 
     Regeln, an denen etwas hängt:
-    - **Ein Bestandteil ohne Gruppe zählt nicht** (Punkt db561642): MOSES listet im Semester keine,
-      also lässt er sich weder einplanen noch verhindert er etwas.
+    - **`gruppen` am Bestandteil** (Katalog, `katalog/bestandteile.json`): `eine` (Vorgabe: wähle
+      eine Gruppe), `alle` (die Gruppen sind Teile, man besucht alle: sie zählen als eine feste
+      Gruppe; im Beispiel steht die Liste), `keine` (offenes Angebot wie die Lerninsel: zählt nicht),
+      `unklar` (z. B. Wahltermine in einer Gruppe: zählt nicht, und ein „lösbar“ ist nicht sicher).
+    - **Ein Bestandteil ohne Gruppe zählt nicht** (Punkt db561642): MOSES listet im Semester keine.
     - **Ein Bestandteil mit genau einer Gruppe ist fest**: Es gibt nichts zu wählen.
     - **Überschneidung heißt `conflicts`**: echte Einzeltermine, direkt anschließend ist keine.
+    - **`sicher`**: Ein „unlösbar“ ist sicher, wenn keiner der beteiligten Bestandteile verdächtig
+      ist (`verdacht`); ein „lösbar“, wenn keiner im Plan verdächtig oder `unklar` ist. Sonst steht
+      `verdacht` dabei, und die Seite sagt „vermutlich“ (Punkt 633ed71d, V-0227).
     - Gesucht wird mit Rückverfolgung: immer zuerst der Bestandteil mit den wenigsten noch passenden
       Gruppen; nach jeder Wahl fallen bei den übrigen die Gruppen weg, die sich mit ihr
       überschneiden, und bleibt bei einem keine, geht es sofort zurück. Die Reihenfolge ist die der
@@ -148,11 +215,31 @@ def kombination(components, grenze=GRENZE):
     - Der Grund nennt, wenn er sich so sagen lässt, die festen Termine, an denen es scheitert
       (Anlass: Informatik B.Sc., 1. FS, am 05.10.2026 — jede Gruppe der Analysis-Vorlesung liegt auf
       einer Pflichtvorlesung, die es nur einmal gibt; V-0228). Er wird veröffentlicht: nur Titel,
-      Gruppennamen und Zeiten aus MOSES.
+      Gruppennamen und Zeiten aus der Quelle.
     """
-    teile = [c for c in components if c.get('groups')]
+    teile, ausgenommen, verdaechtig = [], [], {}
+    for c in components:
+        if not c.get('groups'):
+            continue
+        art = c.get('gruppen') or 'eine'
+        if art in ('keine', 'unklar'):
+            ausgenommen.append({'component': c['id'], 'gruppen': art,
+                                'grund': 'offenes Angebot, keine Wahl' if art == 'keine' else 'laut Katalog unklar'})
+            continue
+        if art == 'alle':
+            # Teile eines Bestandteils: zusammen eine feste „Gruppe“ aus allen Terminen.
+            c = {**c, 'groups': [{'id': [g['id'] for g in c['groups']], 'key': c['id'] + ':alle', 'name': 'alle Gruppen',
+                                  'bookings': [b for g in c['groups'] for b in g['bookings']]}]}
+        elif len(c['groups']) > 1 or art == 'eine':
+            v = verdacht(c)
+            if v:
+                verdaechtig[c['id']] = v
+        teile.append(c)
+    zusatz = {}
+    if ausgenommen:
+        zusatz['ausgenommen'] = ausgenommen
     if not teile:
-        return {'loesbar': None, 'grund': 'Im Plan steht noch keine Termingruppe.'}
+        return {'loesbar': None, 'sicher': False, 'grund': 'Im Plan steht noch keine Termingruppe.', **zusatz}
     gruppe, teil_von = {}, {}
     for i, c in enumerate(teile):
         for g in c['groups']:
@@ -186,38 +273,53 @@ def kombination(components, grenze=GRENZE):
                     return gefunden
         return None
 
+    def mit_verdacht(ids):
+        v = [{'component': i, 'grund': verdaechtig[i]} for i in ids if i in verdaechtig]
+        return {'verdacht': v} if v else {}
+
     try:
         gefunden = suche({i: [g['key'] for g in c['groups']] for i, c in enumerate(teile)}, {})
     except _Grenze:
-        return {'loesbar': None, 'grund': f'Die Suche hat nach {grenze} Schritten aufgehört; ob es eine Wahl '
-                                          'ohne Überschneidung gibt, ist offen.'}
+        return {'loesbar': None, 'sicher': False,
+                'grund': f'Die Suche hat nach {grenze} Schritten aufgehört; ob es eine Wahl ohne Überschneidung '
+                         'gibt, ist offen.', **zusatz}
+    alle_ids = [c['id'] for c in teile]
     if gefunden is not None:
-        return {'loesbar': True, 'beispiel': {teile[i]['id']: gruppe[gefunden[i]]['id'] for i in sorted(gefunden)}}
-    return {'loesbar': False, 'grund': _grund(teile, gruppe, feind)}
+        v = mit_verdacht(alle_ids)
+        unklar = any(a['gruppen'] == 'unklar' for a in ausgenommen)
+        return {'loesbar': True, 'sicher': not v and not unklar,
+                'beispiel': {teile[i]['id']: gruppe[gefunden[i]]['id'] for i in sorted(gefunden)}, **zusatz, **v}
+    grund, beteiligt = _grund(teile, gruppe, feind)
+    v = mit_verdacht(beteiligt if beteiligt is not None else alle_ids)
+    return {'loesbar': False, 'sicher': not v, 'grund': grund, **zusatz, **v}
 
 
 def _grund(teile, gruppe, feind):
-    """Warum es keine Wahl ohne Überschneidung gibt — so konkret, wie es sich sagen lässt."""
+    """Warum es keine Wahl ohne Überschneidung gibt — so konkret, wie es sich sagen lässt — und die
+    Kennungen der beteiligten Bestandteile (None: alle, der Grund ist allgemein)."""
     fest = {c['groups'][0]['key']: i for i, c in enumerate(teile) if len(c['groups']) == 1}
-    saetze = []
+    saetze, beteiligt = [], []
     for a, i in fest.items():
         for b, j in fest.items():
             if i < j and b in feind[a]:
                 saetze.append(f'Die einzigen Gruppen von {_name(teile[i])} und {_name(teile[j])} '
                               f'überschneiden sich ({_zeit(gruppe[a], gruppe[b])}).')
+                beteiligt += [teile[i]['id'], teile[j]['id']]
     for i, c in enumerate(teile):
         if len(c['groups']) < 2:
             continue
-        stoerer = []
+        stoerer, wer = [], []
         for g in c['groups']:
             b = next((x for x in sorted(feind[g['key']], key=lambda x: fest.get(x, -1)) if x in fest), None)
             if b is None:
                 break
             stoerer.append(f"{g.get('name') or g['id']} mit {_name(teile[fest[b]])}, {_zeit(g, gruppe[b])}")
+            wer.append(teile[fest[b]]['id'])
         else:
             saetze.append(f'Jede Gruppe von {_name(c)} überschneidet sich mit einer Veranstaltung, die es nur '
                           f'einmal gibt: ' + '; '.join(stoerer) + '.')
+            beteiligt += [c['id']] + wer
     if saetze:
-        return ' '.join(saetze)
+        return ' '.join(saetze), list(dict.fromkeys(beteiligt))
     return (f'Keine Wahl aus je einer Gruppe pro Bestandteil ist frei von Überschneidungen '
-            f'({len(teile)} Bestandteile mit {len(gruppe)} Gruppen geprüft).')
+            f'({len(teile)} Bestandteile mit {len(gruppe)} Gruppen geprüft).'), None

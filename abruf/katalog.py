@@ -35,6 +35,9 @@ Regeln, an denen etwas hängt:
 - **Ersatzsemester**: Ein Semester mit `ersatz_fuer` zeigt die Termine eines früheren für ein
   kommendes, das die Quelle noch nicht freigibt (V-0227: den letzten Sommer für den nächsten). Die Gültigkeit
   einer Ordnung wird dann an `ersatz_anker` gemessen, dem Beginn des gemeinten Semesters.
+- **Bestandteile** (`katalog/bestandteile.json`, Punkt 633ed71d): Wo die Gruppen eines Bestandteils
+  nicht „wähle eine“ heißen: `alle` (Teile), `keine` (offenes Angebot), `unklar`. Gilt für die
+  Kennung `<modul>:<vorlage>` in allen Plänen, auf Wunsch nur in genannten Semestern.
 - **Wahlpflicht** (V-0227): Ein Plan nennt Bereiche einer Modulliste (`katalog/modullisten/`,
   erzeugt von modulliste.py), keine Module. Welche Module dazugehören, löst `lesen()` auf
   (`wahlpflicht[].kandidaten`). Eine Vertiefung erbt nur die Pflichtmodule des Grundplans.
@@ -51,6 +54,8 @@ KENNUNG = re.compile(r'[a-z0-9][a-z0-9-]*')
 # prüft enger (MOSES: nur Ziffern, abruf.NUMMER); hier nur: kein Pfad, kein Leerzeichen.
 MODUL = re.compile(r'[A-Za-z0-9][A-Za-z0-9-]{0,39}')
 SICHTBAR = ('live', 'vorschau')
+GRUPPEN = ('eine', 'alle', 'keine', 'unklar')  # wie plan.GRUPPEN
+BESTANDTEIL = re.compile(r'[A-Za-z0-9][A-Za-z0-9-]{0,39}:[A-Za-z0-9-]+')
 ABRUF = ('erlaubt', 'gesperrt')
 # Die Felder einer Ordnung, die ins Lesemodell gehen (docs/ARCHITEKTUR.md §5), in dieser Reihenfolge.
 ORDNUNG_FELDER = ('id', 'label', 'name', 'fundstelle', 'url', 'gilt_ab', 'gilt_bis', 'studienbeginn', 'fuer_wen')
@@ -216,6 +221,36 @@ def _wahlpflicht(p, ordner, listen, wo):
     return out
 
 
+def _bestandteile(ordner, semester):
+    """Die Regeln je Bestandteil aus `katalog/bestandteile.json` (fehlt die Datei: keine)."""
+    pfad = ordner / 'bestandteile.json'
+    if not pfad.exists():
+        return []
+    roh = _lies(pfad)
+    out, gesehen = [], set()
+    for i, b in enumerate(roh.get('bestandteile') or []):
+        w = f'bestandteile.json, Eintrag {i + 1}'
+        if not isinstance(b.get('id'), str) or not BESTANDTEIL.fullmatch(b['id']):
+            raise KatalogFehler(f'{w}: „id“ ist keine Kennung <modul>:<vorlage>: {b.get("id")!r}')
+        _wahl(b, 'gruppen', GRUPPEN, None, w)
+        _text(b, 'grund', w)
+        sem = b.get('semester')
+        if sem is not None and (not isinstance(sem, list) or not all(s in semester for s in sem)):
+            raise KatalogFehler(f'{w}: „semester“ ist null oder eine Liste bekannter Semester')
+        for s in (sem or [None]):
+            if (b['id'], s) in gesehen or (b['id'], None) in gesehen or (s is None and any(x == b['id'] for x, _ in gesehen)):
+                raise KatalogFehler(f'{w}: {b["id"]} steht doppelt')
+            gesehen.add((b['id'], s))
+        out.append({'id': b['id'], 'gruppen': b['gruppen'], 'semester': sem, 'grund': b['grund']})
+    return out
+
+
+def bestandteile_im_semester(kat, sid):
+    """{component_id: {gruppen, grund}} für ein Semester."""
+    return {b['id']: {'gruppen': b['gruppen'], 'grund': b['grund']}
+            for b in kat['bestandteile'] if b['semester'] is None or sid in b['semester']}
+
+
 def plan_id(g, o, v, sem, fs):
     """Die Kennung eines Plans, eindeutig über alle fünf Stufen und stabil (Schlüssel im Browser)."""
     return ':'.join([g] + ([o] if o else []) + [sem, f'fs{fs}'] + ([v] if v else []))
@@ -313,7 +348,8 @@ def lesen(ordner):
         return (p['studiengang']['id'], p['semester']['anker'], p['fachsemester'],
                 ro.get((p['ordnung'] or {}).get('id'), -1), rv.get((p['vertiefung'] or {}).get('id'), -1))
     plaene.sort(key=ordnung_der_plaene)
-    return {'hochschulen': hochschulen, 'semester': semester, 'studiengaenge': studiengaenge, 'plaene': plaene}
+    return {'hochschulen': hochschulen, 'semester': semester, 'studiengaenge': studiengaenge, 'plaene': plaene,
+            'bestandteile': _bestandteile(ordner, semester)}
 
 
 def sichtbar(plan, mit_vorschau):

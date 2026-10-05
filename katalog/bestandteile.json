@@ -1,0 +1,50 @@
+{
+  "hinweis": "Wie die Gruppen eines Bestandteils zu belegen sind, wo es NICHT „wähle eine“ heißt (Vorgabe eine). alle: die Gruppen sind Teile, man besucht alle. keine: offenes Angebot, keine Wahl. unklar: weder noch, oder die Quelle sagt es nicht (z. B. Wahltermine in einer Gruppe). Kennung = <Modulnummer>:<Veranstaltungsvorlage> wie im Rohstand; semester null = in jedem Semester. Anlass: Punkt 633ed71d (steigflug, V-0227, E5). Silas entscheidet noch, ob die Seite solche Bestandteile als Katalogfeld oder als Mehrfachwahl behandelt; danach ändern sich nur diese Daten. docs/ARCHITEKTUR.md §3",
+  "bestandteile": [
+    {
+      "id": "70183:266", "gruppen": "alle", "semester": null,
+      "grund": "Vorlesung in zwei Hälften: „1. Semesterhälfte – Marketing“ und „2. Semesterhälfte – Produktionsmanagement“; man besucht beide",
+      "quelle": "Gruppennamen und Termine in MOSES, WiSe 2026/27 und SoSe 2026 (steigflug, V-0227, E5; nachgesehen in den Rohständen am 05.10.2026)"
+    },
+    {
+      "id": "70183:5680", "gruppen": "alle", "semester": null,
+      "grund": "Übung in zwei Hälften (Marketing, dann Produktionsmanagement); man besucht beide",
+      "quelle": "Gruppennamen in MOSES, WiSe 2026/27 und SoSe 2026 (05.10.2026)"
+    },
+    {
+      "id": "70183:13776", "gruppen": "unklar", "semester": ["wise-2026-27"],
+      "grund": "Tutorium: zwei Gruppen der 1. Semesterhälfte (Marketing) und vier der 2. (Produktionsmanagement); vermutlich je Hälfte eine, das kann das Modell noch nicht",
+      "quelle": "Gruppennamen in MOSES, WiSe 2026/27 (05.10.2026)"
+    },
+    {
+      "id": "70202:1501", "gruppen": "alle", "semester": null,
+      "grund": "Vorlesung in zwei Teilen: wöchentlich, dann eine Blockveranstaltung (WiSe 2026/27: bis 09.12., Block 14.–16.12.); man besucht beide",
+      "quelle": "Termine und Gruppennamen in MOSES, WiSe 2026/27 und SoSe 2026 (querwind V-0228 §6, steigflug V-0227 E5)"
+    },
+    {
+      "id": "41285:14229", "gruppen": "alle", "semester": null,
+      "grund": "Vorlesung „wöchentlich“ und „Ungerade Wochen“: zwei Teile einer Vorlesung, man besucht beide",
+      "quelle": "Gruppennamen in MOSES, WiSe 2026/27 (steigflug, V-0227, E5)"
+    },
+    {
+      "id": "41285:14230", "gruppen": "unklar", "semester": null,
+      "grund": "Übung: Jede Gruppe („Exercise (Ungerade Wochen)“, „Exercise (Gerade Wochen)“) bündelt Termine an vier Wochentagen, von denen man vermutlich einen besucht; als Einheit gewählt erzeugt sie falsche Überschneidungen",
+      "quelle": "Termine in MOSES, WiSe 2026/27 (steigflug, V-0227, E5)"
+    },
+    {
+      "id": "40061:741", "gruppen": "alle", "semester": null,
+      "grund": "Ein Bestandteil mit den Gruppen „Vorlesung“ und „Übung“: zwei Lehrformen, man besucht beide",
+      "quelle": "Gruppennamen in MOSES, WiSe 2026/27 (steigflug, V-0227, E5)"
+    },
+    {
+      "id": "20122:11814", "gruppen": "keine", "semester": null,
+      "grund": "Lerninsel (AnaLinA Space): offenes Lernangebot in Stunden-Slots, keine Gruppe zum Wählen",
+      "quelle": "Gruppennamen und Termine in MOSES, WiSe 2026/27 (querwind, V-0228 §6)"
+    },
+    {
+      "id": "20122:7721", "gruppen": "unklar", "semester": ["sose-2026"],
+      "grund": "Vorlesung: neben zwei Termingruppen stehen „Termine vor der Vorlesungszeit“ und „Klausureinsicht“ als eigene Gruppen; keine echten Alternativen",
+      "quelle": "Gruppennamen in MOSES, SoSe 2026 (nachgesehen in den Rohständen am 05.10.2026, V-0233)"
+    }
+  ]
+}
