@@ -20,10 +20,20 @@ auf GitHub schlägt dann Alarm.
 Aufrufe:
   python3 lauf.py            die Zeitplan-Schleife (CMD des Containers)
   python3 lauf.py --jetzt    ein Lauf auf Abruf; läuft schon einer, wartet er und meldet dessen Ergebnis
+  python3 lauf.py --jetzt --ohne-abruf
+                             derselbe Lauf ohne Schritt 2: baut aus dem Rohstand im Volume und
+                             liefert aus, ohne MOSES zu fragen. So liefert `ops/bauen.sh live` aus.
   python3 lauf.py --status   der Zustand des letzten Laufs (JSON)
 
 Exit-Codes von --jetzt: 0 ausgeliefert · 1 gescheitert, nichts ausgeliefert ·
 3 gelungen, aber nicht ausgeliefert (kein Token, oder ein Testlauf mit STAND/REPO_URL — der lädt nie hoch).
+
+MOSES FRAGT NUR DER ZEITPLAN (V-0241, 05.10.2026). Bis dahin fuhr jede Auslieferung nach main
+(`ops/bauen.sh live`) einen vollen Lauf, also einen Abruf mehr je Freigabe; am 05.10. waren das
+mehrere am Tag, ohne dass es jemand wollte. innoCampus (TU) sieht das Abrufen der Weboberfläche
+nicht gern und sperrt auffällige Adressen. Seitdem fragt nur die Schleife MOSES, einmal am Tag;
+`letzter_abruf_am` im Zustand merkt sich den letzten Abruf, damit ein Lauf ohne Abruf den
+Tagestermin weder auslöst noch verdeckt.
 
 Herkunft der Zeitplan-Schleife: serve() in stundenplan/runner.py des Study OS (kopiert, nicht
 geteilt). Dort hielt eine Datenbank-Sperre den Lauf exklusiv; hier, ohne Datenbank, eine
@@ -224,17 +234,26 @@ def lauf_innen(zustand):
 
     ROH.mkdir(parents=True, exist_ok=True)
     env = git_umgebung()
-    rc, _, dauer = schritt('abruf', [sys.executable, 'abruf/abruf.py', '--roh', str(ROH)], cwd=str(REPO), env=env)
-    protokoll.append({'schritt': 'abruf', 'rc': rc, 'sekunden': dauer})
-    if rc == 1:
-        # Teilweise gescheitert ist kein Abbruch: Je gescheitertem Modul steht der letzte
-        # gelungene Rohstand im Volume (docs/ARCHITEKTUR.md §4), und das Lesemodell sagt es.
-        zustand['abruf'] = 'teilweise'
-        log.warning('abruf: teilweise gescheitert, der Vorbestand trägt')
-    elif rc != 0:
-        raise Abbruch(f'abruf.py rc {rc}')
+    if not zustand['mit_abruf']:
+        # Eine Auslieferung fragt MOSES nicht (V-0241): Sie baut aus dem Rohstand des letzten
+        # Abrufs. Ohne Rohstand gäbe es nichts zu bauen; den ersten holt der Zeitplan oder von
+        # Hand `ops/bauen.sh lauf --mit-abruf` (docs/BETRIEB.md).
+        if not any(p.is_file() for p in ROH.rglob('*')):
+            raise Abbruch('kein Rohstand im Volume — der erste Abruf kommt mit dem Zeitplan (docs/BETRIEB.md)')
+        zustand['abruf'] = 'ausgelassen'
+        log.info('abruf: ausgelassen, gebaut wird aus dem Rohstand im Volume (MOSES wird nicht gefragt)')
     else:
-        zustand['abruf'] = 'ok'
+        rc, _, dauer = schritt('abruf', [sys.executable, 'abruf/abruf.py', '--roh', str(ROH)], cwd=str(REPO), env=env)
+        protokoll.append({'schritt': 'abruf', 'rc': rc, 'sekunden': dauer})
+        if rc == 1:
+            # Teilweise gescheitert ist kein Abbruch: Je gescheitertem Modul steht der letzte
+            # gelungene Rohstand im Volume (docs/ARCHITEKTUR.md §4), und das Lesemodell sagt es.
+            zustand['abruf'] = 'teilweise'
+            log.warning('abruf: teilweise gescheitert, der Vorbestand trägt')
+        elif rc != 0:
+            raise Abbruch(f'abruf.py rc {rc}')
+        else:
+            zustand['abruf'] = 'ok'
 
     rc, _, dauer = schritt('bauen', [sys.executable, 'abruf/bauen.py', '--roh', str(ROH)], cwd=str(REPO), env=env)
     protokoll.append({'schritt': 'bauen', 'rc': rc, 'sekunden': dauer})
@@ -272,9 +291,18 @@ def lauf_innen(zustand):
     return ausliefern(commit, protokoll)
 
 
-def lauf(warten=False):
+def letzter_abruf(z):
+    """Wann zuletzt ein Lauf MOSES gefragt hat (begonnen, gelungen oder nicht). Zustände von vor
+    V-0241 kennen das Feld nicht; damals fragte jeder Lauf, also gilt dort sein Beginn."""
+    if z.get('letzter_abruf_am'):
+        return z['letzter_abruf_am']
+    return z.get('begonnen_am') if z.get('mit_abruf', True) else None
+
+
+def lauf(warten=False, mit_abruf=True):
     """Ein Lauf unter der Dateisperre. Gibt den Endstatus zurück oder None, wenn ein anderer läuft
-    (mit warten=True: auf ihn warten und SEINEN Status zurückgeben)."""
+    (mit warten=True: auf ihn warten und SEINEN Status zurückgeben). mit_abruf=False baut aus dem
+    Rohstand im Volume, ohne MOSES zu fragen (V-0241)."""
     DATEN.mkdir(parents=True, exist_ok=True)
     with open(SPERRE, 'w') as sperre:
         try:
@@ -285,8 +313,11 @@ def lauf(warten=False):
             log.info('ein Lauf läuft schon; ich warte auf ihn und melde sein Ergebnis')
             fcntl.flock(sperre, fcntl.LOCK_EX)
             return lies_zustand().get('status')
-        zustand = {'begonnen_am': jetzt_iso(), 'status': 'laeuft', 'stand': STAND,
-                   'image': os.getenv('STAND_IMAGE', 'unbekannt'), 'schritte': []}
+        begonnen = jetzt_iso()
+        zustand = {'begonnen_am': begonnen, 'status': 'laeuft', 'stand': STAND,
+                   'image': os.getenv('STAND_IMAGE', 'unbekannt'), 'schritte': [],
+                   'mit_abruf': mit_abruf,
+                   'letzter_abruf_am': begonnen if mit_abruf else letzter_abruf(lies_zustand())}
         schreib_zustand(zustand)
         log.info('Lauf beginnt (Image %s, Stand %s)', zustand['image'], STAND)
         try:
@@ -328,11 +359,16 @@ def schleife():
         herz()
         try:
             z = lies_zustand()
-            begonnen = datetime.fromisoformat(z['begonnen_am']) if z.get('begonnen_am') else None
+            # Gemessen am letzten ABRUF, nicht am letzten Lauf (V-0241): Eine Auslieferung ohne
+            # Abruf nach 05:20 darf einen verpassten Tagesabruf nicht verdecken.
+            abruf = letzter_abruf(z)
+            abruf = datetime.fromisoformat(abruf) if abruf else None
             faellig = faellig_seit(datetime.now(BERLIN))
             # 'laeuft' im Zustand heißt: Ein Lauf wurde begonnen und nicht beendet (Container
             # gestoppt, Absturz). Hält ihn noch jemand (ein --jetzt), gibt lauf() None zurück.
-            if begonnen is None or begonnen < faellig or z.get('status') == 'laeuft':
+            # Ein abgebrochener Lauf OHNE Abruf löst keinen Abruf aus.
+            haengt = z.get('status') == 'laeuft' and z.get('mit_abruf', True)
+            if abruf is None or abruf < faellig or haengt:
                 lauf()
         except Exception as exc:   # noqa: BLE001
             log.error('Zeitplan: %s', type(exc).__name__)
@@ -342,13 +378,15 @@ def schleife():
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Der tägliche Lauf des Stundenplanners (docs/BETRIEB.md).')
     ap.add_argument('--jetzt', action='store_true', help='einen Lauf jetzt fahren')
+    ap.add_argument('--ohne-abruf', action='store_true',
+                    help='mit --jetzt: aus dem Rohstand im Volume bauen und ausliefern, MOSES nicht fragen')
     ap.add_argument('--status', action='store_true', help='den Zustand des letzten Laufs zeigen')
     a = ap.parse_args(argv)
     if a.status:
         print(json.dumps(lies_zustand(), ensure_ascii=False, indent=2))
         return 0
     if a.jetzt:
-        status = lauf(warten=True)
+        status = lauf(warten=True, mit_abruf=not a.ohne_abruf)
         return {'ausgeliefert': 0, 'nicht_ausgeliefert': 3}.get(status, 1)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     schleife()
