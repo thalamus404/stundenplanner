@@ -488,6 +488,13 @@ Daten, echte Nutzer), **sobald P1 entschieden ist**, denn MuP im 3. FS ist genau
 „zwei Gruppen gehören zusammen“. Die Sommer-Fachsemester erst, wenn MOSES das SoSe 2027 freigibt.
 StuPO 2025 FS 3–6 bleiben bis zum WiSe 2027/28 Vorschau.
 
+Was Silas am 05.10.2026 schon entschieden hat (Punkte 4f9d85ec und 95bca34a im TOWER) und hier
+hineinpasst: ein Einstieg mit Uni → Studiengang → Vertiefung → Semester → StuPO (eine einzige
+gültige StuPO wird automatisch gewählt), die ausdrückliche Meldung, wenn es keine Wahl ohne
+Überschneidung gibt, und die Forschungspläne (auch diese) nur unter dem dev-Link mit einem
+Kennzeichen „nur Vorschau“, nie in der Produktion. Für „keine Wahl ohne Überschneidung“ gilt: erst
+P1 lösen, sonst meldet die Seite es fälschlich (StuPO 2025 FS 3, 8.3).
+
 In der Reihenfolge, in der es Phase 2 bauen sollte:
 
 1. **Entscheidung P1 (Silas):** Wie geht die Seite mit Gruppen um, die zusammengehören? Vorschlag:
