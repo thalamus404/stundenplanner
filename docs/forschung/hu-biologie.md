@@ -103,7 +103,7 @@ ist deshalb eine gute **Gegenprobe**, aber nicht die Wahrheit: Die bleibt das Mi
 | `abruf/abruf.py` | `standard_quelle()` wählt je Semester MOSES oder LSF, wie der Katalog es sagt. Katalogprüfung für LSF (Schlüssel, `vvz`, `vvz_pfad`, `quelle.basis` https). Sonst unverändert; die MOSES-Tests laufen weiter |
 | `katalog/semester/hu-wise-2026-27.json` | Eigenes Semester der HU: Anker 12.10.2026, `quelle` = LSF/AGNES, Semesterschlüssel `20262` |
 | `katalog/studiengaenge/hu-biologie-bsc.json` | Biologie B.Sc., FS 1: BioB 1 bis 4, Pflichtbereich, Pfad im VVZ, Quelle AMB 27/2025 |
-| `abruf/tests/test_lsf.py`, `abruf/tests/fixtures/lsf/` | 28 Tests auf echten, gekürzten AGNES-Ausschnitten (Namen der Lehrenden entfernt, der Kommentar unter „Inhalt“ ist erfunden) |
+| `abruf/tests/test_lsf.py`, `abruf/tests/fixtures/lsf/` | 30 Tests auf echten, gekürzten AGNES-Ausschnitten (Namen der Lehrenden entfernt, der Kommentar unter „Inhalt“ ist erfunden) |
 | `abruf/README.md` | Benutzung, Katalogfelder, Fehlermeldungen, Höflichkeit der LSF-Quelle |
 
 **Halb manuell, aber echt:** Der Katalog ist von Hand aus dem Mitteilungsblatt übernommen. Der Abruf
@@ -139,8 +139,9 @@ Abruf am 05.10.2026, 10:08 bis 10:10 Uhr: **4 Module, 9 Bestandteile, 23 Gruppen
   Gruppe 2 und 5 (Mi 10–12) mit der Evolution-Übung Gruppe 2 (Mi 10:15–11:45).
 - Lesemodell 159 KB (WI: etwa 400 KB). Die Vorschau zeigt beide Pläne, Biologie (HU) und
   Wirtschaftsinformatik (TU, Rohstand eines MOSES-Laufs vom selben Tag), über die Planwahl der Seite.
-- Abruf: 74 Anfragen in 89 s, je Veranstaltung eine Sitzung, ≥ 1 s Abstand.
-- Tests: `sh ops/test.sh` grün, 112 Python-Tests (28 neu) und 49 der Seite.
+- Abruf: 74 Anfragen in 89 s, je Veranstaltung eine Sitzung, ≥ 1 s Abstand über den ganzen Lauf
+  (auch zwischen Sitzungen und Modulen, Punkt aed3e76c).
+- Tests: `sh ops/test.sh` grün, 114 Python-Tests (30 neu) und 64 der Seite.
 
 ## 7. Erkenntnisse
 

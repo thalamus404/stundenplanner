@@ -119,7 +119,8 @@ ein Plan in katalog/studiengaenge/hu-biologie-bsc.json:
 python3 abruf/abruf.py --semester hu-wise-2026-27 --roh /irgendwo/roh   # 4 Module, ~90 s
 ```
 
-**Was je Veranstaltung geholt wird** (eine eigene Sitzung ohne Login, ≥ 1 s Abstand): die
+**Was je Veranstaltung geholt wird** (eine eigene Sitzung ohne Login; ≥ 1 s Abstand gilt für den ganzen
+Lauf, auch von einer Sitzung zur nächsten, `Client.letzte`, Punkt aed3e76c): die
 Detailseite, dann je Gruppe „vormerken“ + Semesteransicht des anonymen Stundenplans (dort steht der
 iCalendar-Link mit den Termin-IDs, sonst nirgends), am Ende ein iCalendar-Export für alle Termine.
 Die Termin-IDs, die beim Vormerken einer Gruppe neu dazukommen, gehören zu ihr. Baumseiten holt ein

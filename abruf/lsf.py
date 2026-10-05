@@ -95,6 +95,10 @@ class Client:
     # Baumseiten eines Laufs, über alle Sitzungen: Die Module eines Plans hängen am selben Pfad,
     # und der soll je Lauf einmal geholt werden, nicht je Modul.
     baum: dict = {}
+    # Die Uhr der Höflichkeit gilt für den ganzen Lauf, nicht je Sitzung: Jede Veranstaltung hat
+    # eine eigene Sitzung, und eine frische Sitzung darf nicht sofort nach der letzten Anfrage der
+    # vorigen fragen (Punkt aed3e76c, „Pause auch zwischen Modulen“).
+    letzte: float = 0.0
 
     def __init__(self, basis: str, delay: float = 1.0):
         u = urlsplit(basis)
@@ -104,7 +108,6 @@ class Client:
         self.host = u.netloc
         self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
         self.delay = delay
-        self.last = 0.0
 
     def url(self, params: dict) -> str:
         return self.basis + '?' + urlencode(params)
@@ -112,7 +115,7 @@ class Client:
     def request(self, url: str, data=None) -> str:
         if urlsplit(url).netloc != self.host:
             raise SourceError('Unerwarteter LSF-Host')
-        time.sleep(max(0.0, self.delay - (time.monotonic() - self.last)))
+        time.sleep(max(0.0, self.delay - (time.monotonic() - Client.letzte)))
         body = urlencode(data, doseq=True).encode() if data is not None else None
         try:
             with self.opener.open(Request(url, data=body, headers={'User-Agent': USER_AGENT}), timeout=45) as r:
@@ -120,7 +123,7 @@ class Client:
                     raise SourceError('Unerwartete Weiterleitung')
                 return r.read().decode(r.headers.get_content_charset() or 'utf-8', 'replace')
         finally:
-            self.last = time.monotonic()
+            Client.letzte = time.monotonic()
 
     def get(self, url: str) -> str:
         return self.request(url)

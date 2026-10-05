@@ -278,6 +278,28 @@ class IcalTests(unittest.TestCase):
         self.assertFalse(lsf._passt((date(2026, 10, 27), date(2027, 2, 9), '13:00', '15:00'), ev, b))
 
 
+class HoeflichkeitTests(unittest.TestCase):
+    def test_pause_gilt_ueber_sitzungen_hinweg(self):
+        # Zwei Sitzungen nacheinander: Die zweite wartet auf die erste (Punkt aed3e76c).
+        from unittest import mock
+        schlaf = []
+        jetzt = iter([100.0, 100.2, 100.4, 100.6])  # vor/nach der 1. Anfrage, vor/nach der 2.
+        with mock.patch.object(lsf.time, 'monotonic', lambda: next(jetzt)), \
+             mock.patch.object(lsf.time, 'sleep', schlaf.append), \
+             mock.patch.object(lsf.Client, 'letzte', 0.0):
+            a, b = lsf.Client(BASIS), lsf.Client(BASIS)
+            for c in (a, b):
+                c.opener = mock.Mock(open=mock.Mock(side_effect=OSError('kein Netz im Test')))
+                with self.assertRaises(OSError):
+                    c.get(BASIS + '?state=wtree')
+        self.assertEqual(schlaf[0], 0.0)
+        self.assertAlmostEqual(schlaf[1], 0.8)
+
+    def test_nur_der_host_aus_dem_katalog(self):
+        with self.assertRaisesRegex(lsf.SourceError, 'Host'):
+            lsf.Client(BASIS).get('https://example.org/lupo/rds?state=wtree')
+
+
 class SchwaerzenTests(unittest.TestCase):
     def test_zugangsdaten_und_mail(self):
         self.assertEqual(lsf.schwaerzen('Moodle-Einschreibeschlüssel: Geheim1'), '[Zugangsdaten nur in AGNES]')
