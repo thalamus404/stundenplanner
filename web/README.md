@@ -1,7 +1,7 @@
 # Die Seite
 
 Statisches HTML, CSS und JS ohne Build-Schritt: der Stundenplanner als **One-Pager**, gebaut nach
-[`docs/DESIGN.md`](../docs/DESIGN.md) (V-0220). Liest `web/daten/` (das Lesemodell,
+[`docs/DESIGN.md`](../docs/DESIGN.md) (V-0220, Bedienung nach Silas' Tests neu in V-0225). Liest `web/daten/` (das Lesemodell,
 [`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5) und hält die Auswahl im Browser (§6). Lokal
 ansehen:
 
@@ -18,13 +18,13 @@ python3 ops/sicht.py --web web               # misst DESIGN §8 in allen Fenster
 
 | Datei | Was |
 |---|---|
-| `index.html` | der Rahmen: fünf Zonen (Kopf, Module, Werkzeug, Raster, Fuß), die Hilfe als `<template>`, der SVG-Symbolsatz. Steht ohne JS (erstes Bild) |
-| `stil.css` | das Aussehen: Tokens aus DESIGN §5 auf `:root` (hell und dunkel), Zonen, Raster, Kacheln mit Container-Abfragen, Ebenen, Handy-Layout |
+| `index.html` | der Rahmen: Kopf (mit Studiengang-Reiter, Kalender, Teilen), Module, Bühne (Werkzeugzeile mit Lage und Umschalter Tag/Woche, Raster), Legende, Fuß; die Hilfe als `<template>`, der SVG-Symbolsatz. Steht ohne JS (erstes Bild), der Satz der Lage schon im HTML (größter Inhalt früh) |
+| `stil.css` | das Aussehen: Tokens aus DESIGN §5 auf `:root` (hell und dunkel), Zonen, Modulkacheln und Formate, Raster, Kachelarten mit Container-Abfragen und der kurzen Wahl-Animation, Ebenen, Tablet und Handy |
 | `app.js` | lädt die Daten, zeichnet, verdrahtet die Bedienung, Karten, Blätter, Dialoge, Meldung. Der einzige Teil mit DOM |
-| `raster.mjs` | das Raster ohne DOM: Zeitachse, Spuren paralleler Gruppen, dichteste Stelle, was sichtbar ist, Gruppennummer, Typ ausgeschrieben |
+| `raster.mjs` | das Raster ohne DOM: Zeitachse, Spuren paralleler Gruppen, dichteste Stelle, was sichtbar ist, die Navigation Modul → Format (`tippeModul`, `tippeFormat`, `stufeZurueck`), die Legende, Gruppennummer, Typ ausgeschrieben |
 | `woche.mjs` | Konflikte gegen echte Termine, Ansichtsfilter, Wochen, A/B, Termine einer Karte |
-| `auswahl.mjs` | die Auswahl: Speicher, eine Gruppe je Bestandteil, `changed`, `missing`, `stale`, Teilen-Link |
-| `text.mjs` | Escapen, sichere Links, Datumsangaben, Berliner Zeit ohne `Intl` |
+| `auswahl.mjs` | die Auswahl: Speicher, eine Gruppe je Format, `changed`, `missing`, `stale`, die automatisch eingeplante einzige Gruppe (`einzige`, `auto`), Fortschritt, wirksame Auswahl, Teilen-Link |
+| `text.mjs` | Escapen, sichere Links, Datumsangaben, Berliner Zeit ohne `Intl`, Abschluss ausgeschrieben |
 | `manifest.webmanifest`, `icon.svg`, `icon-180/192/512.png` | Home-Bildschirm. Das Symbol ist eine Woche aus fünf Kacheln in Modulfarben auf Tinte; die PNGs sind daraus gerendert |
 | `tests/` | `node --test` für die vier `.mjs`, gegen `tests/fixtures/plan.json` (synthetisch, Format §5) |
 | `impressum.html`, `datenschutz.html`, `recht.css` | gehören zum Betrieb, nicht zu diesem Teil |
@@ -37,31 +37,30 @@ sie aus dem Study OS kopierte.
 
 ## Layout je Breite
 
-Die Seite füllt genau das Fenster (`height: 100dvh`), die Zonen 1–3 und 5 sind so hoch wie ihr
-Inhalt, das Raster bekommt den Rest. Die Stunde teilt sich die Rasterhöhe: Stundenlinien und
-Kacheln liegen in Prozent, kein Skript misst beim Größerziehen. Reicht die Höhe nicht für 20 px je
-Stunde (Touch 22 px, je plus 0,5 px für die Luft über jeder Kachel), scrollt die Seite statt
-abzuschneiden.
+Am Rechner füllt die Seite genau das Fenster (`height: 100dvh`), das Raster bekommt den Rest; die
+Stunde teilt sich die Rasterhöhe (Stundenlinien und Kacheln in Prozent, kein Skript beim
+Größerziehen). Reicht die Höhe nicht für 20 px je Stunde (Touch 22 px, je plus 0,5 px Luft), scrollt
+die Seite statt abzuschneiden. Am Handy scrollt sie immer (Silas' Test, V-0225).
 
-| Breite | Kopf | Module | Werkzeug | Raster | Fuß |
+| Breite | Kopf | Module | Werkzeugzeile | Raster | unten |
 |---|---|---|---|---|---|
-| unter 768 px | Name, Teilen, Mehr (mit Zahl der Hinweise) | Chips mit Modulnamen, umbrechend | im Blatt „Ansicht“ | ein Tag, Tagesreiter, daneben „Ansicht“ | drei Zeilen: inoffiziell, Speicherhinweis, Stand mit Impressum und Datenschutz |
-| 768–1023 px | Name, Plan, Stand, Teilen | Modulname, dahinter die Chips, bis zwei Zeilen | bis zwei Zeilen | die ganze Woche | zwei Zeilen |
-| 1024–1279 px | wie oben | eine Zeile | eine Zeile | die Woche | zwei Zeilen |
-| ab 1280 px | wie oben | eine Zeile | eine Zeile | die Woche, Tageskopf ausgeschrieben | eine Zeile |
-| ab 1600 px | wie oben | Chips mit gewähltem Termin bzw. „Gruppen“ | | | |
+| unter 768 px | Name, Kalender, Teilen; darunter der Studiengang-Reiter | Kacheln in zwei Spalten | Lage; Zeitraum unter dem Raster; Tag/Woche schwebt unten mittig | die Bühne füllt einen Schirm über dem Umschalter; Tag (Vorgabe) oder die ganze Woche klein | Zeitraum, Legende mit Modulfarben, mit 48 px Abstand der Fuß (14 px, Ziele 44 px) |
+| 768–1023 px | Name, Reiter, Stand, Kalender, Teilen | Kacheln darüber, so viele Spalten wie 176 px passen | Lage in einer Zeile, darunter Zeitraum und Tag/Woche | die Woche, wenn sie passt | Legende, Fuß zweizeilig |
+| ab 1024 px | wie oben | Spalte von 240 px links neben der Woche | eine Zeile | die Woche (ab 1280 px Tage ausgeschrieben) | Legende, Fuß (ab 1280 px einzeilig) |
 
-**Die Woche nur, wenn sie passt** (DESIGN §3.3): `raster.mjs` rechnet die dichteste Stelle des
-Plans (`dichteste()`) und daraus die Mindestbreite (`wochenBreite()`), bei der jede Spur 24 px
-bekommt. Ist das Fenster schmaler, zeigt das Raster einen Tag mit Reitern; die Entscheidung fällt
-über eine `matchMedia`-Abfrage mit dieser Breite, nicht über einen `resize`-Hörer.
+**Die Woche nur, wenn sie passt** (Vorgabe, DESIGN §3.3): `raster.mjs` rechnet die dichteste Stelle
+(`dichteste()`) und daraus die Mindestbreite (`wochenBreite()`), bei der jede Spur 24 px bekommt;
+ab 1024 px kommt die Modulspalte dazu (240 + 24 px). Die Entscheidung fällt über eine
+`matchMedia`-Abfrage, nicht über einen `resize`-Hörer. Der Umschalter zeigt die Woche trotzdem.
 
-**Kacheln** sind Container (`container: kachel / size`); ihre Beschriftung wählen
-Container-Abfragen: Stufe M (Typ, Nummer) ohne Abfrage, L ab 112 px (Modul, Typ und Gruppe, ab
-72 px Höhe der Raum oder ein abweichender Rhythmus), S unter 44 px (nur der Typ). Ist ein
-Bestandteil gefiltert (`.teil`), zeigt die Kachel Gruppe und Raum. Am Rechner (feiner Zeiger, ab
-768 px) tragen breite Kacheln ab 76 px Höhe den Knopf „Einplanen“, „Wechseln“ oder „Lösen“ (Silas,
-05.10.2026); sonst öffnet ein Klick die Gruppenkarte, und dort wird gewählt.
+**Kacheln** sind Container (`container: kachel / size`); die Beschriftung wählen Container-Abfragen:
+L ab 96 px (Modul, ab 240 px der volle Titel; die Einheit ausgeschrieben; ab 60 px Höhe Gruppe mit
+Zeit; ab 76 px der Raum oder ein abweichender Rhythmus), M (80–95 px Modulname und „TUT 12“,
+darunter Kürzel und Nummer), S unter 44 px (das Kürzel), unter 24 px nur Farbe. Arten: möglich
+(weiß, Rand in Modulfarbe), gewählt (kräftig), automatisch (gestrichelt), Kontext (dunkelgrau),
+zurückgenommen (hellgrau), dazu Ringe für Überschneidung. Am Rechner (feiner Zeiger, ab 768 px)
+tragen Kacheln ab 160 px Breite und 52 px Höhe oben rechts „Einplanen“, „Wechseln“ oder „Lösen“;
+sonst öffnet ein Klick die Gruppenkarte. Die Woche am Handy öffnet keine Karte: Ein Tipp zeigt den Tag.
 
 **Ebenen:** eine zur Zeit. Ab 768 px Karte an ihrem Anker (Gruppenkarte neben der Kachel, rechts,
 sonst links, sonst darunter, nie über ihr), Hilfe und Rückfrage als Dialog. Unter 768 px wird
@@ -71,7 +70,8 @@ Fokus kehrt zur Kachel zurück.
 ## Ablauf beim Öffnen
 
 1. Der Rahmen steht sofort aus HTML und CSS; erst nach 300 ms ohne Daten erscheint „Termine werden
-   geladen …“ (CSS, ohne Skript). Solange halten Modul- und Werkzeugleiste ihre Höhe (`.laedt`).
+   geladen …“ (CSS, ohne Skript). Solange halten Studiengang und Module ihre Höhe (`.laedt`, für
+   WI 1. FS gemessen; sonst springt das Raster, CLS).
 2. `daten/index.json` laden. Ein Plan: gewählt. Mehrere: die Wahl im Raster (vorgewählt, wenn die
    Adresse einen Plan nennt oder genau ein Plan eine gespeicherte Auswahl hat). Die Wahl steht danach
    im Fragment der Adresse (`#studiengang=…&semester=…&fs=…`).
@@ -95,16 +95,20 @@ Fokus kehrt zur Kachel zurück.
   Auswahl nicht. Nimm den Teilen-Link mit.“
 - **Zwei Registerkarten:** Ändert die eine die Auswahl, zieht die andere über das `storage`-Ereignis
   nach.
-- **Im Speicher der Seite** (`z` in `app.js`), nicht im Browser: Ansicht (voreingestellt „Noch
-  offen“), Modul- oder Bestandteil-Filter, Zeitraum, A/B, Tag (Handy: heute, am Wochenende Montag),
-  welche Kachel den Fokus hat, eine laufende Vorschau.
+- **Die einzige Gruppe eines Formats** ist automatisch eingeplant (`auswerten()`, `g.auto`):
+  berechnet, nie gespeichert. „Lösen“ speichert die Abwahl als `{ "group": null, … }`, sonst käme
+  sie beim nächsten Laden wieder; mit einer zweiten Gruppe ist das Format wieder offen.
+- **Im Speicher der Seite** (`z` in `app.js`), nicht im Browser: der Filter (`modul`, `teil`,
+  `ueber`), Tag oder Woche (`modus`, null heißt Vorgabe), der Tag (heute, am Wochenende Montag),
+  Zeitraum, A/B, welche Kachel den Fokus hat, eine laufende Vorschau.
 
 ## Was das Raster zeigt
 
-`sichtbar()` in `raster.mjs` (DESIGN §4.1): jede gewählte Gruppe in jeder Ansicht, grau als
-Kontext, wenn sie nicht zum Filter passt; dazu die möglichen Gruppen der Ansicht („Alle“ jede,
-„Noch offen“ die der Bestandteile ohne Wahl, „Mein Plan“ keine). Ein gefilterter Bestandteil zeigt
-immer alle seine Gruppen: So wechselt man. `spuren()` verteilt die Kacheln eines Tages auf Spuren
+`sichtbar()` in `raster.mjs` (DESIGN §4.1): jede eingeplante Gruppe, dunkelgrau als Kontext, wenn
+sie nicht zum Filter passt; ohne Filter dazu die Gruppen der Formate ohne Wahl („Noch offen“), mit
+Filter alle Gruppen des Moduls bzw. Formats, auch die eines schon gewählten Formats (hellgrau): So
+wechselt man. Die Navigation: Modul tippen filtert auf das Modul, Format tippen auf das Format;
+nochmals tippen hebt auf, was man zuletzt gesetzt hat (`tippeModul`, `tippeFormat`, `stufeZurueck`). `spuren()` verteilt die Kacheln eines Tages auf Spuren
 (gewählte zuerst, dann Beginn, Modul, Gruppenname); verkettete Überschneidungen teilen sich die
 Tagesbreite. Die Zeitachse kommt aus allen Gruppen des Plans, damit das Raster beim Filtern nicht
 springt.
@@ -115,7 +119,8 @@ springt.
 https://…/#studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=10001:100~11&w=10002:500~52
 ```
 
-- `w` = Bestandteil `~` Gruppe, je gewählter Gruppe einmal. Getrennt wird am letzten `~`, weil die
+- `w` = Bestandteil `~` Gruppe, je ausdrücklich gewählter Gruppe einmal (automatisch eingeplante
+  rechnet, wer den Link öffnet, selbst). Getrennt wird am letzten `~`, weil die
   Bestandteil-ID selbst einen Doppelpunkt trägt. Fingerabdruck und Name stehen nicht drin.
 - **Im Fragment (hinter `#`), nicht in der Abfrage:** Das Fragment schickt der Browser nie an den
   Server.
@@ -132,7 +137,7 @@ https://…/#studiengang=wi-bsc&semester=wise-2026-27&fs=1&w=10001:100~11&w=1000
 
 Das Raster ist ein Tabulatorhalt (wandernder `tabindex`): ↑ ↓ im Tag, ← → zur zeitlich nächsten
 Kachel im Nachbartag, Pos1/Ende. Enter öffnet die Karte, die Hauptaktion hat den Fokus, Esc
-schließt und setzt den Fokus zurück. Esc ohne Karte hebt einen Bestandteil-Filter auf. Jede Kachel
+schließt und setzt den Fokus zurück. Esc ohne Karte geht im Filter eine Stufe zurück. Jede Kachel
 nennt sich vollständig (`aria-label`), Wahl, Lösen und Filter sagt ein höflicher Live-Bereich an.
 Die Knöpfe direkt auf den Kacheln haben `tabindex="-1"`: Mit der Tastatur geht es über die Karte.
 
@@ -185,6 +190,11 @@ Server die Auswahl kennen.
 - Die Seite ruft `icsHerunterladen(plan, auswahl)` → `{ blob, name, termine, text }`, dann im
   Klick-Handler `icsAnstossen(datei)` → Gerät, und zeigt `ICS_TEXTE[gerät]`: den einen Satz, was
   jetzt passiert oder was nicht mit einem Klick geht.
+- **Der Knopf** „In Kalender übernehmen“ (am Handy „Kalender“) steht neben „Teilen“ (V-0225).
+  `app.js` lädt `ics.mjs` bei der ersten Bedienung (pointerdown, keydown), nicht beim Laden: So
+  zählt es nicht ins Budget und nicht zu den Anfragen bis zum Raster, und beim Klick ist das Modul
+  meist da, der Export läuft ohne `await` (Safari gibt die Nutzergeste nicht über ein langes await
+  weiter). Übergeben wird die wirksame Auswahl (`wirksameAuswahl()`: gewählt und automatisch).
 
 **Was ein Klick auf welchem Gerät tut** (Recherche 05.10.2026):
 

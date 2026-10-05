@@ -58,3 +58,16 @@ export function plusTage(iso, n) {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+
+// Der Abschluss ausgeschrieben, wie Silas ihn im Studiengang-Reiter lesen will („Wirtschaftsinformatik,
+// Bachelor of Science“, V-0225). Nur die Kürzel der Abschlüsse, kein Studiengang: Welche Studiengänge
+// es gibt, sagt allein web/daten/index.json. Unbekannte Kürzel bleiben, wie die Daten sie liefern.
+const ABSCHLUESSE = {
+  'B.Sc.': 'Bachelor of Science', 'M.Sc.': 'Master of Science', 'B.A.': 'Bachelor of Arts', 'M.A.': 'Master of Arts',
+  'B.Eng.': 'Bachelor of Engineering', 'M.Eng.': 'Master of Engineering', 'B.Ed.': 'Bachelor of Education', 'M.Ed.': 'Master of Education',
+};
+
+export function abschlussLang(k) {
+  const t = String(k || '').trim();
+  return ABSCHLUESSE[t] || t;
+}
