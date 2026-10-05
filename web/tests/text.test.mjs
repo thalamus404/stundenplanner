@@ -1,7 +1,7 @@
 // Escapen und Links: Kein Text aus der Datendatei wird HTML, Links nur zu MOSES und ISIS.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, link, sichereUrl, plusTage, tagMonat, stamp } from '../text.mjs';
+import { esc, link, sichereUrl, plusTage, tagMonat, stamp, abschlussLang } from '../text.mjs';
 
 test('esc: alle fünf Zeichen, auch null und Zahlen', () => {
   assert.equal(esc(`<img src=x onerror="a('b')">&`), '&lt;img src=x onerror=&quot;a(&#39;b&#39;)&quot;&gt;&amp;');
@@ -42,4 +42,11 @@ test('Datumsangaben deutsch, Zeitstempel in Berliner Zeit über die Zeitumstellu
   assert.equal(stamp('2027-03-28T01:00:00Z'), '28.03., 03:00');         // Beginn der Sommerzeit
   assert.equal(stamp(null), 'noch kein Lauf');
   assert.equal(stamp('kaputt'), 'unbekannt');
+});
+
+test('Abschluss ausgeschrieben für den Studiengang-Reiter; unbekannte Kürzel bleiben', () => {
+  assert.equal(abschlussLang('B.Sc.'), 'Bachelor of Science');
+  assert.equal(abschlussLang(' M.Sc. '), 'Master of Science');
+  assert.equal(abschlussLang('Diplom'), 'Diplom');
+  assert.equal(abschlussLang(undefined), '');
 });

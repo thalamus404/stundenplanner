@@ -23,11 +23,13 @@ export function speicherSchluessel(plan) {
   return `${PRAEFIX}:${sg}:${plan.semester}:fs${plan.fachsemester}`;
 }
 
-/** Nur die erlaubten Felder, nur Zeichenketten. Alles andere (auch ein altes `at`) fällt weg. */
+/** Nur die erlaubten Felder, nur Zeichenketten. Alles andere (auch ein altes `at`) fällt weg.
+ *  `group: null` heißt ausdrücklich abgewählt (die einzige Gruppe eines Formats, siehe auswerten). */
 function bereinigt(roh) {
   const out = {};
   if (!roh || typeof roh !== 'object' || Array.isArray(roh)) return out;
   for (const [cid, e] of Object.entries(roh)) {
+    if (e && e.group === null) { out[cid] = { group: null, digest: '', name: '' }; continue; }
     if (!e || typeof e !== 'object' || typeof e.group !== 'string' || !e.group) continue;
     out[cid] = { group: e.group, digest: typeof e.digest === 'string' ? e.digest : '', name: typeof e.name === 'string' ? e.name : '' };
   }
@@ -81,11 +83,30 @@ export function waehle(auswahl, componentId, gruppe) {
   return { ...auswahl, [componentId]: { group: gruppe.id, digest: gruppe.digest || '', name: gruppe.name || '' } };
 }
 
-export function loese(auswahl, componentId) {
+/** Lösen. Hat das Format nur eine Gruppe (einzig), wird die Abwahl gespeichert, sonst wäre sie
+ *  gleich wieder automatisch eingeplant: eine aktive Wahl, also darf sie in den Speicher. */
+export function loese(auswahl, componentId, einzig = false) {
   const out = { ...auswahl };
-  delete out[componentId];
+  if (einzig) out[componentId] = { group: null, digest: '', name: '' };
+  else delete out[componentId];
   return out;
 }
+
+/** Der Fortschritt: Es zählen nur Formate mit Terminen in diesem Semester. Eines ohne Gruppe blieb
+ *  sonst immer „offen“, und „alle eingeplant“ kam nie (querwind, Punkt db561642). */
+export function fortschritt(parts) {
+  const mit = parts.filter((c) => c.groups.some((g) => (g.slots || []).length));
+  return { n: mit.length, k: mit.filter((c) => c.groups.some((g) => g.selected)).length };
+}
+
+/** Die einzige Gruppe mit Terminen eines Formats, sonst null (Silas, 05.10.2026, V-0225). */
+export function einzige(c) {
+  const mit = (c.groups || []).filter((g) => (g.slots || []).length);
+  return mit.length === 1 ? mit[0] : null;
+}
+
+/** Die wirksame Auswahl (ausdrücklich gewählt und automatisch), im Speicherformat: für den Export. */
+export const wirksameAuswahl = (selected) => Object.fromEntries(selected.map((g) => [g.component_id, { group: g.id, digest: g.digest || '', name: g.name || '' }]));
 
 /** „Änderung geprüft“: übernimmt den neuen Fingerabdruck (und den aktuellen Namen). */
 export function bestaetige(auswahl, componentId, gruppe) {
@@ -127,7 +148,9 @@ export function bestand(plan) {
 
 /**
  * Wendet eine Auswahl auf den Bestand an: selected, changed, selection und missing, mit den
- * Regeln von load() im Vorbild.
+ * Regeln von load() im Vorbild. Neu (Silas, 05.10.2026): Ein Format mit genau einer Gruppe ohne
+ * Eintrag ist automatisch eingeplant (g.auto). Berechnet, nie gespeichert: Laden schreibt nichts.
+ * Hat es später eine zweite Gruppe, ist es wieder offen. `group: null` heißt ausdrücklich abgewählt.
  * - changed: gewählt, aber der Fingerabdruck der Auswahl ≠ dem der Gruppe
  * - missing: eine gespeicherte Gruppe, die es nicht mehr gibt (Bestandteil da, Gruppe weg) oder
  *   deren Bestandteil ganz fehlt. Sie bleibt mit ihrem gespeicherten Namen sichtbar, bis man sie löst.
@@ -138,17 +161,19 @@ export function auswerten(plan, { groups, parts }, auswahl) {
   for (const c of parts) {
     ids.add(c.id);
     const e = auswahl[c.id];
-    c.selection = e ? e.group : null;
+    const auto = e ? null : einzige(c);
+    c.selection = e ? e.group : auto && auto.id;
     for (const g of c.groups) {
-      g.selected = !!e && e.group === g.id;
-      g.changed = g.selected && e.digest !== g.digest;
+      g.auto = g === auto;
+      g.selected = g.auto || (!!e && e.group === g.id);
+      g.changed = !!e && g.selected && e.digest !== g.digest;
     }
-    if (e && !c.groups.some((g) => g.selected)) {
+    if (e && e.group !== null && !c.groups.some((g) => g.selected)) {
       missing.push({ component_id: c.id, module_short: c.module.short, type: c.type, group_id: e.group, name: e.name });
     }
   }
   for (const [cid, e] of Object.entries(auswahl)) {
-    if (!ids.has(cid)) missing.push({ component_id: cid, module_short: cid.split(':')[0], type: '', group_id: e.group, name: e.name });
+    if (!ids.has(cid) && e.group !== null) missing.push({ component_id: cid, module_short: cid.split(':')[0], type: '', group_id: e.group, name: e.name });
   }
   return { selected: groups.filter((g) => g.selected), missing };
 }
