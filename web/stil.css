@@ -333,14 +333,18 @@ button:active::after { opacity: .1; }
   place-items: center; background: var(--tinte); color: var(--grau-1);
 }
 .k-akt .i { width: 16px; height: 16px; stroke-width: 2.25; }
+/* Langes Drücken öffnet am Handy die Karte (V-0247): ohne Markieren und ohne das Menü von iOS. */
+.k-flaeche[data-act="umschalten"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
 .k-akt.kreuz { background: var(--grau-1); color: var(--tinte); }
 @container kachel (min-width: 96px) {
   .k-flaeche { padding: 4px 8px; }
-  .k-kurz { display: none; }
-  .k-lang { display: block; }
   .k-mod, .k-titel { font-size: 14px; line-height: 20px; }
   .k-sym { top: 8px; right: 8px; }
 }
+/* Das Format ausgeschrieben erst ab 168 px: „Integrierte Veranstaltung“ braucht so viel. Darunter
+   „IV 1“ (V-0247: Seit die Woche am Handy Vorgabe ist, stehen Kacheln von 96–167 px auch dort, etwa
+   beim Zoomen, und der lange Name endete mit „…“). */
+@container kachel (min-width: 168px) { .k-kurz { display: none; } .k-lang { display: block; } }
 @container kachel (min-width: 240px) { .k-mod { display: none; } .k-titel { display: block; } }
 @container kachel (min-width: 96px) and (min-height: 60px) { .k-info { display: block; } }
 @container kachel (min-width: 96px) and (min-height: 76px) { .k-ort { display: block; } }
@@ -577,12 +581,13 @@ details[open] > summary::before { transform: rotate(45deg); }
    den Stand oder die Knöpfe zu laufen. Wo der Stand steht, regeln seit V-0243 die Regeln an .t-kurz. */
 .sg-reiter { min-width: 0; }
 .sg-fs { overflow: hidden; text-overflow: ellipsis; }
+/* Am Handy steht der Schriftzug links, die Knöpfe rechts (Silas, 05.10.2026, V-0247); am Rechner und
+   Tablet bleibt er in der Mitte. Vorher stand er auch am Handy mittig und musste unter 390 px
+   schrumpfen, damit die Knöpfe daneben passten. */
 @media (max-width: 767.98px) {
-  .kopf { column-gap: 0; }
+  .kopf { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name rechts" "sg sg"; }
+  .name { justify-content: flex-start; }
 }
-/* Unter 390 px ist der Schriftzug 16 px hoch: Sonst reichen die Spalten neben ihm nicht für zwei
-   Knöpfe zu 44 px (gerechnet bei 360 px: (328 − 135) / 2 = 96 px). */
-@media (max-width: 389.98px) { .wortmarke { height: 16px; } }
 
 /* ── Der Startbildschirm (V-0234, neu in V-0243 nach Silas' drittem Blick; DESIGN §3.6) ──────────
    „Das ist wirklich ziemlich hässlich im Vergleich zu der eigentlichen Seite.“ Jetzt: oben mittig der
