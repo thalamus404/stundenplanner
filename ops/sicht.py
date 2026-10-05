@@ -1355,6 +1355,9 @@ def handy_messen(page, spec, mess):
         if spec.get('bilder'):
             page.screenshot(path=spec['bilder'].replace('.png', f'-{zusatz}.png'), scale='css', animations='disabled', caret='hide')
     mess['schirm'] = page.evaluate(SCHIRM_JS)
+    if mess['schirm'] is None:                 # kein Raster (eine Prüfseite): nichts zu scrollen
+        mess['woche'] = mess['ende'] = None
+        return
     kontrast_dazu(page, mess)
     bild('tag')
     mess['woche'] = None
