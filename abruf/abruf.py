@@ -110,13 +110,15 @@ def lade_katalog(katalog: Path = KATALOG, mit_vorschau: bool = False) -> dict:
     for p in kat['plaene']:
         sid = p['semester']['id']
         plan = {**p['roh'], 'id': p['id'], 'studiengang': p['studiengang']['id'], 'semester': sid,
-                'module': p['module']}
+                'module': p['module'],
+                'kandidaten': [{**k, 'wp': wp['id']} for wp in p['wahlpflicht'] for k in wp['kandidaten']]}
         # Geprüft wird jeder Plan, auch Vorschau und Gesperrtes: Ein Katalogfehler fällt beim
         # Bauen auf, nicht erst an dem Tag, an dem jemand den Schalter umlegt.
         art = quelle(semester[sid])['art']
-        for m in p['module']:
+        for m in p['module'] + plan['kandidaten']:
             if not (NUMMER if art == 'moses' else SCHLUESSEL).fullmatch(m['nummer']):
                 raise KatalogFehler(f'{p["studiengang"]["id"]}.json: ungültige Modulnummer {m["nummer"]!r}')
+        for m in p['module']:
             if art == 'lsf':
                 a = lsf_angabe(plan, m)
                 if not isinstance(a['vvz'], str) or not a['vvz'].strip():
@@ -166,12 +168,37 @@ def angaben_je_semester(katalog: dict) -> dict[str, dict[str, dict]]:
     return out
 
 
-def module_je_semester(katalog: dict) -> dict[str, list[str]]:
-    """Je Semester die Modulnummern aller Pläne, jede nur einmal, sortiert."""
+def im_turnus(turnus: str | None, label: str) -> bool:
+    """Bietet das Modul laut MTS-Turnus im Semester `label` an? Unbekannt (k.A.) zählt als ja.
+
+    Der Turnus ist eine Angabe der Modulbeschreibung, kein Termin. Er spart nur Anfragen: Ein
+    Modul mit Turnus „SoSe“ wird für ein WiSe gar nicht erst abgerufen. Gemessen am WiSe 2026/27
+    verliert der Filter etwa 5 % der angebotenen Module (V-0227, E6); `--alle-kandidaten` schaltet
+    ihn ab.
+    """
+    t = (turnus or '').replace(' ', '')
+    art = 'WiSe' if label.startswith(('WiSe', 'WS')) else 'SoSe'
+    return t not in ('WiSe', 'SoSe') or t == art
+
+
+def module_je_semester(katalog: dict, turnusfilter: bool = True) -> dict[str, list[str]]:
+    """Je Semester die Modulnummern aller Pläne, jede nur einmal, sortiert: Pflichtmodule und die
+    Kandidaten der Wahlpflichtbereiche (V-0227; diese nur, wenn ihr Turnus zum Semester passt)."""
     out: dict[str, set[str]] = {sid: set() for sid in katalog['semester']}
     for plan in katalog['plaene']:
         out[plan['semester']].update(m['nummer'] for m in plan.get('module', []))
+        label = quelle(katalog['semester'][plan['semester']])['label']
+        out[plan['semester']].update(k['nummer'] for k in plan.get('kandidaten', [])
+                                     if not turnusfilter or im_turnus(k.get('turnus'), label))
     return {sid: sorted(nummern) for sid, nummern in out.items()}
+
+
+def pflicht_je_semester(katalog: dict) -> dict[str, set[str]]:
+    """Je Semester die Modulnummern, die in mindestens einem Plan Pflicht sind."""
+    out: dict[str, set[str]] = {sid: set() for sid in katalog['semester']}
+    for plan in katalog['plaene']:
+        out[plan['semester']].update(m['nummer'] for m in plan.get('module', []))
+    return out
 
 
 # --- Ein Modul ---------------------------------------------------------------------------------
@@ -272,8 +299,13 @@ def standard_quelle(semester: dict, angaben: dict):
 
 def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabrik=None,
                   holer=None, uhr=jetzt, schreibe_lauf=True, log=print,
-                  pause=PAUSE_MODULE, schlaf=None, angaben=None) -> dict:
+                  pause=PAUSE_MODULE, schlaf=None, angaben=None, kandidaten=frozenset()) -> dict:
     """Ein Semester: jedes Modul einmal, je Modul ein Rohstand, am Ende `_lauf.json`.
+
+    `kandidaten` sind Module, die nur als Wahlpflicht-Kandidat im Katalog stehen (V-0227). Dass
+    einer davon im Semester nicht angeboten wird („keine gültige Version“), ist der Normalfall,
+    kein Fehler des Laufs: Sein Scheitern steht im Rohstand und unter `kandidaten` in
+    `_lauf.json`, `status` und `errors` richten sich nur nach den Pflichtmodulen.
 
     Die Quelle (MOSES oder LSF) kommt aus dem Katalog (`standard_quelle`); Tests reichen eine
     Attrappe als `client_fabrik` und/oder `holer` herein.
@@ -288,11 +320,12 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
     ordner = roh / semester['id']
     lauf = {'gestartet_am': uhr(), 'beendet_am': None, 'status': 'error',
             'modules': 0, 'bookings': 0, 'errors': []}
+    kand = {'module': 0, 'fehler': []} if kandidaten else None
     try:
         if not nummern:
             raise KatalogFehler(f'Kein Plan nennt Module für {semester["id"]}')
         for i, nummer in enumerate(nummern):
-            if i:
+            if i and pause:
                 schlaf(pause)
             pfad = ordner / f'{nummer}.json'
             try:
@@ -301,14 +334,19 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
                 daten = holer(client_fabrik(), nummer, ziel)
             except Exception as exc:
                 meldung = fehlertext(exc)
-                log(f'  ✗ {nummer}: {meldung}', file=sys.stderr)
-                lauf['errors'].append({'module': nummer, 'message': meldung})
+                log(f'  {"·" if nummer in kandidaten else "✗"} {nummer}: {meldung}', file=sys.stderr)
+                if nummer in kandidaten:
+                    kand['fehler'].append({'module': nummer, 'message': meldung})
+                else:
+                    lauf['errors'].append({'module': nummer, 'message': meldung})
                 schreibe_atomar(pfad, rohstand_fehler(lies_vorbestand(pfad), nummer, ziel, uhr(), meldung))
                 continue
             n = buchungen(daten)
             schreibe_atomar(pfad, rohstand_erfolg(daten, uhr()))
             lauf['modules'] += 1
             lauf['bookings'] += n
+            if nummer in kandidaten:
+                kand['module'] += 1
             version = f' v{daten["version"]}' if daten.get('version') is not None else ''
             log(f'  ✓ {nummer}{version}: {len(daten["components"])} Bestandteile, '
                 f'{sum(len(c["groups"]) for c in daten["components"])} Gruppen, {n} Buchungen',
@@ -319,12 +357,15 @@ def lauf_semester(semester: dict, nummern: list[str], roh: Path, *, client_fabri
         lauf['status'] = 'error'
     finally:
         lauf['beendet_am'] = uhr()
+        if kand is not None:
+            lauf['kandidaten'] = kand
         if schreibe_lauf:
             schreibe_atomar(ordner / LAUF, lauf)
     return lauf
 
 
-def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, mit_vorschau=False, **kw) -> dict:
+def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, mit_vorschau=False,
+         turnusfilter=True, **kw) -> dict:
     """Alle (oder die genannten) Semester. Gibt je Semester das Ergebnis von lauf_semester zurück.
 
     Mit `nur` entsteht kein `_lauf.json`: Ein gezielter Nachabruf einzelner Module ist kein Lauf des
@@ -335,7 +376,8 @@ def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, m
     nur nichts geholt werden durfte. (Ganz ohne Plan bleibt es ein gescheiterter Lauf, wie bisher.)
     """
     kat = lade_katalog(katalog, mit_vorschau)
-    je = module_je_semester(kat)
+    je = module_je_semester(kat, turnusfilter)
+    pflicht = pflicht_je_semester(kat)
     angaben = angaben_je_semester(kat)
     gewaehlt = list(semester) if semester else [sid for sid in kat['semester'] if je[sid]]
     for sid in gewaehlt:
@@ -352,7 +394,8 @@ def lauf(*, katalog: Path = KATALOG, roh: Path = ROH, semester=None, nur=None, m
                 raise KatalogFehler(f'{", ".join(fremd)} steht in keinem Plan von {sid}')
             nummern = [n for n in nummern if n in set(nur)]
         ergebnis[sid] = lauf_semester(kat['semester'][sid], nummern, roh,
-                                      schreibe_lauf=not nur, angaben=angaben[sid], **kw)
+                                      schreibe_lauf=not nur, angaben=angaben[sid],
+                                      kandidaten=frozenset(set(nummern) - pflicht[sid]), **kw)
     return ergebnis
 
 
@@ -367,11 +410,13 @@ def main(argv=None) -> int:
                    help='Ordner der Rohstände (Vorgabe: daten/roh im Repo; relativ zum Arbeitsverzeichnis)')
     p.add_argument('--mit-vorschau', action='store_true',
                    help='auch Pläne mit "sichtbar": "vorschau" holen (nie im täglichen Lauf); gesperrte nie')
+    p.add_argument('--alle-kandidaten', action='store_true',
+                   help='Wahlpflicht-Kandidaten auch abrufen, wenn ihr MTS-Turnus nicht zum Semester passt')
     p.add_argument('--katalog', type=Path, default=KATALOG, help=argparse.SUPPRESS)
     a = p.parse_args(argv)
     try:
         ergebnis = lauf(katalog=a.katalog, roh=a.roh.resolve(), semester=a.semester, nur=a.nur,
-                        mit_vorschau=a.mit_vorschau)
+                        mit_vorschau=a.mit_vorschau, turnusfilter=not a.alle_kandidaten)
     except KatalogFehler as exc:
         print(f'abruf: {exc}', file=sys.stderr)
         return 2
@@ -379,8 +424,10 @@ def main(argv=None) -> int:
         print('abruf: kein Semester mit Plänen im Katalog', file=sys.stderr)
         return 2
     for sid, r in ergebnis.items():
+        k = r.get('kandidaten')
         print(f'{sid}: {r["status"]} — {r["modules"]} Module, {r["bookings"]} Buchungen, '
-              f'{len(r["errors"])} Fehler')
+              f'{len(r["errors"])} Fehler'
+              + (f' (Wahlpflicht: {k["module"]} geholt, {len(k["fehler"])} ohne Angebot/Fehler)' if k else ''))
     return 0 if all(r['status'] == 'ok' for r in ergebnis.values()) else 1
 
 

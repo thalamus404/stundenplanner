@@ -99,6 +99,51 @@ MOSES ist ein öffentlicher Dienst der TU Berlin, kein Angebot an uns. Deshalb:
   `tests/test_abruf.py` mit einer Attrappe des Clients auf erfundenem HTML und einem erfundenen
   Katalog
 
+## Modullisten und Wahlpflicht (V-0227, übernommen in V-0233)
+
+`modulliste.py` liest den **Studiengangsaufbau** eines Studiengangs aus dem MTS von MOSES
+(öffentlich): alle Bereiche mit ihren Modulen (Nummer, Version, LP, benotet, Prüfungsform,
+Turnus, Gewicht) und den „Regeln zum Bestehen“ (daraus `lp_min`, `lp_max`). Was MOSES dort nicht
+sagt, ist das **Fachsemester**: Das steht nur im Studienverlaufsplan der StuPO und bleibt Handarbeit
+im Katalog.
+
+```sh
+# WI B.Sc. (121), StuPO 2025 (mkg 24980), Modulliste WiSe 2026/27 (semester 77)
+python3 abruf/modulliste.py --studiengang 121 --stupo 24980 --liste 77 \
+    --aus katalog/modullisten/wi-bsc-stupo2025-wise-2026-27.json
+```
+
+- Die drei Zahlen stehen in der Adresse der Studiengangsseite
+  (`modultransfersystem/studiengaenge/anzeigen.html?studiengang=…&mkg=…&semester=…`); die
+  Auswahllisten der Seite nennen alle StuPOs und Modullisten.
+- **Je Bereich zwei Anfragen**, 1 s Abstand: WI mit 26 Bereichen dauert gut eine Minute. Es gibt
+  keinen täglichen Lauf dafür; eine Liste ändert sich je Semester und wird mit dem Katalog neu
+  erzeugt und committet.
+- Der Baum wird über die **Auswahl je Zeilenschlüssel** (`0_1_4`) gelesen, der Tiefe nach, bis eine
+  Auswahl leer zurückkommt. Das Aufklappen per Ajax gibt in dieser PrimeFaces-Fassung den Baum
+  unverändert zurück. Fehlt eine Spalte der Modulzuordnungen, endet der Abruf mit
+  `Unbekanntes Layout der Modulzuordnungen` (nicht raten).
+
+**Im Katalog** nennt ein Plan seine Wahlpflichtbereiche mit `modulliste` (Datei unter
+`katalog/modullisten/`) und `bereich` (Pfad im Baum, z. B. `Wahlpflichtbereich/Vertiefung
+Informatik`). Der Abruf holt dann zusätzlich jedes Modul des Bereichs, dessen **Turnus** laut MTS
+zum Semester passt (`k.A.` zählt als ja). `--alle-kandidaten` schaltet diesen Filter ab; damit
+wurde am 05.10.2026 gemessen, wie verlässlich der Turnus ist (`docs/forschung/wi-hoehere-fachsemester.md`
+auf dem Strang `vorgang/v-0227`). Die Pläne mit Wahlpflicht (WI FS 2–6) sind Vorschau: Der tägliche
+Lauf holt sie nicht, nur `--mit-vorschau`.
+
+- **Ein Kandidat ohne Angebot ist kein Fehler des Laufs.** „keine gültige Version für …“ ist für ein
+  Wahlpflichtmodul der Normalfall. Sein Scheitern steht im Rohstand und in `_lauf.json` unter
+  `kandidaten: {module, fehler: [...]}`; `status` und `errors` richten sich nur nach Pflichtmodulen.
+- **Ein Bestandteil ohne Termine im Semester** ergibt `status: unplanned` mit leeren `groups`
+  (Regel oben, „Ein Bestandteil ohne Gruppe im Zielsemester ist leer“).
+- **Pause zwischen Modulen: 2 s** (`abruf.PAUSE_MODULE`, Punkt aed3e76c). WI FS 1–6 holt je Semester
+  120–170 Module statt 5; ein Lauf mit `--mit-vorschau` dauert damit etwa eine halbe Stunde je Semester.
+
+Das Lesemodell dazu (`wahlpflicht[]`, Moduldateien unter `module/<semester>/`) steht in
+[`docs/ARCHITEKTUR.md`](../docs/ARCHITEKTUR.md) §5 und im Docstring von `bauen.py`. Die Kandidaten
+eines Bereichs löst `katalog.py` auf, für Abruf und Lesemodell an derselben Stelle.
+
 ## Die zweite Quelle: HIS LSF (`lsf.py`)
 
 *V-0229 (fernflug), Forschungsstrang HU Berlin, 05.10.2026; übernommen in V-0233. Bericht mit Quellen

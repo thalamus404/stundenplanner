@@ -163,6 +163,31 @@ class FehlerTests(unittest.TestCase):
         self.aendere('studiengaenge/ein-bsc.json', self.plan(0, fachsemester=0))
         self.fehler('fachsemester')
 
+    def test_ersatzsemester_misst_die_gueltigkeit_am_gemeinten_semester(self):
+        # V-0227: Termine des letzten Sommers stehen für den nächsten. Eine Ordnung, die erst dazwischen
+        # in Kraft tritt, gilt für den gemeinten Sommer — gemessen an `ersatz_anker`, nicht am `anker`.
+        kat = self.tmp / 'wp'
+        shutil.copytree(FIX / 'wahlpflicht' / 'katalog', kat)
+        g = lies(kat / 'studiengaenge/wp-bsc.json')
+        g['ordnungen'][0]['gilt_ab'] = '2030-10-01'
+        (kat / 'studiengaenge/wp-bsc.json').write_text(json.dumps(g), encoding='utf-8')
+        plan = next(p for p in K.lesen(kat)['plaene'] if p['semester']['id'] == 'ss-2030')
+        self.assertEqual(plan['semester']['ersatz_fuer'], 'SS 2031')
+        s = lies(kat / 'semester/ss-2030.json')
+        del s['ersatz_anker']
+        (kat / 'semester/ss-2030.json').write_text(json.dumps(s), encoding='utf-8')
+        with self.assertRaisesRegex(K.KatalogFehler, 'ersatz_anker'):
+            K.lesen(kat)
+
+    def test_wahlpflicht_mit_unbekanntem_bereich(self):
+        kat = self.tmp / 'wp'
+        shutil.copytree(FIX / 'wahlpflicht' / 'katalog', kat)
+        g = lies(kat / 'studiengaenge/wp-bsc.json')
+        g['plaene'][0]['wahlpflicht'][0]['bereich'] = 'Wahlpflichtbereich/Gibt es nicht'
+        (kat / 'studiengaenge/wp-bsc.json').write_text(json.dumps(g), encoding='utf-8')
+        with self.assertRaisesRegex(K.KatalogFehler, 'Gibt es nicht'):
+            K.lesen(kat)
+
     def test_unlesbare_datei(self):
         (self.kat / 'studiengaenge/ein-bsc.json').write_text('{kaputt', encoding='utf-8')
         self.fehler('nicht lesbar')

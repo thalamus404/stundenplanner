@@ -1,0 +1,46 @@
+{
+ "number": "90012",
+ "title": "Titel 90012",
+ "version": 1,
+ "valid_from": "WiSe 2030/31",
+ "valid_to": "offen",
+ "valid_versions": [
+  1
+ ],
+ "url": "https://moseskonto.tu-berlin.de/x",
+ "isis_url": null,
+ "notes": {},
+ "semester": "WiSe 2030/31",
+ "components": [
+  {
+   "id": "90012:6",
+   "lvvid": "6",
+   "title": "t",
+   "type": "PJ",
+   "number": "n",
+   "sws": 2.0,
+   "cycle": "",
+   "language": "",
+   "section": "Pflichtbereich",
+   "required": true,
+   "vvz_url": "https://moseskonto.tu-berlin.de/v",
+   "isis_url": null,
+   "semester_id": "1",
+   "status": "unplanned",
+   "groups": [
+    {
+     "id": "61",
+     "name": "Gruppe 61",
+     "url": "https://moseskonto.tu-berlin.de/g",
+     "series": [],
+     "bookings": []
+    }
+   ]
+  }
+ ],
+ "abruf": {
+  "geprueft_am": "2030-10-01T05:20:00+02:00",
+  "erfolg_am": "2030-10-01T05:20:00+02:00",
+  "fehler": null
+ }
+}

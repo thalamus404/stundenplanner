@@ -32,6 +32,12 @@ Regeln, an denen etwas hängt:
   kommen Live-Seite und Vorschau aus demselben Katalog (Silas, 05.10.2026).
 - **Abruf gesperrt**: `"abruf": "gesperrt"` mit `abruf_grund` an der Hochschule. Ihre Pläne holt
   abruf.py nie, auch nicht mit `--mit-vorschau` (Anlass: robots.txt der HU, Punkt 7411bed1).
+- **Ersatzsemester**: Ein Semester mit `ersatz_fuer` zeigt die Termine eines früheren für ein
+  kommendes, das die Quelle noch nicht freigibt (V-0227: den letzten Sommer für den nächsten). Die Gültigkeit
+  einer Ordnung wird dann an `ersatz_anker` gemessen, dem Beginn des gemeinten Semesters.
+- **Wahlpflicht** (V-0227): Ein Plan nennt Bereiche einer Modulliste (`katalog/modullisten/`,
+  erzeugt von modulliste.py), keine Module. Welche Module dazugehören, löst `lesen()` auf
+  (`wahlpflicht[].kandidaten`). Eine Vertiefung erbt nur die Pflichtmodule des Grundplans.
 """
 from __future__ import annotations
 
@@ -133,6 +139,10 @@ def _semester(ordner, hochschulen):
         _datei_passt(s, pfad)
         _text(s, 'label', pfad.name)
         _datum(s, 'anker', pfad.name, pflicht=True)  # ein unlesbarer Anker fällt hier auf, nicht in der Rechnung
+        if s.get('ersatz_fuer') is not None:
+            _text(s, 'ersatz_fuer', pfad.name)
+            # Ohne den Beginn des gemeinten Semesters ließe sich nicht prüfen, welche Ordnung gilt.
+            _datum(s, 'ersatz_anker', pfad.name, pflicht=True)
         if s.get('hochschule') is not None:
             _hochschule_von(s['hochschule'], hochschulen, pfad.name)
         out[s['id']] = s
@@ -179,6 +189,33 @@ def _module(p, wo):
     return module
 
 
+def _wahlpflicht(p, ordner, listen, wo):
+    """Die Wahlpflichtbereiche eines Plans, aufgelöst: je Bereich die Modulliste, der Bereich darin
+    und seine Module (`kandidaten`). Abgeschrieben wird nichts: Kandidaten sind genau die Module,
+    die MOSES dem Bereich zuordnet (V-0227)."""
+    bereiche = p.get('wahlpflicht') or []
+    if not bereiche:
+        return []
+    import modulliste  # erst hier: braucht beautifulsoup4, das Lesemodell ohne Wahlpflicht nicht
+    out = []
+    for i, wp in enumerate(bereiche):
+        w = f'{wo}, Wahlpflicht {i + 1}'
+        _kennung(wp.get('id'), w)
+        lid = _kennung(wp.get('modulliste'), w, 'modulliste')
+        if lid not in listen:
+            listen[lid] = _lies(ordner / 'modullisten' / f'{lid}.json')
+        try:
+            bereich = modulliste.finde(listen[lid], wp.get('bereich') or '')
+        except KeyError as exc:
+            raise KatalogFehler(f'{w}: {exc.args[0]} ({lid})') from None
+        kandidaten = modulliste.module_von(bereich)
+        for k in kandidaten:
+            if not isinstance(k.get('nummer'), str) or not MODUL.fullmatch(k['nummer']):
+                raise KatalogFehler(f'{lid}: ungültige Modulnummer {k.get("nummer")!r}')
+        out.append({**wp, 'liste': listen[lid], 'bereich_daten': bereich, 'kandidaten': kandidaten})
+    return out
+
+
 def plan_id(g, o, v, sem, fs):
     """Die Kennung eines Plans, eindeutig über alle fünf Stufen und stabil (Schlüssel im Browser)."""
     return ':'.join([g] + ([o] if o else []) + [sem, f'fs{fs}'] + ([v] if v else []))
@@ -196,7 +233,7 @@ def lesen(ordner):
     ordner = Path(ordner)
     hochschulen = _hochschulen(ordner)
     semester = _semester(ordner, hochschulen)
-    studiengaenge, plaene = [], []
+    studiengaenge, plaene, listen = [], [], {}
     for pfad in sorted((ordner / 'studiengaenge').glob('*.json')):
         roh = _lies(pfad)
         wo = pfad.name
@@ -230,13 +267,13 @@ def lesen(ordner):
                 raise KatalogFehler(f'{w}: „vertiefung“ {v!r} steht nicht unter „vertiefungen“')
             ordnung = ordnungen.get(o)
             if ordnung:
-                anker = date.fromisoformat(sem['anker'])
+                anker = date.fromisoformat(sem.get('ersatz_anker') or sem['anker'])
                 if ordnung['_ab'] and anker < ordnung['_ab']:
                     raise KatalogFehler(f'{w}: {ordnung["label"]} gilt erst ab {ordnung["gilt_ab"]}, '
-                                        f'Semester {sem["id"]} beginnt am {sem["anker"]}')
+                                        f'Semester {sem["id"]} beginnt am {anker}')
                 if ordnung['_bis'] and anker > ordnung['_bis']:
                     raise KatalogFehler(f'{w}: {ordnung["label"]} gilt nur bis {ordnung["gilt_bis"]}, '
-                                        f'Semester {sem["id"]} beginnt am {sem["anker"]}')
+                                        f'Semester {sem["id"]} beginnt am {anker}')
             waehlbar = p.get('waehlbar', True)
             if not isinstance(waehlbar, bool) or (v is not None and not waehlbar):
                 raise KatalogFehler(f'{w}: „waehlbar“ ist true oder false, und false nur für einen Grundplan')
@@ -248,7 +285,7 @@ def lesen(ordner):
                 'id': plan_id(g['id'], o, v, sem['id'], fs), 'datei': plan_datei(g['id'], o, v, sem['id'], fs),
                 'hochschule': hs, 'studiengang': g, 'ordnung': ordnung,
                 'vertiefung': vertiefungen.get(v), 'semester': sem, 'fachsemester': fs,
-                'module': _module(p, w), 'waehlbar': waehlbar,
+                'module': _module(p, w), 'wahlpflicht': _wahlpflicht(p, ordner, listen, w), 'waehlbar': waehlbar,
                 'sichtbar': _wahl(p, 'sichtbar', SICHTBAR, g['sichtbar'], w), 'quelle': p.get('quelle'), 'roh': p}
         erben = set()
         for (o, v, sid, fs), plan in eigene.items():

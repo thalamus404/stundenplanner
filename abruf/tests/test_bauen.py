@@ -464,8 +464,9 @@ class AuswahlTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as aus2, contextlib.redirect_stderr(io.StringIO()):
             bauen.main(['--katalog', str(AUSWAHL), '--roh', str(FIX / 'roh'), '--aus', str(self.tmp / 'aus'), '--mit-vorschau'])
         self.assertIn('zw-bsc', aus2.getvalue())
-        # Ohne Rohstand im Semester der zweiten Hochschule: keine Gruppe, also „keine Wahl … bekannt“.
-        self.assertIn('keine Wahl ohne Überschneidung bekannt', aus2.getvalue())
+        # Ohne Rohstand im Semester der zweiten Hochschule: keine Gruppe, also nichts zu melden;
+        # gemeldet wird nur, was ein Mensch prüfen sollte.
+        self.assertNotIn('keine Wahl ohne Überschneidung', aus2.getvalue())
 
 
 class BefehlTests(unittest.TestCase):

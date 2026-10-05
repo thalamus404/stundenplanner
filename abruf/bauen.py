@@ -38,12 +38,22 @@ Regeln, an denen etwas hängt:
   das alte `index.json` nennt — nie etwas anderes in `--aus`).
 - **Je Plan `kombinationen`** (`plan.kombination`): ob es eine Wahl ohne Überschneidung gibt. Ist
   die Antwort nein, nennt die Ausgabe des Befehls den Plan, damit ein Mensch nachsieht, ob der
-  Katalog stimmt oder die Hochschule so plant (Informatik, 05.10.2026).
+  Katalog stimmt oder die Hochschule so plant (Informatik, 05.10.2026). Gerechnet über die
+  Pflichtmodule; Wahlpflicht wählt erst der Mensch.
+
+**Wahlpflicht (V-0227, steigflug; übernommen in V-0233):** Ein Plan darf `wahlpflicht` (Bereiche
+aus einer MTS-Modulliste, `katalog/modullisten/`) und `frei` (Wahlbereich, Bachelorarbeit: nur
+Hinweise) tragen, ein Semester `ersatz_fuer`. Nur dann stehen diese Schlüssel in der Plandatei. Die
+Kandidaten eines Bereichs stehen NICHT in `modules`: Die Plandatei nennt sie unter
+`wahlpflicht[].angebot` mit Kennzahlen, ihre Termine liegen je Modul in
+`module/<semester>/<nummer>.json` und werden erst geladen, wenn jemand das Modul wählt. Sonst wöge
+der Plan des 5. Fachsemesters mit über 80 angebotenen Modulen viele Megabyte.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -118,8 +128,11 @@ def _kopf_vertiefung(plan):
     return None if v is None else {**v, 'heisst': plan['studiengang']['vertiefung_heisst']}
 
 
-def plan_bauen(plan, roh, erzeugt_am):
-    """Die Plandatei (docs/ARCHITEKTUR.md §5) für einen aufgelösten Plan aus `katalog.lesen`."""
+def plan_bauen(plan, roh, erzeugt_am, module_aus=None):
+    """Die Plandatei (docs/ARCHITEKTUR.md §5) für einen aufgelösten Plan aus `katalog.lesen`.
+
+    `module_aus` (dict) sammelt die Moduldateien der Wahlpflicht-Kandidaten (Pfad → Modul)."""
+    module_aus = {} if module_aus is None else module_aus
     studiengang, sem = plan['studiengang'], plan['semester']
     roh_ordner = Path(roh) / sem['id']
     module = [modul(e, roh_ordner, sem) for e in plan['module']]
@@ -135,24 +148,101 @@ def plan_bauen(plan, roh, erzeugt_am):
             l = {'status': 'error', 'errors': [{'message': f'Lauf-Datei unlesbar: {type(exc).__name__}'}]}
         lauf = {'finished_at': l.get('beendet_am'), 'status': l.get('status'), 'modules': l.get('modules'),
                 'bookings': l.get('bookings'), 'errors': l.get('errors') or []}
-    return {'schema': SCHEMA, 'erzeugt_am': erzeugt_am,
-            'studiengang': {'id': studiengang['id'], 'name': studiengang['name'],
-                            'abschluss': studiengang.get('abschluss')},
-            'semester': sem['id'], 'label': sem['label'], 'anchor': sem['anker'],
-            'fachsemester': plan['fachsemester'], 'modules': module,
-            'has_fortnightly': any(s['fortnightly'] for g in gruppen for s in g['slots']),
-            'group_count': len(gruppen), 'booking_count': sum(len(g['bookings']) for g in gruppen),
-            'last_run': lauf,
-            # Seit V-0233: die übrigen Stufen der Wahl und die Prüfung auf eine Wahl ohne Überschneidung.
-            'id': plan['id'], 'hochschule': _kopf_hochschule(plan['hochschule']),
-            'vertiefung': _kopf_vertiefung(plan), 'ordnung': _kopf_ordnung(plan['ordnung']),
-            'kombinationen': _kombinationen(module)}
+    out = {'schema': SCHEMA, 'erzeugt_am': erzeugt_am,
+           'studiengang': {'id': studiengang['id'], 'name': studiengang['name'],
+                           'abschluss': studiengang.get('abschluss')},
+           'semester': sem['id'], 'label': sem['label'], 'anchor': sem['anker'],
+           'fachsemester': plan['fachsemester'], 'modules': module,
+           'has_fortnightly': any(s['fortnightly'] for g in gruppen for s in g['slots']),
+           'group_count': len(gruppen), 'booking_count': sum(len(g['bookings']) for g in gruppen),
+           'last_run': lauf,
+           # Seit V-0233: die übrigen Stufen der Wahl und die Prüfung auf eine Wahl ohne Überschneidung.
+           'id': plan['id'], 'hochschule': _kopf_hochschule(plan['hochschule']),
+           'vertiefung': _kopf_vertiefung(plan), 'ordnung': _kopf_ordnung(plan['ordnung']),
+           'kombinationen': _kombinationen(module, bool(plan['wahlpflicht']))}
+    # Die Erweiterungen von V-0227 nur, wenn der Katalog sie nennt (Docstring oben).
+    if sem.get('ersatz_fuer'):
+        out['ersatz_fuer'] = sem['ersatz_fuer']
+    if plan['wahlpflicht']:
+        pflicht = {m['number'] for m in module}
+        out['wahlpflicht'] = [wahlpflicht_bauen(wp, roh_ordner, sem, pflicht, module_aus) for wp in plan['wahlpflicht']]
+    if plan['roh'].get('frei'):
+        out['frei'] = [{k: f.get(k) for k in ('name', 'anteil', 'hinweis')} for f in plan['roh']['frei']]
+    return out
 
 
-def _kombinationen(module):
-    """`plan.kombination` über alle Bestandteile des Plans. Fehlt einem Modul der Rohstand, gilt die
-    Aussage nur für die übrigen: `fehlen` nennt sie (ein „lösbar“ kann mit ihnen noch kippen)."""
+# Bausteine für kurze Namen der Wahlpflichtmodule (V-0227). Für das 1. FS schreibt ein Mensch `kurz`
+# in den Katalog; für 150 Kandidaten aus der Modulliste geht das nicht. Die Seite braucht aber kurze
+# Namen (Chips, Kacheln). Der volle Titel steht immer daneben (Karte, Wahlliste).
+_KUERZEL = [(r'^Programmierpraktikum:?\s*', 'PP '), (r'^Praktikum:?\s*', 'Prakt. '),
+            (r'^Seminar:?\s*', 'Sem. '), (r'^Bachelorseminar:?\s*', 'BA-Sem. '),
+            (r'^Projekt:?\s*', 'Proj. '), (r'^Einführung in (die|das|den)\s+', 'Einf. '),
+            (r'^Grundlagen (der|des|von)\s+', 'Grdl. '), (r'\s*\((\d+ (LP|CP)|benotet)\)', ''),
+            (r'\s+und\s+', ' & ')]
+
+
+def kurzname(titel, laenge=22):
+    """Ein kurzer Anzeigename aus dem Modultitel: übliche Kürzel, dann höchstens `laenge` Zeichen.
+    Geschnitten wird an einer Wortgrenze, wenn dabei höchstens ein Viertel verloren geht."""
+    t = ' '.join(str(titel or '').split())
+    for muster, ersatz in _KUERZEL:
+        t = re.sub(muster, ersatz, t)
+    t = t.strip()
+    if len(t) <= laenge:
+        return t
+    schnitt = t[:laenge - 1].rsplit(' ', 1)[0].rstrip(' :,-&')
+    return (schnitt if len(schnitt) >= laenge * 3 // 4 else t[:laenge - 1].rstrip()) + '…'
+
+
+def wahlpflicht_bauen(wp, roh_ordner, sem, pflicht, module_aus):
+    """Ein Wahlpflichtbereich eines Plans: Regeln aus der Modulliste, Angebot mit Terminen im
+    Semester (Module dazu in `module_aus`), und was ohne Termine bleibt, mit Grund (V-0227)."""
+    liste, b = wp['liste'], wp['bereich_daten']
+    angebot, ohne = [], []
+    for k in wp['kandidaten']:
+        if k['nummer'] in pflicht:
+            continue  # im Plan schon Pflicht: nicht ein zweites Mal als Wahl
+        kopf = {'number': k['nummer'], 'title': k['titel'], 'lp': k['lp'], 'turnus': k['turnus'],
+                'unterbereich': k['unterbereich']}
+        pfad = Path(roh_ordner) / f'{k["nummer"]}.json'
+        if not pfad.exists():
+            ohne.append({**kopf, 'grund': f'nicht abgerufen (Turnus laut MOSES: {k["turnus"] or "k. A."})'})
+            continue
+        m = modul({'nummer': k['nummer'], 'kurz': kurzname(k['titel'])}, roh_ordner, sem)
+        termine = sum(len(g['bookings']) for c in m['components'] for g in c['groups'])
+        if not termine:
+            if m['error']:
+                grund = ('keine im Semester gültige Modulversion' if 'keine gültige Version' in m['error']
+                         else 'Abruf gescheitert: ' + m['error'])
+            elif any(c['groups'] for c in m['components']):
+                grund = 'Gruppen ohne Termine (z. B. nach Vereinbarung)'
+            else:
+                grund = 'keine Termine im Vorlesungsverzeichnis'
+            ohne.append({**kopf, 'grund': grund})
+            continue
+        datei = f'module/{sem["id"]}/{k["nummer"]}.json'
+        module_aus[datei] = (sem, m)
+        gruppen = [g for c in m['components'] for g in c['groups']]
+        angebot.append({**kopf, 'short': m['short'], 'datei': datei,
+                        'components': len(m['components']), 'groups': len(gruppen), 'bookings': termine,
+                        'tage': sorted({s['day'] for g in gruppen for s in g['slots']})})
+    return {'id': wp['id'], 'kurz': wp.get('kurz'), 'name': wp.get('name'), 'bereich': wp.get('bereich'),
+            'anteil': wp.get('anteil'), 'lp_min': b.get('lp_min'), 'lp_max': b.get('lp_max'),
+            'regeln': b.get('regeln', []),
+            'modulliste': {'ordnung': (liste.get('stupo') or {}).get('label'),
+                           'liste': (liste.get('liste') or {}).get('label'),
+                           'quelle': liste.get('quelle'), 'abgerufen_am': liste.get('abgerufen_am')},
+            'angebot': angebot, 'ohne_termine': ohne}
+
+
+def _kombinationen(module, mit_wahlpflicht=False):
+    """`plan.kombination` über die Bestandteile der Pflichtmodule. Fehlt einem Modul der Rohstand,
+    gilt die Aussage nur für die übrigen: `fehlen` nennt sie (ein „lösbar“ kann mit ihnen noch
+    kippen). Wahlpflichtmodule wählt erst der Mensch; hat ein Plan nur sie, ist die Frage offen."""
     k = kombination([c for m in module for c in m['components']])
+    if k['loesbar'] is None and mit_wahlpflicht and not any(c['groups'] for m in module for c in m['components']):
+        k = {'loesbar': None, 'grund': 'Der Plan hat keine Pflichtmodule mit Terminen; was sich überschneidet, '
+                                       'hängt an den Wahlpflichtmodulen, die du dazunimmst.'}
     fehlen = [m['number'] for m in module if m['error'] and not m['components']]
     return {**k, 'fehlen': fehlen} if fehlen else k
 
@@ -237,7 +327,7 @@ def _alter_eintrag(plan):
 
 def _dateien_im_index(index):
     """Alle Dateien, die ein (altes) index.json nennt: die flache Liste und die Blätter des Baums."""
-    out = [p.get('datei') for p in index.get('plaene') or []]
+    out = [p.get('datei') for p in index.get('plaene') or []] + list(index.get('module') or [])
 
     def blaetter(k):
         for o in (k or {}).get('optionen') or []:
@@ -253,15 +343,22 @@ def bauen(katalog, roh, aus, erzeugt_am=None, mit_vorschau=False):
     erzeugt_am = erzeugt_am or datetime.now(timezone.utc).isoformat(timespec='seconds')
     kat = K.lesen(katalog)
     aus = Path(aus)
-    dateien, eintraege = {}, []
+    dateien, eintraege, module_aus = {}, [], {}
     for plan in K.zur_wahl(kat, mit_vorschau):
-        inhalt = plan_bauen(plan, roh, erzeugt_am)
+        inhalt = plan_bauen(plan, roh, erzeugt_am, module_aus)
         dateien[plan['datei']] = inhalt
         eintraege.append((plan, {'id': plan['id'], 'datei': plan['datei'], 'kombinationen': inhalt['kombinationen']}))
     index = {'schema': SCHEMA, 'erzeugt_am': erzeugt_am,
              'stufen': [{'id': i, 'label': l} for i, l in STUFEN],
              'wahl': wahlbaum(eintraege),
              'plaene': [_alter_eintrag(p) for p, _ in eintraege]}
+    if module_aus:
+        # Die Moduldateien der Wahlpflicht stehen im Index, damit der nächste Lauf weiß, was er
+        # geschrieben hat und wieder entfernen darf (dieselbe Regel wie für Plandateien).
+        index['module'] = sorted(module_aus)
+        for datei, (sem, m) in sorted(module_aus.items()):
+            dateien[datei] = {'schema': SCHEMA, 'erzeugt_am': erzeugt_am, 'semester': sem['id'],
+                              'label': sem['label'], 'anchor': sem['anker'], 'module': m}
 
     alt = []
     if (aus / 'index.json').exists():
@@ -315,11 +412,16 @@ def main(argv=None):
         inhalt = _lies(a.aus / p['datei'])
         fehler = [m['number'] for m in inhalt['modules'] if m['error']]
         k = inhalt['kombinationen']
+        wp = ''.join(f"; {w['kurz'] or w['id']}: {len(w['angebot'])} angeboten "
+                     f"({sum(x['groups'] for x in w['angebot'])} Gruppen, {sum(x['bookings'] for x in w['angebot'])} Buchungen), "
+                     f"{len(w['ohne_termine'])} ohne Termine" for w in inhalt.get('wahlpflicht', []))
         print(f"  {p['datei']}: {len(inhalt['modules'])} Module, {inhalt['group_count']} Gruppen, "
-              f"{inhalt['booking_count']} Buchungen" + (f", Fehler: {' '.join(fehler)}" if fehler else ''))
-        if k['loesbar'] is not True:
+              f"{inhalt['booking_count']} Buchungen" + (f", Fehler: {' '.join(fehler)}" if fehler else '') + wp)
+        if k['loesbar'] is False:
             # Laut, damit ein Mensch nachsieht: stimmt der Katalog, oder plant die Hochschule so?
-            print(f"    ! keine Wahl ohne Überschneidung{'' if k['loesbar'] is False else ' bekannt'}: {k['grund']}")
+            print(f"    ! keine Wahl ohne Überschneidung: {k['grund']}")
+        elif k['loesbar'] is None and inhalt['group_count']:
+            print(f"    ! ob es eine Wahl ohne Überschneidung gibt, ist offen: {k['grund']}")
     return 0
 
 

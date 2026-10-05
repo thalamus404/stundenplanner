@@ -12,9 +12,27 @@
       "url": "https://www.static.tu.berlin/fileadmin/www/10002457/K3-AMBl/AMBl_2026/AMBl._Nr._04_2026_BSc_Wirtschaftsinformatik_AEnderSa_MSC_ISM_ZZO_Fak._IV_berichtigt.pdf",
       "gilt_ab": "2026-10-01",
       "gilt_bis": null,
-      "studienbeginn": { "ab": "WiSe 2026/27", "bis": null },
+      "studienbeginn": {
+        "ab": "WiSe 2026/27",
+        "bis": null
+      },
       "fuer_wen": "Studienbeginn ab WiSe 2026/27. Wer vorher angefangen hat, studiert nach der StuPO 2021, außer er wechselt (bis 30.09.2029, unwiderruflich).",
       "quelle": "§ 2 der Ordnung, gelesen am 05.10.2026: Abs. 1 „tritt am 1. Oktober 2026 in Kraft und gilt für Studierende, die ab dem Wintersemester 2026/2027 immatrikuliert werden“; Abs. 2 Wechsel bis 30.09.2029, unwiderruflich; Abs. 3 die StuPO vom 14.04.2021 (AMBl. TU 14/2021) tritt zum 30.09.2029 außer Kraft. Kein Enddatum für diese Ordnung, deshalb gilt_bis null"
+    },
+    {
+      "id": "stupo-2021",
+      "label": "StuPO 2021",
+      "name": "Studien- und Prüfungsordnung für den Bachelorstudiengang Wirtschaftsinformatik vom 14. April 2021, mit Korrektur, 1. Änderung (2022) und 2. Änderung (06.11.2024)",
+      "fundstelle": "AMBl. TU 14/2021 S. 142, Korrektur 18/2021, 1. Änderung 09/2022, 2. Änderung 05/2025",
+      "url": "https://www.static.tu.berlin/fileadmin/www/10000000/Studiengaenge/StuPOs/Fakultaet_IV/Wirtschaftsinformatik_B.Sc._2021.pdf",
+      "gilt_ab": "2021-10-01",
+      "gilt_bis": "2029-09-30",
+      "studienbeginn": {
+        "ab": "WiSe 2021/22",
+        "bis": "WiSe 2025/26"
+      },
+      "fuer_wen": "Studienbeginn WiSe 2021/22 bis WiSe 2025/26, außer du hast in die StuPO 2025 gewechselt.",
+      "quelle": "StuPO 2021 § 2 Abs. 1: tritt ab 1. Oktober 2021 in Kraft und gilt für Studierende, die ab dem Wintersemester 2021/22 immatrikuliert werden. StuPO 2025 § 2 Abs. 3: tritt zum 30.09.2029 außer Kraft (wer bis dahin den Pflichtbereich abgeschlossen hat, kann auf Antrag bis längstens 30.09.2033 nach ihr beenden). Gelesen am 05.10.2026. Der letzte Jahrgang ist WiSe 2025/26: Ab WiSe 2026/27 gilt die StuPO 2025, und WI beginnt nur im Wintersemester (MOSES, Turnus; V-0227)"
     }
   ],
   "plaene": [
@@ -24,11 +42,339 @@
       "fachsemester": 1,
       "quelle": "Exemplarischer Studienverlaufsplan, Anlage 2 der StuPO 2025, 1. FS. In der amtlichen PDF ist Anlage 2 nur ein Bild; gelesen aus dem Bild der Fakultät IV (https://www.static.tu.berlin/fileadmin/www/10000040/1_Studium_Lehre/1_Studienangebot/1_Bachelorstudiengaenge/4_B_WI/BSc_WIWS2026_27_Studienverlaufsplan.png, 05.10.2026): Statistik I für Wirtschaftswissenschaften, Technische Grundlagen der Informatik, Programmieren I, Einführung in die Wirtschaftsinformatik, Bilanzierung und Kostenrechnung, je 6 LP. Annahme: Das Bild der Fakultät ist dasselbe wie Anlage 2. Modulnummern von Hand übernommen (Stand 16.09.2026), Titel bestätigt durch die Modulbeschreibungen in MOSES",
       "module": [
-        { "nummer": "70123", "kurz": "Einf. WI" },
-        { "nummer": "41077", "kurz": "Prog I" },
-        { "nummer": "40271", "kurz": "TechGI" },
-        { "nummer": "70450", "kurz": "Statistik I" },
-        { "nummer": "70112", "kurz": "BuK" }
+        {
+          "nummer": "70123",
+          "kurz": "Einf. WI"
+        },
+        {
+          "nummer": "41077",
+          "kurz": "Prog I"
+        },
+        {
+          "nummer": "40271",
+          "kurz": "TechGI"
+        },
+        {
+          "nummer": "70450",
+          "kurz": "Statistik I"
+        },
+        {
+          "nummer": "70112",
+          "kurz": "BuK"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2025",
+      "semester": "sose-2026",
+      "fachsemester": 2,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2025 (AMBl. TU 04/2026), Anlage 2: exemplarischer Studienverlaufsplan, 2. FS; Modulnummern aus der MTS-Modulliste StuPO 2025, WiSe 2026/27 (abgerufen 05.10.2026). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
+      "module": [
+        {
+          "nummer": "20122",
+          "kurz": "Ana + LinA"
+        },
+        {
+          "nummer": "41262",
+          "kurz": "Prog II"
+        },
+        {
+          "nummer": "41284",
+          "kurz": "EvA"
+        },
+        {
+          "nummer": "70174",
+          "kurz": "InvFin"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2025",
+      "semester": "wise-2026-27",
+      "fachsemester": 3,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2025 (AMBl. TU 04/2026), Anlage 2: exemplarischer Studienverlaufsplan, 3. FS; Modulnummern und Wahlpflichtbereiche aus der MTS-Modulliste StuPO 2025, WiSe 2026/27 (abgerufen 05.10.2026). Nach dieser Ordnung studiert im 3. FS erst der Jahrgang 2027/28 regulär, jetzt nur, wer gewechselt hat",
+      "module": [
+        {
+          "nummer": "41286",
+          "kurz": "Datenmanagement"
+        },
+        {
+          "nummer": "41285",
+          "kurz": "SW & Business Eng."
+        },
+        {
+          "nummer": "70501",
+          "kurz": "Platform Econ."
+        }
+      ],
+      "wahlpflicht": [
+        {
+          "id": "gvn",
+          "kurz": "WP Nachhaltigkeit",
+          "name": "Wahlpflicht Gesellschaftliche Verantwortung und Nachhaltigkeit",
+          "modulliste": "wi-bsc-stupo2025-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Gesellschaftliche Verantwortung und Nachhaltigkeit",
+          "anteil": "6 LP im 3. FS"
+        },
+        {
+          "id": "wiwi-grundlagen",
+          "kurz": "WP WiWi-Grundlagen",
+          "name": "Wahlpflicht Wirtschaftswissenschaftliche Grundlagen",
+          "modulliste": "wi-bsc-stupo2025-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Wirtschaftswissenschaftliche Grundlagen",
+          "anteil": "6 LP im 3. FS"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2025",
+      "semester": "sose-2026",
+      "fachsemester": 4,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2025 (AMBl. TU 04/2026), Anlage 2: exemplarischer Studienverlaufsplan, 4. FS; Modulnummern und Wahlpflichtbereich aus der MTS-Modulliste StuPO 2025, WiSe 2026/27 (abgerufen 05.10.2026; für das SoSe gibt es noch keine). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
+      "module": [
+        {
+          "nummer": "41231",
+          "kurz": "Data Science & AI"
+        },
+        {
+          "nummer": "41287",
+          "kurz": "Security & Privacy"
+        },
+        {
+          "nummer": "40064",
+          "kurz": "GP"
+        }
+      ],
+      "wahlpflicht": [
+        {
+          "id": "pp",
+          "kurz": "WP Programmierpraktikum",
+          "name": "Wahlpflicht Programmierpraktikum",
+          "modulliste": "wi-bsc-stupo2025-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Programmierpraktikum",
+          "anteil": "6 LP im 4. FS"
+        }
+      ],
+      "frei": [
+        {
+          "name": "Freie Wahl",
+          "anteil": "18 LP über das 4.–6. FS",
+          "hinweis": "Aus dem gesamten Angebot der TU Berlin und anderer Hochschulen (StuPO 2025 § 5 Abs. 5). Keine Liste, deshalb nicht im Katalog"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2025",
+      "semester": "wise-2026-27",
+      "fachsemester": 5,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2025 (AMBl. TU 04/2026), Anlage 2: exemplarischer Studienverlaufsplan, 5. FS; Wahlpflichtbereiche aus der MTS-Modulliste StuPO 2025, WiSe 2026/27 (abgerufen 05.10.2026). Nach dieser Ordnung studiert im 5. FS erst der Jahrgang 2028/29 regulär",
+      "module": [],
+      "wahlpflicht": [
+        {
+          "id": "vt-inf",
+          "kurz": "WP Vertiefung Inf",
+          "name": "Wahlpflicht Vertiefung Informatik",
+          "modulliste": "wi-bsc-stupo2025-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Vertiefung Informatik",
+          "anteil": "18–27 LP über das 5. und 6. FS; in beiden Vertiefungen zusammen mindestens ein Seminar (≥ 3 LP) und ein Projekt (≥ 6 LP)"
+        },
+        {
+          "id": "vt-wiwi",
+          "kurz": "WP Vertiefung WiWi",
+          "name": "Wahlpflicht Vertiefung Wirtschaftswissenschaften",
+          "modulliste": "wi-bsc-stupo2025-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Vertiefung Wirtschaftswissenschaften",
+          "anteil": "9–18 LP über das 5. und 6. FS"
+        }
+      ],
+      "frei": [
+        {
+          "name": "Freie Wahl",
+          "anteil": "18 LP über das 4.–6. FS",
+          "hinweis": "Aus dem gesamten Angebot der TU Berlin und anderer Hochschulen (StuPO 2025 § 5 Abs. 5). Keine Liste, deshalb nicht im Katalog"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2025",
+      "semester": "sose-2026",
+      "fachsemester": 6,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2025 (AMBl. TU 04/2026), Anlage 2: exemplarischer Studienverlaufsplan, 6. FS; Wahlpflichtbereiche aus der MTS-Modulliste StuPO 2025, WiSe 2026/27 (abgerufen 05.10.2026). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
+      "module": [],
+      "wahlpflicht": [
+        {
+          "id": "vt-inf",
+          "kurz": "WP Vertiefung Inf",
+          "name": "Wahlpflicht Vertiefung Informatik",
+          "modulliste": "wi-bsc-stupo2025-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Vertiefung Informatik",
+          "anteil": "18–27 LP über das 5. und 6. FS; in beiden Vertiefungen zusammen mindestens ein Seminar (≥ 3 LP) und ein Projekt (≥ 6 LP)"
+        },
+        {
+          "id": "vt-wiwi",
+          "kurz": "WP Vertiefung WiWi",
+          "name": "Wahlpflicht Vertiefung Wirtschaftswissenschaften",
+          "modulliste": "wi-bsc-stupo2025-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Vertiefung Wirtschaftswissenschaften",
+          "anteil": "9–18 LP über das 5. und 6. FS"
+        }
+      ],
+      "frei": [
+        {
+          "name": "Freie Wahl",
+          "anteil": "18 LP über das 4.–6. FS",
+          "hinweis": "Aus dem gesamten Angebot der TU Berlin und anderer Hochschulen (StuPO 2025 § 5 Abs. 5). Keine Liste, deshalb nicht im Katalog"
+        },
+        {
+          "name": "Bachelorarbeit",
+          "anteil": "12 LP im 6. FS",
+          "hinweis": "20 Wochen Bearbeitungszeit, keine Lehrveranstaltung mit Terminen (StuPO 2025 § 9)"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2021",
+      "semester": "wise-2026-27",
+      "fachsemester": 3,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 3. FS; Modulnummern aus der MTS-Modulliste StuPO 2021, WiSe 2026/27 (abgerufen 05.10.2026). Jahrgang WiSe 2025/26, sofern nicht in die StuPO 2025 gewechselt",
+      "module": [
+        {
+          "nummer": "70232",
+          "kurz": "Statistik II"
+        },
+        {
+          "nummer": "40271",
+          "kurz": "TechGI"
+        },
+        {
+          "nummer": "40029",
+          "kurz": "SWTPP"
+        },
+        {
+          "nummer": "70146",
+          "kurz": "OR-GDL"
+        },
+        {
+          "nummer": "70183",
+          "kurz": "MuP"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2021",
+      "semester": "sose-2026",
+      "fachsemester": 4,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 4. FS; Modulnummern und Wahlpflichtbereich aus der MTS-Modulliste StuPO 2021, SoSe 2026 (abgerufen 05.10.2026). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
+      "module": [
+        {
+          "nummer": "40002",
+          "kurz": "ISDA"
+        },
+        {
+          "nummer": "41034",
+          "kurz": "IT-Sicherheit"
+        },
+        {
+          "nummer": "40064",
+          "kurz": "GP"
+        },
+        {
+          "nummer": "70174",
+          "kurz": "InvFin"
+        }
+      ],
+      "wahlpflicht": [
+        {
+          "id": "pp",
+          "kurz": "WP Programmierpraktikum",
+          "name": "Wahlpflicht Programmierpraktikum",
+          "modulliste": "wi-bsc-stupo2021-sose-2026",
+          "bereich": "Wahlpflichtbereich/Programmierpraktikum",
+          "anteil": "6 LP im 4. FS"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2021",
+      "semester": "wise-2026-27",
+      "fachsemester": 5,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 5. FS; Wahlpflichtkataloge aus der MTS-Modulliste StuPO 2021, WiSe 2026/27 (abgerufen 05.10.2026). Jahrgang WiSe 2024/25, sofern nicht gewechselt",
+      "module": [
+        {
+          "nummer": "40499",
+          "kurz": "Inf & Ges"
+        }
+      ],
+      "wahlpflicht": [
+        {
+          "id": "inf",
+          "kurz": "WP Informatik",
+          "name": "Wahlpflicht Katalog Informatik",
+          "modulliste": "wi-bsc-stupo2021-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Informatik",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP, dazu ein Seminar und ein Projekt (StuPO 2021 § 5 Abs. 4)"
+        },
+        {
+          "id": "wiwi",
+          "kurz": "WP WiWi",
+          "name": "Wahlpflicht Katalog Wirtschaftswissenschaften",
+          "modulliste": "wi-bsc-stupo2021-wise-2026-27",
+          "bereich": "Wahlpflichtbereich/Wirtschaftswissenschaften",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP"
+        }
+      ],
+      "frei": [
+        {
+          "name": "Wahlbereich",
+          "anteil": "12–15 LP über das 5. und 6. FS",
+          "hinweis": "Aus dem gesamten Angebot der TU Berlin und anderer Hochschulen (StuPO 2021 § 5 Abs. 5). Keine Liste, deshalb nicht im Katalog"
+        }
+      ]
+    },
+    {
+      "ordnung": "stupo-2021",
+      "semester": "sose-2026",
+      "fachsemester": 6,
+      "sichtbar": "vorschau",
+      "quelle": "StuPO 2021 (AMBl. TU 14/2021), Anlage 2: exemplarischer Studienverlaufsplan, 6. FS; Wahlpflichtkataloge aus der MTS-Modulliste StuPO 2021, SoSe 2026 (abgerufen 05.10.2026). Demo V-0227: Termine des SoSe 2026 als Ersatz für SoSe 2027",
+      "module": [],
+      "wahlpflicht": [
+        {
+          "id": "inf",
+          "kurz": "WP Informatik",
+          "name": "Wahlpflicht Katalog Informatik",
+          "modulliste": "wi-bsc-stupo2021-sose-2026",
+          "bereich": "Wahlpflichtbereich/Informatik",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP, dazu ein Seminar und ein Projekt (StuPO 2021 § 5 Abs. 4)"
+        },
+        {
+          "id": "wiwi",
+          "kurz": "WP WiWi",
+          "name": "Wahlpflicht Katalog Wirtschaftswissenschaften",
+          "modulliste": "wi-bsc-stupo2021-sose-2026",
+          "bereich": "Wahlpflichtbereich/Wirtschaftswissenschaften",
+          "anteil": "Wahlpflicht 30–33 LP über das 5. und 6. FS, aus jedem Katalog mindestens 12 LP"
+        }
+      ],
+      "frei": [
+        {
+          "name": "Wahlbereich",
+          "anteil": "12–15 LP über das 5. und 6. FS",
+          "hinweis": "Aus dem gesamten Angebot der TU Berlin und anderer Hochschulen (StuPO 2021 § 5 Abs. 5). Keine Liste, deshalb nicht im Katalog"
+        },
+        {
+          "name": "Bachelorarbeit",
+          "anteil": "12 LP im 6. FS",
+          "hinweis": "Keine Lehrveranstaltung mit Terminen (StuPO 2021 § 9)"
+        }
       ]
     }
   ]
