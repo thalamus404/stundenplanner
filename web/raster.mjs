@@ -100,27 +100,66 @@ export function wochenBreite(spurZahl, tage, rand = 48, achsenBreite = 32) {
 }
 
 /**
- * Was das Raster zeigt (DESIGN §4.1). Jede gewählte Gruppe in jeder Ansicht, als Kontext, wenn
- * sie nicht zum Filter passt: Wer die nächste Gruppe sucht, muss sehen, wo die Woche belegt ist
- * (das Vorbild blendete sie in „Noch offen“ aus). Dazu die möglichen Gruppen der Ansicht. Ein
- * gefilterter Bestandteil zeigt immer alle seine Gruppen, auch gewählt: So wechselt man.
+ * Was das Raster zeigt (DESIGN §4.1). Jede gewählte Gruppe, als Kontext, wenn sie nicht zum Filter
+ * passt: Man muss sehen, wo die Woche belegt ist. Ohne Filter die Formate ohne Wahl („Noch offen“),
+ * mit Filter ALLE Gruppen des Moduls bzw. Formats, auch gewählter: So wechselt man (V-0225; die
+ * Ansichten „Alle“ und „Mein Plan“ gibt es seitdem nicht mehr).
  */
-export function sichtbar(groups, { ansicht = 'open', modul = '', teil = '' } = {}) {
+export function sichtbar(groups, { modul = '', teil = '' } = {}) {
   const out = [];
   for (const g of groups) {
     const passt = (!modul || g.component.module.number === modul) && (!teil || g.component_id === teil);
     if (g.selected) out.push({ g, art: passt ? 'gewaehlt' : 'kontext' });
-    else if (passt && (teil || ansicht === 'all' || (ansicht === 'open' && !g.component.selection))) out.push({ g, art: 'moeglich' });
+    else if (passt && (teil || modul || !g.component.selection)) out.push({ g, art: 'moeglich' });
   }
   return out;
 }
 
-/** Die Gruppennummer für schmale Kacheln: "Termingruppe 12" und "1. Termingruppe" → "12", "1". */
+// Die Navigation durch Module und Formate (DESIGN §4.2, V-0225). Filter { modul, teil, ueber }: die
+// Modulnummer, die ID des Formats, ob man über das Modul zum Format kam. Nochmals tippen hebt auf, was
+// man zuletzt gesetzt hat: kam man über das Modul, steht wieder das Modul, sonst kein Filter.
+export const KEIN_FILTER = Object.freeze({ modul: '', teil: '', ueber: false });
+
+/** Tipp auf ein Modul: alle seine Gruppen; ist es schon gefiltert (auch mit einem Format darin), aus. */
+export function tippeModul(f, nummer) {
+  return f.modul === nummer ? { ...KEIN_FILTER } : { modul: nummer, teil: '', ueber: false };
+}
+
+/** Tipp auf ein Format: nur seine Gruppen; nochmals getippt, eine Stufe zurück (Modul oder nichts). */
+export function tippeFormat(f, teil, nummer) {
+  if (f.teil === teil) return stufeZurueck(f);
+  return { modul: nummer, teil, ueber: f.modul === nummer && (!f.teil || f.ueber) };
+}
+
+/** Esc und „nochmals tippen“: vom Format zurück zum Modul (wenn man darüber kam), sonst kein Filter. */
+export function stufeZurueck(f) {
+  return f.teil && f.ueber ? { modul: f.modul, teil: '', ueber: false } : { ...KEIN_FILTER };
+}
+
+/**
+ * Die Legende unter dem Raster: jedes Format, das im Plan vorkommt, einmal, in der Reihenfolge, in
+ * der es zuerst auftaucht, mit Kürzel und ausgeschrieben („nur was vorkommt“, Silas, 05.10.2026).
+ */
+export function legende(parts) {
+  const out = [], schon = new Set();
+  for (const c of parts) {
+    const t = String(c.type || '');
+    if (!t || schon.has(t)) continue;
+    schon.add(t);
+    out.push({ kurz: t, lang: typLang(t) });
+  }
+  return out;
+}
+
+/**
+ * Die Gruppennummer, nur aus „Termingruppe 12“, „1. Termingruppe“ oder „Gruppe 3“; sonst null, und
+ * die Kachel zeigt den Namen. Vorher galt jede Zahl im Namen: „AnaLinA Space im E-N 004, Mo. 8-10
+ * Uhr“ wurde „Gruppe 004“, die Raumnummer (querwind, Punkt 16a7b0e5).
+ */
 export function gruppenNummer(name) {
   const t = String(name || '').trim();
-  const m = t.match(/\d+/);
-  if (m) return m[0];
-  return t.length > 6 ? t.slice(0, 5) + '…' : t;
+  const m = t.match(/^(?:termin)?gruppe\s+(\d+)\b/i) || t.match(/^(\d+)\.?\s*(?:termin)?gruppe\b/i);
+  return m ? m[1] : null;
 }
 
 const TYPEN = { VL: 'Vorlesung', UE: 'Übung', TUT: 'Tutorium', IV: 'Integrierte Veranstaltung' };
@@ -136,7 +175,7 @@ export function rhythmusHinweis(s) {
   return /^wöchentlich/.test(s.rhythm || '') ? '' : String(s.rhythm || '');
 }
 
-/** Der Wochentag, der am Handy zuerst offen ist: heute, am Wochenende Montag. */
+/** Der Wochentag, den die Tagansicht zuerst zeigt: heute, am Wochenende Montag. */
 export function startTag(datum, tage = 5) {
   const t = (datum.getDay() + 6) % 7;
   return t < Math.min(tage, 5) ? t : 0;

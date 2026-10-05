@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prüfseite Handy</title>
+<link rel="stylesheet" href="handy.css">
+<script src="handy.js" defer></script>
+</head>
+<body>
+<header data-sicht="kopf">Kopf <button type="button">Teilen</button></header>
+<div data-sicht="module" class="module"><button type="button" data-sicht="chip">VL</button></div>
+<main data-sicht="raster" class="raster">
+  <span data-sicht="tag" data-tag="0" class="mo">Mo</span>
+  <span data-sicht="stunde" class="s8">08</span>
+  <span data-sicht="stunde" class="s10">10</span>
+  <div data-sicht="kachel" data-tag="0" data-start="08:00" data-ende="10:00" class="k1">VL</div>
+</main>
+<div data-sicht="umschalter" class="umschalter" role="group" aria-label="Tag oder Woche"><button type="button">Tag</button><button type="button" id="woche">Woche</button></div>
+<footer data-sicht="fuss">Kein offizielles Angebot. Deine Auswahl wird nur in diesem Browser gespeichert. <a href="#i">Impressum</a> <a href="#d">Datenschutz</a></footer>
+</body>
+</html>
