@@ -18,6 +18,10 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import abruf  # noqa: E402
 import moses  # noqa: E402
+import zugang  # noqa: E402
+
+# Die Attrappe ersetzt den Client; main() verlangt trotzdem die Genehmigung (V-0242, abruf/zugang.py).
+GENEHMIGT = {zugang.VARIABLE: zugang.TAEGLICHER_LAUF}
 
 FIX = Path(__file__).parent / 'fixtures'
 KATALOG = FIX / 'katalog'
@@ -177,6 +181,7 @@ class VorschauUndSperreTests(unittest.TestCase):
     def test_befehl_kennt_den_schalter(self):
         welt = Welt()
         with mock.patch.object(moses, 'Client', welt.client), mock.patch.object(abruf.time, 'sleep'), \
+                mock.patch.dict(zugang.os.environ, GENEHMIGT), \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             rc = abruf.main(['--katalog', str(self.kat), '--roh', str(self.roh), '--mit-vorschau'])
         self.assertEqual(rc, 0)
@@ -295,6 +300,7 @@ class LaufTests(unittest.TestCase):
     def test_main_exit_code_und_roh_von_anderswo(self):
         def main(*argv, welt):
             with mock.patch.object(moses, 'Client', welt.client), mock.patch.object(abruf.time, 'sleep'), \
+                    mock.patch.dict(zugang.os.environ, GENEHMIGT), \
                     contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                 return abruf.main(['--katalog', str(KATALOG), '--roh', str(self.roh), *argv])
         self.assertEqual(main(welt=Welt()), 0)

@@ -285,6 +285,7 @@ class HoeflichkeitTests(unittest.TestCase):
         schlaf = []
         jetzt = iter([100.0, 100.2, 100.4, 100.6])  # vor/nach der 1. Anfrage, vor/nach der 2.
         with mock.patch.object(lsf.time, 'monotonic', lambda: next(jetzt)), \
+             mock.patch.dict(lsf.zugang.os.environ, {lsf.zugang.VARIABLE: lsf.zugang.TAEGLICHER_LAUF}), \
              mock.patch.object(lsf.time, 'sleep', schlaf.append), \
              mock.patch.object(lsf.Client, 'letzte', 0.0):
             a, b = lsf.Client(BASIS), lsf.Client(BASIS)

@@ -7,6 +7,11 @@
 > Ist der TOWER stumm, warnt der Hook und merkt vor; gesperrt wird nur, wenn er antwortet und ablehnt.
 > Was DIESES Airfield ist, steht darunter. Was der TOWER ist, steht dort.
 
+> **⛔ Keine Zugriffe auf Systeme der TU Berlin ohne Silas’ ausdrückliche Genehmigung** (§2 ⑦).
+> Für jeden Weg, auch eine einzelne Seite „nur zum Nachsehen“. Genehmigt ist allein der tägliche Lauf
+> um 05:20 im Container `stundenplanner-abruf`. Wer mehr braucht, fragt Silas **vorher** und nennt
+> **Umfang**, **Maßnahmen gegen Last** und **Grund**.
+
 Dies ist der **einzige** Einstieg in `stundenplanner`, für Menschen und für Agenten.
 `CLAUDE.md` ist ein Symlink auf diese Datei. Wer nur das Werkzeug benutzen oder verstehen will,
 liest die [`README.md`](README.md).
@@ -66,6 +71,36 @@ drei Dinge: Es soll wieder gehen. Der Grund steht dort, wo der Nächste denselbe
 würde. Und eine Änderung sorgt dafür, dass diese Klasse Fehler nicht wiederkommt. Geht das
 nicht, sag laut, warum.
 
+**⑦ Keine Zugriffe auf Systeme der TU Berlin ohne Silas' ausdrückliche Genehmigung.** Silas,
+05.10.2026: *„Ab jetzt sind keine Zugriffe mehr auf das TU-System erlaubt, solange ich es nicht
+ausdrücklich genehmigt habe.“*
+- **Was dazu zählt:** jede Anfrage an einen Host unter `tu-berlin.de`: MOSES, ISIS, die API, die
+  Webseiten der TU, auch PDFs wie Studien- und Prüfungsordnungen. Auf jedem Weg: der Abruf in
+  `abruf/`, `modulliste.py`, ein Skript, `curl`, Playwright, `WebFetch` oder ein Browser-Werkzeug
+  eines Agenten. Auch eine einzelne Seite „nur zum Nachsehen“ oder „zum Verifizieren“. Ein Agent,
+  der eine Seite öffnet wie ein Mensch, ist trotzdem ein Programm.
+- **Genehmigt ist nur** der tägliche Lauf um 05:20 im Container `stundenplanner-abruf`, für die
+  Module der Pläne in `main` (docs/BETRIEB.md §2). Eine Auslieferung fragt MOSES nicht (V-0241).
+- **Andere Hochschulen:** Ihre Vorlesungsverzeichnisse und Campus-Systeme (AGNES, LSF, HISinOne,
+  CAMPUSonline …) ebenso nur mit Genehmigung. Einzelne öffentliche Informationsseiten zu lesen
+  (Hilfe, Dokumentation, `robots.txt`), ist erlaubt.
+- **Wer einen Zugriff braucht, fragt Silas vorher** und nennt drei Dinge:
+  1. **den Umfang:** welche Hosts und Seiten, wie viele Anfragen, wie oft, wie lange
+  2. **die Maßnahmen gegen Last:** Pausen zwischen Anfragen, eine Uhrzeit außerhalb der Stoßzeiten,
+     Zwischenspeicher statt Wiederholung, eine harte Obergrenze, Abbruch beim ersten Fehler
+  3. **den Grund,** warum es ohne den Zugriff wirklich nicht geht, und warum die vorhandenen
+     Rohdaten, die Fixtures oder die Dokumentation nicht reichen
+
+  Ohne seine Antwort gibt es keinen Zugriff. Mit ihr nur in dem Umfang, den er genehmigt.
+- **Der Code setzt es durch:** `moses.Client` und `lsf.Client` fragen nur, wenn der tägliche Lauf
+  die Genehmigung setzt (`abruf/zugang.py`, geprüft in `abruf/tests/test_zugang.py`). **Setze sie
+  nie selbst.** Zum Entwickeln gibt es die Rohdaten des letzten Laufs, die Fixtures unter
+  `abruf/tests/fixtures/` und die Attrappen der Tests.
+- **Warum:** innoCampus (TU) sieht das Abrufen der Weboberfläche nicht gern und sperrt auffällige
+  Adressen; das träfe Silas' Heimanschluss. Am 4. und 5.10.2026 hatten Agenten beim Bauen einige
+  tausend MOSES-Seiten abgerufen, ohne dass Silas es wusste. Der Weg zu mehr Daten ist die API mit
+  Token, die Silas bei innoCampus angefragt hat, nicht die Webseite.
+
 Dass jede Änderung ein Vorgang ist (Arbeitsbaum `.arbeit/v-00NN`, Punkte, Bericht, Weg über
 `dev`, nach `main` nur mit Silas' Freigabe), ist keine Regel dieses Repos. Es ist das Protokoll
 des TOWER (Block oben).
@@ -75,7 +110,7 @@ des TOWER (Block oben).
 | | |
 |---|---|
 | Test | `sh ops/test.sh`: die Regeln eines öffentlichen Repos (§2 ①), die Haustür und jede Datei `abruf/tests/test_*.py` und `web/tests/*.test.mjs`. Neue Tests legst du dorthin, `ops/test.sh` findet sie |
-| Abruf, Bauen, Ansehen | `python3 abruf/abruf.py` · `python3 abruf/bauen.py` · `python3 -m http.server -d web 8000` (docs/ARCHITEKTUR.md §7) |
+| Abruf, Bauen, Ansehen | `python3 abruf/abruf.py` fragt MOSES und ist **gesperrt** (§2 ⑦); gebaut wird aus vorhandenen Rohdaten: `python3 abruf/bauen.py --roh <ordner>` · `python3 -m http.server -d web 8000` (docs/ARCHITEKTUR.md §7) |
 | Oberfläche messen | `python3 ops/sicht.py --web web`: alle Fenstergrößen aus docs/DESIGN.md §8, hell und dunkel, kein Scrollen der Standardansicht, Kontrast, Tippziele, Bytes (braucht Playwright) |
 | Ausliefern | `sh ops/bauen.sh live [<stand>]`: der Container `stundenplanner-abruf` auf dem NAS baut aus `main` und lädt zu Cloudflare hoch (`befehle.bau_live`, so ruft es die Freigabe). Alles Weitere, auch `zugang`, `einrichten`, `status`, `rueckweg`: docs/BETRIEB.md §4 |
 | Vorschau, Dev-Hub im TOWER | keine: Es gibt keinen Server. Den Stand eines Zweigs siehst du lokal mit dem Befehl oben. `tower vorgang fertig` braucht deshalb `TOWER_PRUEFZIEL=arbeitsbaum` (Punkt dcd0ebbd) |

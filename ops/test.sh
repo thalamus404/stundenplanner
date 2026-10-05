@@ -36,6 +36,15 @@ if [ -L CLAUDE.md ] && [ "$(readlink CLAUDE.md)" = "AGENTS.md" ]; then
 else
   nein "CLAUDE.md ist kein Symlink auf AGENTS.md — eine Tür, zwei Schilder"
 fi
+# Jede Anleitung trägt oben den Hinweis „Keine Zugriffe auf Systeme der TU Berlin ohne Silas’
+# Genehmigung“ (Silas, 05.10.2026; AGENTS.md §2 ⑦, V-0242). Eine neue Anleitung ohne ihn ist rot:
+# Wer nur sie liest, soll die Regel nicht übersehen. CLAUDE.md ist der Symlink auf AGENTS.md.
+ohne=$(git ls-files -z -- '*.md' ':!CLAUDE.md' | xargs -0 grep -L 'Keine Zugriffe auf Systeme der TU Berlin' 2>/dev/null)
+if [ -z "$ohne" ]; then
+  ok "jede Anleitung trägt den Hinweis: keine Zugriffe auf die TU ohne Silas’ Genehmigung"
+else
+  nein "Anleitung(en) ohne den Hinweis auf AGENTS.md §2 ⑦: $(echo $ohne)"
+fi
 
 # 2 · Öffentlich: nichts aus der Werkstatt. git grep sieht nur, was git verfolgt (auch
 # frisch hinzugefügt) — genau das, was ein Commit veröffentlichen würde.

@@ -1,5 +1,12 @@
 # Architektur — wie der Stundenplanner gebaut ist
 
+> **⛔ Keine Zugriffe auf Systeme der TU Berlin ohne Silas’ ausdrückliche Genehmigung**
+> (Silas, 05.10.2026; [AGENTS.md §2 ⑦](../AGENTS.md#2-die-regeln)). Das gilt für jeden Weg: Abruf-Code, Skript, `curl`,
+> Browser-Automatisierung, `WebFetch` eines Agenten, auch für eine einzelne Seite „nur zum Nachsehen“.
+> Genehmigt ist allein der tägliche Lauf um 05:20 im Container `stundenplanner-abruf`. Wer mehr braucht,
+> fragt Silas **vorher** und nennt **Umfang**, **Maßnahmen gegen Last** und **Grund**. Dasselbe gilt für
+> die Vorlesungsverzeichnisse anderer Hochschulen. Der Code sperrt selbst (`abruf/zugang.py`).
+
 > Der Vertrag zwischen den Teilen. Wer ein Format, einen Ordner oder einen Befehl ändert, ändert
 > ihn hier zuerst. Was das Werkzeug können soll, steht im [Scope](SCOPE.md), hier steht nur, wie.
 
@@ -393,7 +400,7 @@ Seite (Schlüssel wie in Schema 1), bis die Seite umgestellt ist.
 
 | Befehl | Was |
 |---|---|
-| `python3 abruf/abruf.py [--semester wise-2026-27] [--nur <modulnummer>] [--roh <ordner>]` | Rohstände nach `daten/roh/` oder `--roh` (Vorbestand dort wird nur je erfolgreichem Modul ersetzt). Läuft aus jedem Arbeitsverzeichnis: Der Katalog hängt an der Lage von `abruf.py`, ein relatives `--roh` am Arbeitsverzeichnis. Exit 0 nur, wenn jedes Semester `ok` ist; 1 bei `partial`/`error`; 2 bei falschem Aufruf oder ungültigem Katalog |
+| `python3 abruf/abruf.py [--semester wise-2026-27] [--nur <modulnummer>] [--roh <ordner>]` | **Gesperrt ohne Silas' Genehmigung** (AGENTS.md §2 ⑦, `abruf/zugang.py`): ohne sie Exit 2, bevor eine Anfrage rausgeht. Mit ihr: Rohstände nach `daten/roh/` oder `--roh` (Vorbestand dort wird nur je erfolgreichem Modul ersetzt). Läuft aus jedem Arbeitsverzeichnis: Der Katalog hängt an der Lage von `abruf.py`, ein relatives `--roh` am Arbeitsverzeichnis. Exit 0 nur, wenn jedes Semester `ok` ist; 1 bei `partial`/`error`; 2 bei falschem Aufruf oder ungültigem Katalog |
 | `python3 abruf/bauen.py [--katalog <ordner>] [--roh <ordner>] [--aus <ordner>]` | Lesemodell nach `web/daten/` aus `katalog/` und `daten/roh/`. Die Vorgaben hängen an der Repo-Wurzel, nicht am Arbeitsverzeichnis. Ein widersprüchlicher Katalog endet mit 2 und schreibt nichts |
 | `python3 -m http.server -d web 8000` | die Seite lokal ansehen |
 | `sh ops/test.sh` | alle Tests: Regeln des öffentlichen Repos, `abruf/tests/test_*.py` (unittest), `web/tests/*.test.mjs` (`node --test`) |
