@@ -77,10 +77,19 @@
     Auswahl steht im Link hinter dem Zeichen #. Diesen Teil eines Links schicken Browser beim
     Aufruf nicht an den Server.</p>
 
-  <h2>Kalender-Export</h2>
-  <p>Übernimmst du deinen Plan in einen Kalender, erzeugt dein Browser die Kalenderdatei selbst aus
-    den geladenen Terminen. Deine Auswahl geht dabei an keinen Server. Was dein Kalender mit den
-    Terminen macht, regelt dessen Anbieter.</p>
+  <h2>Kalender-Abo und Kalender-Export</h2>
+  <p><strong>Abo:</strong> Abonnierst du deinen Plan als Kalender „Stundenplan“, steht in der
+    Abo-Adresse, welche Gruppen du gewählt hast (nur Kennungen der Gruppen, kein Name, keine
+    Kennung von dir). Dein Kalender (bei Google: Googles Server) ruft diese Adresse regelmäßig ab,
+    etwa alle paar Stunden. Bei jedem Abruf erzeugt eine Funktion bei Cloudflare die Kalenderdatei
+    neu aus den öffentlichen Terminen und schickt sie zurück; sie speichert dabei nichts.
+    Cloudflare verarbeitet den Abruf wie jeden Aufruf der Seite (siehe „Hosting bei Cloudflare“),
+    die Adresse mit deiner Auswahl steht dabei in den Server-Protokollen. Rechtsgrundlage ist
+    Art. 6 Abs. 1 lit. b DSGVO: Du bittest darum, dass dein Kalender den Plan aktuell hält. Beenden
+    kannst du das jederzeit, indem du das Abo in deinem Kalender löschst.</p>
+  <p><strong>Datei:</strong> Lädst du den Plan stattdessen einmal als Datei, erzeugt dein Browser
+    sie selbst aus den geladenen Terminen; die Auswahl geht dabei an keinen Server.</p>
+  <p>Was dein Kalender mit den Terminen macht, regelt dessen Anbieter.</p>
 
   <h2>Deine Rechte</h2>
   <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Einschränkung der Verarbeitung,

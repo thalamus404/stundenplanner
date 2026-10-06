@@ -190,14 +190,25 @@ function veranstaltung({ modul: m, teil: c, gruppe: g, termin: b, uid }, dtstamp
 }
 
 /**
+ * Der Name des abonnierten Kalenders (Silas, 06.10.2026, V-0271): „ein neuer Kalender namens Stundenplan …
+ * So landet es nicht im privaten Kalender.“ Abonniert man die Adresse, legen iPhone, Mac, Google und Outlook
+ * einen eigenen Kalender mit diesem Namen an (X-WR-CALNAME, RFC 7986 NAME).
+ */
+export const ABO_NAME = 'Stundenplan';
+
+/** Wie oft ein Abo nachsehen soll: Die Termine kommen einmal am Tag (05:20), sechs Stunden reichen. */
+const ABO_TAKT = 'PT6H';
+
+/**
  * Die Auswahl als VCALENDAR (RFC 5545), Zeilen mit CRLF und gefaltet.
  * optionen.jetzt: Zeitpunkt für DTSTAMP (Date; für Tests fest, sonst jetzt).
+ * optionen.abo: für das Kalender-Abo (functions/abo): Name ABO_NAME und der Takt zum Nachsehen.
  * Eine leere Auswahl ergibt einen gültigen Kalender ohne Termine (mit VTIMEZONE).
  */
 export function icsAusAuswahl(plan, auswahl, optionen = {}) {
   const jetzt = optionen.jetzt instanceof Date ? optionen.jetzt : new Date();
   const dtstamp = utc(jetzt);
-  const name = kalenderName(plan || {});
+  const name = optionen.abo ? ABO_NAME : kalenderName(plan || {});
   const zeilen = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -207,6 +218,8 @@ export function icsAusAuswahl(plan, auswahl, optionen = {}) {
     `X-WR-CALNAME:${icsText(name)}`,
     `NAME:${icsText(name)}`,
     `X-WR-TIMEZONE:${TZID}`,
+    // RFC 7986 REFRESH-INTERVAL, dazu die ältere Angabe, die Outlook und Google lesen.
+    ...(optionen.abo ? [`REFRESH-INTERVAL;VALUE=DURATION:${ABO_TAKT}`, `X-PUBLISHED-TTL:${ABO_TAKT}`] : []),
     ...VTIMEZONE,
   ];
   for (const t of icsTermine(plan, auswahl)) {
@@ -304,3 +317,31 @@ export function icsLink(datei, { url = globalThis.URL, ua = globalThis.navigator
   };
   return { href, download: datei.name, target: geraet === 'ios' || geraet === 'iosAndere' ? '_self' : '', geraet, freigeben };
 }
+
+// ── Das Abo (V-0271): ein eigener Kalender „Stundenplan“, der sich selbst aktualisiert ─────────────────
+// Silas, 06.10.2026: „ein neuer Kalender namens Stundenplan … So landet es nicht im privaten Kalender.“ Die
+// Adresse führt zur Funktion functions/abo (Cloudflare Pages Function), die die Datei aus der Auswahl in der
+// Adresse jedes Mal neu rechnet. webcal: öffnet am iPhone, iPad und Mac „Abonnieren?“ und legt den Kalender
+// an, auch aus Chrome am iPhone (das Schema gehört dem System, nicht dem Browser); Outlook (klassisch)
+// ebenso. Google Kalender hat kein webcal in der App: Der Link öffnet calendar.google.com mit „Kalender
+// hinzufügen?“, danach steht er auch in der App. Die Auswahl in der Adresse ist dieselbe wie im Link aus
+// „Stundenplan speichern“ (nur Kennungen von Gruppen, auswahl.mjs teilenFragment).
+
+/** Die Adressen des Abos für eine Auswahl: `anfrage` ist teilenFragment(plan, auswahl) ohne „#“. */
+export function aboAdressen(ursprung, anfrage) {
+  const https = `${String(ursprung).replace(/\/+$/, '')}/abo/stundenplan.ics?${anfrage}`;
+  const webcal = https.replace(/^https?:/, 'webcal:');
+  return { https, webcal, google: 'https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(webcal) };
+}
+
+/** Was nach dem Antippen passiert, je Gerät (kalenderGeraet). */
+export const ABO_TEXTE = {
+  ios: 'Tippe auf „Abonnieren“. Dann steht „Stundenplan“ als eigener Kalender in deiner Kalender-App und holt Änderungen aus MOSES von selbst.',
+  iosAndere: 'Tippe auf „Abonnieren“. Dann steht „Stundenplan“ als eigener Kalender in deiner Kalender-App und holt Änderungen aus MOSES von selbst.',
+  mac: 'Kalender fragt, ob du „Stundenplan“ abonnieren willst. Danach holt er Änderungen aus MOSES von selbst.',
+  android: 'Google Kalender fragt, ob du „Stundenplan“ hinzufügen willst. Danach steht er auch in der App und holt Änderungen von selbst.',
+  windows: 'Outlook fragt, ob du „Stundenplan“ abonnieren willst. Im Browser geht es über Google Kalender.',
+  andere: 'Dein Kalender fragt, ob du „Stundenplan“ abonnieren willst. Geht das nicht, kopiere die Adresse und füge sie dort als Abo ein.',
+  neu: 'Änderst du später deine Auswahl, abonniere neu und lösche das alte Abo.',
+  kopiert: 'Adresse kopiert. Füge sie in deinem Kalender als Abo ein, etwa „Kalenderabo hinzufügen“ oder „Über URL hinzufügen“.',
+};

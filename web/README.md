@@ -224,9 +224,19 @@ Die Tabelle alt → neu steht in DESIGN §4.3. Dazu, was schon der Nachbau ände
 ## Kalender-Export
 
 `ics.mjs` (V-0231) macht aus der wirksamen Auswahl eine iCalendar-Datei (RFC 5545), die Apple-,
-Google- und Outlook-Kalender übernehmen. Die Datei entsteht nur im Browser; nichts geht an einen
-Server. Deshalb gibt es kein Abo (`webcal://`), das sich selbst aktualisiert: Dafür müsste ein
-Server die Auswahl kennen.
+Google- und Outlook-Kalender übernehmen.
+
+**Das Abo (V-0271, Silas' Entscheidung vom 06.10.2026):** Der Hauptweg ist ein Kalender-Abo. Silas
+wollte „einen neuen Kalender namens Stundenplan“, und das kann nur ein Abo: Eine Datei fragt am
+iPhone bei „Alle hinzufügen“ nach einem vorhandenen Kalender. `aboAdressen()` baut aus der Auswahl
+(dasselbe Format wie der Link aus „Stundenplan speichern“) `webcal://…/abo/stundenplan.ics?plan=…&w=…`
+und den Google-Link `calendar.google.com/calendar/render?cid=…`. Dahinter steht die einzige Funktion
+der Seite, `functions/abo/[datei].js` (Cloudflare Pages Function): Sie liest die öffentlichen Daten
+derselben Auslieferung, rechnet mit denselben Modulen wie der Browser und gibt die Datei mit
+`X-WR-CALNAME:Stundenplan` und `REFRESH-INTERVAL` 6 Stunden zurück. Sie speichert nichts. Nur `/abo/*`
+ruft sie auf (`web/_routes.json`). Ändert sich die Auswahl, braucht es ein neues Abo (die Auswahl
+steht in der Adresse); der Dialog sagt das. Die einmalige Datei bleibt als leiser Rückfall
+(„Nur einmal als Datei laden“), sie entsteht nur im Browser.
 
 - **Ein VEVENT je echtem Einzeltermin** (`bookings`) der gewählten Gruppen, keine RRULE: So stimmen
   Ferien, Ausfälle und Raumwechsel. `SUMMARY` „Modul · Art“, `LOCATION` der Raum, `DESCRIPTION`
