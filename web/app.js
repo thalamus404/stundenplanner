@@ -304,18 +304,44 @@ async function kalender() {
     return;
   }
   const geraet = link.geraet;
+  // Der Hauptweg seit V-0271 ist das Abo: ein eigener Kalender „Stundenplan“ (Silas), der sich selbst
+  // aktualisiert (ics.mjs aboAdressen, functions/abo). Die Datei bleibt als leiser Rückfall darunter.
+  const adr = I.aboAdressen(location.origin, A.teilenFragment(plan, teilbareAuswahl()).slice(1));
+  abo.adresse = adr.https;
+  const apple = `<a class="knopf${geraet === 'android' ? '' : ' haupt'}" href="${esc(adr.webcal)}" data-act="abo-los"${geraet === 'android' ? '' : ' data-fokus'}>${ic('kalender')}Kalender „Stundenplan“ abonnieren</a>`;
+  const google = `<a class="knopf${geraet === 'android' ? ' haupt' : ''}" href="${esc(adr.google)}" target="_blank" rel="noopener" data-act="abo-los"${geraet === 'android' ? ' data-fokus' : ''}>In Google Kalender abonnieren</a>`;
   const satz = bild ? bild.kalenderSatz(selected, termine) : mehrzahl(termine.length, 'Termin', 'Termine');
   const offenNoch = fort.n - fort.k;
   const zusatz = [paare.length ? `<span class="pb-rot">${ic('warn')}${esc(mehrzahl(paare.length, 'Überschneidung', 'Überschneidungen'))}</span>` : '',
     offenNoch > 0 ? esc(`Noch nicht eingeplant: ${offenNoch} von ${fort.n} Formaten. Vorschläge kommen erst nach „Einplanen“ in den Kalender.`) : ''].filter(Boolean).join(' ');
-  oeffne('dialog', 'In Kalender übernehmen', `${planBild()}<p class="pb-zeile"><b>${esc(satz)}${satz.endsWith('.') ? '' : '.'}</b>${zusatz ? ' ' + zusatz : ''}</p><div class="e-aktionen"><a class="knopf haupt" id="ics-link" href="${esc(link.href)}" download="${esc(link.download)}"${link.target ? ` target="${link.target}"` : ''} data-act="ics-los" data-fokus>${ic('kalender')}In eigenen Kalender exportieren</a></div><p class="klein">${esc(I.ICS_TEXTE[geraet] || '')} ${esc(I.ICS_TEXTE.abzug)}</p>`,
+  oeffne('dialog', 'In Kalender übernehmen', `${planBild()}<p class="pb-zeile"><b>${esc(satz)}${satz.endsWith('.') ? '' : '.'}</b>${zusatz ? ' ' + zusatz : ''}</p><div class="e-aktionen">${geraet === 'android' ? google + apple : apple + google}</div><p class="klein">${esc(I.ABO_TEXTE[geraet] || I.ABO_TEXTE.andere)} ${esc(I.ABO_TEXTE.neu)}</p><p class="pb-weitere"><button type="button" class="leise" data-act="abo-kopieren">Adresse kopieren</button><a class="leise" id="ics-link" href="${esc(link.href)}" download="${esc(link.download)}"${link.target ? ` target="${link.target}"` : ''} data-act="ics-los">Nur einmal als Datei laden</a></p>`,
     { klasse: 'plan-bild', zurueck: () => $('kalender'), hinter: 'tief', zu: link.freigeben });
   bildLegen();
 }
 
-/** Der Link im Bild wurde angetippt: Den Download bzw. die Kalender-Vorschau macht der Browser selbst (das
- *  <a> mit href, download, target). Hier nur danach den Dialog schließen und sagen, was das Gerät tut;
- *  erst im nächsten Takt, damit der Link seine Wirkung hat, bevor die Ebene verschwindet. */
+const abo = { adresse: '' };
+
+/** Ein Abo-Link wurde angetippt: Das System fragt „Abonnieren?“ (webcal:) bzw. Google öffnet sich in einem
+ *  neuen Tab. Danach schließt sich der Dialog im nächsten Takt, und die Meldung sagt, was kommt. */
+function aboLos() {
+  const I = ics;
+  const text = I ? I.ABO_TEXTE[I.kalenderGeraet(navigator.userAgent, navigator.maxTouchPoints)] : '';
+  setTimeout(() => { schliesse(); melde(text || 'Dein Kalender fragt, ob du „Stundenplan“ abonnieren willst.'); }, 0);
+}
+
+async function aboKopieren() {
+  if (!abo.adresse) return;
+  try {
+    await navigator.clipboard.writeText(abo.adresse);
+    melde(ics ? ics.ABO_TEXTE.kopiert : 'Adresse kopiert.');
+  } catch {
+    melde('Kopieren ging nicht. Öffne den Dialog am Rechner oder abonniere über den Knopf.');
+  }
+}
+
+/** Der Link „Nur einmal als Datei laden“ wurde angetippt: Den Download bzw. die Kalender-Vorschau macht der
+ *  Browser selbst (das <a> mit href, download, target, V-0270). Hier nur danach den Dialog schließen und sagen,
+ *  was das Gerät tut; erst im nächsten Takt, damit der Link seine Wirkung hat, bevor die Ebene verschwindet. */
 function kalenderLos() {
   const I = ics;
   const a = $('ics-link');
@@ -1072,6 +1098,8 @@ const AKTIONEN = {
   },
   kalender: () => kalender(),
   'ics-los': () => kalenderLos(),
+  'abo-los': () => aboLos(),
+  'abo-kopieren': () => aboKopieren(),
   geprueft: (b) => { const g = finde(b.dataset.key); if (g && !vorschau) aendere(A.bestaetige(eigene, g.component_id, g)); },
   loesen: (b) => { if (!vorschau) aendere(A.loese(eigene, b.dataset.teil)); },
   // Reiter, Tageskopf der Woche oder Kachel der Wochenübersicht: zeigt den Tag groß.

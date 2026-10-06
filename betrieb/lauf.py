@@ -11,7 +11,8 @@ Je Lauf:
   2. python3 abruf/abruf.py --roh /daten/roh   (der Vorbestand im Volume trägt je Modul)
   3. python3 abruf/bauen.py --roh /daten/roh   (schreibt web/daten im geholten Stand)
   4. sh ops/test.sh                            (rot = nicht ausliefern)
-  5. wrangler pages deploy                     (nur mit Token; ohne: „kein Token, nicht ausgeliefert“)
+  5. wrangler pages deploy                     (nur mit Token; ohne: „kein Token, nicht ausgeliefert“;
+                                                 aus dem Klon, damit functions/ mitkommt, V-0271)
 
 Scheitert ein Schritt vor 5, wird nichts ausgeliefert: Online bleiben die Daten des letzten
 gelungenen Laufs. Die Seite zeigt ihr Alter selbst (stale nach 36 Stunden), und frische.yml
@@ -218,7 +219,10 @@ def ausliefern(commit, protokoll):
     befehl = ['wrangler', 'pages', 'deploy', str(AUSLIEFERN), '--project-name', PAGES_PROJEKT,
               '--branch', 'main', '--commit-hash', commit, '--commit-dirty=true',
               '--commit-message', f'Lauf {datetime.now(BERLIN):%Y-%m-%d %H:%M} · {commit}']
-    rc, ausgabe, dauer = schritt('ausliefern', befehl, cwd=str(DATEN), env=env, zeigen=False)
+    # cwd = der Klon (V-0271): wrangler sucht die Funktionen in ./functions (das Kalender-Abo,
+    # functions/abo) und bündelt sie mit den Modulen aus web/, die sie importieren. Aus DATEN heraus
+    # fand es keine, und die Seite lief ohne Abo; ausgeliefert wird trotzdem nur AUSLIEFERN.
+    rc, ausgabe, dauer = schritt('ausliefern', befehl, cwd=str(REPO), env=env, zeigen=False)
     ausgabe = ausgabe.replace(token, '***')
     adresse = re.findall(r'https://[A-Za-z0-9.-]+\.pages\.dev\S*', ausgabe)
     codes = sorted(set(re.findall(r'code:\s*(\d{3,6})', ausgabe)))

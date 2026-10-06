@@ -25,6 +25,7 @@ ein Abruf von einer festen Adresse zu Hause ist berechenbarer. GitHub Pages ist 
 |---|---|---|
 | NAS, Container `stundenplanner-abruf` | täglich 05:20 (Europe/Berlin): holen, bauen, prüfen, ausliefern | `betrieb/lauf.py`, `betrieb/Dockerfile`, `betrieb/docker-compose.yml` |
 | Cloudflare Pages, Projekt `stundenplanner` | liefert `web/` aus, Daten in `web/daten/` | (Direct Upload, kein Git-Anschluss) |
+| Cloudflare Pages Functions | das Kalender-Abo `/abo/stundenplan.ics` (V-0271); nur `/abo/*` ruft die Funktion (`web/_routes.json`). `wrangler` läuft deshalb im Klon, wo es `functions/` findet. Im Free-Plan 100 000 Aufrufe am Tag; sind sie aufgebraucht, scheitert nur das Abo, die Seite bleibt, die Kalender behalten ihren Stand | `functions/abo/[datei].js` |
 | GitHub Actions | Test bei jedem Push | `.github/workflows/test.yml` |
 | GitHub Actions | täglich: Sind die ausgelieferten Daten frisch? | `.github/workflows/frische.yml` |
 | GitHub Actions, nur von Hand | Antwortet MOSES GitHubs Servern? (Rückfall) | `.github/workflows/probe-moses.yml` |

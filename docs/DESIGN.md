@@ -532,7 +532,11 @@ eingeplant“ nicht auf (querwind, V-0228).
     Überschneidungen und noch offene Formate), der Knopf **„In eigenen Kalender exportieren“** und, was das
     Gerät danach tut. Erst dieser Knopf liefert die iCal-Datei der wirksamen Auswahl (nur Eingeplantes, keine
     Vorschläge, V-0237; `web/ics.mjs`, V-0231); er ist seit V-0270 ein echter Link auf eine `blob:`-Adresse,
-    den der Finger selbst antippt (am iPhone ab iOS 26.6 kam über `data:` nichts an); die Meldung sagt es noch einmal. Ohne Wahl
+    den der Finger selbst antippt (am iPhone ab iOS 26.6 kam über `data:` nichts an); die Meldung sagt es noch einmal.
+    Seit V-0271 ist der Hauptweg das **Abo** (Silas: „ein neuer Kalender namens Stundenplan“): „Kalender
+    ‚Stundenplan‘ abonnieren“ (webcal, Apple und Outlook) und „In Google Kalender abonnieren“, am Android-Handy
+    in umgekehrter Reihenfolge; darunter leise „Adresse kopieren“ und „Nur einmal als Datei laden“. Der
+    Kalender holt Änderungen aus MOSES von selbst; ändert man die Auswahl, abonniert man neu. Ohne Wahl
     sagt eine Meldung, was fehlt.
 11. **Stundenplan speichern** (V-0224 als „Teilen“, Fläche seit V-0237, Name seit V-0243): Der Knopf ist
     nie gesperrt; ohne Eingeplantes sagt eine Meldung, was fehlt. Sonst schiebt sich von unten die

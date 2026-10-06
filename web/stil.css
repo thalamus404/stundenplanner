@@ -513,7 +513,9 @@ a.knopf:active::after { opacity: .1; }
 .pb-zeile b { color: var(--grau-10); }
 .pb-rot { display: inline-flex; align-items: center; gap: 4px; color: var(--konflikt-text); font-weight: 600; }
 .pb-rot .i { color: var(--konflikt); }
-.plan-bild .e-aktionen .knopf.haupt { height: 44px; padding: 0 20px; }
+.plan-bild .e-aktionen .knopf { height: 44px; padding: 0 20px; }
+/* Unter den Abo-Knöpfen leise: Adresse kopieren und die einmalige Datei (V-0271). */
+.pb-weitere { display: flex; flex-wrap: wrap; gap: 4px 24px; font-size: 12px; line-height: 16px; color: var(--grau-9); }
 .e-kopf { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 0 16px; }
 .e-titel { flex: 1; padding-top: 4px; font-size: 16px; line-height: 24px; font-weight: 600; }
 .e-zu { flex: none; width: var(--ziel); height: var(--ziel); display: grid; place-items: center; border-radius: 8px; position: relative; }

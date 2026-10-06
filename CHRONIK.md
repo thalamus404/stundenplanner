@@ -12,6 +12,14 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 06.10.2026 — Kalender-Abo „Stundenplan“ (V-0271)
+
+- Silas: „dass man beim ‚in eigenen Kalender übernehmen‘ ein neuer Kalender namens Stundenplan angelegt
+  wird. So landet es nicht im privaten Kalender.“ Eine Datei kann das am iPhone nicht; ein Abo kann es.
+  Silas entschied sich für das Abo über eine kleine Cloudflare-Funktion (die erste der Seite, ohne
+  Speicher). Der Kalender „Stundenplan“ holt Änderungen aus MOSES von selbst; die Datei bleibt als
+  Rückfall. Datenschutz um das Abo ergänzt.
+
 ## 06.10.2026 — Kalender-Export am iPhone (V-0270)
 
 - Silas am iPhone: „In eigenen Kalender exportieren“ zeigte die Meldung, aber es kam weder Datei noch
