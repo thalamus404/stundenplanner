@@ -238,13 +238,14 @@ Server die Auswahl kennen.
   Kalender, den man ersetzt.
 - `group: null` in der Auswahl ist eine bewusste Abwahl und liefert nichts, ebenso eine Gruppe
   ohne Termine. Zeilen mit CRLF, gefaltet bei 75 Oktetten (nie mitten in einem Umlaut).
-- Die Seite ruft `icsHerunterladen(plan, auswahl)` → `{ blob, name, termine, text }`, dann im
-  Klick-Handler `icsAnstossen(datei)` → Gerät, und zeigt `ICS_TEXTE[gerät]`: den einen Satz, was
-  jetzt passiert oder was nicht mit einem Klick geht.
+- Die Seite ruft beim Öffnen des Kalender-Dialogs `icsHerunterladen(plan, auswahl)` → `{ blob, name,
+  termine, text }` und `icsLink(datei)` → `{ href (blob:), download, target, geraet, freigeben }` und setzt
+  daraus einen **echten Link** in den Dialog, den der Nutzer selbst antippt (V-0270). Danach zeigt sie
+  `ICS_TEXTE[gerät]`: den einen Satz, was jetzt passiert oder was nicht mit einem Klick geht.
 - **Der Knopf** „In Kalender übernehmen“ (am Handy „Kalender“) steht neben „Teilen“ (V-0225).
   Seit V-0253 öffnet der Knopf zuerst das Bild des fertigen Plans (`bild.mjs`: `planBildHtml`,
-  `planBildLegen`, `kalenderSatz`); erst „In eigenen Kalender exportieren“ darin ruft
-  `icsHerunterladen` und `icsAnstossen`, mit einer eigenen Geste. „Stundenplan speichern“ zeigt dasselbe Bild.
+  `planBildLegen`, `kalenderSatz`); „In eigenen Kalender exportieren“ darin ist seit V-0270 der Link
+  auf die Datei (vorher ein Knopf, der einen Link per Skript anklickte). „Stundenplan speichern“ zeigt dasselbe Bild.
   `app.js` lädt `ics.mjs` und `bild.mjs` bei der ersten Bedienung (pointerdown, keydown), nicht beim Laden: So
   zählt es nicht ins Budget und nicht zu den Anfragen bis zum Raster, und beim Klick ist das Modul
   meist da, der Export läuft ohne `await` (Safari gibt die Nutzergeste nicht über ein langes await
@@ -254,7 +255,7 @@ Server die Auswahl kennen.
 
 | Gerät | Ein Klick? | Was passiert |
 |---|---|---|
-| iPhone/iPad, Safari | ja | Kalender-Vorschau mit „Alle hinzufügen“, dann den Kalender wählen. Geladen über eine `data:`-Adresse: `blob:` mit `download` kam in WebKit-Ansichten nicht beim Kalender an ([WebKit 216918](https://bugs.webkit.org/show_bug.cgi?id=216918)) |
+| iPhone/iPad, Safari | ja | Kalender-Vorschau mit „Alle hinzufügen“, dann den Kalender wählen. Seit V-0270 über eine `blob:`-Adresse vom Typ `text/calendar` in einem echten Link mit `download` und `target=_self`, den der Nutzer antippt. **Nicht über `data:`:** Seit iOS 26.6 verweigert WebKit `data:text/calendar` still, es passiert nichts (gemessen an Silas' iPhone am 06.10.2026; [add-to-calendar-button #823](https://github.com/add2cal/add-to-calendar-button/issues/823), [#834](https://github.com/add2cal/add-to-calendar-button/issues/834) für das iPad). Bis V-0270 stand hier `data:`, wegen [WebKit 216918](https://bugs.webkit.org/show_bug.cgi?id=216918) (`blob:` mit einem Klick aus dem Skript kam nicht an) |
 | iPhone, Chrome, Firefox, Instagram & Co. | nein | geben die Datei nicht an den Kalender; der Satz schickt zum Teilen-Link in Safari |
 | Android | halb | Download, dann öffnen; Kalender-Apps wie Samsung Kalender übernehmen sie. Die Google-Kalender-App importiert keine Dateien ([Google: nur am Computer](https://support.google.com/calendar/answer/37118?co=GENIE.Platform%3DAndroid)) |
 | Mac | halb | Download, öffnen, Kalender fragt nach dem Ziel ([Apple](https://support.apple.com/guide/calendar/import-or-export-calendars-icl1023/mac)) |

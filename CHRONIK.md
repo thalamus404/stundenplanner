@@ -12,6 +12,14 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 06.10.2026 — Kalender-Export am iPhone (V-0270)
+
+- Silas am iPhone: „In eigenen Kalender exportieren“ zeigte die Meldung, aber es kam weder Datei noch
+  Kalender-Vorschau. Ursache: Seit iOS 26.6 verweigert Safari `data:text/calendar` still
+  (add-to-calendar-button #823, #834); genau so lieferte die Seite die Datei am iPhone aus (V-0231).
+- Jetzt ist der Knopf ein echter Link auf eine `blob:`-Adresse (`ics.mjs` `icsLink`), den der Finger
+  selbst antippt, auf jedem Gerät. Ein Test hält fest, dass `ics.mjs` keine `data:`-Adresse mehr baut.
+
 ## 05.10.2026 abends — Favicon und App-Symbol „sp“ (V-0254)
 
 - Silas wählte aus fünf Entwürfen „Schwer und leicht“: „s“ in Sora 800, „p“ leicht, „komplett mittig und
