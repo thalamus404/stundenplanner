@@ -9,7 +9,7 @@
 // Ein VEVENT je ECHTEM Einzeltermin (`bookings`), keine Serie mit RRULE: So stimmen Ferien,
 // Ausfälle und Raumwechsel, ohne dass hier jemand Regeln aus `slots` zurückrät.
 //
-// Reine Logik bis auf icsAnstossen() am Ende, das den Download auslöst; node --test prüft den Rest.
+// Reine Logik bis auf icsLink() am Ende, das die blob:-Adresse für den Link im Dialog anlegt; node --test prüft den Rest.
 
 import { sichereUrl } from './text.mjs';
 import { typLang } from './raster.mjs';
@@ -277,33 +277,30 @@ export function kalenderGeraet(ua = '', beruehrung = 0) {
 }
 
 /**
- * Löst den Download aus, so, wie ihn das Gerät am ehesten an den Kalender gibt. Die einzige
- * Funktion hier mit DOM; `dok` ist das document (für Tests ein Ersatz).
- * - iPhone/iPad: data:-Adresse mit download und target=_self. Mit blob: und download landete die
- *   Datei in WebKit-Ansichten nicht beim Kalender (WebKit Bug 216918); data: geht dort, und so
- *   macht es auch add-to-calendar-button, das auf vielen Seiten läuft.
- * - sonst: blob:-Adresse mit download. Die Adresse wird erst nach einer Minute freigegeben: Firefox
- *   bricht den Download ab, wenn sie im selben Takt verschwindet.
- * Gibt den Gerätetyp zurück, damit die Seite den passenden Satz aus ICS_TEXTE zeigt.
+ * Der Link zur Datei, den der Nutzer SELBST antippt (V-0270): { href, download, target, geraet, freigeben }.
+ * Die Seite setzt ihn als echtes <a> in den Kalender-Dialog; kein künstlicher Klick aus dem Skript.
+ *
+ * Warum so, gemessen am 06.10.2026 an Silas' iPhone: „In eigenen Kalender exportieren“ zeigte die
+ * Meldung, aber es kam weder Datei noch Kalender-Vorschau. Bis V-0270 bekam das iPhone hier eine
+ * data:-Adresse (wegen WebKit Bug 216918, so machte es damals auch add-to-calendar-button). Seit
+ * iOS 26.6 verweigert WebKit data:text/calendar still; iPadOS genauso (add-to-calendar-button, Issues
+ * #823 „iOS 26.6 (26.5 works) broke the ics file generation“ und #834). Deren Fix in v3, auf iPhone und
+ * iPad bestätigt: eine blob:-Adresse vom Typ text/calendar in einem echten Link, den der Nutzer antippt,
+ * mit download und target _self. Genau das steht hier, für jedes Gerät: Am Rechner lädt download die
+ * Datei herunter, am iPhone öffnet Safari die Kalender-Vorschau mit „Alle hinzufügen“.
+ * freigeben() gibt die Adresse frei; die Seite ruft es beim Schließen des Dialogs, nach einer Minute
+ * (Firefox bricht den Download ab, wenn die Adresse im selben Takt verschwindet).
+ * NIE wieder data:text/calendar (web/tests/ics.test.mjs prüft es).
  */
-export function icsAnstossen(datei, { dok = globalThis.document, ua = globalThis.navigator?.userAgent, beruehrung = globalThis.navigator?.maxTouchPoints } = {}) {
+export function icsLink(datei, { url = globalThis.URL, ua = globalThis.navigator?.userAgent, beruehrung = globalThis.navigator?.maxTouchPoints } = {}) {
   const geraet = kalenderGeraet(ua, beruehrung);
-  const a = dok.createElement('a');
-  a.download = datei.name;
-  a.rel = 'noopener';
-  let freigeben = null;
-  if (geraet === 'ios' || geraet === 'iosAndere') {
-    a.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(datei.text);
-    a.target = '_self';
-  } else {
-    a.href = URL.createObjectURL(datei.blob);
-    freigeben = a.href;
-  }
-  a.hidden = true;
-  dok.body.appendChild(a);
-  a.click();
-  a.remove();
-  // unref(): Unter Node (Tests) hielte der Zeitgeber den Prozess eine Minute offen; im Browser fehlt es.
-  if (freigeben) setTimeout(() => URL.revokeObjectURL(freigeben), 60000)?.unref?.();
-  return geraet;
+  const href = url.createObjectURL(datei.blob);
+  let frei = false;
+  const freigeben = () => {
+    if (frei) return;
+    frei = true;
+    // unref(): Unter Node (Tests) hielte der Zeitgeber den Prozess eine Minute offen; im Browser fehlt es.
+    setTimeout(() => url.revokeObjectURL(href), 60000)?.unref?.();
+  };
+  return { href, download: datei.name, target: geraet === 'ios' || geraet === 'iosAndere' ? '_self' : '', geraet, freigeben };
 }

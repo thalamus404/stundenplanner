@@ -167,6 +167,12 @@ button:active::after { opacity: .1; }
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
 }
 .knopf.haupt { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); font-weight: 600; }
+/* Ein Link, der wie ein Knopf aussieht: „In eigenen Kalender exportieren“ ist ein echtes <a> mit der Datei
+   (V-0270, ics.mjs icsLink), mit derselben Überlage beim Zeigen und Drücken wie ein Knopf. */
+a.knopf { position: relative; text-decoration: none; }
+a.knopf::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0; transition: opacity 100ms linear; pointer-events: none; }
+@media (hover: hover) { a.knopf:hover::after { opacity: .08; } }
+a.knopf:active::after { opacity: .1; }
 .knopf.rund { padding: 0; width: var(--ziel); }
 .knopf:disabled, .format:disabled { opacity: .38; cursor: default; }
 .leise { display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; padding: 0 4px; border-radius: 4px; text-decoration: underline; text-underline-offset: 2px; }

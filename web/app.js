@@ -294,29 +294,33 @@ async function kalender() {
   if (!I) { melde('Der Kalender-Export geht gerade nicht. Versuch es später noch einmal.'); return; }
   const termine = I.icsTermine(plan, A.wirksameAuswahl(selected));
   if (!termine.length) { melde(I.ICS_TEXTE.leer); return; }
-  const geraet = I.kalenderGeraet(navigator.userAgent, navigator.maxTouchPoints);
+  // Die Datei entsteht schon jetzt und hängt als echter Link im Dialog: Der Finger tippt den Link selbst an,
+  // kein künstlicher Klick (V-0270; seit iOS 26.6 kam am iPhone sonst nichts an, ics.mjs icsLink()).
+  let link;
+  try {
+    link = I.icsLink(I.icsHerunterladen(plan, A.wirksameAuswahl(selected)));
+  } catch {
+    melde('Der Kalender-Export geht gerade nicht. Versuch es später noch einmal.');
+    return;
+  }
+  const geraet = link.geraet;
   const satz = bild ? bild.kalenderSatz(selected, termine) : mehrzahl(termine.length, 'Termin', 'Termine');
   const offenNoch = fort.n - fort.k;
   const zusatz = [paare.length ? `<span class="pb-rot">${ic('warn')}${esc(mehrzahl(paare.length, 'Überschneidung', 'Überschneidungen'))}</span>` : '',
     offenNoch > 0 ? esc(`Noch nicht eingeplant: ${offenNoch} von ${fort.n} Formaten. Vorschläge kommen erst nach „Einplanen“ in den Kalender.`) : ''].filter(Boolean).join(' ');
-  oeffne('dialog', 'In Kalender übernehmen', `${planBild()}<p class="pb-zeile"><b>${esc(satz)}${satz.endsWith('.') ? '' : '.'}</b>${zusatz ? ' ' + zusatz : ''}</p><div class="e-aktionen"><button type="button" class="knopf haupt" data-act="ics-los" data-fokus>${ic('kalender')}In eigenen Kalender exportieren</button></div><p class="klein">${esc(I.ICS_TEXTE[geraet] || '')} ${esc(I.ICS_TEXTE.abzug)}</p>`,
-    { klasse: 'plan-bild', zurueck: () => $('kalender'), hinter: 'tief' });
+  oeffne('dialog', 'In Kalender übernehmen', `${planBild()}<p class="pb-zeile"><b>${esc(satz)}${satz.endsWith('.') ? '' : '.'}</b>${zusatz ? ' ' + zusatz : ''}</p><div class="e-aktionen"><a class="knopf haupt" id="ics-link" href="${esc(link.href)}" download="${esc(link.download)}"${link.target ? ` target="${link.target}"` : ''} data-act="ics-los" data-fokus>${ic('kalender')}In eigenen Kalender exportieren</a></div><p class="klein">${esc(I.ICS_TEXTE[geraet] || '')} ${esc(I.ICS_TEXTE.abzug)}</p>`,
+    { klasse: 'plan-bild', zurueck: () => $('kalender'), hinter: 'tief', zu: link.freigeben });
   bildLegen();
 }
 
-/** Der Knopf im Bild: die Datei aus genau dieser Auswahl, dann zu, und die Meldung sagt, was das Gerät tut. */
+/** Der Link im Bild wurde angetippt: Den Download bzw. die Kalender-Vorschau macht der Browser selbst (das
+ *  <a> mit href, download, target). Hier nur danach den Dialog schließen und sagen, was das Gerät tut;
+ *  erst im nächsten Takt, damit der Link seine Wirkung hat, bevor die Ebene verschwindet. */
 function kalenderLos() {
   const I = ics;
-  if (!I) return;
-  try {
-    const datei = I.icsHerunterladen(plan, A.wirksameAuswahl(selected));
-    if (!datei.termine) { melde(I.ICS_TEXTE.leer); return; }
-    const geraet = I.icsAnstossen(datei);
-    schliesse();
-    melde(I.ICS_TEXTE[geraet] || 'Die Kalenderdatei ist erstellt.');
-  } catch {
-    melde('Der Kalender-Export geht gerade nicht. Versuch es später noch einmal.');
-  }
+  const a = $('ics-link');
+  const text = I && a ? I.ICS_TEXTE[I.kalenderGeraet(navigator.userAgent, navigator.maxTouchPoints)] : '';
+  setTimeout(() => { schliesse(); melde(text || 'Die Kalenderdatei ist erstellt.'); }, 0);
 }
 
 // ── Zeichnen

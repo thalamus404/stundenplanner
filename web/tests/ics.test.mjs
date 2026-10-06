@@ -233,29 +233,27 @@ test('Gerät aus dem User-Agent, und zu jedem Gerät ein Satz', () => {
   }
 });
 
-/** Ein document, das nur festhält, welcher Link geklickt wurde. */
-function attrappe() {
-  const geklickt = [];
-  const dok = {
-    body: { appendChild() {} },
-    createElement() {
-      return { remove() {}, click() { geklickt.push({ href: this.href, download: this.download, target: this.target }); } };
-    },
-  };
-  return { dok, geklickt };
+/** Ein URL-Ersatz, der festhält, welche Adressen angelegt und freigegeben wurden. */
+function urlAttrappe() {
+  const angelegt = [], frei = [];
+  return { angelegt, frei, createObjectURL(blob) { angelegt.push(blob); return 'blob:test/' + angelegt.length; }, revokeObjectURL(h) { frei.push(h); } };
 }
 
-test('icsAnstossen: iPhone über data:, sonst über blob:, immer mit Dateinamen', () => {
+test('icsLink (V-0270): überall blob:, nie data:text/calendar; am iPhone target _self, immer mit Dateinamen', async () => {
   const d = I.icsHerunterladen(plan(), ALLES, { jetzt: JETZT });
-  const a = attrappe();
-  assert.equal(I.icsAnstossen(d, { dok: a.dok, ua: UA.iphoneSafari, beruehrung: 5 }), 'ios');
-  assert.ok(a.geklickt[0].href.startsWith('data:text/calendar;charset=utf-8,BEGIN%3AVCALENDAR'));
-  assert.equal(decodeURIComponent(a.geklickt[0].href.slice(a.geklickt[0].href.indexOf(',') + 1)), d.text);
-  assert.equal(a.geklickt[0].download, 'stundenplan-test-bsc-wise-2026-27.ics');
-  const b = attrappe();
-  assert.equal(I.icsAnstossen(d, { dok: b.dok, ua: UA.android, beruehrung: 5 }), 'android');
-  assert.ok(b.geklickt[0].href.startsWith('blob:'));
-  assert.equal(b.geklickt[0].download, d.name);
+  for (const [ua, beruehrung, geraet, target] of [[UA.iphoneSafari, 5, 'ios', '_self'], [UA.ipadAlsMac, 5, 'ios', '_self'], [UA.iphoneChrome, 5, 'iosAndere', '_self'], [UA.android, 5, 'android', ''], [UA.ipadAlsMac, 0, 'mac', ''], [UA.windows, 0, 'windows', '']]) {
+    const url = urlAttrappe();
+    const l = I.icsLink(d, { url, ua, beruehrung });
+    assert.ok(l.href.startsWith('blob:'), geraet);
+    assert.equal(url.angelegt[0].type, 'text/calendar;charset=utf-8');
+    assert.equal(await url.angelegt[0].text(), d.text);
+    assert.equal(l.download, 'stundenplan-test-bsc-wise-2026-27.ics');
+    assert.equal(l.geraet, geraet);
+    assert.equal(l.target, target);
+  }
+  // Seit iOS 26.6 verweigert WebKit data:text/calendar still (add-to-calendar-button #823, #834): nie wieder.
+  const quelle = (await import('node:fs')).readFileSync(new URL('../ics.mjs', import.meta.url), 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!quelle.includes('data:text/calendar'), 'ics.mjs baut keine data:-Adresse mehr');
 });
 
 test('alle Gruppen eines Bestandteils (`gruppen: alle`, V-0234): group als Liste liefert die Termine aller', () => {
