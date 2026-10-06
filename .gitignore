@@ -26,3 +26,6 @@ dist/
 # web/tests/fixtures.
 /daten/
 /web/daten/
+
+# wrangler (pages dev, functions build) legt hier seinen Zwischenstand ab (V-0271)
+.wrangler/
