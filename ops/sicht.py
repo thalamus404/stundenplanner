@@ -773,6 +773,7 @@ return {
   chips: haken('[data-sicht="chip"]'), kacheln: haken('[data-sicht="kachel"]'),
   stunden: haken('[data-sicht="stunde"]'), tage: haken('[data-sicht="tag"]'), zonen,
   weitere: /\+\s*\d+\s*weitere/i.test(body.innerText),
+  einTag: (() => { const r = document.querySelector('.raster.ein-tag'); const t = r && document.querySelector('#tage .tag[aria-pressed="true"]'); return t ? Number(t.dataset.tag) : null; })(),
   pflicht, tokens: tok, grund: [farbe(cs(de).backgroundColor), farbe(cs(body).backgroundColor)],
   dom: document.getElementsByTagName('*').length,
   log: log ? { schreiben: log.schreiben, resize: log.resize, ro: log.ro, mm: log.mm, letzte: log.letzte, ersteKachel: log.ersteKachel } : null,
@@ -794,7 +795,8 @@ const mod = [...document.querySelectorAll('[data-sicht="module"]')].find(vis);
 zeigbar(true);
 const out = { W, H, raster: rb, schalter: sb, schalterGanz: !!sb && ganz(sb), modulUnten: mod ? mod.getBoundingClientRect().bottom : null,
   breit: (document.scrollingElement || de).scrollWidth, kacheln: haken('[data-sicht="kachel"]'),
-  stunden: haken('[data-sicht="stunde"]'), tage: haken('[data-sicht="tag"]'), weitere: /\+\s*\d+\s*weitere/i.test(body.innerText) };
+  stunden: haken('[data-sicht="stunde"]'), tage: haken('[data-sicht="tag"]'), weitere: /\+\s*\d+\s*weitere/i.test(body.innerText),
+  einTag: (() => { const r = document.querySelector('.raster.ein-tag'); const t = r && document.querySelector('#tage .tag[aria-pressed="true"]'); return t ? Number(t.dataset.tag) : null; })() };
 zeigbar(false);
 return out;
 }"""
@@ -2096,9 +2098,15 @@ def kacheln_pruefen(bf, m, erw, w, wo, stress=False):
         bf.add('4', UNBESTIMMT, f'{ohne_tag} Kacheln ohne data-tag', wo)
         return
     # Seit V-0247 ist auch am Handy die Woche die Vorgabe (vorher ein Tag): Jede Breite zeigt alle Tage.
-    ein_tag = len(je) == 1 and len([t for t, n in soll.items() if n]) > 1
+    # Zeigt die Seite einen Tag, gilt dessen Soll, auch wenn es 0 ist. Welcher Tag das ist, sagt die Seite
+    # (m['einTag']): Die Tagesansicht beginnt mit dem heutigen Wochentag (raster.mjs startTag). Bis V-0270
+    # schloss die Prüfung den Tag aus den gezählten Kacheln und meldete an einem Dienstag „keine Kachel
+    # sichtbar“, weil Modul A des Stressfalls dienstags zu Recht nichts hat (gemessen am 06.10.2026).
+    gezeigt = m.get('einTag')
+    ein_tag = gezeigt is not None or (len(je) == 1 and len([t for t, n in soll.items() if n]) > 1)
     if ein_tag:
-        tag = next(iter(je))
+        tag = gezeigt if gezeigt is not None else next(iter(je))
+        je.setdefault(tag, 0)
         fehl = [] if je[tag] == soll.get(tag, 0) else [f'Tag {tag}: {je[tag]} statt {soll.get(tag, 0)}']
         text = f"ein Tag ({tag}): {je[tag]} Kacheln (Soll {soll.get(tag, 0)})"
     elif not je:

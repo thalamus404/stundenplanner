@@ -530,8 +530,9 @@ eingeplant“ nicht auf (querwind, V-0228).
     herauf; am Handy ein Blatt. Darin nur das Eingeplante, ohne Knöpfe und Filter, Überschneidungen mit Ring
     (`web/bild.mjs`), darunter ein Satz („9 Termingruppen, 123 Termine vom 12.10. bis 12.02.“, dazu
     Überschneidungen und noch offene Formate), der Knopf **„In eigenen Kalender exportieren“** und, was das
-    Gerät danach tut. Erst dieser Knopf erzeugt die iCal-Datei der wirksamen Auswahl (nur Eingeplantes, keine
-    Vorschläge, V-0237) und stößt sie an (`web/ics.mjs`, V-0231); die Meldung sagt es noch einmal. Ohne Wahl
+    Gerät danach tut. Erst dieser Knopf liefert die iCal-Datei der wirksamen Auswahl (nur Eingeplantes, keine
+    Vorschläge, V-0237; `web/ics.mjs`, V-0231); er ist seit V-0270 ein echter Link auf eine `blob:`-Adresse,
+    den der Finger selbst antippt (am iPhone ab iOS 26.6 kam über `data:` nichts an); die Meldung sagt es noch einmal. Ohne Wahl
     sagt eine Meldung, was fehlt.
 11. **Stundenplan speichern** (V-0224 als „Teilen“, Fläche seit V-0237, Name seit V-0243): Der Knopf ist
     nie gesperrt; ohne Eingeplantes sagt eine Meldung, was fehlt. Sonst schiebt sich von unten die
