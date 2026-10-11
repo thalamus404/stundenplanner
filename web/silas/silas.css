@@ -365,8 +365,22 @@ a { color: inherit; text-underline-offset: 2px; }
 /* ── Schmale Fenster: alles untereinander, das Raster scrollt seitlich */
 @media (min-width: 1600px) { :root { --rechts: 372px; } }
 @media (max-width: 1280px) { :root { --links: 276px; --rechts: 300px; } }
+/* Bis 1100 px (Silas' Fenster ist 865 px breit): Die Seite scrollt, statt alles in eine Bildschirmhöhe zu
+   pressen — sonst wurde das Raster flach und die Legende lag darüber. Das Raster hat eine feste Höhe, die
+   Modulspalte scrollt für sich, das Unregelmäßige steht darunter in voller Breite. Der Kopf hat zwei Zeilen. */
 @media (max-width: 1100px) {
-  .buehne, .buehne.ohne-leiste { grid-template-columns: var(--links) minmax(0, 1fr); }
+  .seite { height: auto; min-height: 100dvh; }
+  .kopf { grid-template-areas: "links name rechts" "bilanz bilanz sync"; row-gap: 10px; }
+  .k-links { grid-area: links; }
+  .name { grid-area: name; }
+  .k-rechts { display: contents; }
+  .k-rechts > .knopf { grid-area: rechts; justify-self: end; }
+  .bilanz { grid-area: bilanz; }
+  .bilanz .balken { flex: 1; width: auto; }
+  .sync { grid-area: sync; justify-self: end; }
+  .buehne, .buehne.ohne-leiste { flex: none; grid-template-columns: var(--links) minmax(0, 1fr); align-items: start; }
+  .module { position: sticky; top: 8px; max-height: calc(100dvh - 16px); }
+  .raster { flex: none; height: clamp(520px, calc(100dvh - 190px), 900px); }
   .leiste { grid-column: 1 / -1; overflow: visible; }
   .ohne-leiste .leiste > :not(.l-kopf) { display: flex; }
   .l-zu { display: none; }
@@ -374,7 +388,8 @@ a { color: inherit; text-underline-offset: 2px; }
 @media (max-width: 820px) {
   .seite { height: auto; min-height: 100dvh; padding: 10px 12px 24px; }
   /* Am Telefon: Schriftzug und Kalender oben, die Bilanz darunter über die ganze Breite. */
-  .kopf { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+  .kopf { display: flex; flex-wrap: wrap; gap: 8px 12px; grid-template-areas: none; }
+  .module { position: static; max-height: none; }
   .name { order: 1; flex: 1; min-width: 0; }
   .name .wortmarke { height: 18px; }
   .k-rechts { display: contents; }
