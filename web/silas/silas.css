@@ -47,6 +47,17 @@
   /* Eigene Rollen dieser Seite — aus den Tokens oben zusammengesetzt, also in beiden Schemata richtig. */
   --rot: var(--konflikt); --rot-text: var(--konflikt-text); --rot-flaeche: var(--konflikt-flaeche);
   --gelb: var(--hinweis); --gelb-text: var(--hinweis-text); --gelb-flaeche: var(--hinweis-flaeche);
+  /* Die Stufen (V-0332): rot kritisch · orange Achtung (--gelb) · hellblau „du bist dran“ · grau kommt noch/Hinweis.
+     Wahltermine tragen eine weiße Linie innen: gestrichelt = noch zu wählen, durchgezogen = gewählt (Silas). */
+  --blau: #2f6fd6; --blau-text: #1d4f9c; --blau-flaeche: #e4eefc;
+  --linie-wahl: #fff;
+  /* Die Arten (V-0332): eine Farbe je Art über alle Module — Fläche, Schrift, Rand. */
+  --k-praesenz-f: #d9e3f7; --k-praesenz-t: #1f3466; --k-praesenz-r: #5577c4;
+  --k-video-f: #ebdef9; --k-video-t: #45246b; --k-video-r: #9466cc;
+  --k-lernen-f: #f6ead0; --k-lernen-t: #594212; --k-lernen-r: #c39b42;
+  --k-aufgaben-f: #d4eff0; --k-aufgaben-t: #0d4b4f; --k-aufgaben-r: #2f9ca3;
+  --k-quiz-f: #d6f1da; --k-quiz-t: #174d27; --k-quiz-r: #3f9b59;
+  --k-pruefung-f: #f9d9d5; --k-pruefung-t: #6c1712; --k-pruefung-r: #c8473d;
   --gruen: #2f8a4a;
   --links: 312px; --rechts: 336px; --zeit: 44px;
   font: 14px/20px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
@@ -79,6 +90,14 @@
     --m8-wahl: var(--m8-tinte); --m8-wahl-text: var(--grau-1); --m8-vor: var(--m8-flaeche);
     --lg-wahl: var(--grau-10);
     --gruen: #6cc183;
+    --blau: #6ea4f0; --blau-text: #a9c9f7; --blau-flaeche: #172a44;
+    --linie-wahl: #111213;
+    --k-praesenz-f: #24304d; --k-praesenz-t: #c8d6f6; --k-praesenz-r: #7f9be0;
+    --k-video-f: #36284a; --k-video-t: #e2d1f7; --k-video-r: #b08be0;
+    --k-lernen-f: #3d3218; --k-lernen-t: #f0dfb5; --k-lernen-r: #d2b061;
+    --k-aufgaben-f: #12393c; --k-aufgaben-t: #bfe9eb; --k-aufgaben-r: #4fc0c7;
+    --k-quiz-f: #1d3a24; --k-quiz-t: #c4ecce; --k-quiz-r: #6cc183;
+    --k-pruefung-f: #45201c; --k-pruefung-t: #f6c9c3; --k-pruefung-r: #e2756a;
   }
 }
 /* Ein Modul bekommt seine Farbe über die Klasse m1 … m8 (Stelle im Plan, reihum, §5.3). */
@@ -541,3 +560,97 @@ a { color: inherit; text-underline-offset: 2px; }
 
 .termin-wahl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .termin-wahl .t-zahlen { flex-basis: 100%; }
+
+/* ── V-0332: Stufen, Wahl-Darstellung, Wochenbedarf, Semester/Woche */
+.st-kritisch { --st: var(--rot); --st-text: var(--rot-text); --st-flaeche: var(--rot-flaeche); }
+.st-achtung { --st: var(--gelb); --st-text: var(--gelb-text); --st-flaeche: var(--gelb-flaeche); }
+.st-dran { --st: var(--blau); --st-text: var(--blau-text); --st-flaeche: var(--blau-flaeche); }
+.st-kommt, .st-spaeter, .st-info { --st: var(--grau-7); --st-text: var(--grau-8); --st-flaeche: var(--grau-3); }
+.t-lage { color: var(--st-text); }
+.t-lage.st-kritisch, .t-lage.st-achtung, .t-lage.st-dran { font-weight: 600; }
+.t-lage.st-kommt, .t-lage.st-spaeter { font-weight: 400; }
+.t-stand.st-kritisch { color: var(--rot-text); font-weight: 600; }
+.t-stand.st-dran { color: var(--blau-text); font-weight: 600; }
+.modul.rot { border-color: var(--rot); box-shadow: inset 3px 0 0 var(--rot); }
+.m-hinweis { color: var(--st-text); }
+.m-phase { font-size: 12px; color: var(--grau-8); text-align: left; display: flex; gap: 6px; align-items: center; padding: 4px 4px 2px; border-top: 1px dashed var(--grau-5); margin-top: 2px; border-radius: 0 0 6px 6px; }
+.m-phase .i { width: 12px; height: 12px; }
+.links-kopf { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; z-index: 2; background: var(--grau-2); padding-bottom: 6px; }
+.links-kopf .umschalter { width: 100%; }
+.links-kopf .umschalter button { flex: 1; }
+.links-kopf span { font-size: 11px; color: var(--grau-8); padding: 0 4px; }
+.zaehler.st-achtung { background: var(--gelb-flaeche); color: var(--gelb-text); }
+.zaehler.st-dran { background: var(--blau-flaeche); color: var(--blau-text); }
+.zaehler-reihe { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Wahltermine: ausgefüllt, weiße Linie innen — gestrichelt = noch wählen, durchgezogen = gewählt */
+.kachel.option { background: var(--wahl); color: var(--wahl-text); border: 1px solid var(--rand); outline: 2px dashed var(--linie-wahl); outline-offset: -5px; cursor: pointer; z-index: 3; }
+.kachel.option:hover { filter: brightness(1.04); }
+.kachel.option.abgewaehlt { opacity: .35; filter: grayscale(.7); }
+.kachel.option.vorschlag { background: var(--grau-1); color: var(--grau-10); outline: none; border: 1.5px dashed var(--rand); }
+.kachel.gewaehlt { outline: 2px solid var(--linie-wahl); outline-offset: -5px; }
+/* Eine Reihe (nur an einzelnen Tagen) ist Pflicht wie jeder Termin, nur heller und mit Anzahl — gestrichelt ist die Wahl. */
+.kachel.reihe { background: var(--vor); color: var(--tinte); border-style: solid; }
+
+/* Unter dem Raster: was dran wäre, aber noch nicht im Plan ist */
+.bedarf { flex: none; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: 12px; }
+.bedarf:empty { display: none; }
+.bedarf > b { font-size: 12px; margin-right: 2px; color: var(--grau-9); }
+.bd { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--st-flaeche); color: var(--st-text); white-space: nowrap; }
+.bd .m-punkt { width: 8px; height: 8px; border-width: 2px; }
+.bd button { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.legende.st i { width: 10px; height: 10px; border-radius: 50%; background: var(--st); }
+.legende .lg-w { background: var(--m1-wahl); border: 1px solid var(--m1-rand); outline: 1.5px dashed var(--linie-wahl); outline-offset: -4px; }
+.legende .lg-g { background: var(--m1-wahl); border: 1px solid var(--m1-rand); outline: 1.5px solid var(--linie-wahl); outline-offset: -4px; }
+.legende .lg-r { background: var(--m1-vor); border: 1px solid var(--m1-rand); }
+.mu-name.st-kritisch { color: var(--rot-text); }
+.mu-name.st-achtung { color: var(--gelb-text); }
+.mu-name.st-dran { color: var(--blau-text); }
+.offen-gruppe.st-kritisch .offen-text { color: var(--rot-text); }
+.offen-gruppe.st-achtung .offen-text { color: var(--gelb-text); }
+.offen-gruppe.st-dran .offen-text { color: var(--blau-text); }
+.offen-gruppe.st-kommt .offen-text, .offen-gruppe.st-spaeter .offen-text, .offen-gruppe.st-info .offen-text { color: var(--grau-9); }
+.offen-gruppe h3 .zahl { background: var(--st); color: #fff; }
+.flagge { color: var(--st-text); }
+
+/* ── Farben nach Art (V-0332): Fläche nach Art, Modul als Streifen links */
+.k-praesenz { --kf: var(--k-praesenz-f); --kt: var(--k-praesenz-t); --kr: var(--k-praesenz-r); }
+.k-video { --kf: var(--k-video-f); --kt: var(--k-video-t); --kr: var(--k-video-r); }
+.k-lernen { --kf: var(--k-lernen-f); --kt: var(--k-lernen-t); --kr: var(--k-lernen-r); }
+.k-aufgaben { --kf: var(--k-aufgaben-f); --kt: var(--k-aufgaben-t); --kr: var(--k-aufgaben-r); }
+.k-quiz { --kf: var(--k-quiz-f); --kt: var(--k-quiz-t); --kr: var(--k-quiz-r); }
+.k-pruefung { --kf: var(--k-pruefung-f); --kt: var(--k-pruefung-t); --kr: var(--k-pruefung-r); }
+.kachel[class*=" k-"] { background: var(--kf); color: var(--kt); border: 1px solid var(--kr); border-left: 5px solid var(--rand); }
+.kachel.reihe[class*=" k-"] { background: color-mix(in srgb, var(--kf) 55%, var(--grau-1)); }
+.kachel.block[class*=" k-"] { background: repeating-linear-gradient(135deg, var(--kf) 0 6px, color-mix(in srgb, var(--kf) 35%, var(--grau-1)) 6px 11px); border-left: 5px solid var(--rand); }
+.kachel.pruefung { background: var(--k-pruefung-r); color: #fff; border-color: var(--k-pruefung-r); }
+.kachel.option[class*=" k-"] { outline: 2px dashed var(--linie-wahl); outline-offset: -5px; }
+.kachel.option.vorschlag[class*=" k-"] { background: var(--grau-1); color: var(--grau-10); outline: none; border: 1.5px dashed var(--kr); border-left: 5px solid var(--rand); }
+.kachel.gewaehlt[class*=" k-"] { outline: 2px solid var(--linie-wahl); outline-offset: -5px; }
+.t-sym[class*=" k-"] { background: var(--kf); color: var(--kt); }
+.mu-zeile[class*=" k-"] .mu-z.an { background: var(--kr); }
+.mu-zeile[class*=" k-"] .mu-z.lern { background: repeating-linear-gradient(135deg, var(--kr) 0 2px, var(--kf) 2px 4px); }
+.mu-zeile[class*=" k-"] .mu-z.pruefung { background: var(--k-pruefung-r); }
+.legende .lg-k { width: 14px; height: 12px; border-radius: 3px; background: var(--kf); border: 1px solid var(--kr); }
+.kal-block[class*=" k-"] { background: repeating-linear-gradient(135deg, var(--kf) 0 5px, color-mix(in srgb, var(--kf) 35%, var(--grau-1)) 5px 9px); color: var(--kt); }
+.chip.zeitlos { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+
+.stufen-legende { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--grau-9); }
+details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+
+/* Kopf (V-0332): Zähler in einer Reihe, Balken schmaler — der Kopf soll nicht höher werden */
+.zaehler-reihe { flex-wrap: nowrap; }
+.bilanz { gap: 8px; }
+.bilanz .balken { width: 80px; }
+.zaehler { height: 26px; padding: 0 8px; }
+.m-zahl .fehlt { color: var(--grau-9); font-weight: 600; }
+@media (max-width: 1500px) { .bilanz .balken { display: none; } }
+
+/* Ein Block, der einem Termin ausweicht, verliert nur Zeit — ein Hinweis, kein Konflikt (V-0332) */
+.kachel.weicht { box-shadow: inset 0 0 0 2px var(--gelb); }
+.chip.freigabe[class*=" k-"] { background: var(--kf); color: var(--kt); }
+
+.kachel.reihe.gewaehlt[class*=" k-"] { background: var(--kf); }
+.kachel.pruefung { padding: 1px 6px; line-height: 13px; }
+@media (max-width: 1600px) { .k-rechts > .knopf[data-act="kalender"] { font-size: 0; gap: 0; padding: 0; width: var(--ziel); } .k-rechts > .knopf[data-act="kalender"] .i { width: 16px; height: 16px; } }
+@media (max-width: 1600px) { .sync.ok { display: none; } }

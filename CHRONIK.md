@@ -12,6 +12,18 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas, Rückmeldung 2: Stufen, Farben nach Art, Wochenbedarf (V-0332)
+
+- Silas: Man wird „erschlagen von roten Fehlermeldungen“, „du musst noch was eintragen“ war so rot wie ein Fehler, die
+  Farbcodes waren unklar. Jetzt vier Stufen (docs/SILAS.md §2.6): rot kritisch, orange Achtung, hellblau „du bist dran“,
+  grau „kommt noch“, „später“ oder Hinweis — nach Datum, Phase und Stand der Prüfung; Abweichungen bis ±2 h schweigen.
+- Wahltermine weiß gestrichelt, gewählte weiß durchgezogen; Farben nach Art statt nach Modul; unter dem Raster, was
+  diese Woche dran wäre, aber nicht im Plan ist; links „Ganzes Semester | Diese Woche“; Prüfungsteile nur in der
+  vorlesungsfreien Zeit. Danach alle 16 Vorlesungswochen durchgesehen: Video-Bedarf in der Woche des Blocks,
+  Ausweichtermine über dem Raster, Freigaben zusammengefasst.
+- Silas' 29 Screencast-Längen für STAT1 eingetragen. `ops/silas.mjs senden` sendet jetzt auf der geholten Version
+  (vorher hätte es eine gleichzeitige Änderung von Silas überschrieben).
+
 ## 11.10.2026 — /silas, Rückmeldung 1: Herkunft, Minimap, vorlesungsfreie Zeit, ISIS-Daten (V-0328)
 
 - Silas' erster Blick: Woher kommt jede Zahl, was sagt Bologna, jedes Video ist anders lang, die Auswahl soll rechts
