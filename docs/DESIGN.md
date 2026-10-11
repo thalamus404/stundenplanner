@@ -158,6 +158,12 @@ bei Bedarf die **Teilen-Leiste**, das **Raster**, die **Legende** und der **Fuß
 Höhe nicht), darunter oben über ihnen. Am Rechner füllt die Seite genau die Fensterhöhe (`100dvh`), das Raster
 bekommt den Rest. Am Handy scrollt sie (§3.3).
 
+**Umbau-Hinweis** (V-0338, Silas 11.10.2026): Über dem Kopf und über dem Startbildschirm steht klein (12 px) in den
+Farben der Hinweise (Bernstein, §5.1) ein Satz: Der Stundenplanner wurde unter der Annahme gebaut, dass die
+Semesterwochenstunden das Maß für den Aufwand sind und die Angaben aus MOSES stimmen; die Annahme ist widerlegt, er
+wird umgebaut (Silas' privater Planer nach Leistungspunkten, docs/SILAS.md, ist der Umbau). Er nimmt dem Raster eine
+Zeile Höhe; er bleibt, bis der Umbau fertig ist, und geht dann ganz (index.html, stil.css `.umbau`).
+
 | Zone | Inhalt |
 |---|---|
 | **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter; am Handy steht der Schriftzug links (V-0247). Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
@@ -664,7 +670,7 @@ eingebauten Bedienelemente an. `theme-color` hell `#f7f8fb`, dunkel `#111213`.
 | **Tinte** (`--grau-10`) | Text. Als Fläche nur für das eine, das gerade gilt: die Hauptaktion einer Karte, das gedrückte Format, die Meldung, den Ring um die gefilterte Modulkachel, die Fläche der gewählten Kachel im Farbton ihres Moduls (`tinte`: hell dunkel, dunkel hell). Fokusring | nicht als Fläche einer Zone, nicht für mehr als eine Aktion je Karte |
 | Modulfarben | **Kategorie Modul:** Kacheln, Formate, Farbpunkt vor dem Modulnamen, Legende | nicht für Knöpfe, Links, Überschriften, Hintergründe von Zonen |
 | Rot (Konflikt) | Überschneidung: Ring, Symbol auf neutraler Fläche, Text in Hinweisen | nicht für Löschen oder Fehler beim Laden |
-| Bernstein (Hinweis) | geändert, nicht mehr im Angebot, veraltet, Abruffehler, Speicher fehlt | nicht als Dekoration |
+| Bernstein (Hinweis) | geändert, nicht mehr im Angebot, veraltet, Abruffehler, Speicher fehlt, der Umbau-Hinweis (V-0338) | nicht als Dekoration |
 
 **Warum Tinte statt einer Akzentfarbe:** Die Seite braucht acht Farbtöne für Module und zwei für
 Signale. Ein farbiger Akzent wäre der elfte und würde mit einem Modul verwechselt. Die Tinte ist

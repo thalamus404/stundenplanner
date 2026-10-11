@@ -12,6 +12,18 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — Umbau-Hinweis; /silas: Prüfungen neu, Hauptreiter, Fahrzeit, dunkler Modus (V-0338)
+
+- **stundenplanner.de** trägt über Plan und Start einen kleinen Hinweis (Silas): gebaut unter der Annahme, dass
+  Semesterwochenstunden das Maß für den Aufwand sind und die Angaben aus MOSES stimmen — die Annahme ist widerlegt, der
+  Stundenplanner wird umgebaut (DESIGN.md §3.1).
+- /silas, Prüfungen: Zeitleiste mit einer Spur für alle Prüfungsarten und einem Vorlauf je Prüfung (bei 2 h je Woche),
+  darunter alle Zeiträume aufklappbar mit allen Prüfungen, links die Prüfungen mit offenen Stunden; eine Prüfung wählen
+  hebt sie und ihre Übungszeit hervor und öffnet die Zeiträume (docs/SILAS.md §3).
+- /silas: Woche und Prüfungen als Hauptreiter oben links; ein Klick ins Leere hebt die Auswahl auf; 40 min Fahrzeit vor
+  dem ersten und nach dem letzten Termin vor Ort (nur gezeigt); dunkler Modus mit abgestimmten Farben, eigene Blöcke ohne
+  Streifen.
+
 ## 11.10.2026 — /silas: Prüfungen mit Semester-Zeitleiste und Vorbereitung in der Vorlesungszeit (V-0337)
 
 - Silas sah im Reiter Prüfungen nicht, wann E-Test 1, E-Test 2 und der Online-Test sind. Oben steht jetzt die
