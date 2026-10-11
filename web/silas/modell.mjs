@@ -23,7 +23,7 @@ export const REGELN = {
   raster_min: 30,
   lerntag_h: 6,         // Faustregel aus Silas' Semesterplan: Stunden ÷ 6 = Lerntage
   lernfenster: ['09:00', '19:00'],
-  pendeln_min: 45,
+  pendeln_min: 40,       // Silas, 11.10. (V-0338): „40 Minuten Fahrzeit“ vor dem ersten und nach dem letzten Präsenztermin
   toleranz_min: 120,    // Silas, 11.10.: Abweichungen bis ±2 h nicht melden („sonst zu verwirrend“)
   vorlauf_tage: 21,     // Vorbereitung auf eine Prüfung in der Vorlesungszeit wird so viele Tage vorher kritisch
   evl_block_min: 120,   // Silas, 11.10. (V-0335): „EVL-Block muss einfach zwei Stunden sein“ …
@@ -959,6 +959,17 @@ export function vorgabe(erg, teilId) {
   return beste;
 }
 
+/** Die Fahrzeit eines Tages (V-0338, Silas: „beim ersten Präsenztermin eines Tages 40 Minuten Fahrzeit davor … und bei
+ *  dem letzten Präsenztermin des Tages auch nochmal … nicht freigehalten, sondern visuell“): vor dem frühesten und nach
+ *  dem spätesten Termin vor Ort — Online-Termine zählen nicht. termine: [{start, ende, ort?, online?}] eines Tages.
+ *  Ergebnis: [[start, ende] davor, [start, ende] danach] oder []. Sie sperrt nichts. */
+export function fahrzeiten(termine, regeln = REGELN) {
+  const vorOrt = termine.filter((t) => !/online|zoom|webex/i.test(`${t.ort || ''} ${t.online || ''}`));
+  if (!vorOrt.length) return [];
+  const a = Math.min(...vorOrt.map((t) => t.start)), b = Math.max(...vorOrt.map((t) => t.ende));
+  return [[a - regeln.pendeln_min, a], [b, b + regeln.pendeln_min]];
+}
+
 /** Freie Fenster eines Tages: wo zwischen von und bis (Minuten) ein Block der Länge dauer passt, ohne etwas zu
  *  überdecken. belegt: [[start, ende], …]. Ergebnis: [[start, ende], …] — die ganzen freien Strecken. */
 export function freieFenster(belegt, dauer, von, bis) {
@@ -1165,8 +1176,8 @@ export function luecken(erg) {
 // soll die selber wählen können“): Der Lernplan-Vorschlag ist entfernt; was bleibt, misst nur.
 
 /** Die größte freie Lücke eines Tages im Lernfenster: [start, ende] in Minuten, oder null (unter 60 min). */
-export function freieLuecke(erg, datum, extra = []) {
-  const [fa, fe] = erg.regeln.lernfenster.map(min);
+export function freieLuecke(erg, datum, extra = [], fenster = null) {
+  const [fa, fe] = (fenster || erg.regeln.lernfenster).map(min);
   const belegt = erg.vorkommen.filter((v) => v.datum === datum && v.start != null && v.ende != null && !v.ganztag).map((v) => [v.start, v.ende]).concat(extra);
   belegt.sort((a, b) => a[0] - b[0]);
   let beste = null, cursor = fa;

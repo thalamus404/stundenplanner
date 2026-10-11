@@ -354,6 +354,22 @@ test('Prüfungsvorbereitung in der Vorlesungszeit: Wochenblock am Samstag bis zu
   assert.equal(M.wochentag(z.vk[0].datum), 5);
 });
 
+test('Fahrzeit: 40 min vor dem ersten und nach dem letzten Termin vor Ort, online zählt nicht', () => {
+  const m = M.min;
+  assert.equal(M.REGELN.pendeln_min, 40);
+  assert.deepEqual(M.fahrzeiten([{ start: m('10:15'), ende: m('11:45'), ort: 'H 104' }, { start: m('16:15'), ende: m('17:45') }]),
+    [[m('09:35'), m('10:15')], [m('17:45'), m('18:25')]]);
+  assert.deepEqual(M.fahrzeiten([{ start: m('10:15'), ende: m('11:45'), ort: 'online (Zoom)' }]), [], 'nur online: keine Fahrt');
+  assert.deepEqual(M.fahrzeiten([]), []);
+});
+
+test('Freie Lücke in einem eigenen Fenster (Prüfungsvorbereitung in der Vorlesungszeit: 7–22 Uhr)', () => {
+  const e = M.rechnen(angebot(), {});
+  // Di 15.10.2030: VL 10:15–11:45. Im Lernfenster 9–19 ist 11:45–19:00 die größte Lücke, in 7–22 Uhr 11:45–22:00.
+  assert.deepEqual(M.freieLuecke(e, '2030-10-15'), [M.min('11:45'), M.min('19:00')]);
+  assert.deepEqual(M.freieLuecke(e, '2030-10-15', [], ['07:00', '22:00']), [M.min('11:45'), M.min('22:00')]);
+});
+
 test('Keine Vorschläge mehr: der Lernplan-Vorschlag ist aus Modell und Seite entfernt', () => {
   assert.equal(M.lernplanVorschlag, undefined);
   const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');

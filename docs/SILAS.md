@@ -55,7 +55,7 @@ Timeline ist die Lesesicht, geplant wird hier.
 | **Schicht** | A Fixtermin · B gewählte Gruppe · C Frist/Einzeltermin · D eigener Block · R Semesterrahmen | gerechnet |
 
 Die Schichten A–D stammen aus Silas' Semesterplan („Generalstruktur des Kalenders“): Was verpflichtend ist und
-was selbst gesetzt ist, darf man nie verwechseln. Die Seite zeichnet A und B gefüllt, D schraffiert.
+was selbst gesetzt ist, darf man nie verwechseln. Die Seite zeichnet A und B kräftig gefüllt, D heller (bis V-0337 schraffiert; Silas: die Streifen machten die Farben unruhig) und mit Etikett Video/EVL.
 
 ### 2.2 Vom Posten zum Teil
 
@@ -238,21 +238,39 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   Reiter *Woche*, *Prüfungen* (die Prüfungen mit Terminen, Anmeldung und Formularen, ihre Vorbereitung, der Kalender
   der vorlesungsfreien Zeit: Prüfung wählen, Tage antippen — jeder Tipp ein Lerntag, §2.8), *Offen & Annahmen*, *So
   wird gerechnet*.
-- **Prüfungen, oben die Zeitleiste** (V-0337, Silas: *„ganz oben eine Master-Timeline, wo man das ganze Semester
-  sieht, die Vorlesungszeit und die vorlesungsfreie Zeit … und auf dieser Skala A die Klausuren, B die E-Tests, C die
-  Online-Tests und die schriftlichen Prüfungen“*): das Semester von Beginn bis Ende mit den Monaten und heute, darüber
-  die Phasen — Vorlesungszeit, Pause, vorlesungsfrei (ein Klick auf eine vorlesungsfreie springt zu ihrem Kalender
-  unten) —, darunter drei Spuren (`pruefungsArt()`: Klausuren · E-Tests · Online- und schriftliche Tests) mit jedem
-  Termin: gefüllt, was gilt, hohl Ausweich- und Zweittermine; ein Klick öffnet die Prüfung links. Die Beschriftungen
-  ordnet die Seite nach ihrer gemessenen Breite in Zeilen und klappt sie am rechten Rand nach links.
+- **Zwei Hauptansichten** (V-0338, Silas: *„Woche und Prüfungen noch etwas prominenter oben links … die zwei
+  Hauptfenster von diesem Tool“*): oben links „Woche“ und „Prüfungen“; Prüfungen erst nach dem Festlegen.
+- **Prüfungen, oben die Zeitleiste** (V-0337, umgebaut V-0338): das Semester mit Monaten, heute und den Zeiträumen
+  (Vorlesungszeit, Pause, Vorlesungszeit, vorlesungsfrei — ein Klick klappt ihren Kalender auf), darunter **eine Spur**
+  für alle Prüfungen (Silas: *„Klausuren und E-Tests auf eine Spur … mit der Farbe gekennzeichnet“*): Klausur rund und
+  rot, E-Test eckig und grün, Online-/schriftlicher Test als Raute (`pruefungsArt()`); gefüllt, was gilt, hohl Ausweich-
+  und Zweittermine. Vor jedem geltenden Termin sein **Vorlauf** als Linie mit einem Strich am Anfang (Silas: *„angenommen,
+  du übst zwei Stunden in der Woche, wie viele Wochen solltest du vorher anfangen, damit du auf die 40 Stunden
+  kommst“*): Soll der Vorbereitung ÷ Stunden je Woche (oben wählbar, 1–8 h, Standard 2 h); beginnt er vor dem Semester,
+  läuft die Linie links mit einem Pfeil aus. Die Seite ordnet Beschriftungen und Linien nach gemessener Breite in Zeilen.
+- **Prüfungen, darunter die Zeiträume** als aufklappbare Kalender (Wochen × Tage) mit allen Prüfungen (nach Art
+  gefärbt, Ausweichtermine hohl), Fristen, Lernblöcken, dem, was der Plan belegt, und der freien Zeit (Vorlesungszeit:
+  um den Stundenplan herum 7–22 Uhr; vorlesungsfrei: im Lernfenster). Links jede Prüfung nach Datum mit dem, was an
+  Vorbereitung noch fehlt (Silas: *„nach demselben Prinzip wie bei der Wochenplanung … wie viele Stunden sind noch
+  offen“*). Eine Prüfung wählen (links oder in der Zeitleiste): Sie leuchtet, die anderen treten zurück, ihr Tag ist
+  im Kalender umrandet, ihre Übungszeit (der Vorlauf) getönt, und die Zeiträume, in denen sie und die drei Wochen davor
+  liegen, gehen auf. Ein Tipp auf einen Tag legt einen Lernblock — vorlesungsfrei bis 6 h, in der Vorlesungszeit bis 2 h,
+  zuerst im Lernfenster, sonst früh oder abends. Ein Tipp auf eine Woche der Vorlesungszeit öffnet sie gesperrt
+  (s. u.).
 - **Vorlesungszeit öffnen** (V-0337, Silas: *„der Stundenplan muss in der Ansicht auf jeden Fall gelockt sein, aber
   außerhalb des Stundenplans — vor den Zeiträumen, nach den Zeiträumen und am Wochenende — kann man auch während der
   Vorlesungszeit Prüfungsvorbereitung einrichten … sich wiederholende Termine“*): das Raster mit allen sieben Tagen
   von 7 bis 22 Uhr; der Stundenplan ist dunkelgrau und fest, die Prüfungen farbig. Links jede Prüfungsvorbereitung nach
   Prüfungsdatum mit Länge (1–4 h) und „Block legen“; freie Plätze (`pruef_fenster` 07–22 Uhr) sind grün. In der
   Standardwoche liegt der Block jede Woche bis zum Tag vor der Prüfung (`bis`), in einer echten Woche nur an diesem
-  Tag. Im Raster ist alles farbig und fest; ziehen lassen sich nur noch die Lerntage. Ein Bestandteil
-  zeigt „In Schritt n bearbeiten“.
+  Tag.
+- **Abwählen** (V-0338, Silas: *„wenn man rausklickt, einfach auf irgendeinen Blankspot im Stundenplan, … soll das
+  wieder deselected werden“*): Ein Klick auf eine leere Stelle im Raster hebt die Auswahl auf (Modul, Bestandteil, die
+  nach vorn geholte Sache, die gewählte Prüfung); nur wenn nichts gewählt ist, erklärt er, wie man legt.
+- **Fahrzeit** (V-0338, Silas: *„beim ersten Präsenztermin eines Tages 40 Minuten Fahrzeit davor … und bei dem letzten
+  auch nochmal … nicht freigehalten, sondern visuell, mit einer grauen Strichellinie“*): `fahrzeiten()` — vor dem
+  frühesten und nach dem spätesten Termin vor Ort (Online zählt nicht), `pendeln_min` 40; grau gestrichelt hinter den
+  Kacheln, sie sperrt nichts.
 - **Links, was der Schritt will** (im Ablauf): oben ein Satz, was hier zu tun ist, und der Weg weiter; darunter je
   Modul nur die Teile dieses Schritts (Module ohne sie blass). Schritt 1 zeigt dazu die Quizze mit ihren Fristen.
   Schritt 2 zählt je Modul **„1 von 2 gewählt · 1 noch wählen“** (oder „kommt noch“), je Teil „gewählt ✓“, „wählen“,
@@ -306,12 +324,16 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   Freigaben des Schritts). Gelegte Blöcke lassen sich verschieben, an der Unterkante verlängern (EVL mindestens
   1,5 h), anklicken zum Bearbeiten (auch Takt: jede, alle 2 … 8 Wochen). ← → wechselt die Woche, ⌘Z macht
   rückgängig, Esc schließt.
+- **Dunkel** (V-0338, Silas: *„im Dark Mode sehen die Farben zusammengewürfelt und chaotisch aus“*): die Farben der
+  Arten in OKLCH mit gleicher Helligkeit und Sättigung, Ränder, Modulstreifen und Etikett gedämpft; eigene Blöcke ohne
+  Streifen, nur heller gefüllt (Silas: *„die als dein Block markierten sind hinten so gestreift … das macht es
+  komischer“*). Die mit stil.css geteilten Tokens (grau, m1–m8) bleiben gleich (Test).
 - **Farben nach Art** (V-0332, Silas: „Präsenzveranstaltung sollte das gleiche Farbschema haben bei allen Modulen …
   Quiz zum Beispiel immer grün“): Präsenz, Videos, Vor- und Nachbereitung, Aufgaben und Labs, Quiz und Tests, Prüfung —
   je eine Farbe (`kategorie()`), das Modul als Streifen links an jeder Kachel. Formen: fester Termin (gefüllt), **zur
   Wahl** (gefüllt, weiß gestrichelte Linie innen — solange nicht gewählt, stehen alle Gruppen im Plan), **gewählt**
   (weiß durchgezogen; die anderen nur noch ausgegraut, wenn der Teil gewählt ist), nur an einzelnen Tagen (heller, mit
-  Anzahl), dein Block (schraffiert).
+  Anzahl), dein Block (heller gefüllt, ohne Streifen).
 - **Unter dem Raster:** in Schritt 2 die Gruppen (s. o.), in Schritt 3 und 4 und festgelegt, was in dieser Woche
   (Standardwoche: jede Woche) dran wäre, aber noch nicht im Plan ist (`wochenBedarf()`): grau „Termine kommen noch“,
   hellblau „Block setzen“. Videos zählen in der Woche, in der ein Block sie deckt.
@@ -323,7 +345,7 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   Quelle der Termine (`quelle`). Videos stehen dort einzeln, mit einem Feld für ihre Länge.
 - **Rechts, die Minimap** (V-0328, Silas: „wie die Minimap, die die Semesterübersicht einmal in Wochenansicht gibt“):
   je Modul eine Summenzeile, darunter jeder Bestandteil, regelmäßig wie unregelmäßig, dazu Prüfungen und Fristen;
-  Termine gefüllt, eigene Blöcke schraffiert, Freigaben als Punkt. Der links gewählte Bestandteil leuchtet, die anderen
+  Termine kräftig, eigene Blöcke heller, Freigaben als Punkt. Der links gewählte Bestandteil leuchtet, die anderen
   treten zurück; im Ablauf sind Zeilen anderer Schritte und die Prüfungen blass. Darunter die Chronik des Unregelmäßigen.
 - **Am Telefon** liegt alles untereinander, das Raster scrollt seitlich; ein Tipp legt den hängenden Block ab
   (auch er nicht auf Präsenz). Die Schritte zeigen nur den gezeigten mit Namen, die anderen mit Nummer und Stand.
@@ -336,7 +358,7 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 | `video_puffer_min`, `raster_min` | 15, 30 | Silas: 1:45 → 2 h |
 | `lerntag_h`, `lernfenster` | 6, 09–19 | Faustregel aus dem Semesterplan |
 | `toleranz_min` | 120 | Silas, V-0332: Abweichungen bis ±2 h nicht melden |
-| `pendeln_min` | 45 | steht im Angebot; die Seite zeichnet es noch nicht (§8) |
+| `pendeln_min` | 40 | Silas, V-0338: 40 min Fahrzeit vor dem ersten und nach dem letzten Termin vor Ort (nur gezeigt) |
 | `evl_block_min`, `evl_min_min` | 120, 90 | Silas, V-0335: „EVL-Block muss einfach zwei Stunden sein … mindestens anderthalb“ |
 | `evl_fenster`, `tag_fenster` | 10–18, 08–20 | bevorzugte und überhaupt gesuchte freie Plätze (Silas: „zwischen 10 und 18 Uhr preferred“) |
 | `pruef_fenster` | 07–22 | Prüfungsvorbereitung in der Vorlesungszeit: auch früh und abends (V-0337) |
@@ -403,6 +425,5 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
 - Ein Termin für zwei Posten (PROG1: VL und Übungsanteile gemischt) bucht das Modell auf einen Posten; `posten` je
   Muster wäre genauer. Einlass und Zeitfenster einer Prüfung (Erscheinen 08:15, 60 min im Fenster 08:30–10:30) und
   Räume nach Nachnamen stehen nur als Text.
-- Pendeln (45 min vor dem ersten und nach dem letzten Campustermin eines Tages) als eigene Schicht zeichnen.
 - Das Study OS liest `/silas/api/ereignisse` (Vorgang im Airfield studyos).
 - Ob der Planer für alle kommt, entscheidet Silas; das Modell ist dafür schon allgemein.
