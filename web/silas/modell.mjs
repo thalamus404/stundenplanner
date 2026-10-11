@@ -187,21 +187,26 @@ export const kurz = (m) => m.kurz || m.id;
 // … und dann als letzte Sache für alle Sachen eine Vor- und Nachbereitung. Das Tool soll einen durch genau diese
 // Entscheidungen durchführen und man soll die selber treffen … und zurückspringen können.“ Jeder Bestandteil und
 // jedes Vorkommen gehört zu genau einem Schritt; Zurücksetzen nimmt die Schritte ab 2 weg, Schritt 1 bleibt.
+// V-0334, Silas: „Klausurvorbereitung und Prüfungsgeschichten sollen gar nicht in dieser Planung stattfinden … wenn der
+// ganze Plan steht … kann man ab Mitte des Semesters das einplanen.“ Prüfungen, ihre Anmeldungen und die
+// Prüfungsvorbereitung sind darum Schritt 5 (PRUEFUNGEN): nicht im Ablauf, erst nach „Stundenplan festlegen“.
+export const PRUEFUNGEN = 5;
 export const SCHRITTE = [
   { nr: 1, id: 'grundlage', titel: 'Grundlage', satz: 'Feste Präsenztermine, Prüfungen, Quizze und Fristen — steht fest' },
   { nr: 2, id: 'gruppen', titel: 'Gruppen', satz: 'Tutorien und Übungen mit Gruppen — du wählst' },
   { nr: 3, id: 'videos', titel: 'Videos', satz: 'Screencasts und Lehrvideos — du legst sie selbst' },
-  { nr: 4, id: 'evl', titel: 'EVL', satz: 'Eigenverantwortliches Lernen: Vor- und Nachbereitung, Labs, Quizze, Prüfungsvorbereitung' },
+  { nr: 4, id: 'evl', titel: 'EVL', satz: 'Eigenverantwortliches Lernen: Vor- und Nachbereitung, Labs, Quizze' },
 ];
 /** Präsenz mit eigenen Terminen ist Schritt 1, Präsenz mit Gruppen (oder ohne Termine — die Gruppen kommen noch)
- *  Schritt 2, Videos Schritt 3, alles andere (Selbststudium, Prüfungsvorbereitung) Schritt 4. */
+ *  Schritt 2, Videos Schritt 3, Selbststudium Schritt 4, Prüfungsvorbereitung 5 (nach dem Festlegen). */
 export function schrittVon(t) {
   if (t.schritt) return t.schritt;
   if (t.art === 'praesenz') return istWahl(t) || !muster(t).length ? 2 : 1;
-  return t.art === 'video' ? 3 : 4;
+  return t.art === 'video' ? 3 : t.art === 'pruefung' ? PRUEFUNGEN : 4;
 }
-/** Ein Block gehört zum Schritt seines Bestandteils: Videos 3, alles andere (auch Puffer ohne Teil) 4. */
-export const schrittVonBlock = (teil) => (teil && schrittVon(teil) === 3 ? 3 : 4);
+/** Ein Block gehört zum Schritt seines Bestandteils: Videos 3, Prüfungsvorbereitung 5, alles andere (auch Puffer
+ *  ohne Teil) 4. */
+export const schrittVonBlock = (teil) => (teil ? Math.max(3, schrittVon(teil)) : 4);
 /** Das Etikett an jeder Kachel (Silas: „ist es Präsenz, ist es Video oder ist es EVL“). */
 export const ETIKETT = { 1: 'Präsenz', 2: 'Präsenz', 3: 'Video', 4: 'EVL' };
 export const postenGesamt = (p) => Math.round(p.mult * p.h * 60); // in Minuten
@@ -438,12 +443,14 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   function anmeldeFristen(a, id, modul, titel, teil = null) {
     if (!a) return;
     const wo = a.wo ? ` (${String(a.wo).split(' (')[0]})` : '';
-    if (istDatum(a.von)) frist(`${id}-von`, modul, a.von, a.von_zeit, `${titel}: Anmeldung öffnet${wo}`, false, a, teil);
-    if (istDatum(a.bis)) frist(`${id}-bis`, modul, a.bis, a.bis_zeit, `${titel}: Anmeldung endet${wo}${a.nur ? ` — nur ${a.nur}` : ''}`, true, a, teil);
+    // Die Anmeldung einer Gruppe gehört zu ihrem Schritt (2), die einer Prüfung zu den Prüfungen (5).
+    const sch = teil ? schrittVon(teile.get(teil).teil) : PRUEFUNGEN;
+    if (istDatum(a.von)) frist(`${id}-von`, modul, a.von, a.von_zeit, `${titel}: Anmeldung öffnet${wo}`, false, a, teil, sch);
+    if (istDatum(a.bis)) frist(`${id}-bis`, modul, a.bis, a.bis_zeit, `${titel}: Anmeldung endet${wo}${a.nur ? ` — nur ${a.nur}` : ''}`, true, a, teil, sch);
   }
-  function frist(id, modul, datum, zeit, titel, wichtig, herkunft, teil = null) {
+  function frist(id, modul, datum, zeit, titel, wichtig, herkunft, teil = null, schritt = 1) {
     vorkommen.push({
-      id, quelle: 'frist', schicht: 'C', schritt: 1, modul, teil, datum, ganztag: true, punkt: zeit ? min(zeit) : undefined,
+      id, quelle: 'frist', schicht: 'C', schritt, modul, teil, datum, ganztag: true, punkt: zeit ? min(zeit) : undefined,
       titel, wichtig: !!wichtig, unsicher: !!(herkunft && herkunft.unsicher), herkunft: (herkunft && herkunft.quelle) || null,
       zaehlt_min: 0, flags: [], mit: [],
     });
@@ -460,7 +467,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         // Ein Ausweich- oder Zweittermin ist „nicht wichtig“, solange Silas ihn nicht gewählt hat — und sperrt nichts.
         const wichtig = x.wichtig !== false || (gewaehlt && x === gilt);
         vorkommen.push({
-          id: `${p.id}@${x.datum}`, quelle: 'pruefung', schicht: 'A', schritt: 1, hart: wichtig, modul: m.id, pruefung: p.id,
+          id: `${p.id}@${x.datum}`, quelle: 'pruefung', schicht: 'A', schritt: PRUEFUNGEN, hart: wichtig, modul: m.id, pruefung: p.id,
           datum: x.datum, ...zeit, titel: [p.titel, x.label].filter(Boolean).join(' · '), ort: x.ort || null,
           wichtig, unsicher: !!x.unsicher, zaehlt_min: 0, flags: [], mit: [],
           herkunft: x.quelle || p.quelle || null,
@@ -717,8 +724,8 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     }
     for (const t of m.teile || []) {
       const a = t.anmeldung;
-      if (a && a.offen) r.flags.push({ roh: 'info', art: 'anmeldung_offen', text: `${t.titel}, Anmeldung: ${a.offen}` });
-      if (a && typeof a.unsicher === 'string') r.flags.push({ roh: 'hinweis', art: 'anmeldung_unsicher', text: `${t.titel}, Anmeldung: ${a.unsicher}` });
+      if (a && a.offen) r.flags.push({ roh: 'info', art: 'anmeldung_offen', text: `${t.titel}, Anmeldung: ${a.offen}`, gruppe: t.id });
+      if (a && typeof a.unsicher === 'string') r.flags.push({ roh: 'hinweis', art: 'anmeldung_unsicher', text: `${t.titel}, Anmeldung: ${a.unsicher}`, gruppe: t.id });
     }
     for (const e of angebot.termine || []) {
       if (e.modul === m.id && istDatum(e.datum) && typeof e.unsicher === 'string') r.flags.push({ roh: 'hinweis', art: 'termin_unsicher', text: `${e.titel} (${datumKurz(e.datum)}): ${e.unsicher}` });
@@ -803,14 +810,17 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
 }
 
 /** Je Schritt: wie viele Meldungen welcher Stufe, und wie viele Stunden seine Bestandteile tragen und gedeckt haben.
- *  Meldungen an einem Modul (Prüfungen, Fristen) gehören zu Schritt 1, die Wahl eines Prüfungstermins zu Schritt 2. */
+ *  Meldungen an einem Modul gehören zu den Prüfungen (5), wenn sie eine Prüfung betreffen, sonst zu Schritt 1
+ *  (Aufwandstabelle, Einzeltermine). Ergebnis: die vier Schritte und dahinter (Index 4) die Prüfungen. */
 export function schrittVonFlagge(f, z) {
   if (z) return schrittVon(z.teil);
   if (f.art === 'gesperrt') return 4;
-  return f.art === 'pruefung_wahl' ? 2 : 1;
+  if (f.gruppe) return 2; // die Anmeldung einer Gruppe (am Modul gemeldet)
+  return f.pruefung || PRUEFUNGSTHEMEN.has(f.art) ? PRUEFUNGEN : 1;
 }
 export function schritte(erg) {
-  const aus = SCHRITTE.map((s) => ({ ...s, zaehler: Object.fromEntries(STUFEN.map((st) => [st, 0])), soll_min: 0, gedeckt_min: 0, teile: [] }));
+  const aus = [...SCHRITTE, { nr: PRUEFUNGEN, id: 'pruefungen', titel: 'Prüfungen', satz: 'Prüfungen, Anmeldungen und Prüfungsvorbereitung — nach dem Festlegen' }]
+    .map((s) => ({ ...s, zaehler: Object.fromEntries(STUFEN.map((st) => [st, 0])), soll_min: 0, gedeckt_min: 0, teile: [] }));
   for (const r of erg.module) {
     for (const f of r.flags) aus[schrittVonFlagge(f, null) - 1].zaehler[f.stufe] += 1;
     for (const z of r.teile) {
@@ -825,14 +835,35 @@ export function schritte(erg) {
 }
 
 /** Zurück auf die Grundlage (Silas: „wenn man auf Zurücksetzen drückt, die absolute Foundation muss sein …“): nimmt
- *  alles ab Schritt `ab` weg — ab 2 die Gruppenwahl und die gewählten Prüfungstermine, ab 3 die Video-Blöcke, ab 4
- *  die übrigen Blöcke. Was Silas über das Angebot weiß (Videolängen, Uhrzeiten, Anmeldungen, bestätigte Annahmen,
- *  Umwidmungen), bleibt. Gibt einen neuen Plan zurück. */
-export function zuruecksetzen(plan, angebot, ab = 2) {
+ *  alles aus den Schritten `ab` bis 4 weg — ab 2 die Gruppenwahl, ab 3 die Video-Blöcke, ab 4 die übrigen Blöcke —
+ *  und hebt es in `zurueckgesetzt` auf (Silas' Daten werden nie gelöscht; wiederherstellen() holt es zurück). Was
+ *  Silas über das Angebot weiß (Videolängen, Uhrzeiten, Anmeldungen, bestätigte Annahmen, Umwidmungen) und alles zu
+ *  den Prüfungen (gewählte Prüfungstermine, Lerntage) bleibt; ein festgelegter Plan ist danach wieder in Arbeit. */
+export function zuruecksetzen(plan, angebot, ab = 2, { am = null } = {}) {
   const neu = JSON.parse(JSON.stringify(plan || {}));
   const teil = new Map(teileVon(angebot).map((x) => [x.teil.id, x.teil]));
-  if (ab <= 2) { delete neu.wahl; delete neu.pruefungstermin; }
-  neu.bloecke = (neu.bloecke || []).filter((b) => schrittVonBlock(b.teil ? teil.get(b.teil) : null) < ab);
+  const weg = (b) => { const s = schrittVonBlock(b.teil ? teil.get(b.teil) : null); return s >= ab && s <= 4; };
+  const fort = { am, ab, wahl: ab <= 2 ? neu.wahl || {} : {}, bloecke: (neu.bloecke || []).filter(weg) };
+  if (ab <= 2) delete neu.wahl;
+  neu.bloecke = (neu.bloecke || []).filter((b) => !weg(b));
+  delete neu.festgelegt;
+  // Ein zweites Zurücksetzen legt das Aufgehobene dazu, statt es zu überschreiben.
+  const alt = neu.zurueckgesetzt;
+  if (Object.keys(fort.wahl).length || fort.bloecke.length) {
+    neu.zurueckgesetzt = alt ? { ...fort, wahl: { ...alt.wahl, ...fort.wahl }, bloecke: [...alt.bloecke, ...fort.bloecke.filter((b) => !alt.bloecke.some((x) => x.id === b.id))] } : fort;
+  }
+  return neu;
+}
+
+/** Was zurückgesetzt wurde, wieder einsetzen: Gruppen, wo noch keine gewählt ist, Blöcke, deren Id es nicht gibt. */
+export function wiederherstellen(plan) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  const z = neu.zurueckgesetzt;
+  if (!z) return neu;
+  neu.wahl = { ...z.wahl, ...(neu.wahl || {}) };
+  const ids = new Set((neu.bloecke || []).map((b) => b.id));
+  neu.bloecke = [...(neu.bloecke || []), ...z.bloecke.filter((b) => !ids.has(b.id))];
+  delete neu.zurueckgesetzt;
   return neu;
 }
 
