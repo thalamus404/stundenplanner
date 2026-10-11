@@ -370,6 +370,34 @@ test('Freie Lücke in einem eigenen Fenster (Prüfungsvorbereitung in der Vorles
   assert.deepEqual(M.freieLuecke(e, '2030-10-15', [], ['07:00', '22:00']), [M.min('11:45'), M.min('22:00')]);
 });
 
+test('Wochenend-Pakete: die zwei Wochenenden vor der Prüfung je 10 h, der Rest wird nach vorne gerechnet', () => {
+  // Klausur Mo 03.03.2031, Vorbereitung 90 h: Wochenende davor Fr 28.02.–So 02.03., zwei davor 21.–23.02., Rest 70 h.
+  const plan = { bloecke: [
+    { id: 'a', teil: 'bsp-pv', datum: '2031-03-01', start: '09:00', ende: '15:00' },
+    { id: 'b', teil: 'bsp-pv', datum: '2031-02-22', start: '10:00', ende: '14:00' },
+    { id: 'c', teil: 'bsp-pv', datum: '2031-02-10', start: '10:00', ende: '12:00' },
+  ] };
+  const pk = M.pruefungsPakete(M.rechnen(angebot(), plan), 'bsp-pv');
+  assert.deepEqual(pk.map((x) => [x.id, x.von || null, x.bis, x.soll_min / 60, x.ist_min / 60]),
+    [['we1', '2031-02-28', '2031-03-02', 10, 6], ['we2', '2031-02-21', '2031-02-23', 10, 4], ['rest', null, '2031-02-20', 70, 2]]);
+  // Eine kleine Prüfung (2,5 h) hat nur das eine Wochenende.
+  const a = angebot(); a.module[0].posten[3].h = 2.5;
+  const klein = M.pruefungsPakete(M.rechnen(a, {}), 'bsp-pv');
+  assert.deepEqual(klein.map((x) => [x.id, x.soll_min]), [['we1', 150]]);
+});
+
+test('Mittagspause: 45 min im ersten freien Fenster 11:30–14:30, sonst um 12:30', () => {
+  const m = M.min;
+  assert.deepEqual(M.mittagspause([[m('10:00'), m('12:00')]]), [m('12:00'), m('12:45')]);
+  assert.deepEqual(M.mittagspause([[m('11:00'), m('15:00')]]), [m('12:30'), m('13:15')], 'kein Platz: trotzdem zeigen');
+  assert.deepEqual(M.mittagspause([]), [m('11:30'), m('12:15')]);
+});
+
+test('Tageslast: Termine als Doppelstunde, Blöcke mit ihrer Dauer, Ausweichtermine nicht', () => {
+  const e = M.rechnen(angebot(), { bloecke: [{ id: 'b', teil: 'bsp-vn', datum: '2030-10-15', start: '13:00', ende: '15:00' }] });
+  assert.equal(M.tagesLast(e, '2030-10-15'), 120 + 120);
+});
+
 test('Keine Vorschläge mehr: der Lernplan-Vorschlag ist aus Modell und Seite entfernt', () => {
   assert.equal(M.lernplanVorschlag, undefined);
   const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');
