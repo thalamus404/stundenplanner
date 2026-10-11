@@ -29,3 +29,5 @@ dist/
 
 # wrangler (pages dev, functions build) legt hier seinen Zwischenstand ab (V-0271)
 .wrangler/
+# wrangler pages dev liest lokale Geheimnisse aus .dev.vars (V-0321, /silas) — nie ins Repo
+.dev.vars

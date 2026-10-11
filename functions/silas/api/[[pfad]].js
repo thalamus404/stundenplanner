@@ -1,0 +1,125 @@
+// Der private Speicher von /silas (V-0321) — eine Cloudflare Pages Function mit KV.
+//
+// stundenplanner.de/silas ist Silas' persönlicher Semesterplaner (docs/SILAS.md). Die Seite selbst ist
+// ein leeres Werkzeug im öffentlichen Repo; seine Daten — das Angebot mit ISIS-Angaben, seine Wahl,
+// seine Blöcke — liegen NUR hier, im KV-Namensraum SILAS, nie im Repo (AGENTS.md §2 ①). Jede Anfrage
+// braucht den Schlüssel. Gespeichert ist nur sein SHA-256 (Geheimnis SILAS_SCHLUESSEL der Pages), der
+// Schlüssel selbst steht in betrieb/.env und in Silas' Browsern (docs/BETRIEB.md, „/silas“).
+//
+// Wege (alle unter /silas/api/, web/_routes.json):
+//   GET  stand            → { schema, version, geaendert, angebot, plan }      (404, solange leer)
+//   PUT  stand            ← { basis, angebot, plan } — basis ist die Version, auf der die Änderung
+//                           beruht; passt sie nicht, 409 mit dem Stand des Servers (anderes Gerät)
+//   GET  ereignisse       → jedes konkrete Vorkommen mit Id und Zeitzone: die Schnittstelle zum Study OS
+//   GET  kalender/<k>.ics → Kalender-Abo (termine | lernen | alles); der Schlüssel steht hier in der
+//                           Adresse (?k=), weil ein Kalender keine Kopfzeile senden kann
+//   GET  verlauf[/<id>]   → die stündlichen Sicherungen der letzten 60 Tage
+//
+// Das Study OS liest später mit demselben Schlüssel (Kopfzeile Authorization: Bearer …). Der
+// Stundenplanner selbst fragt nie etwas von dort ab: Die Richtung ist Study OS → Stundenplanner.
+
+import * as M from '../../../web/silas/modell.mjs';
+import * as K from '../../../web/silas/kalender.mjs';
+
+const MAX_BYTES = 512 * 1024;            // ein Semester sind etwa 40 KB
+const SCHLUESSEL = /^[A-Za-z0-9_-]{32,128}$/;
+const VERLAUF_TAGE = 60;
+const KOPF = { 'cache-control': 'no-store', 'x-robots-tag': 'noindex, nofollow', 'x-content-type-options': 'nosniff' };
+
+const json = (status, daten) => new Response(JSON.stringify(daten), { status, headers: { ...KOPF, 'content-type': 'application/json; charset=utf-8' } });
+const fehler = (status, satz) => json(status, { fehler: satz });
+
+async function sha256(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+function gleich(a, b) {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
+/** true, false oder 'aus' (KV oder Schlüssel nicht eingerichtet). */
+async function darf(request, env, url, mitAdresse) {
+  if (!env.SILAS || !env.SILAS_SCHLUESSEL) return 'aus';
+  const kopf = request.headers.get('authorization') || '';
+  let k = kopf.startsWith('Bearer ') ? kopf.slice(7).trim() : '';
+  if (!k && mitAdresse) k = url.searchParams.get('k') || '';
+  if (!SCHLUESSEL.test(k)) return false;
+  return gleich(await sha256(k), String(env.SILAS_SCHLUESSEL).trim().toLowerCase());
+}
+
+async function lesen(env) {
+  const roh = await env.SILAS.get('stand');
+  return roh ? JSON.parse(roh) : null;
+}
+
+const stundenSchluessel = (d) => 'verlauf:' + d.toISOString().slice(0, 13).replace(/[-T]/g, '');
+
+export async function silasApi(request, env, jetzt = new Date()) {
+  const url = new URL(request.url);
+  const weg = url.pathname.replace(/^\/silas\/api\/?/, '');
+  const ics = /^kalender\/([a-z]+)\.ics$/.exec(weg);
+  const recht = await darf(request, env, url, !!ics);
+  if (recht === 'aus') return fehler(503, 'Der Speicher von /silas ist noch nicht eingerichtet (docs/BETRIEB.md).');
+  if (!recht) return fehler(401, 'Schlüssel fehlt oder stimmt nicht.');
+
+  if (weg === 'stand' && request.method === 'GET') {
+    const s = await lesen(env);
+    return s ? json(200, s) : fehler(404, 'Noch kein Stand gespeichert.');
+  }
+
+  if (weg === 'stand' && request.method === 'PUT') {
+    const roh = await request.text();
+    if (roh.length > MAX_BYTES) return fehler(413, 'Der Stand ist zu groß.');
+    let neu;
+    try { neu = JSON.parse(roh); } catch { return fehler(400, 'Kein gültiges JSON.'); }
+    if (!neu || typeof neu !== 'object' || !neu.angebot || !neu.plan) return fehler(400, 'angebot und plan fehlen.');
+    const maengel = M.pruefeAngebot(neu.angebot);
+    if (maengel.length) return json(422, { fehler: 'Das Angebot ist nicht gültig.', maengel });
+    try { M.rechnen(neu.angebot, neu.plan); } catch (e) { return json(422, { fehler: 'Der Plan lässt sich nicht rechnen.', maengel: [String(e.message || e)] }); }
+    const alt = await lesen(env);
+    // Optimistische Sperre: Wer auf einem älteren Stand geändert hat, überschreibt nicht still den
+    // neueren eines anderen Geräts. `basis: null` heißt „ich weiß, es ist leer“ — oder, mit
+    // `erzwingen: true`, „überschreiben“ (der Knopf dafür fragt vorher).
+    if (alt && !neu.erzwingen && neu.basis !== alt.version) return json(409, { fehler: 'Auf einem anderen Gerät geändert.', version: alt.version, geaendert: alt.geaendert });
+    const stand = { schema: 1, version: (alt ? alt.version : 0) + 1, geaendert: jetzt.toISOString(), angebot: neu.angebot, plan: neu.plan };
+    const text = JSON.stringify(stand);
+    await env.SILAS.put('stand', text);
+    // Eine Sicherung je Stunde (dieselbe Stunde überschreibt): genug, um einen Fehlgriff zurückzuholen,
+    // und unter dem Tageskontingent von KV (1000 Schreibvorgänge) auch bei viel Planen.
+    await env.SILAS.put(stundenSchluessel(jetzt), text, { expirationTtl: VERLAUF_TAGE * 86400 });
+    return json(200, { version: stand.version, geaendert: stand.geaendert });
+  }
+
+  if (weg === 'ereignisse' && request.method === 'GET') {
+    const s = await lesen(env);
+    if (!s) return fehler(404, 'Noch kein Stand gespeichert.');
+    const ereignisse = M.ereignisse(s.angebot, s.plan);
+    return json(200, { schema: 1, version: s.version, geaendert: s.geaendert, semester: s.angebot.semester, ereignisse });
+  }
+
+  if (ics && request.method === 'GET') {
+    if (!K.KALENDER.includes(ics[1])) return fehler(404, 'Diesen Kalender gibt es nicht (termine, lernen, alles).');
+    const s = await lesen(env);
+    if (!s) return fehler(404, 'Noch kein Stand gespeichert.');
+    return new Response(K.ics(M.ereignisse(s.angebot, s.plan), { kalender: ics[1], jetzt }), {
+      headers: { ...KOPF, 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `inline; filename="${ics[1]}.ics"` },
+    });
+  }
+
+  if (weg === 'verlauf' && request.method === 'GET') {
+    const liste = await env.SILAS.list({ prefix: 'verlauf:' });
+    return json(200, { verlauf: liste.keys.map((k) => k.name.slice(8)).sort().reverse() });
+  }
+  const v = /^verlauf\/(\d{10})$/.exec(weg);
+  if (v && request.method === 'GET') {
+    const roh = await env.SILAS.get('verlauf:' + v[1]);
+    return roh ? new Response(roh, { headers: { ...KOPF, 'content-type': 'application/json; charset=utf-8' } }) : fehler(404, 'Diese Sicherung gibt es nicht.');
+  }
+
+  return fehler(404, 'Diesen Weg gibt es nicht.');
+}
+
+export const onRequest = ({ request, env }) => silasApi(request, env);

@@ -26,6 +26,7 @@ ein Abruf von einer festen Adresse zu Hause ist berechenbarer. GitHub Pages ist 
 | NAS, Container `stundenplanner-abruf` | täglich 05:20 (Europe/Berlin): holen, bauen, prüfen, ausliefern | `betrieb/lauf.py`, `betrieb/Dockerfile`, `betrieb/docker-compose.yml` |
 | Cloudflare Pages, Projekt `stundenplanner` | liefert `web/` aus, Daten in `web/daten/` | (Direct Upload, kein Git-Anschluss) |
 | Cloudflare Pages Functions | das Kalender-Abo `/abo/stundenplan.ics` (V-0271); nur `/abo/*` ruft die Funktion (`web/_routes.json`). `wrangler` läuft deshalb im Klon, wo es `functions/` findet. Im Free-Plan 100 000 Aufrufe am Tag; sind sie aufgebraucht, scheitert nur das Abo, die Seite bleibt, die Kalender behalten ihren Stand | `functions/abo/[datei].js` |
+| Cloudflare Pages Functions + KV | `/silas/api/*` (V-0321): der private Speicher von Silas' Semesterplaner — KV-Namensraum `stundenplanner-silas` (Vorschauen: `stundenplanner-silas-vorschau`), Bindung `SILAS`, Geheimnis `SILAS_SCHLUESSEL` (SHA-256 des Schlüssels). Kein Abruf, nur Lesen und Schreiben von Silas' eigenem Stand. Einrichten und Pflege: unten „/silas“ | `functions/silas/api/[[pfad]].js`, `ops/silas.mjs` |
 | GitHub Actions | Test bei jedem Push | `.github/workflows/test.yml` |
 | GitHub Actions | täglich: Sind die ausgelieferten Daten frisch? | `.github/workflows/frische.yml` |
 | GitHub Actions, nur von Hand | Antwortet MOSES GitHubs Servern? (Rückfall) | `.github/workflows/probe-moses.yml` |
@@ -152,6 +153,30 @@ Commit, egal in welchem Arbeitsbaum man steht. Die `.env` kommt immer aus dem **
 Er holt, ruft ab, baut und prüft, lädt aber **nie** hoch: `lauf.py` liefert nur `main` von
 GitHub aus, auch wenn der Token im Container steckt. Er nutzt dieselben Rohstände im Volume, als
 Vorbestand und als Ziel.
+
+### /silas — der private Speicher (V-0321)
+
+Silas' Semesterplaner (docs/SILAS.md) speichert seinen Stand bei Cloudflare in KV, nicht im Repo. Von Hand, aus
+einem Klon oder Arbeitsbaum (der Schlüssel kommt aus `<hauptklon>/betrieb/.env`):
+
+| Befehl | Was |
+|---|---|
+| `node ops/silas.mjs pruefen <stand.json>` | rechnet einen Stand durch, ohne Netz: je Modul eingeplant, Lücken, rote Teile |
+| `node ops/silas.mjs holen [<datei>]` | den Stand vom Server holen (Sicherung, Bearbeiten) |
+| `node ops/silas.mjs senden <stand.json>` | einen Stand hochladen, auf der aktuellen Version des Servers |
+| `node ops/silas.mjs einrichten [--pruefen]` | KV-Namensräume anlegen, Bindung `SILAS` und Geheimnis `SILAS_SCHLUESSEL` in Produktion und Vorschau setzen, den Schlüssel in `betrieb/.env` anlegen. Wiederholbar. Braucht einen Zugang, der KV anlegen darf (der Deploy-Token darf es nicht): `CF_AUTH_EMAIL` + `CF_AUTH_KEY` (Global Key aus Silas' Vault) nur in der Umgebung dieses Aufrufs. Wirksam ab der nächsten Auslieferung |
+
+- **Der Schlüssel** steht in `betrieb/.env` (`SILAS_SCHLUESSEL`) und zur Sicherheit in Silas' Vault
+  (`stundenplanner-silas-schluessel`, dort holt ihn auch das Study OS). Ein neuer Browser öffnet
+  `https://www.stundenplanner.de/silas/#schluessel=<Schlüssel>` einmal; die Adresse verliert das Fragment sofort.
+  **Rotieren:** die Zeile in `betrieb/.env` löschen, `einrichten` (legt einen neuen an), ausliefern, Vault nachziehen,
+  in Silas' Browsern neu öffnen. Die Kalender-Abos tragen den Schlüssel in der Adresse und müssen dann neu abonniert werden.
+- **Sicherungen:** je Stunde eine (60 Tage) unter `verlauf:JJJJMMTTHH` im KV; `GET /silas/api/verlauf` listet sie.
+  `holen` ist die Sicherung von Hand.
+- **Kontingent:** KV im Free-Plan 1000 Schreibvorgänge am Tag; ein Speichern sind zwei. Die Seite speichert 0,9 s
+  nach der letzten Änderung, nicht bei jedem Ziehen.
+- **Abschalten** (§2 ③): die Namensräume löschen, die Bindung und das Geheimnis aus dem Pages-Projekt, `web/silas/`,
+  `functions/silas/`, `ops/silas.mjs`, die Zeile in `betrieb/.env` und im Vault, docs/SILAS.md und diese Sätze.
 
 **Abschalten** (AGENTS.md §2 ③: ganz, nicht halb): `docker compose -p stundenplanner down`,
 `docker image rm stundenplanner-abruf:live stundenplanner-abruf:vorher`, das Volume

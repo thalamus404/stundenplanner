@@ -3,3 +3,10 @@
 /api/stand
   Content-Type: application/json; charset=utf-8
   Cache-Control: no-store
+
+# /silas (V-0321): Silas' privater Semesterplaner. Die Seite ist ein leeres Werkzeug (die Daten liegen
+# hinter /silas/api, functions/silas/api), aber sie gehört in keine Suchmaschine, und jede neue Fassung
+# soll sofort gelten.
+/silas/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache
