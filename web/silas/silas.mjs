@@ -378,7 +378,7 @@ function modulKarte(r) {
   balken.firstChild.style.width = `${Math.min(100, anteil * 100)}%`;
   const offen = Z.fokus === `modul:${m.id}`;
   const b = Z.ansicht.bereich;
-  const wofuer = woche ? 'diese Woche' : b === 'vorlesung' ? 'in der Vorlesungszeit' : b === 'frei' ? 'für die Prüfungen' : 'im Semester';
+  const wofuer = woche ? 'diese Woche' : b === 'vorlesung' ? 'Vorlesungszeit' : b === 'frei' ? 'für Prüfungen' : 'im Semester';
   // Hinweise am Modul (Prüfungen, Fristen): in der Vorlesungszeit nur, was kritisch ist; ausführlich unter „Offen“.
   const wichtig = r.flags.filter((f) => f.stufe === 'kritisch' || (b !== 'vorlesung' && f.stufe === 'achtung'));
   const st = M.hoechste(wichtig);

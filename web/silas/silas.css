@@ -654,3 +654,5 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .kachel.pruefung { padding: 1px 6px; line-height: 13px; }
 @media (max-width: 1600px) { .k-rechts > .knopf[data-act="kalender"] { font-size: 0; gap: 0; padding: 0; width: var(--ziel); } .k-rechts > .knopf[data-act="kalender"] .i { width: 16px; height: 16px; } }
 @media (max-width: 1600px) { .sync.ok { display: none; } }
+
+.m-zahl > span:last-child { white-space: nowrap; }
