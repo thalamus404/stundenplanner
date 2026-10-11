@@ -154,7 +154,9 @@ a { color: inherit; text-underline-offset: 2px; }
 .bilanz-text span { font-size: 12px; color: var(--grau-8); }
 .balken { position: relative; height: 6px; border-radius: 3px; background: var(--grau-4); overflow: hidden; }
 .balken > i { position: absolute; inset: 0 auto 0 0; background: var(--grau-10); border-radius: inherit; }
-.balken > i.ueber { background: var(--gelb); }
+.balken > i.ueber { background: repeating-linear-gradient(135deg, var(--gelb) 0 3px, transparent 3px 6px); border-radius: 0; }
+.bilanz-text .zuviel { color: var(--gelb-text); }
+.bilanz-text .gesamt { color: var(--grau-9); font-weight: 500; }
 .bilanz .balken { width: 120px; }
 .zaehler { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 8px; font-weight: 600; font-size: 13px; }
 .zaehler.rot { background: var(--rot-flaeche); color: var(--rot-text); }
@@ -175,7 +177,10 @@ a { color: inherit; text-underline-offset: 2px; }
 .m-zahl { font-size: 12px; color: var(--grau-9); display: flex; justify-content: space-between; gap: 8px; }
 .m-zahl .fehlt { color: var(--rot-text); font-weight: 600; }
 .modul .balken > i { background: var(--rand); }
-.m-hinweis { font-size: 12px; color: var(--rot-text); }
+.m-hinweis { font-size: 12px; color: var(--rot-text); display: flex; gap: 4px; align-items: flex-start; text-align: left; line-height: 16px; }
+.m-hinweis .i { width: 12px; height: 12px; margin-top: 2px; }
+.rot-text { color: var(--rot-text); font-weight: 400; }
+.formulare { display: flex; flex-direction: column; gap: 6px; }
 .m-teile { display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; }
 .teil {
   width: 100%; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 0 8px; align-items: start;
@@ -220,7 +225,15 @@ a { color: inherit; text-underline-offset: 2px; }
 
 /* ── Mitte: Wochenkopf und Raster */
 .plan { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
-.p-kopf { flex: none; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.p-kopf { flex: none; display: flex; flex-direction: column; gap: 10px; }
+.p-zeile { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+/* Die Bereiche der Mitte (V-0328): Vorlesungszeit · vorlesungsfreie Zeit · Offen & Annahmen · So wird gerechnet */
+.reiter { display: flex; gap: 2px; border-bottom: 1px solid var(--grau-5); overflow-x: auto; scrollbar-width: none; }
+.reiter button { padding: 6px 12px 8px; font-size: 13px; color: var(--grau-9); border-radius: 8px 8px 0 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.reiter button[aria-selected="true"] { color: var(--grau-10); font-weight: 600; box-shadow: inset 0 -2px 0 var(--grau-10); }
+.reiter .zahl, .offen-gruppe h3 .zahl { font-size: 11px; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--rot); color: #fff; display: inline-grid; place-items: center; }
+.bereich { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 16px; padding: 4px 4px 32px 0; scrollbar-width: thin; }
+.bereich .satz, .bereich p.satz { color: var(--grau-9); font-size: 13px; }
 .p-titel { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
 .p-titel b { font-size: 15px; }
 .p-titel span { font-size: 12px; color: var(--grau-8); }
@@ -394,11 +407,13 @@ a { color: inherit; text-underline-offset: 2px; }
   .name .wortmarke { height: 18px; }
   .k-rechts { display: contents; }
   .k-rechts > .knopf { order: 2; }
-  .bilanz { order: 3; flex: 1 1 100%; }
+  .bilanz { order: 3; flex: 1 1 100%; flex-wrap: wrap; }
   .bilanz .balken { flex: 1; width: auto; }
   .sync { order: 4; }
   .k-links { order: 5; flex: 1 1 100%; }
-  .buehne, .buehne.ohne-leiste { display: flex; flex-direction: column; }
+  /* stretch, nicht start (von der Regel bis 1100 px): sonst wird die Mitte so breit wie das 640-px-Raster und die
+     ganze Seite scrollt seitlich. */
+  .buehne, .buehne.ohne-leiste { display: flex; flex-direction: column; align-items: stretch; }
   .plan { order: 1; }
   .module { order: 2; overflow: visible; padding: 0; }
   .leiste { order: 3; }
@@ -407,3 +422,122 @@ a { color: inherit; text-underline-offset: 2px; }
   .raster { height: 640px; flex: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ── Herkunft und Einheiten in der Karte eines Bestandteils (V-0328) */
+.herkunft { font-size: 12px; line-height: 17px; color: var(--grau-9); border-left: 2px solid var(--rand); padding: 2px 0 2px 8px; display: flex; flex-direction: column; gap: 2px; }
+.herkunft b { color: var(--grau-10); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.herkunft .gelb, .gelb { color: var(--gelb-text); }
+.herkunft .quelle, .quelle { color: var(--grau-8); }
+.einheiten { display: flex; flex-direction: column; gap: 1px; font-size: 12px; max-height: 320px; overflow: auto; }
+.eh-woche { margin-top: 6px; color: var(--grau-9); }
+.eh-woche b { color: var(--grau-10); }
+.eh-woche .gut { color: var(--grau-9); }
+.eh-woche .rot { color: var(--rot-text); font-weight: 600; }
+.eh-zeile { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 1px 0; }
+.eh-zeile.unsicher .eh-titel::after { content: " ?"; color: var(--gelb-text); font-weight: 700; }
+.eh-nr { color: var(--grau-8); text-align: right; }
+.eh-titel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eh-laenge { display: inline-flex; align-items: center; gap: 3px; color: var(--grau-8); }
+.eh-laenge input { width: 52px; height: 24px; padding: 0 4px; border-radius: 5px; border: 1px solid var(--grau-6); background: var(--grau-1); text-align: right; }
+.eh-laenge input:placeholder-shown { border-color: var(--rot); background: var(--rot-flaeche); }
+
+/* ── Vorlesungsfreie Zeit: Prüfungen oben, Tage darunter */
+.pk-reihe { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.pk { border: 1px solid var(--grau-5); border-radius: 10px; background: var(--grau-1); display: flex; flex-direction: column; gap: 6px; padding: 0 0 8px; }
+.pk.an { border-color: var(--rand); box-shadow: 0 0 0 2px var(--rand); }
+.pk.rot { border-left: 3px solid var(--rot); }
+.pk-wahl { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px 0; border-radius: 10px 10px 0 0; text-align: left; }
+.pk-titel { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.pk-wann { font-size: 12px; color: var(--grau-9); }
+.pk-wann.rot { color: var(--rot-text); font-weight: 600; }
+.pk-zahl { font-size: 12px; color: var(--grau-9); }
+.pk-zahl b { color: var(--rot-text); }
+.pk .balken > i { background: var(--rand); }
+.pk > .knopf { align-self: flex-start; margin-left: 10px; }
+.phase h3 { font-size: 14px; margin: 4px 0 6px; }
+.phase h3 span { font-weight: 400; color: var(--grau-8); font-size: 12px; }
+.kal { display: flex; flex-direction: column; gap: 3px; }
+.kal-kopf, .kal-zeile { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); gap: 3px; }
+.kal-kopf span { font-size: 11px; color: var(--grau-8); text-align: center; }
+.kal-woche { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; font-size: 11px; color: var(--grau-8); padding: 2px 4px; border-radius: 6px; }
+.kal-woche b { color: var(--grau-10); font-size: 12px; }
+.kal-tag { min-height: 74px; border: 1px solid var(--grau-5); border-radius: 8px; background: var(--grau-1); padding: 3px 4px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0; position: relative; }
+.kal-tag:hover { border-color: var(--grau-7); }
+.kal-tag.we { background: color-mix(in srgb, var(--grau-1) 70%, var(--grau-3)); }
+.kal-tag.aus { background: none; border-style: dashed; cursor: default; opacity: .5; }
+.kal-tag.heute { box-shadow: inset 0 0 0 2px var(--rot); }
+.kal-datum { font-size: 10px; color: var(--grau-8); }
+.kal-pruefung { font-size: 11px; font-weight: 700; background: var(--grau-10); color: var(--grau-1); border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kal-frist { font-size: 10px; font-weight: 600; background: var(--gelb-flaeche); color: var(--gelb-text); border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; }
+.kal-frist.wichtig { background: var(--rot-flaeche); color: var(--rot-text); }
+.kal-block { font-size: 11px; text-align: left; border-radius: 4px; padding: 0 4px; background: repeating-linear-gradient(135deg, var(--vor) 0 5px, var(--hauch) 5px 9px); color: var(--tinte); border-left: 3px solid var(--rand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kal-block.zaehlt-nicht { opacity: .5; text-decoration: line-through; }
+.kal-termine { font-size: 10px; color: var(--grau-8); }
+.kal-frei { margin-top: auto; font-size: 10px; color: var(--grau-7); }
+
+/* ── Offen & Annahmen */
+.offen-gruppe { display: flex; flex-direction: column; gap: 8px; }
+.offen-gruppe h3 { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.offen-gruppe.gelb h3 .zahl { background: var(--gelb); color: var(--grau-10); }
+.offen-modul { border: 1px solid var(--grau-5); border-radius: 10px; background: var(--grau-1); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.offen-modul h4 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.offen-zeile { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; padding: 3px 0; border-top: 1px solid var(--grau-4); }
+.offen-zeile:first-of-type { border-top: 0; }
+.offen-wo { color: var(--grau-9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.offen-gruppe.rot .offen-text { color: var(--rot-text); }
+.offen-gruppe.gelb .offen-text { color: var(--gelb-text); }
+.offen-knoepfe { display: flex; gap: 4px; }
+.annahmen { display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--grau-5); border-radius: 10px; background: var(--grau-1); padding: 6px 10px; }
+.annahme { display: grid; grid-template-columns: 170px minmax(0, 1fr) 110px 96px; gap: 10px; align-items: center; font-size: 13px; padding: 4px 0; border-top: 1px solid var(--grau-4); }
+.annahme:first-child { border-top: 0; }
+.annahme-wo { color: var(--grau-9); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.annahme-text span { color: var(--grau-9); }
+.annahme-wert { display: inline-flex; align-items: center; gap: 4px; color: var(--grau-8); font-size: 12px; }
+.annahme-wert input { width: 64px; height: 28px; border-radius: 6px; border: 1px solid var(--gelb); background: var(--gelb-flaeche); padding: 0 6px; text-align: right; }
+.annahme.fest .annahme-text b { font-weight: 500; }
+.annahme.bestaetigt .annahme-wert input { border-color: var(--grau-6); background: var(--grau-1); }
+.annahme.bestaetigt { opacity: .75; }
+
+/* ── So wird gerechnet */
+.erkl { max-width: 760px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 21px; }
+.erkl h3 { font-size: 15px; margin-top: 4px; }
+.erkl-liste { list-style: disc; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.erkl-tabelle { border-collapse: collapse; font-size: 12px; width: 100%; }
+.erkl-tabelle th, .erkl-tabelle td { text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--grau-4); vertical-align: top; }
+.erkl-tabelle th { color: var(--grau-8); font-weight: 500; }
+.erkl-tabelle tr.summe td { font-weight: 600; border-bottom: 0; }
+
+/* ── Minimap (rechte Leiste, V-0328): je Modul eine Summenzeile, darunter jeder Bestandteil */
+.l-zwischen { font-size: 13px; margin-top: 4px; }
+.mu-phasen .mu-phase { height: 3px; border-radius: 2px; background: var(--grau-10); }
+.mu-phasen .mu-phase.frei { background: var(--grau-5); }
+.mu-phasen .mu-phase.pruefung { background: var(--grau-7); }
+.mu-name { font-size: 11px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--grau-9); padding: 1px 4px 1px 0; text-align: left; border-radius: 4px; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.mu-modul { margin-top: 6px; }
+.mu-modul .mu-name { color: var(--grau-10); font-weight: 600; }
+.mu-zeile.rot .mu-name { color: var(--rot-text); }
+.mu-zeile.gewaehlt .mu-name { color: var(--grau-10); font-weight: 700; }
+.mu-zeile.gewaehlt { background: var(--vor); border-radius: 4px; }
+.mu-zeile.blass { opacity: .35; }
+.mu-z.an { background: var(--rand); }
+.mu-z.lern { background: repeating-linear-gradient(135deg, var(--rand) 0 2px, var(--vor) 2px 4px); }
+.mu-z.lern.leer { background: repeating-linear-gradient(135deg, var(--grau-6) 0 2px, transparent 2px 4px); }
+.mu-z.s1 { opacity: .55; }
+.mu-z.s2 { opacity: .8; }
+.mu-z.summe { background: var(--tinte); }
+.mu-z.freigabe::before { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--tinte); }
+.mu-z.an.freigabe::before, .mu-z.lern.freigabe::before { background: var(--grau-1); }
+.mu-kopf > button.treffer { color: var(--grau-10); font-weight: 700; box-shadow: inset 0 -2px 0 var(--rand); }
+.mu-zeile.gewaehlt .mu-z:not(.an):not(.lern):not(.pruefung):not(.frist) { background: color-mix(in srgb, var(--vor) 50%, var(--grau-3)); }
+
+@media (max-width: 820px) {
+  .offen-zeile, .annahme { grid-template-columns: 1fr; gap: 4px; }
+  .kal-tag { min-height: 58px; }
+  .kal-kopf, .kal-zeile { grid-template-columns: 36px repeat(7, minmax(0, 1fr)); gap: 2px; }
+  .bereich { overflow: visible; }
+  .erkl { min-width: 0; }
+  .erkl-tabelle { display: block; overflow-x: auto; }
+}
+
+.termin-wahl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.termin-wahl .t-zahlen { flex-basis: 100%; }
