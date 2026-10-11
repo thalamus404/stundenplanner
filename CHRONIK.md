@@ -12,6 +12,17 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas: geführt eine Sache nach der anderen, Blöcke an der Maus (V-0335)
+
+- Silas konnte in Schritt 3 auf keinem Gerät Blöcke zeichnen: Ein `const fertig` im Zeiger-Handler verdeckte das neue
+  `fertig()` aus V-0334, jeder Zeigerdruck brach ab. Repariert, kommentiert, und ein Test verbietet jetzt innere Namen,
+  die einen Helfer der obersten Ebene verdecken.
+- Statt zeichnen: Je Bestandteil eine Vorgabe je Woche (Video: Soll ÷ Videowochen, höchstens der Videobedarf; EVL:
+  1,5–2-h-Blöcke, k je Woche oder alle n Wochen) — „Block legen“ hängt ihn an den Zeiger, freie Plätze sind grün
+  (in Schritt 4 kräftig zwischen 10 und 18 Uhr), ein Klick legt ihn ab (docs/SILAS.md §2.8a, §3, §4).
+- Schritt 2–4 führen von oben nach unten: oben links die Reihe des Schritts (wie viele Gruppen vorhanden, was gewählt
+  oder gelegt ist), dran ist immer genau eine Sache.
+
 ## 11.10.2026 — /silas: Schritt für Schritt, festlegen, Prüfungen danach (V-0334)
 
 - Silas zu V-0333: Schritt 1 soll wirklich nur die Grundlage zeigen; in jedem weiteren Schritt ist alles Frühere grau

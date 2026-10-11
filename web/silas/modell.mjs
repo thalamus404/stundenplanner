@@ -26,6 +26,10 @@ export const REGELN = {
   pendeln_min: 45,
   toleranz_min: 120,    // Silas, 11.10.: Abweichungen bis ±2 h nicht melden („sonst zu verwirrend“)
   vorlauf_tage: 21,     // Vorbereitung auf eine Prüfung in der Vorlesungszeit wird so viele Tage vorher kritisch
+  evl_block_min: 120,   // Silas, 11.10. (V-0335): „EVL-Block muss einfach zwei Stunden sein“ …
+  evl_min_min: 90,      // … „mindestens anderthalb Stunden“
+  evl_fenster: ['10:00', '18:00'], // freie Plätze dazwischen sind bevorzugt („alles zwischen 10 und 18 Uhr preferred“)
+  tag_fenster: ['08:00', '20:00'], // wo freie Plätze überhaupt gesucht werden
 };
 
 // ── Zeit ─────────────────────────────────────────────────────────────────────────────────────────
@@ -411,10 +415,11 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   }
 
   // 3 · Silas' Blöcke (Schicht D). Ein Wochenblock gilt in jeder Vorlesungswoche (in der Pause nur mit
-  //     pause: true), ein Datumsblock genau an seinem Tag.
+  //     pause: true), mit `alle: n` nur in jeder n-ten (ab der ersten, `versatz` verschiebt), ein Datumsblock genau
+  //     an seinem Tag. (`alle`, V-0335: ein 2-h-EVL-Block für 1 h je Woche liegt alle zwei Wochen.)
   for (const b of plan.bloecke || []) {
     const z = b.teil ? teile.get(b.teil) : null;
-    const tage = [];
+    let tage = [];
     if (b.datum) tage.push(b.datum);
     else {
       const ziel = TAGE.indexOf(b.tag);
@@ -426,6 +431,8 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         if (d < sem.vorlesung.von || d > sem.vorlesung.bis) continue;
         tage.push(d);
       }
+      const alle = Math.max(1, Math.round(b.alle || 1));
+      if (alle > 1) tage = tage.filter((_, i) => i % alle === (b.versatz || 0) % alle);
     }
     for (const d of tage) {
       const v = {
@@ -889,6 +896,57 @@ export function gesperrtDurch(angebot, plan, erg, { tag, datum = null, start, en
     }
   }
   return [...new Set(aus)];
+}
+
+/** Die Vorgabe je Woche (V-0335, Silas: „dass man einfach die Vorgabe bekommt: um die Gesamtstunden über das Semester
+ *  innerhalb der Vorlesungszeit zu erreichen, müsstest du in der Woche zwei Stunden für Statistik blocken“). Gerechnet
+ *  auf das Soll abzüglich der Toleranz (±2 h melden ohnehin nichts):
+ *  - Video: EIN Block je Woche, von der Woche der ersten Freigabe bis zum Ende der Vorlesungszeit, so lang, dass er
+ *    das Soll deckt — höchstens aber, was die Videos mit Puffer brauchen (mehr zählt nicht: Ein Block ohne Video ist
+ *    leer). Aufs Raster aufgerundet. Was liegen bleibt, holt der nächste Block nach (rechnen(), Schritt 6).
+ *  - EVL: Blöcke von evl_min_min bis evl_block_min (1,5–2 h, Silas: „mindestens anderthalb Stunden … einfach zwei
+ *    Stunden“); k je Woche oder einer alle n Wochen — was dem Soll am nächsten kommt, bei Gleichstand der längere Block.
+ *  Ergebnis: { dauer_min, anzahl (je Woche), alle (jede n-te Woche), wochen (wie oft er liegt), summe_min, soll_min }
+ *  oder null (Präsenz, Prüfung, kein Soll). Was tatsächlich zählt, rechnet danach rechnen() an den echten Tagen. */
+export function vorgabe(erg, teilId) {
+  const z = erg.teile.get(teilId);
+  if (!z || !(z.soll_min > 0) || !['video', 'selbst'].includes(z.teil.art)) return null;
+  const r = erg.regeln;
+  const vlWochen = erg.wochen.filter((w) => w.art === 'vorlesung');
+  const vl = vlWochen.length || 15;
+  if (z.teil.art === 'video') {
+    const ab = z.gruppen && z.gruppen.length ? montagVon(z.gruppen[0].ab) : vlWochen[0].von;
+    const w = vlWochen.filter((x) => x.von >= ab).length || vl;
+    const ziel = Math.max(r.raster_min, Math.min(z.soll_min - r.toleranz_min, z.video_bedarf_min || Infinity));
+    const dauer = Math.max(r.raster_min, aufRaster(ziel / w, r.raster_min));
+    return { dauer_min: dauer, anzahl: 1, alle: 1, wochen: w, summe_min: dauer * w, soll_min: z.soll_min, video_min: z.video_bedarf_min || null };
+  }
+  let beste = null;
+  for (let L = r.evl_block_min; L >= r.evl_min_min; L -= 15) {
+    for (let k = 1; k <= 4; k++) {
+      for (let alle = 1; alle <= (k === 1 ? 8 : 1); alle++) {
+        const wochen = Math.ceil(vl / alle);
+        const summe = k * L * wochen;
+        const abstand = Math.abs(summe - z.soll_min);
+        if (!beste || abstand < beste.abstand - 1) beste = { dauer_min: L, anzahl: k, alle, wochen, summe_min: summe, soll_min: z.soll_min, abstand };
+      }
+    }
+  }
+  delete beste.abstand;
+  return beste;
+}
+
+/** Freie Fenster eines Tages: wo zwischen von und bis (Minuten) ein Block der Länge dauer passt, ohne etwas zu
+ *  überdecken. belegt: [[start, ende], …]. Ergebnis: [[start, ende], …] — die ganzen freien Strecken. */
+export function freieFenster(belegt, dauer, von, bis) {
+  const b = belegt.map(([s, e]) => [Math.max(von, s), Math.min(bis, e)]).filter(([s, e]) => e > s).sort((x, y) => x[0] - y[0]);
+  const aus = [];
+  let cursor = von;
+  for (const [s, e] of [...b, [bis, bis]]) {
+    if (s - cursor >= dauer) aus.push([cursor, s]);
+    cursor = Math.max(cursor, e);
+  }
+  return aus;
 }
 
 // ── Sichten ──────────────────────────────────────────────────────────────────────────────────────

@@ -289,6 +289,51 @@ test('Seite: Kinder werden nur über fuellen() ersetzt — replaceChildren(null)
   assert.equal((seite.match(/\.replaceChildren\(/g) || []).length, 1, 'replaceChildren nur in fuellen()');
 });
 
+test('Seite: kein inneres const/let mit dem Namen eines Helfers der obersten Ebene (fertig, schritt …)', () => {
+  // V-0334: Ein „const fertig = () => …“ im Zeiger-Handler verdeckte fertig() — jeder Zeigerdruck im Raster brach mit
+  // „Cannot access 'fertig' before initialization“ ab, Silas konnte auf keinem Gerät mehr Blöcke legen.
+  const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');
+  const oben = new Set([...seite.matchAll(/^(?:const|let|function|async function) ([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]));
+  const innen = [...seite.matchAll(/^[ \t]+(?:const|let) ([A-Za-z_$][\w$]*)\s*=/gm)].map((m) => m[1]).filter((n) => oben.has(n));
+  assert.deepEqual([...new Set(innen)], [], `verdeckt: ${innen.join(', ')}`);
+});
+
+test('Vorgabe je Woche: Video so lang wie Soll ÷ Videowochen, höchstens der Videobedarf; EVL 1,5–2 h, k je Woche oder alle n Wochen', () => {
+  const e = M.rechnen(angebot(), {});
+  const v = M.vorgabe(e, 'bsp-video');
+  // Zwei Videos à 105 min ab W02 (je Woche 2 h mit Puffer = 4 h Bedarf) — das Soll 10 h ist mehr als die Videos
+  // brauchen; die Vorgabe deckt den Bedarf in den 15 Wochen ab der ersten Freigabe: 4 h ÷ 15 → 30 min.
+  assert.deepEqual([v.anzahl, v.alle, v.wochen, v.dauer_min], [1, 1, 15, 30]);
+  assert.equal(v.video_min, 240);
+  // 20 h Nachbereitung in 16 Wochen: 1,5 h jede Woche (24 h) und 2 h alle zwei Wochen (16 h) liegen gleich weit
+  // weg — bei Gleichstand gilt der längere Block.
+  const n = M.vorgabe(e, 'bsp-vn');
+  assert.deepEqual([n.dauer_min, n.anzahl, n.alle, n.wochen, n.summe_min], [120, 1, 2, 8, 16 * 60]);
+  // 30 h: 2 h jede Woche.
+  const a = angebot(); a.module[0].teile[1].soll_h = 0; // die Videos geben ihren Anteil ab: Nachbereitung 30 h
+  const n30 = M.vorgabe(M.rechnen(a, {}), 'bsp-vn');
+  assert.deepEqual([n30.dauer_min, n30.anzahl, n30.alle], [120, 1, 1]);
+  assert.equal(M.vorgabe(e, 'bsp-vl'), null, 'Präsenz hat keine Vorgabe');
+  assert.equal(M.vorgabe(e, 'bsp-pv'), null, 'die Prüfungsvorbereitung kommt nach dem Festlegen');
+});
+
+test('Wochenblock alle n Wochen: liegt in jeder n-ten Vorlesungswoche, versatz verschiebt', () => {
+  const plan = { bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00', alle: 2 }] };
+  const tage = M.rechnen(angebot(), plan).vorkommen.filter((v) => v.block === 'b').map((v) => v.datum);
+  assert.equal(tage.length, 8);
+  assert.equal(tage[0], '2030-10-17');
+  assert.equal(tage[1], '2030-10-31');
+  plan.bloecke[0].versatz = 1;
+  assert.equal(M.rechnen(angebot(), plan).vorkommen.find((v) => v.block === 'b').datum, '2030-10-24');
+});
+
+test('Freie Fenster: wo ein Block der Länge passt, ohne etwas zu überdecken', () => {
+  const m = M.min;
+  assert.deepEqual(M.freieFenster([[m('10:00'), m('12:00')], [m('14:00'), m('15:00')]], 120, m('08:00'), m('20:00')),
+    [[m('08:00'), m('10:00')], [m('12:00'), m('14:00')], [m('15:00'), m('20:00')]]);
+  assert.deepEqual(M.freieFenster([[m('09:00'), m('10:30')]], 120, m('08:00'), m('12:00')), []);
+});
+
 test('Keine Vorschläge mehr: der Lernplan-Vorschlag ist aus Modell und Seite entfernt', () => {
   assert.equal(M.lernplanVorschlag, undefined);
   const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');

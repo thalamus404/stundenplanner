@@ -77,7 +77,9 @@ const Z = {
   // erklaerung (So wird gerechnet).
   ansicht: { schritt: 1, bereich: 'plan', modus: 'standard', woche: null, leiste: true, wochenende: false },
   fokus: null,          // Teil-Id (oder modul:…, pruefung:…), dessen Karte offen ist
-  setzen: null,         // Teil-Id, für den ein Block ins Raster gezogen wird
+  setzen: null,         // Teil-Id der Prüfungsvorbereitung, für die man Lerntage antippt (festgelegt, Prüfungen)
+  legen: null,          // { teil, dauer, alle, rest } — der Block, der am Zeiger hängt (V-0335)
+  jetzt: {},            // je Schritt der Bestandteil, den Silas links gewählt hat (sonst der erste offene)
   hell: null,           // Vorkommen-Id, die kurz hervorgehoben wird
   rueck: [],            // Rückgängig-Stapel (JSON der vorigen Stände)
   sync: { lage: 'ruhig', zeit: null, timer: null, laeuft: false, nochmal: false },
@@ -198,7 +200,7 @@ function torZeigen(fehler) {
   $('tor-schluessel').focus();
 }
 
-async function start() {
+async function starten() {
   ansichtLaden();
   const frag = /(?:^#|&)schluessel=([A-Za-z0-9_-]{32,128})/.exec(location.hash);
   if (frag) { ls.set(LS.schluessel, frag[1]); history.replaceState(null, '', location.pathname + location.search); }
@@ -370,10 +372,75 @@ let bedarf = null; // Map Teil-Id → Wochenbedarf, je Zeichnen neu
 /** Was ein Schritt von Silas will — oben in der linken Spalte, damit man nie raten muss, was hier zu tun ist. */
 const SCHRITT_TUN = {
   1: 'Das steht fest: deine Vorlesungen und die anderen festen Präsenztermine, dazu die Quizze. Hier wählst du nichts — prüf nur, ob es stimmt, und trag fehlende Uhrzeiten oder Räume nach.',
-  2: 'Wähl je Tutorium und Übung deine Gruppe. Ein Klick auf ein Modul oder einen Bestandteil zeigt im Raster nur seine Gruppen. Grau ist die Grundlage aus Schritt 1. Gruppen ohne Termine wählst du, sobald sie bekannt sind.',
-  3: 'Leg die Videos: Video wählen, dann im Raster einen Block aufziehen. Grau ist, was schon steht — darauf geht kein Block.',
-  4: 'Eigenverantwortliches Lernen: Vor- und Nachbereitung, Labs, Quizze. Bestandteil wählen, dann Block aufziehen. Grau ist, was schon steht. Danach: Stundenplan festlegen.',
+  2: 'Von oben nach unten, immer eine Wahl: Im Raster stehen nur die Gruppen der markierten Sache. Grau ist die Grundlage. Wo es noch keine Gruppen gibt, geht es weiter.',
+  3: 'Je Video ein fester Platz jede Woche. Die Vorgabe sagt, wie lang; „Block legen“ hängt ihn an den Zeiger, grün sind freie Plätze, ein Klick legt ihn ab.',
+  4: 'Eigenverantwortliches Lernen in Blöcken von 1,5–2 h. „Block legen“ hängt ihn an den Zeiger; freie Plätze sind grün, zwischen 10 und 18 Uhr kräftiger. Danach: Stundenplan festlegen.',
 };
+
+// ── Geführt: die Reihe je Schritt (V-0335) ──────────────────────────────────────────────────────
+// Silas, 11.10.: „dass man von oben nach unten durchgeführt wird. Man fängt an mit dem ersten Modul … und damit der
+// ersten Sache … eine Zusammenfassung, welche alle da gewählt werden und wie viele jeweils vorhanden sind … du wählst
+// halt genau gerade eine einzige Sache.“ Jeder Schritt hat eine Reihe in der Reihenfolge der Module; dran ist, was
+// Silas links gewählt hat, sonst die erste offene Sache. Nach jeder Wahl, nach jedem fertigen Block rückt sie weiter.
+
+/** Die Reihe eines Schritts: in 2 jede Wahl (mit Zahl der Gruppen und der gewählten), in 3 und 4 jeder Bestandteil
+ *  mit Soll und seiner Vorgabe je Woche (M.vorgabe). */
+function reihe(n = schritt()) {
+  const aus = [];
+  const tol = Z.erg.regeln.toleranz_min;
+  for (const r of Z.erg.module) {
+    for (const z of r.teile) {
+      if (M.schrittVon(z.teil) !== n) continue;
+      if (n === 2) {
+        const anzahl = (z.teil.optionen || []).length, gew = gewaehltVon(z.teil);
+        aus.push({ z, anzahl, gew, fertig: !!gew, offen: anzahl > 0 && !gew });
+      } else if (n >= 3 && n <= 4) {
+        const vg = M.vorgabe(Z.erg, z.teil.id);
+        if (!vg) continue;
+        const woche = (Z.stand.plan.bloecke || []).filter((b) => b.teil === z.teil.id && !b.datum).length;
+        const erledigt = z.fehlt_min < tol || woche >= vg.anzahl;
+        aus.push({ z, vg, woche, fertig: erledigt, offen: !erledigt });
+      }
+    }
+  }
+  return aus;
+}
+function jetztIn(n = schritt()) {
+  const liste = reihe(n);
+  return (Z.jetzt[n] && liste.find((x) => x.z.teil.id === Z.jetzt[n])) || liste.find((x) => x.offen) || null;
+}
+/** Die Vorgabe als Satz: „1,5 h jede Woche — 16× = 24 h von 30 h“. */
+function vorgabeText(vg, kurz = false) {
+  const block = `${vg.anzahl > 1 ? `${vg.anzahl} × ` : ''}${M.stunden(vg.dauer_min)}`;
+  const takt = vg.alle > 1 ? `alle ${vg.alle} Wochen` : 'jede Woche';
+  if (kurz) return `${block} ${vg.alle > 1 ? `alle ${vg.alle} Wo.` : 'je Woche'}`;
+  return `${block} ${takt} — ${vg.wochen}× = ${M.stunden(vg.summe_min)} von ${M.stunden(vg.soll_min)}`;
+}
+
+function reiheEl(n) {
+  const liste = reihe(n);
+  if (!liste.length) return null;
+  const j = jetztIn(n);
+  return h('ol', { class: 'reihe' }, ...liste.map((x) => {
+    const m = x.z.modul, t = x.z.teil, dran = j && j.z === x.z;
+    const stand = n === 2
+      ? (x.gew ? `✓ ${x.gew.label.split(' · ').slice(0, 2).join(' · ')}` : x.anzahl ? `${x.anzahl} Gruppen` : '0 vorhanden')
+      : (x.fertig ? `✓ ${M.stunden(x.z.ist_min)}` : vorgabeText(x.vg, true));
+    const li = h('li', { class: `m${m.farbe || 1}${dran ? ' dran' : ''}${x.fertig ? ' fertig' : ''}${!x.offen && !x.fertig ? ' kommt' : ''}` },
+      h('button', { type: 'button', class: 'r-zeile', 'data-act': 'jetzt', 'data-teil': t.id, 'aria-current': dran ? 'true' : null },
+        h('span', { class: 'm-punkt' }), h('span', { class: 'r-name', text: `${M.kurz(m)} · ${t.titel}` }), h('span', { class: 'r-stand', text: stand })));
+    if (dran && n === 2) {
+      li.append(h('p', { class: 'r-satz', text: x.gew ? 'Gewählt. Eine andere Gruppe im Raster anklicken, um umzuwählen.' : `Wähl im Raster eine der ${x.anzahl} Gruppen (gestrichelt).` }));
+    }
+    if (dran && n >= 3) {
+      const an = Z.legen && Z.legen.teil === t.id;
+      li.append(h('p', { class: 'r-satz', text: `Vorgabe: ${vorgabeText(x.vg)}${x.vg.video_min ? ` (die Videos brauchen ${M.stunden(x.vg.video_min)})` : ''}. Gelegt: ${M.stunden(x.z.ist_min)}.` }),
+        h('button', { type: 'button', class: `knopf klein${an ? ' an' : ' haupt'}`, 'data-act': an ? 'legen-aus' : 'legen', 'data-teil': t.id }, sym(an ? 'zu' : 'plus'),
+          an ? 'Block hängt am Zeiger — abbrechen' : `Block legen · ${M.stunden(x.vg.dauer_min)}${x.vg.alle > 1 ? `, alle ${x.vg.alle} Wochen` : ''}`));
+    }
+    return li;
+  }));
+}
 
 function moduleZeichnen() {
   const box = $('module');
@@ -387,7 +454,7 @@ function moduleZeichnen() {
   // Im Ablauf: was der Schritt will und der Weg weiter (V-0334, Silas: „und dann, wenn man alles gewählt hat, dann kann
   // man sagen, Stundenplan festlegen“). Festgelegt: woran man ist.
   const tun = !fertig()
-    ? h('div', { class: 'schritt-tun' }, h('b', { text: `Schritt ${sch.nr} · ${sch.titel}` }), h('span', { text: SCHRITT_TUN[sch.nr] }),
+    ? h('div', { class: 'schritt-tun' }, h('b', { text: `Schritt ${sch.nr} · ${sch.titel}` }), h('span', { text: SCHRITT_TUN[sch.nr] }), n >= 2 ? reiheEl(n) : null,
       n < 4 ? h('button', { type: 'button', class: 'knopf haupt', 'data-act': 'schritt', 'data-schritt': String(n + 1) }, `Weiter: ${n + 1} · ${M.SCHRITTE[n].titel}`, sym('rechts'))
         : h('button', { type: 'button', class: 'knopf haupt', 'data-act': 'festlegen' }, sym('ok'), 'Stundenplan festlegen'))
     : Z.ansicht.bereich === 'frei'
@@ -599,8 +666,9 @@ function teilKarte(z) {
     akt.append(h('button', { class: `knopf klein${an ? ' an' : ''}`, type: 'button', 'data-act': 'setzen', 'data-teil': t.id }, sym('plus'), an ? 'Lerntage setzen: Tage antippen' : 'Lerntage setzen'));
   } else if (t.art !== 'praesenz' && hier) {
     // Blöcke nur im eigenen Schritt (Videos in 3, alles andere in 4): Wer hier ist, entscheidet genau das.
-    const an = Z.setzen === t.id;
-    akt.append(h('button', { class: `knopf klein${an ? ' an' : ''}`, type: 'button', 'data-act': 'setzen', 'data-teil': t.id }, sym('plus'), an ? 'Block setzen: ins Raster ziehen' : 'Block setzen'));
+    const vg = M.vorgabe(Z.erg, t.id);
+    if (vg) akt.append(h('span', { class: 't-zahlen', text: `Vorgabe: ${vorgabeText(vg)}` }),
+      h('button', { class: 'knopf klein', type: 'button', 'data-act': 'legen', 'data-teil': t.id }, sym('plus'), 'Block legen'));
   } else if (t.art !== 'praesenz') {
     akt.append(h('button', { class: 'knopf klein', type: 'button', 'data-act': 'schritt', 'data-schritt': String(M.schrittVon(t)), 'data-teil': t.id, text: `In Schritt ${M.schrittVon(t)} planen` }));
   }
@@ -845,10 +913,17 @@ function bannerZeigen() {
     h('button', { class: 'knopf', type: 'button', 'data-act': 'ueberschreiben', text: 'Meinen behalten' }));
     b.hidden = false; return;
   }
+  if (Z.legen) {
+    const z = Z.erg.teile.get(Z.legen.teil);
+    b.className = 'banner';
+    fuellen(b, h('span', { text: `${M.kurz(z.modul)} · ${z.teil.titel}: Der Block (${M.stunden(Z.legen.dauer)}) hängt am Zeiger — klick, wo er ${Z.legen.alle > 1 ? `alle ${Z.legen.alle} Wochen` : 'jede Woche'} liegen soll${Z.legen.rest > 1 ? ` (noch ${Z.legen.rest})` : ''}. Grün ist frei${schritt() === 4 ? ', kräftig zwischen 10 und 18 Uhr' : ''}. Esc bricht ab.` }),
+    h('button', { class: 'knopf', type: 'button', 'data-act': 'legen-aus', text: 'Abbrechen' }));
+    b.hidden = false; return;
+  }
   if (Z.setzen) {
     const z = Z.erg.teile.get(Z.setzen);
     b.className = 'banner';
-    fuellen(b, h('span', { text: `${M.kurz(z.modul)} · ${z.teil.titel}: ${Z.ansicht.bereich === 'frei' ? 'Tipp einen Tag an, um einen Lerntag zu setzen' : 'Zieh im Raster einen Block auf'}${z.fehlt_min ? ` (fehlt: ${M.stunden(z.fehlt_min)})` : ''}. ${zeigtRaster() ? (rasterLage().std ? 'Er gilt jede Vorlesungswoche. ' : 'Hier fragt er, ob jede Woche oder nur an diesem Tag. ') : ''}Präsenz und gewählte Gruppen sind gesperrt.` }),
+    fuellen(b, h('span', { text: `${M.kurz(z.modul)} · ${z.teil.titel}: Tipp einen Tag an, um einen Lerntag zu setzen${z.fehlt_min ? ` (fehlt: ${M.stunden(z.fehlt_min)})` : ''}.` }),
     h('button', { class: 'knopf', type: 'button', 'data-act': 'setzen-aus', text: 'Fertig' }));
     b.hidden = false; return;
   }
@@ -887,17 +962,11 @@ function kachelnJetzt() {
   const im = out.filter((k) => k.schritt <= n);
   for (const k of im) k.lage = k.schritt < n ? 'frueher' : 'jetzt';
   if (n !== 2) return im;
-  // Schritt 2, die Gruppen zur Wahl (Silas, 11.10.: „wenn ich jetzt auf Statistik 1 klicke, dann sollen mir nur Gruppen
-  // zu wählen angezeigt werden, die dazugehören … wenn ich bei Bilanzierung und Kostenrechnung auf Tutorium drücke, alle
-  // Tutoriumstermine“). Ohne Auswahl links: alle noch nicht gewählten. Ist eine gewählt, verblassen die anderen
-  // (abgewaehlt) — sichtbar nur, solange ihr Modul oder Teil gewählt ist, damit man umwählen kann.
-  const fm = Z.fokus && Z.fokus.startsWith('modul:') ? Z.fokus.slice(6) : null;
-  for (const { teil: t, modul: m } of M.teileVon(Z.stand.angebot)) {
-    if (!M.istWahl(t) || !(t.optionen || []).length) continue;
-    const imFilter = Z.fokus === t.id || fm === m.id;
-    if ((fm || (Z.fokus && !Z.fokus.includes(':'))) && !imFilter) continue;
-    const gewaehlt = Z.stand.plan.wahl?.[t.id];
-    if (gewaehlt && !imFilter) continue;
+  // Schritt 2: nur die Gruppen der Wahl, die dran ist (V-0335, Silas: „du wählst halt genau gerade eine einzige Sache“).
+  // Ist sie schon gewählt, steht die gewählte durchgezogen da und die anderen verblassen (abgewaehlt) — zum Umwählen.
+  const j = jetztIn(2);
+  if (j && j.anzahl) {
+    const t = j.z.teil, gewaehlt = Z.stand.plan.wahl?.[t.id];
     for (const o of M.optionsKacheln(Z.stand.angebot, Z.erg, t.id)) {
       if (o.option === gewaehlt) continue;
       const k = { ...o, abgewaehlt: !!gewaehlt, schritt: 2, lage: 'jetzt' };
@@ -944,9 +1013,9 @@ function rasterZeichnen() {
   for (const id of ['raster', 'r-kopf', 'ganztag']) $(id).style.setProperty('--tage', String(tage));
   const raster = $('raster');
   raster.style.setProperty('--stunde', `calc(100% / ${h1 - h0})`);
-  raster.classList.toggle('setzen', !!Z.setzen);
-  // In Schritt 1 und 2 legt man keine Blöcke: kein Fadenkreuz, ein Ziehen erklärt sich (zeigerRunter).
-  raster.classList.toggle('ohne-bloecke', schritt() < 3);
+  raster.classList.toggle('legen', !!Z.legen);
+  // In Schritt 1 und 2 legt man keine Blöcke: kein Fadenkreuz, ein Klick erklärt sich (zeigerRunter).
+  raster.classList.toggle('ohne-bloecke', !fertig() && schritt() < 3);
 
   // Kopf: Tage, in der echten Woche mit Datum und Last des Tages
   const zahlen = std ? null : M.woche(Z.erg, w.id);
@@ -1032,6 +1101,24 @@ function rasterZeichnen() {
     const d = M.wochentag(heute()), m = jetztMin();
     if (d < tage && m > h0 * 60 && m < h1 * 60) { const l = h('div', { class: 'r-jetzt' }); l.style.top = `${((m - h0 * 60) / ((h1 - h0) * 60)) * 100}%`; spaltenEl[d].append(l); }
   }
+  // Hängt ein Block am Zeiger: freie Plätze je Tag (M.freieFenster) grün; in Schritt 4 kräftiger, was zwischen 10 und
+  // 18 Uhr liegt (Silas: „automatisch geguckt, wo freie Plätze sind … zwischen 10 und 18 Uhr immer preferred“).
+  geo.frei = [];
+  if (Z.legen) {
+    const [fa, fe] = Z.erg.regeln.tag_fenster.map(M.min);
+    const [pa, pe] = Z.erg.regeln.evl_fenster.map(M.min);
+    for (let d = 0; d < tage; d++) {
+      const belegt = kacheln.filter((k) => k.tag === d && k.art !== 'option').map((k) => [k.start, k.ende]);
+      const fenster = M.freieFenster(belegt, Z.legen.dauer, Math.max(fa, h0 * 60), Math.min(fe, h1 * 60));
+      geo.frei[d] = fenster;
+      for (const [a, b] of fenster) {
+        const band = (x, y, kl) => { const el = h('div', { class: kl }); el.style.top = `${((x - h0 * 60) / ((h1 - h0) * 60)) * 100}%`; el.style.height = `${((y - x) / ((h1 - h0) * 60)) * 100}%`; spaltenEl[d].prepend(el); };
+        band(a, b, 'frei-fenster');
+        const x = Math.max(a, pa), y = Math.min(b, pe);
+        if (schritt() === 4 && y - x >= Z.legen.dauer) band(x, y, 'frei-fenster bevorzugt');
+      }
+    }
+  }
   fuellen(raster, zeiten, ...spaltenEl);
 }
 
@@ -1089,6 +1176,7 @@ function kachelEl(k) {
     else if (sf && !geo.std) { kl.push('gekuerzt'); zeile2 = `fällt hier teilweise weg · ${zeitspanne(k.start, k.ende)}`; }
     if (geo.std && k.vk && !kl.includes('gesperrt')) {
       const zaehlt = k.vk.filter((v) => v.zaehlt_min > 0).length;
+      if (b && b.alle > 1) zeile2 = `${zeitspanne(k.start, k.ende)} · alle ${b.alle} Wochen`;
       if (z && zaehlt < k.vk.length) zeile2 = `${zeitspanne(k.start, k.ende)} · zählt ${zaehlt} von ${k.vk.length}`;
     } else if (k.v) {
       if (k.v.flags.includes('leer')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: kein Video/keine Einheit'; }
@@ -1182,7 +1270,7 @@ function bedarfZeichnen() {
       const tun = b.grund === 'kommt' ? h('span', { text: 'Termine kommen noch' })
         : fertig() ? null
           : b.grund === 'waehlen' ? h('button', { type: 'button', 'data-act': 'teil', 'data-teil': z.teil.id, text: 'Gruppe wählen' })
-            : h('button', { type: 'button', 'data-act': 'setzen', 'data-teil': z.teil.id, text: 'Block setzen' });
+            : h('button', { type: 'button', 'data-act': 'legen', 'data-teil': z.teil.id, text: 'Block legen' });
       return h('span', { class: `bd ${st} m${m.farbe || 1}`, title: `${M.kurz(m)} · ${z.teil.titel}: ${M.stunden(b.ist_min)} von ${M.stunden(b.soll_min)} im Plan` },
         h('span', { class: 'm-punkt' }), `${M.kurz(m)} · ${z.teil.titel} · ${M.stunden(b.offen_min)}`, tun);
     }));
@@ -1582,41 +1670,6 @@ function karteSchliessen(abbruch = true) {
   if (f) f(abbruch);
 }
 
-/** Wofür ist dieser neue Block? Die Teile, die noch Stunden brauchen, zuerst. */
-function wofuerKarte(entwurf, nahe) {
-  // Nur, was in diesem Schritt geplant wird: Videos in Schritt 3, alles andere in Schritt 4 (V-0333).
-  const kandidaten = [...Z.erg.teile.values()].filter((z) => z.teil.art !== 'praesenz' && M.schrittVon(z.teil) === schritt()).sort((a, b) => b.fehlt_min - a.fehlt_min);
-  const liste = h('div', { class: 'wahl-liste' },
-    ...kandidaten.map((z) => h('button', { type: 'button', class: `m${z.modul.farbe || 1}`, onclick: () => { karteSchliessen(false); blockAnlegen({ ...entwurf, teil: z.teil.id }); } },
-      h('span', { class: 'm-punkt' }), h('span', { text: `${M.kurz(z.modul)} · ${z.teil.titel}` }), h('span', { class: z.fehlt_min ? '' : 'grau', text: z.fehlt_min ? `fehlt ${M.stunden(z.fehlt_min)}` : 'gedeckt' }))),
-    schritt() === 4 ? h('button', { type: 'button', onclick: () => { karteSchliessen(false); blockAnlegen({ ...entwurf, teil: null, titel: 'Puffer' }); } },
-      h('span', { class: 'm-punkt' }), h('span', { text: 'Puffer / Organisation (zählt nicht für LP)' }), h('span')) : null);
-  karteOeffnen([h('h3', {}, `Block ${datumOderTag(entwurf)} ${zeitspanne(entwurf.start, entwurf.ende)}`), h('p', { class: 'satz', text: 'Wofür ist diese Zeit?' }), liste], nahe, () => rasterZeichnen());
-}
-const datumOderTag = (e) => e.datum ? datumMitTag(e.datum) : M.TAGE_LANG[e.tag];
-
-/** Einen Block anlegen. In der echten Vorlesungswoche fragt er: jede Woche oder nur an diesem Tag. */
-function blockAnlegen(e, nahe) {
-  const w = geo.woche;
-  const z = e.teil ? Z.erg.teile.get(e.teil) : null;
-  const machen = (woechentlich) => {
-    if (gesperrtMelden({ tag: e.tag, datum: e.datum, start: e.start, ende: e.ende, woechentlich })) { rasterZeichnen(); return; }
-    const b = { id: neueId('b'), teil: e.teil || null, start: M.hhmm(e.start), ende: M.hhmm(e.ende) };
-    if (e.titel) b.titel = e.titel;
-    if (woechentlich) b.tag = M.TAGE[e.tag]; else b.datum = e.datum;
-    aendern((s) => { s.plan.bloecke = [...(s.plan.bloecke || []), b]; });
-  };
-  if (geo.std) return machen(true);
-  if (w.art !== 'vorlesung' || (z && z.teil.art === 'pruefung')) return machen(false);
-  if (gesperrtMelden({ tag: e.tag, datum: e.datum, start: e.start, ende: e.ende, woechentlich: false })) { rasterZeichnen(); return; }
-  karteOeffnen([
-    h('h3', { text: `${z ? `${M.kurz(z.modul)} · ${z.teil.titel}` : 'Puffer'} · ${zeitspanne(e.start, e.ende)}` }),
-    h('div', { class: 'zeile' },
-      h('button', { class: 'knopf', type: 'button', onclick: () => { karteSchliessen(false); machen(false); }, text: `Nur ${datumMitTag(e.datum)}` }),
-      h('button', { class: 'knopf haupt', type: 'button', onclick: () => { karteSchliessen(false); machen(true); }, text: `Jeden ${M.TAGE_LANG[e.tag]}` })),
-  ], nahe, () => rasterZeichnen());
-}
-
 function blockKarte(blockId, nahe, datum) {
   const b = (Z.stand.plan.bloecke || []).find((x) => x.id === blockId);
   if (!b) return;
@@ -1635,6 +1688,7 @@ function blockKarte(blockId, nahe, datum) {
     b.datum
       ? h('label', { class: 'breit' }, 'Datum', h('input', { name: 'datum', type: 'date', value: b.datum }))
       : h('label', {}, 'Wochentag', h('select', { name: 'tag' }, ...M.TAGE.map((x) => h('option', { value: x, selected: x === b.tag, text: M.TAGE_LANG[M.TAGE.indexOf(x)] })))),
+    !b.datum ? h('label', {}, 'Takt', h('select', { name: 'alle' }, ...[1, 2, 3, 4, 6, 8].map((n) => h('option', { value: String(n), text: n === 1 ? 'jede Woche' : `alle ${n} Wochen`, selected: (b.alle || 1) === n })))) : null,
     !b.datum ? h('label', {}, 'Auch in der Pause', h('select', { name: 'pause' }, h('option', { value: '', text: 'nein', selected: !b.pause }), h('option', { value: '1', text: 'ja', selected: !!b.pause }))) : null,
     h('label', {}, 'von', h('input', { name: 'start', type: 'time', step: '300', value: b.start })),
     h('label', {}, 'bis', h('input', { name: 'ende', type: 'time', step: '300', value: b.ende })),
@@ -1652,6 +1706,8 @@ function blockKarte(blockId, nahe, datum) {
     const f = new FormData(form);
     const start = f.get('start'), ende = f.get('ende');
     if (!start || !ende || M.min(ende) <= M.min(start)) { alert('„bis“ muss nach „von“ liegen.'); return; }
+    const neuTeil = f.get('teil') ? Z.erg.teile.get(f.get('teil'))?.teil : null;
+    if (M.schrittVonBlock(neuTeil) === 4 && M.min(ende) - M.min(start) < Z.erg.regeln.evl_min_min) { alert(`Ein EVL-Block ist mindestens ${M.stunden(Z.erg.regeln.evl_min_min)} lang.`); return; }
     const tag = b.datum ? M.wochentag(f.get('datum') || b.datum) : M.TAGE.indexOf(f.get('tag') || b.tag);
     if (gesperrtMelden({ tag, datum: b.datum ? (f.get('datum') || b.datum) : null, start: M.min(start), ende: M.min(ende), woechentlich: !b.datum })) return;
     karteSchliessen(false);
@@ -1666,6 +1722,8 @@ function blockKarte(blockId, nahe, datum) {
         if (ab) x.ab = ab; else delete x.ab;
         if (bis) x.bis = bis; else delete x.bis;
         if (f.get('pause')) x.pause = true; else delete x.pause;
+        const alle = Number(f.get('alle') || 1);
+        if (alle > 1) x.alle = alle; else delete x.alle;
       }
     });
   });
@@ -1822,7 +1880,8 @@ function fokussieren(teilId) {
   } else if (z) {
     const n = M.schrittVon(z.teil);
     if (n !== schritt() && Z.ansicht.bereich !== 'offen') { Z.ansicht.schritt = n; if (Z.ansicht.bereich === 'erklaerung' || (Z.ansicht.bereich === 'frei' && n !== 4)) Z.ansicht.bereich = 'plan'; ansichtMerken(); }
-    if (n >= 3 && z.teil.art !== 'praesenz') Z.setzen = z.teil.id;
+    if (n >= 2 && n <= 4) Z.jetzt[n] = z.teil.id;
+    Z.legen = null;
   }
   // Gruppen zeigt die Standardwoche am besten.
   if (z && M.istWahl(z.teil) && (z.teil.optionen || []).length && Z.ansicht.bereich === 'plan' && Z.ansicht.modus !== 'standard' && !(z.teil.optionen || []).some((o) => M.muster(o).some((x) => x.typ === 'reihe'))) Z.ansicht.modus = 'standard';
@@ -1833,6 +1892,7 @@ function fokussieren(teilId) {
 function zumSchritt(n, teilId) {
   Z.ansicht.schritt = n;
   Z.ansicht.bereich = 'plan';
+  Z.legen = null;
   $('module').scrollTop = 0; // ein neuer Schritt beginnt oben
   Z.setzen = null;
   if (!teilId) Z.fokus = null;
@@ -1876,7 +1936,25 @@ function verdrahten() {
         if (el.closest('#leiste')) document.querySelector(`[data-teil="${teil}"].teil`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         break;
       }
-      case 'modul': Z.fokus = Z.fokus === `modul:${el.dataset.modul}` ? null : `modul:${el.dataset.modul}`; zeichnen(); break;
+      case 'modul': {
+        // Im Ablauf heißt ein Modul anklicken: seine erste offene Sache ist dran (Schritt 2: seine Gruppen im Raster).
+        const n = schritt();
+        const erste = !fertig() && n >= 2 && (reihe(n).find((x) => x.z.modul.id === el.dataset.modul && x.offen) || reihe(n).find((x) => x.z.modul.id === el.dataset.modul));
+        if (erste) { Z.jetzt[n] = erste.z.teil.id; Z.legen = null; zeichnen(); bannerZeigen(); break; }
+        Z.fokus = Z.fokus === `modul:${el.dataset.modul}` ? null : `modul:${el.dataset.modul}`; zeichnen(); break;
+      }
+      case 'jetzt': Z.jetzt[schritt()] = teil; Z.legen = null; zeichnen(); bannerZeigen(); break;
+      case 'legen': {
+        const vg = M.vorgabe(Z.erg, teil);
+        if (!vg) break;
+        const da = (Z.stand.plan.bloecke || []).filter((b) => b.teil === teil && !b.datum).length;
+        Z.jetzt[schritt()] = teil;
+        Z.legen = { teil, dauer: vg.dauer_min, alle: vg.alle, rest: Math.max(1, vg.anzahl - da) };
+        if (Z.ansicht.bereich !== 'plan') Z.ansicht.bereich = 'plan';
+        zeichnen(); bannerZeigen();
+        break;
+      }
+      case 'legen-aus': Z.legen = null; zeichnen(); bannerZeigen(); break;
       case 'modus': Z.ansicht.bereich = 'plan'; Z.ansicht.modus = el.dataset.modus; ansichtMerken(); zeichnen(); break;
       case 'bereich': Z.ansicht.bereich = el.dataset.bereich; Z.fokus = null; Z.setzen = null; ansichtMerken(); zeichnen(); bannerZeigen(); $('bereich').scrollTop = 0; break;
       case 'schritt': zumSchritt(Number(el.dataset.schritt), el.dataset.teil || null); break;
@@ -1922,6 +2000,7 @@ function verdrahten() {
         const t = Z.erg.teile.get(teil);
         const o = M.optionsKacheln(Z.stand.angebot, Z.erg, teil).find((x) => x.option === el.dataset.option);
         const vorher = new Set(Z.erg.vorkommen.filter((v) => v.flags.includes('gesperrt')).map((v) => v.block));
+        Z.jetzt[2] = null; // weiter zur nächsten offenen Wahl
         aendern((s) => { s.plan.wahl = { ...(s.plan.wahl || {}), [teil]: el.dataset.option }; });
         if (t) { Z.fokus = null; zeichnen(); }
         // Die Gruppe ist ab jetzt gesperrt. Lag dort schon ein Block, muss er in seinem Schritt weichen.
@@ -1947,7 +2026,7 @@ function verdrahten() {
   document.addEventListener('submit', formularAbschicken);
   document.addEventListener('keydown', (e) => {
     const inFeld = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
-    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.setzen || Z.fokus) { Z.setzen = null; Z.fokus = null; zeichnen(); bannerZeigen(); } return; }
+    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; zeichnen(); bannerZeigen(); } return; }
     if (inFeld) return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); rueckgaengig(); return; }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { if (!$('karte').hidden || !zeigtRaster()) return; e.preventDefault(); wocheSchritt(e.key === 'ArrowLeft' ? -1 : 1); }
@@ -1957,6 +2036,8 @@ function verdrahten() {
     }
   });
   $('raster').addEventListener('pointerdown', zeigerRunter);
+  $('raster').addEventListener('pointermove', legenZeigen);
+  $('raster').addEventListener('pointerleave', () => { const g = $('raster').querySelector('.entwurf.legen'); if (g) g.remove(); });
   setInterval(() => { if (zeigtRaster() && !rasterLage().std) rasterZeichnen(); }, 60_000);
 }
 
@@ -2091,70 +2172,74 @@ function tagBei(x, rect) {
   return Math.max(0, Math.min(geo.tage - 1, Math.floor((x - rect.left - zeit) / breite)));
 }
 
+// Blöcke werden nicht mehr gezeichnet, sondern abgelegt (V-0335, Silas: „dann soll einfach bei Block setzen quasi
+// an dem Mauszeiger rangeheftet dieser Block sein und man kann den einfach irgendwo hinlegen, anstatt dass man den
+// zeichnet“). „Block legen“ hängt ihn in der Länge der Vorgabe an den Zeiger (Z.legen); ein Klick legt ihn als
+// Wochenblock ab, am Telefon ein Tipp. Freie Plätze stehen grün im Raster, und der Block rastet in sie ein.
+
+/** Wo der hängende Block läge, wenn man jetzt klickte: Tag, Start, Ende — eingerastet in einen freien Platz, wenn der
+ *  Zeiger in einem steht — und was ihn sperrt. */
+function legenLage(tag, y, rect) {
+  const d = Z.legen.dauer;
+  let start = Math.round((minutenBei(y, rect) - d / 2) / RASTER_MIN) * RASTER_MIN;
+  start = Math.max(geo.h0 * 60, Math.min(geo.h1 * 60 - d, start));
+  const mitte = minutenBei(y, rect);
+  const fenster = ((geo.frei || [])[tag] || []).find(([a, b]) => mitte >= a && mitte <= b);
+  if (fenster) start = Math.max(fenster[0], Math.min(fenster[1] - d, start));
+  const datum = geo.std ? null : M.plusTage(geo.woche.von, tag);
+  const im = M.gesperrtDurch(Z.stand.angebot, Z.stand.plan, Z.erg, { tag, datum, start, ende: start + d, woechentlich: true });
+  return { tag, start, ende: start + d, im, frei: !!fenster };
+}
+
+function legenZeigen(e) {
+  if (!Z.legen || !geo) return;
+  const rect = $('raster').getBoundingClientRect();
+  const tag = tagBei(e.clientX, rect);
+  const l = legenLage(tag, e.clientY, rect);
+  const spalte = $('raster').querySelector(`.r-tag[data-tag="${tag}"]`);
+  let g = $('raster').querySelector('.entwurf.legen');
+  if (!g) g = h('div', { class: 'entwurf legen' });
+  if (g.parentElement !== spalte) spalte.append(g);
+  g.style.top = `${((l.start - geo.h0 * 60) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
+  g.style.height = `${((l.ende - l.start) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
+  g.classList.toggle('gesperrt', l.im.length > 0);
+  g.textContent = l.im.length ? `gesperrt: ${l.im[0]}` : `${M.kurz(Z.erg.teile.get(Z.legen.teil).modul)} · ${zeitspanne(l.start, l.ende)}`;
+}
+
+function ablegen(tag, y, rect) {
+  const l = legenLage(tag, y, rect);
+  if (l.im.length) { gesperrtMelden({ tag, datum: geo.std ? null : M.plusTage(geo.woche.von, tag), start: l.start, ende: l.ende, woechentlich: true }); return; }
+  const { teil, alle } = Z.legen;
+  const b = { id: neueId('b'), teil, tag: M.TAGE[tag], start: M.hhmm(l.start), ende: M.hhmm(l.ende) };
+  if (alle > 1) b.alle = alle;
+  Z.legen.rest -= 1;
+  const weiter = Z.legen.rest > 0;
+  if (!weiter) { Z.legen = null; Z.jetzt[schritt()] = null; }
+  aendern((s) => { s.plan.bloecke = [...(s.plan.bloecke || []), b]; });
+  bannerZeigen();
+  const z = Z.erg.teile.get(teil);
+  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${M.TAGE[tag]} ${zeitspanne(l.start, l.ende)}${alle > 1 ? `, alle ${alle} Wochen` : ', jede Woche'} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${weiter ? ` Noch ${Z.legen.rest} Block${Z.legen.rest > 1 ? 'e' : ''} legen.` : ''}`);
+}
+
 function zeigerRunter(e) {
   if (e.button !== 0) return;
   const raster = $('raster');
   const rect = raster.getBoundingClientRect();
   const kachel = e.target.closest('.kachel');
+  if (Z.legen) {
+    // Hängt ein Block am Zeiger, legt jeder Klick ins Raster ihn ab (die Kacheln lassen den Klick durch, CSS .legen).
+    if (!e.target.closest('.r-tag')) return;
+    e.preventDefault();
+    ablegen(tagBei(e.clientX, rect), e.clientY, rect);
+    return;
+  }
   if (kachel && kachel.dataset.act === 'block') return blockZiehen(e, kachel, rect);
   if (kachel && kachel.dataset.act) return; // Termine, Gruppen und Blöcke früherer Schritte sind Knöpfe (click)
-  const spalte = e.target.closest('.r-tag');
-  if (!spalte) return;
-  // Festgelegt wird nur noch die Prüfungsvorbereitung gelegt; alles andere über „Stundenplan bearbeiten“.
-  if (fertig()) {
-    const z = Z.setzen && Z.erg.teile.get(Z.setzen);
-    if (!(z && z.teil.art === 'pruefung')) { melden('Der Stundenplan ist festgelegt. Zum Ändern oben „Stundenplan bearbeiten“.'); return; }
-  } else if (schritt() < 3) {
-    // Blöcke gibt es erst ab Schritt 3 (Videos) — in Schritt 1 und 2 wird nichts aufgezogen.
-    melden(schritt() === 1 ? 'Schritt 1 ist die Grundlage — hier legst du nichts. Videos legst du in Schritt 3, Lernen in Schritt 4.' : 'In Schritt 2 wählst du Gruppen (gestrichelt). Blöcke legst du ab Schritt 3.');
-    return;
-  }
-  const tag = Number(spalte.dataset.tag);
-  const start0 = minutenBei(e.clientY, rect);
-  const datum = geo.std ? null : M.plusTage(geo.woche.von, tag);
-  const standardDauer = () => {
-    const z = Z.setzen && Z.erg.teile.get(Z.setzen);
-    if (z && z.teil.art === 'video') { const e2 = z.teil.einheiten || {}; return M.videoBlockMin(e2.laenge_min || e2.annahme_min || 90, Z.erg.regeln); }
-    return 90;
-  };
-  // Am Telefon wird nicht gezogen (das Raster scrollt); ein Tipp legt einen Block mit Standardlänge an.
-  if (e.pointerType === 'touch') {
-    const s = Math.floor(start0 / 30) * 30;
-    const entwurf = { tag, datum, start: s, ende: Math.min(geo.h1 * 60, s + standardDauer()) };
-    if (gesperrtMelden({ ...entwurf, woechentlich: geo.std })) return;
-    if (Z.setzen) blockAnlegen({ ...entwurf, teil: Z.setzen }, { left: e.clientX, right: e.clientX, top: e.clientY });
-    else wofuerKarte(entwurf, { left: e.clientX, right: e.clientX, top: e.clientY });
-    return;
-  }
-  e.preventDefault();
-  const ent = h('div', { class: 'entwurf' });
-  spalte.append(ent);
-  let ende = start0 + RASTER_MIN;
-  // Schon beim Aufziehen zeigt der Entwurf, ob er auf einem Termin läge (rot, „gesperrt“).
-  const sperre = (a, b) => M.gesperrtDurch(Z.stand.angebot, Z.stand.plan, Z.erg, { tag, datum, start: a, ende: b, woechentlich: geo.std });
-  const malen = () => {
-    const a = Math.min(start0, ende), b = Math.max(start0, ende);
-    ent.style.top = `${((a - geo.h0 * 60) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
-    ent.style.height = `${((b - a) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
-    const im = sperre(a, b);
-    ent.classList.toggle('gesperrt', im.length > 0);
-    ent.textContent = im.length ? `gesperrt: ${im[0]}` : zeitspanne(a, b);
-  };
-  malen();
-  let bewegt = false;
-  const weiter = (ev) => { const m = minutenBei(ev.clientY, rect); if (m !== ende) { bewegt = true; ende = m; malen(); } };
-  const fertig = (ev) => {
-    removeEventListener('pointermove', weiter); removeEventListener('pointerup', fertig);
-    let a = Math.min(start0, ende), b = Math.max(start0, ende);
-    if (!bewegt || b - a < RASTER_MIN * 2) { a = Math.floor(start0 / 30) * 30; b = Math.min(geo.h1 * 60, a + standardDauer()); }
-    const entwurf = { tag, datum, start: a, ende: b };
-    const nahe = { left: ev.clientX, right: ev.clientX + 4, top: ev.clientY, bottom: ev.clientY };
-    if (gesperrtMelden({ ...entwurf, woechentlich: geo.std })) { ent.remove(); return; }
-    if (Z.setzen) { ent.remove(); blockAnlegen({ ...entwurf, teil: Z.setzen }, nahe); }
-    else wofuerKarte(entwurf, nahe);
-  };
-  addEventListener('pointermove', weiter);
-  addEventListener('pointerup', fertig);
+  if (!e.target.closest('.r-tag')) return;
+  melden(fertig() ? 'Der Stundenplan ist festgelegt. Zum Ändern oben „Stundenplan bearbeiten“.'
+    : schritt() === 1 ? 'Schritt 1 ist die Grundlage — hier legst du nichts.'
+      : schritt() === 2 ? 'In Schritt 2 wählst du Gruppen: links oben steht, was dran ist; die Gruppen sind im Raster gestrichelt.'
+        : 'Links oben „Block legen“: Dann hängt der Block am Zeiger, und ein Klick legt ihn ab.');
 }
 
 function blockZiehen(e, kachel, rect) {
@@ -2172,11 +2257,13 @@ function blockZiehen(e, kachel, rect) {
     datum: b.datum ? M.plusTage(b.datum, (x.tag ?? tag0) - tag0) : geo.std ? null : M.plusTage(geo.woche.von, x.tag ?? tag0) });
   const sperre = (x) => M.gesperrtDurch(Z.stand.angebot, Z.stand.plan, Z.erg, ziel(x));
   const x0 = e.clientX, yy0 = e.clientY;
+  // Ein EVL-Block ist mindestens 1,5 h lang (Silas, V-0335), alles andere mindestens eine halbe Stunde.
+  const mindest = M.schrittVonBlock(b.teil ? Z.erg.teile.get(b.teil)?.teil : null) === 4 ? Z.erg.regeln.evl_min_min : RASTER_MIN * 2;
   const weiter = (ev) => {
     if (!bewegt && Math.hypot(ev.clientX - x0, ev.clientY - yy0) < 4) return;
     bewegt = true; kachel.classList.add('zieht');
     const d = minutenBei(ev.clientY, rect) - y0;
-    if (griff) neu = { ...neu, ende: Math.max(s0 + RASTER_MIN * 2, Math.min(geo.h1 * 60, e0 + d)) };
+    if (griff) neu = { ...neu, ende: Math.max(s0 + mindest, Math.min(geo.h1 * 60, e0 + d)) };
     else {
       const dauer = e0 - s0;
       const s = Math.max(geo.h0 * 60, Math.min(geo.h1 * 60 - dauer, s0 + d));
@@ -2190,8 +2277,10 @@ function blockZiehen(e, kachel, rect) {
     kachel.classList.toggle('ziel-gesperrt', im.length > 0);
     kachel.querySelector('.k-zwei').textContent = im.length ? `gesperrt: ${im[0]}` : zeitspanne(neu.start, neu.ende);
   };
-  const fertig = () => {
-    removeEventListener('pointermove', weiter); removeEventListener('pointerup', fertig);
+  // Nicht „fertig“ nennen: Das ist der Name von fertig() (festgelegt?) — ein gleichnamiges const hier ließ in V-0334
+  // jeden Zeigerdruck mit „Cannot access 'fertig' before initialization“ abbrechen (Test „keine Schatten“).
+  const loslassen = () => {
+    removeEventListener('pointermove', weiter); removeEventListener('pointerup', loslassen);
     if (!bewegt) { blockKarte(b.id, kachel, kachel.dataset.datum); return; }
     if (gesperrtMelden(ziel(neu))) { rasterZeichnen(); return; }
     aendern((s) => {
@@ -2203,7 +2292,7 @@ function blockZiehen(e, kachel, rect) {
     });
   };
   addEventListener('pointermove', weiter);
-  addEventListener('pointerup', fertig);
+  addEventListener('pointerup', loslassen);
 }
 
-start();
+starten();
