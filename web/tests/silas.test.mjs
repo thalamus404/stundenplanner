@@ -118,7 +118,8 @@ test('Wochenblock: zählt in Vorlesungswochen, in der Pause nur mit pause: true'
 });
 
 test('Block auf einem Termin: gesperrt — der Block verliert die Überlappung, der Termin bleibt grün', () => {
-  const e = M.rechnen(angebot(), { bloecke: [{ id: 'b1', teil: 'bsp-vn', datum: '2030-10-15', start: '10:00', ende: '12:00' }] });
+  // Die zweite VL (22.10.): Am Tag der ersten läge die Nachbereitung vor dem ersten Stoff und zählte gar nicht (V-0342).
+  const e = M.rechnen(angebot(), { bloecke: [{ id: 'b1', teil: 'bsp-vn', datum: '2030-10-22', start: '10:00', ende: '12:00' }] });
   const vl = e.teile.get('bsp-vl'), vn = e.teile.get('bsp-vn');
   assert.equal(vn.ist_min, 120 - 90);
   assert.ok(vn.vk[0].flags.includes('gesperrt'));
@@ -696,4 +697,89 @@ test('silas.css trägt dieselben Farb-Tokens wie stil.css (hell und dunkel)', ()
   const [hellX, dunkelX] = teile(lies('silas/silas.css')).map(tokens);
   for (const [k, v] of Object.entries(hellS)) assert.equal(hellX[k], v, `hell ${k}`);
   for (const [k, v] of Object.entries(dunkelS)) assert.equal(dunkelX[k], v, `dunkel ${k}`);
+});
+
+// ── Stoff und Bezug (V-0342) ─────────────────────────────────────────────────────────────────────
+
+test('Vor dem ersten Stoff zählt ein Lernblock nicht (Silas: „morgen steht bei mir Programmieren 1 Quick Tests“)', () => {
+  // Die erste VL ist Di 15.10.: Der Montagsblock der ersten Woche hat nichts nachzubereiten, ab W02 zählt er.
+  const e = M.rechnen(angebot(), { bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Mo', start: '14:00', ende: '16:00' }] });
+  const vn = e.teile.get('bsp-vn');
+  const vk = vn.vk.filter((v) => v.block === 'b');
+  assert.equal(vk[0].datum, '2030-10-14');
+  assert.equal(vk[0].zaehlt_min, 0);
+  assert.ok(vk[0].flags.includes('vor_stoff'));
+  assert.equal(vk[1].zaehlt_min, 120);
+  assert.equal(vn.ist_min, (vk.length - 1) * 120);
+  assert.equal(vn.stoff_ab, '2030-10-15');
+  const f = vn.flags.find((x) => x.art === 'vor_stoff');
+  assert.match(f.text, /1 Block liegt vor dem ersten Stoff \(VL Di 15\.10\.\)/);
+  assert.equal(f.stufe, 'info');
+  // Am Tag der ersten VL zählt erst, was nach ihrem Ende beginnt.
+  const am = M.rechnen(angebot(), { bloecke: [{ id: 'f', teil: 'bsp-vn', datum: '2030-10-15', start: '09:00', ende: '10:00' }, { id: 's', teil: 'bsp-vn', datum: '2030-10-15', start: '12:00', ende: '14:00' }] });
+  assert.deepEqual(am.teile.get('bsp-vn').vk.map((v) => v.zaehlt_min), [0, 120]);
+  // Teile mit Einheiten (Quizze) regeln das über ihre Freigaben, nicht über den Stoff.
+  const a = angebot();
+  a.module[0].teile.push({ id: 'bsp-quiz', titel: 'Quiz', art: 'selbst', posten: 'vn', soll_h: 2, einheiten: { liste: [{ nr: 1, ab: '2030-10-14' }] } });
+  const q = M.rechnen(a, { bloecke: [{ id: 'q', teil: 'bsp-quiz', datum: '2030-10-14', start: '14:00', ende: '15:00' }] }).teile.get('bsp-quiz');
+  assert.equal(q.ist_min, 60);
+  // Was eine Woche vor dem Stoff „dran“ wäre: nichts (beginnt die VL erst in W02, kommt das erste Video am 21.10.).
+  const spaet = angebot(); spaet.module[0].teile[0].termine.von = '2030-10-22';
+  const es = M.rechnen(spaet, {});
+  const bedarf = (w) => M.wochenBedarf(spaet, {}, es, w).find((x) => x.z.teil.id === 'bsp-vn');
+  assert.equal(es.teile.get('bsp-vn').stoff_ab, '2030-10-21');
+  assert.equal(bedarf('2030-10-14').soll_min, 0);
+  assert.equal(bedarf('2030-10-21').soll_min, Math.round(es.teile.get('bsp-vn').soll_min / 15));
+});
+
+test('Ein Block beginnt mit dem Stoff: vorgabe().ab, und mit ab liegt er davor gar nicht erst', () => {
+  const e = M.rechnen(angebot(), {});
+  assert.equal(M.vorgabe(e, 'bsp-video').ab, '2030-10-21', 'Video: ab der ersten Freigabe');
+  assert.equal(M.vorgabe(e, 'bsp-vn').ab, '2030-10-15', 'Lernblock: ab dem ersten Stoff');
+  const mit = M.rechnen(angebot(), { bloecke: [{ id: 'b', teil: 'bsp-video', tag: 'Mo', start: '14:00', ende: '16:00', ab: '2030-10-21' }] });
+  const vk = mit.vorkommen.filter((v) => v.block === 'b');
+  assert.equal(vk[0].datum, '2030-10-21');
+  assert.ok(!vk.some((v) => v.flags.includes('leer') && v.datum < '2030-10-28'), 'keine durchgestrichene Woche vor der Freigabe');
+});
+
+test('Bezug: direkt nach dem Stoff, direkt vor einer Präsenz, nah, weit weg — und ein Hinweis, wenn er meist weit weg liegt', () => {
+  const plan = { bloecke: [
+    { id: 'nach', teil: 'bsp-vn', tag: 'Di', start: '12:00', ende: '13:30' }, // VL Di bis 11:45
+    { id: 'vor', teil: 'bsp-vn', tag: 'Di', start: '08:00', ende: '09:30' },  // vor der VL um 10:15
+    { id: 'nah', teil: 'bsp-vn', tag: 'Do', start: '14:00', ende: '15:30' },  // zwei Tage danach
+    { id: 'weit', teil: 'bsp-vn', tag: 'Mo', start: '14:00', ende: '15:30' }, // sechs Tage danach
+  ] };
+  const e = M.rechnen(angebot(), plan);
+  const am = (id, datum) => e.vorkommen.find((v) => v.block === id && v.datum === datum).bezug;
+  assert.equal(am('nach', '2030-10-22').lage, 'direkt');
+  assert.match(am('nach', '2030-10-22').text, /^direkt nach VL \(Di 10:15\)/);
+  assert.equal(am('vor', '2030-10-22').lage, 'direkt');
+  assert.match(am('vor', '2030-10-22').text, /^direkt vor VL/);
+  assert.equal(am('nah', '2030-10-24').lage, 'nah');
+  assert.match(am('nah', '2030-10-24').text, /^2 Tage nach VL/);
+  assert.equal(am('weit', '2030-10-28').lage, 'fern');
+  const hinweise = e.teile.get('bsp-vn').flags.filter((f) => f.art === 'bezug');
+  assert.deepEqual(hinweise.map((f) => f.block), ['weit']);
+  assert.match(hinweise[0].text, /Block Mo 14:00 liegt meist weit weg vom Stoff \(\d\d\.\d\d\.: 6 Tage nach VL/);
+  // Ein geschautes Video ist Stoff: die Nachbereitung direkt nach dem Videoblock liegt direkt daran.
+  const v = M.rechnen(angebot(), { bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '08:00', ende: '10:00', ab: '2030-10-21' }, { id: 'n', teil: 'bsp-vn', tag: 'Mo', start: '10:00', ende: '11:30' }] });
+  const n = v.vorkommen.find((x) => x.block === 'n' && x.datum === '2030-10-21').bezug;
+  assert.equal(n.lage, 'direkt');
+  assert.match(n.text, /^direkt nach Videos \(Mo 08:00\)/);
+});
+
+test('Bezug offen: hat die eigene Lehrveranstaltung noch keine Termine (Übung ohne Gruppe), urteilt er nicht', () => {
+  const a = angebot();
+  a.module[0].teile.push({ id: 'bsp-ue-vn', titel: 'Übung · Nachbereitung', art: 'selbst', posten: 'ue', soll_h: 5 });
+  const e = M.rechnen(a, { bloecke: [{ id: 'u', teil: 'bsp-ue-vn', tag: 'Mo', start: '14:00', ende: '15:30' }] });
+  const z = e.teile.get('bsp-ue-vn');
+  assert.equal(z.stoff_eigen, false);
+  assert.ok(z.vk.filter((v) => v.zaehlt_min > 0).every((v) => v.bezug.lage === 'offen'));
+  assert.ok(!z.flags.some((f) => f.art === 'bezug'));
+  // Der Beginn kommt trotzdem vom Stoff des Moduls: die erste Woche zählt nicht.
+  assert.ok(z.vk[0].flags.includes('vor_stoff'));
+  // Mit gewählter Gruppe ist der Bezug die Übung.
+  const g = M.rechnen(a, { wahl: { 'bsp-ue': 'g2' }, bloecke: [{ id: 'u', teil: 'bsp-ue-vn', tag: 'Mi', start: '10:00', ende: '11:30' }] }).teile.get('bsp-ue-vn');
+  assert.equal(g.stoff_eigen, true);
+  assert.match(g.vk[1].bezug.text, /^direkt nach Übung \(Mi 08:15\)/);
 });

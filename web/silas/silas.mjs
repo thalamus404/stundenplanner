@@ -1034,7 +1034,7 @@ function bannerZeigen() {
     const wo = Z.legen.pruefung
       ? (rasterLage().std ? `jede Woche${Z.legen.bis ? ` bis zur Prüfung (${M.datumKurz(Z.legen.bis)})` : ''} liegen soll — in einer echten Woche nur an dem Tag` : 'an diesem Tag liegen soll — in der Standardwoche jede Woche')
       : `${Z.legen.alle > 1 ? `alle ${Z.legen.alle} Wochen` : 'jede Woche'} liegen soll`;
-    fuellen(b, h('span', { text: `${M.kurz(z.modul)} · ${z.teil.titel}: Der Block (${M.stunden(Z.legen.dauer)}) hängt am Zeiger — klick, wo er ${wo}${Z.legen.rest > 1 ? ` (noch ${Z.legen.rest})` : ''}. Grün ist frei${!fertig() && schritt() === 4 ? ', kräftig zwischen 10 und 18 Uhr' : ''}. Esc bricht ab.` }),
+    fuellen(b, h('span', { text: `${M.kurz(z.modul)} · ${z.teil.titel}: Der Block (${M.stunden(Z.legen.dauer)}) hängt am Zeiger — klick, wo er ${wo}${Z.legen.rest > 1 ? ` (noch ${Z.legen.rest})` : ''}. Grün ist frei${!fertig() && schritt() === 4 ? ', kräftig zwischen 10 und 18 Uhr' : ''}${(geo && geo.thema || []).some((t) => t && t.length) ? '; gerahmt: direkt beim Stoff, dort bleibt am meisten hängen' : ''}.${geo && !(geo.thema || []).some((t) => t && t.length) && (geo.themaZu || []).length ? ` ${geo.themaZu[0]} — verschieb das, oder leg den Block so nah wie möglich danach.` : ''}${Z.legen.ab ? ` Er beginnt ${datumMitTag(Z.legen.ab)} — vorher gibt es ${z.teil.art === 'video' ? 'kein Video' : 'noch keinen Stoff'}.` : ''} Esc bricht ab.` }),
     h('button', { class: 'knopf', type: 'button', 'data-act': 'legen-aus', text: 'Abbrechen' }));
     b.hidden = false; return;
   }
@@ -1276,22 +1276,70 @@ function rasterZeichnen() {
   // Hängt ein Block am Zeiger: freie Plätze je Tag (M.freieFenster) grün; in Schritt 4 kräftiger, was zwischen 10 und
   // 18 Uhr liegt (Silas: „automatisch geguckt, wo freie Plätze sind … zwischen 10 und 18 Uhr immer preferred“).
   geo.frei = [];
+  geo.thema = [];
+  geo.themaZu = [];
   if (Z.legen) {
     const [fa, fe] = (pruefplan() ? Z.erg.regeln.pruef_fenster : Z.erg.regeln.tag_fenster).map(M.min);
     const [pa, pe] = Z.erg.regeln.evl_fenster.map(M.min);
+    // Beim Stoff (V-0342, Silas: „eine Logik …, die einem beim Erstellen hilft, dass man thematisch die Dinge gut
+    // zusammen gruppiert“): Für einen Lernblock sind die freien Plätze direkt nach einem Termin oder Videoblock seines
+    // Stoffs (M.rechnen 6b, stoff_teile) — und direkt vor einer Präsenz — gerahmt und beschriftet; der Block rastet dort
+    // ein. Nur, wo der Stoff derselben Lehrveranstaltung Termine hat (sonst sagt der Bezug nichts).
+    const zl = Z.erg.teile.get(Z.legen.teil);
+    const stoff = zl && zl.teil.art === 'selbst' && !Z.legen.pruefung ? new Set(zl.stoff_teile || []) : new Set();
+    const eigen = stoff.size > 0 && zl.stoff_eigen;
     for (let d = 0; d < tage; d++) {
       const belegt = kacheln.filter((k) => k.tag === d && k.art !== 'option').map((k) => [k.start, k.ende]);
       const fenster = M.freieFenster(belegt, Z.legen.dauer, Math.max(fa, h0 * 60), Math.min(fe, h1 * 60));
       geo.frei[d] = fenster;
+      const band = (x, y, kl, text) => {
+        const el = h('div', { class: kl }, text ? h('span', { text }) : null);
+        el.style.top = `${((x - h0 * 60) / ((h1 - h0) * 60)) * 100}%`; el.style.height = `${((y - x) / ((h1 - h0) * 60)) * 100}%`;
+        spaltenEl[d].prepend(el);
+      };
       for (const [a, b] of fenster) {
-        const band = (x, y, kl) => { const el = h('div', { class: kl }); el.style.top = `${((x - h0 * 60) / ((h1 - h0) * 60)) * 100}%`; el.style.height = `${((y - x) / ((h1 - h0) * 60)) * 100}%`; spaltenEl[d].prepend(el); };
         band(a, b, 'frei-fenster');
         const x = Math.max(a, pa), y = Math.min(b, pe);
         if (!fertig() && schritt() === 4 && y - x >= Z.legen.dauer) band(x, y, 'frei-fenster bevorzugt');
       }
+      if (!eigen) continue;
+      const passt = (x, y) => fenster.some(([a, b]) => x >= a && y <= b);
+      const dauer = Z.legen.dauer;
+      const thema = [];
+      for (const k of kacheln) {
+        if (k.tag !== d || !stoff.has(k.teil)) continue;
+        const z = Z.erg.teile.get(k.teil);
+        const istVideo = k.art === 'block' && z.teil.art === 'video' && (geo.std || (k.v && k.v.zaehlt_min > 0));
+        if (k.art !== 'termin' && !istVideo) continue;
+        const name = `${M.kurz(z.modul)} · ${z.teil.titel}`;
+        const nach = Math.ceil(k.ende / RASTER_MIN) * RASTER_MIN;
+        if (passt(nach, nach + dauer)) thema.push([nach, nach + dauer, `direkt nach ${name}`]);
+        else {
+          // Belegt: sagen, was dort liegt — vielleicht ist das das Verschiebbare (Silas' EINFWI-Video Di 12–14, danach Labs).
+          const im = kacheln.filter((x) => x.tag === d && x !== k && x.art !== 'option' && x.start < nach + dauer && nach < x.ende);
+          const wer = [...new Set(im.map((x) => { const zz = x.teil && Z.erg.teile.get(x.teil); return zz ? `${M.kurz(zz.modul)} · ${zz.teil.titel}` : (x.v && x.v.titel) || 'ein Termin'; }))];
+          if (wer.length) geo.themaZu.push(`Direkt nach ${name} (${M.TAGE[d]} ${uhr(nach)}) liegt schon ${wer.join(', ')}`);
+        }
+        const vor = Math.floor(k.start / RASTER_MIN) * RASTER_MIN - dauer;
+        if (k.art === 'termin' && passt(vor, vor + dauer)) thema.push([vor, vor + dauer, `direkt vor ${name}`]);
+      }
+      geo.thema[d] = thema.filter((t, i) => !thema.slice(0, i).some((u) => u[0] < t[1] && t[0] < u[1]));
+      for (const [x, y, text] of geo.thema[d]) band(x, y, 'frei-fenster thema', text);
     }
   }
   fuellen(raster, zeiten, ...spaltenEl);
+}
+
+/** Wo ein Block meistens zu seinem Stoff liegt (V-0342, M.rechnen 6b): die häufigste Lage seiner zählenden
+ *  Vorkommen, mit dem Satz einer Woche in dieser Lage. null, wenn nichts zählt oder der Bezug offen ist (die Übung,
+ *  die er nachbereitet, hat noch keine Zeiten). */
+function bezugVon(vks) {
+  const mit = vks.filter((v) => v.zaehlt_min > 0 && v.bezug && v.bezug.lage !== 'offen');
+  if (!mit.length) return null;
+  const zahl = new Map();
+  for (const v of mit) zahl.set(v.bezug.lage, (zahl.get(v.bezug.lage) || 0) + 1);
+  const lage = [...zahl].sort((a, b) => b[1] - a[1])[0][0];
+  return { lage, text: mit.find((x) => x.bezug.lage === lage).bezug.text, weit: lage === 'fern' || lage === 'ohne' };
 }
 
 /** Die Meldung „gesperrt“ eines Blocks: liegt er dauernd auf einem Termin (verschieben) oder nur an einzelnen Tagen? */
@@ -1326,7 +1374,7 @@ function kachelEl(k) {
   const flags = new Set(k.vk ? k.vk.flatMap((v) => v.flags) : []);
   let titel = z ? `${M.kurz(m)} · ${z.teil.titel}` : (k.v && k.v.titel) || '';
   let zeile2 = `${zeitspanne(k.start, k.ende)}${k.ort ? ` · ${k.ort}` : ''}`;
-  let marke = null, act = null;
+  let marke = null, markeKl = 'rot', act = null, bezug = null;
   if (k.art === 'termin') {
     if (k.reihe && geo.std) {
       kl.push('reihe');
@@ -1353,9 +1401,13 @@ function kachelEl(k) {
       if (z && zaehlt < k.vk.length) zeile2 = `${zeitspanne(k.start, k.ende)} · zählt ${zaehlt} von ${k.vk.length}`;
     } else if (k.v) {
       if (k.v.flags.includes('leer')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: kein Video/keine Einheit'; }
+      if (k.v.flags.includes('vor_stoff')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: vor dem ersten Stoff'; }
       if (k.v.flags.includes('nach_pruefung')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: nach der Prüfung'; }
       if (k.v.einheit && !kl.includes('gesperrt')) zeile2 = `${z.teil.art === 'video' ? 'Video' : 'Einheit'} ${k.v.einheit} · ${zeile2}`;
     }
+    // Bezug zum Stoff (V-0342): weit weg → eine kleine Marke; der Satz steht im Tooltip.
+    bezug = z && z.teil.art === 'selbst' ? bezugVon(k.vk || []) : null;
+    if (bezug && bezug.weit && !kl.includes('zaehlt-nicht') && !kl.includes('gesperrt')) { marke = 'weit vom Stoff'; markeKl = 'hinweis'; }
     // Nur Blöcke des gezeigten Schritts lassen sich ziehen; ein früherer springt in seinen Schritt zurück, festgelegt
     // zeigt ein Klick den Bestandteil.
     act = k.lage === 'jetzt' ? 'block' : k.lage === 'frueher' ? (fertig() ? 'kachel-teil' : 'kurz-zurueck') : k.lage === 'erledigt' ? 'jetzt' : 'kachel-teil';
@@ -1380,13 +1432,14 @@ function kachelEl(k) {
   if (Z.hell && k.vk && k.vk.some((v) => v.id === Z.hell)) kl.push('hell');
   const tip = [titel, zeile2,
     k.lage === 'frueher' ? `steht schon (Schritt ${k.schritt})${(k.art === 'block' || k.schicht === 'B') && !fertig() ? ' — Klick: kurz dorthin zurück' : ''}` : k.lage === 'erledigt' ? 'schon gewählt — Klick: ändern' : null,
-    ...(k.vk || []).flatMap((v) => v.flags).filter((x, i, a) => a.indexOf(x) === i).map((f) => ({ konflikt: 'Überschneidung', gesperrt: 'liegt auf einem Termin (gesperrt)', leer: 'kein Video in dieser Woche', nach_pruefung: 'nach der Prüfung' }[f]))].filter(Boolean).join('\n');
+    bezug ? `${geo.std ? 'meist ' : ''}${bezug.text}${bezug.weit ? ' — weit weg vom Stoff, direkt danach bleibt mehr hängen' : ''}` : null,
+    ...(k.vk || []).flatMap((v) => v.flags).filter((x, i, a) => a.indexOf(x) === i).map((f) => ({ konflikt: 'Überschneidung', gesperrt: 'liegt auf einem Termin (gesperrt)', leer: 'kein Video in dieser Woche', vor_stoff: 'vor dem ersten Stoff des Moduls — zählt nicht', nach_pruefung: 'nach der Prüfung' }[f]))].filter(Boolean).join('\n');
   const tags = kachelTags(k);
   const el = h(act === 'block' ? 'div' : act ? 'button' : 'div', {
     class: kl.join(' '), type: act && act !== 'block' ? 'button' : null, 'data-act': act, 'data-teil': k.teil || null,
     'data-block': k.block || null, 'data-option': k.option || null, 'data-datum': k.datum || null, 'data-schritt': act === 'kurz-zurueck' ? String(k.schritt) : null,
     title: tip, tabindex: act === 'block' ? '0' : null,
-  }, h('b', { text: titel }), h('span', { class: 'k-zwei' }, tags.anzahl, zeile2), tags.etikett, marke ? h('span', { class: 'k-marke rot', text: marke }) : null);
+  }, h('b', { text: titel }), h('span', { class: 'k-zwei' }, tags.anzahl, zeile2), tags.etikett, marke ? h('span', { class: `k-marke ${markeKl}`, text: marke }) : null);
   if (act === 'block') el.append(h('span', { class: 'k-griff', 'data-griff': '1' }));
   return el;
 }
@@ -2058,6 +2111,11 @@ function blockKarte(blockId, nahe, datum) {
   // Ein Block wechselt seinen Schritt nicht: Ein Video-Block bleibt ein Video-Block (sonst spränge er zwischen den Schichten).
   const sch = M.schrittVonBlock(z && z.teil);
   const teile = [...Z.erg.teile.values()].filter((x) => x.teil.art !== 'praesenz' && M.schrittVonBlock(x.teil) === sch);
+  // V-0342: Bezug zum Stoff, und — liegt der Block schon vor der ersten Freigabe bzw. dem ersten Stoff — ein Knopf,
+  // der ihn erst dort beginnen lässt (statt durchgestrichener Wochen).
+  const bz = z && z.teil.art === 'selbst' ? bezugVon(vk) : null;
+  const vg = z && !b.datum ? M.vorgabe(Z.erg, z.teil.id) : null;
+  const abVorschlag = vg && vg.ab && (!b.ab || b.ab < vg.ab) && vk.some((v) => v.datum < vg.ab) ? vg.ab : null;
   const form = h('form', { class: 'formular' },
     h('label', { class: 'breit' }, 'Wofür', h('select', { name: 'teil' },
       sch === 4 ? h('option', { value: '', text: 'Puffer / Organisation', selected: !b.teil }) : null,
@@ -2075,6 +2133,9 @@ function blockKarte(blockId, nahe, datum) {
     h('p', { class: 'satz', text: b.datum
       ? `Zählt ${M.stunden(zaehlt)}${diese && diese.zaehlt_min === 0 ? ' — an diesem Tag nicht (siehe Hinweis am Teil)' : ''}.`
       : `${vk.length} Wochen, davon zählen ${vk.filter((v) => v.zaehlt_min > 0).length} — zusammen ${M.stunden(zaehlt)}.${diese && diese.zaehlt_min < diese.ende - diese.start ? ` Am ${datumMitTag(diese.datum)} zählt er ${M.stunden(diese.zaehlt_min)}.` : ''}` }),
+    bz ? h('p', { class: `satz${bz.weit ? ' hinweis' : ''}`, text: `Zum Stoff: meist ${bz.text}.${bz.weit ? ' Das ist weit weg — direkt nach dem Stoff bleibt mehr hängen.' : ''}` }) : null,
+    abVorschlag ? h('p', { class: 'satz' }, `Vor ${datumMitTag(abVorschlag)} gibt es ${z.teil.art === 'video' ? 'kein Video' : 'noch keinen Stoff'} — dort zählt er nicht. `,
+      h('button', { class: 'knopf klein', type: 'button', onclick: () => { karteSchliessen(false); aendern((s) => { const x = s.plan.bloecke.find((y) => y.id === b.id); if (x) x.ab = abVorschlag; }); melden(`Der Block beginnt jetzt am ${datumMitTag(abVorschlag)}`); }, text: `Erst ab ${datumMitTag(abVorschlag)}` })) : null,
     h('div', { class: 'zeile' },
       h('button', { class: 'knopf klein rot', type: 'button', onclick: () => { karteSchliessen(false); aendern((s) => { s.plan.bloecke = s.plan.bloecke.filter((x) => x.id !== b.id); }); }, text: 'Löschen' }),
       h('button', { class: 'knopf klein haupt', type: 'submit', text: 'Fertig' })),
@@ -2347,7 +2408,7 @@ function verdrahten() {
         if (!vg) break;
         const da = (Z.stand.plan.bloecke || []).filter((b) => b.teil === teil && !b.datum).length;
         Z.jetzt[schritt()] = teil;
-        Z.legen = { teil, dauer: vg.dauer_min, alle: vg.alle, bis: vg.bis, rest: Math.max(1, vg.anzahl - da) };
+        Z.legen = { teil, dauer: vg.dauer_min, alle: vg.alle, bis: vg.bis, ab: vg.ab, rest: Math.max(1, vg.anzahl - da) };
         if (Z.ansicht.bereich !== 'plan') Z.ansicht.bereich = 'plan';
         zeichnen(); bannerZeigen();
         break;
@@ -2632,6 +2693,9 @@ function legenLage(tag, y, rect) {
   const mitte = minutenBei(y, rect);
   const fenster = ((geo.frei || [])[tag] || []).find(([a, b]) => mitte >= a && mitte <= b);
   if (fenster) start = Math.max(fenster[0], Math.min(fenster[1] - d, start));
+  // Ein Platz beim Stoff (V-0342) zieht den Block ganz hinein.
+  const thema = ((geo.thema || [])[tag] || []).find(([a, b]) => mitte >= a && mitte <= b);
+  if (thema) start = thema[0];
   const datum = geo.std ? null : M.plusTage(geo.woche.von, tag);
   const woechentlich = !(Z.legen.pruefung && !geo.std);
   const im = M.gesperrtDurch(Z.stand.angebot, Z.stand.plan, Z.erg, { tag, datum, start, ende: start + d, woechentlich });
@@ -2656,13 +2720,15 @@ function legenZeigen(e) {
 function ablegen(tag, y, rect) {
   const l = legenLage(tag, y, rect);
   if (l.im.length) { gesperrtMelden({ tag, datum: geo.std ? null : M.plusTage(geo.woche.von, tag), start: l.start, ende: l.ende, woechentlich: l.woechentlich }); return; }
-  const { teil, alle, bis } = Z.legen;
+  const { teil, alle, bis, ab } = Z.legen;
   // Prüfungsvorbereitung in einer echten Woche: genau an diesem Tag; sonst ein Wochenblock.
   const b = l.woechentlich ? { id: neueId('b'), teil, tag: M.TAGE[tag], start: M.hhmm(l.start), ende: M.hhmm(l.ende) }
     : { id: neueId('l'), teil, datum: M.plusTage(geo.woche.von, tag), start: M.hhmm(l.start), ende: M.hhmm(l.ende) };
   if (l.woechentlich && alle > 1) b.alle = alle;
   // eine Woche vor dem Ende (die Modulbeschreibung rechnet 15 Wochen, M.vorgabe) — oder der Tag vor der Prüfung
   if (l.woechentlich && bis) b.bis = bis;
+  // erst ab der ersten Freigabe bzw. dem ersten Stoff des Moduls (M.vorgabe, V-0342) — davor gäbe es nichts zu tun
+  if (l.woechentlich && ab) b.ab = ab;
   Z.legen.rest -= 1;
   const weiter = Z.legen.rest > 0;
   if (!weiter) { Z.legen = null; Z.jetzt[schritt()] = null; }
@@ -2670,7 +2736,8 @@ function ablegen(tag, y, rect) {
   if (!weiter && Z.sprung) sprungEnde();
   bannerZeigen();
   const z = Z.erg.teile.get(teil);
-  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${weiter ? ` Noch ${Z.legen.rest} Block${Z.legen.rest > 1 ? 'e' : ''} legen.` : ''}`);
+  const bz = bezugVon(Z.erg.vorkommen.filter((v) => v.block === b.id));
+  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}${bz.weit ? ' — weit weg vom Stoff' : ''}.` : ''}${weiter ? ` Noch ${Z.legen.rest} Block${Z.legen.rest > 1 ? 'e' : ''} legen.` : ''}`);
 }
 
 function zeigerRunter(e) {
