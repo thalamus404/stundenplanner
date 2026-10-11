@@ -179,6 +179,31 @@ export function kategorie(t) {
 
 export const istWahl = (t) => t.art === 'praesenz' && (t.wahl || (t.optionen && t.optionen.length > 0));
 export const kurz = (m) => m.kurz || m.id;
+
+// ── Die vier Schritte (V-0333) ───────────────────────────────────────────────────────────────────
+// Silas, 11.10.2026: „Die absolute Foundation muss sein: alle bestätigten Pflichtpräsenztermine sind dort eingetragen
+// und die Quizze … Dann der zweite Layer, das sind Optionstermine … Tutoriumsgruppe XY oder Übungsgruppe XY …
+// dann die dritte Schicht, Screencasts und alles, was eigentlich eine Präsenzveranstaltung wäre, aber über ein Video
+// … und dann als letzte Sache für alle Sachen eine Vor- und Nachbereitung. Das Tool soll einen durch genau diese
+// Entscheidungen durchführen und man soll die selber treffen … und zurückspringen können.“ Jeder Bestandteil und
+// jedes Vorkommen gehört zu genau einem Schritt; Zurücksetzen nimmt die Schritte ab 2 weg, Schritt 1 bleibt.
+export const SCHRITTE = [
+  { nr: 1, id: 'grundlage', titel: 'Grundlage', satz: 'Feste Präsenztermine, Prüfungen, Quizze und Fristen — steht fest' },
+  { nr: 2, id: 'gruppen', titel: 'Gruppen', satz: 'Tutorien und Übungen mit Gruppen — du wählst' },
+  { nr: 3, id: 'videos', titel: 'Videos', satz: 'Screencasts und Lehrvideos — du legst sie selbst' },
+  { nr: 4, id: 'evl', titel: 'EVL', satz: 'Eigenverantwortliches Lernen: Vor- und Nachbereitung, Labs, Quizze, Prüfungsvorbereitung' },
+];
+/** Präsenz mit eigenen Terminen ist Schritt 1, Präsenz mit Gruppen (oder ohne Termine — die Gruppen kommen noch)
+ *  Schritt 2, Videos Schritt 3, alles andere (Selbststudium, Prüfungsvorbereitung) Schritt 4. */
+export function schrittVon(t) {
+  if (t.schritt) return t.schritt;
+  if (t.art === 'praesenz') return istWahl(t) || !muster(t).length ? 2 : 1;
+  return t.art === 'video' ? 3 : 4;
+}
+/** Ein Block gehört zum Schritt seines Bestandteils: Videos 3, alles andere (auch Puffer ohne Teil) 4. */
+export const schrittVonBlock = (teil) => (teil && schrittVon(teil) === 3 ? 3 : 4);
+/** Das Etikett an jeder Kachel (Silas: „ist es Präsenz, ist es Video oder ist es EVL“). */
+export const ETIKETT = { 1: 'Präsenz', 2: 'Präsenz', 3: 'Video', 4: 'EVL' };
 export const postenGesamt = (p) => Math.round(p.mult * p.h * 60); // in Minuten
 
 /** Die Einheiten eines Video- oder Selbstlern-Teils (je Video, je Quiz), mit ihrem Freigabetag. Eine
@@ -293,7 +318,8 @@ function einstufen(f, z, stand, heute) {
     case 'unsicher': return z && z.flags.some((x) => x.art === 'termine_offen') ? 'info' : 'achtung';
     case 'nach_pruefung': case 'posten': case 'pruefung_fehlt': case 'posten_summe': case 'posten_teile': return 'achtung';
     case 'ueber': return z && z.teil.art !== 'praesenz' ? 'achtung' : 'info';
-    default: return 'info'; // annahme, aufteilung, leer, weicht, einheit_unsicher, termin_unsicher, videozeit, hinweis
+    case 'gesperrt': return f.dauernd ? 'dran' : 'info';
+    default: return 'info'; // annahme, aufteilung, leer, einheit_unsicher, termin_unsicher, videozeit, hinweis
   }
 }
 
@@ -364,11 +390,12 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
       if (!option) { flagge(z, 'plan', 'wahl_offen', `Noch keine Gruppe gewählt (${opts.length} zur Auswahl)`); continue; }
       quelle = option; schicht = 'B';
     } else if (!muster(t).length) { flagge(z, 'info', 'termine_offen', t.offen || 'Die Termine stehen noch nicht fest'); continue; }
-    for (const m of muster(quelle)) {
+    for (const [mi, m] of muster(quelle).entries()) {
       for (const x of termineAus(m, sem)) {
+        // hart: Auf einem Termin kann kein Block liegen (Silas, 11.10.: „die Sachen sind ganz sicher geblockt“).
         const v = {
-          id: `${t.id}@${x.datum}@${hhmm(x.start)}`, quelle: 'termin', schicht, teil: t.id, modul: z.modul.id,
-          option: option && option.id, datum: x.datum, start: x.start, ende: x.ende,
+          id: `${t.id}@${x.datum}@${hhmm(x.start)}`, quelle: 'termin', schicht, schritt: schrittVon(t), hart: true, muster: mi,
+          teil: t.id, modul: z.modul.id, option: option && option.id, datum: x.datum, start: x.start, ende: x.ende,
           ort: x.ort || quelle.ort || t.ort || null, online: quelle.online || t.online || null,
           titel: x.titel, ct: t.ct !== false, zaehlt_min: 0, flags: [], mit: [],
           herkunft: x.quelle || quelle.quelle || t.quelle || null, unsicher: !!x.unsicher,
@@ -397,7 +424,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     }
     for (const d of tage) {
       const v = {
-        id: `${b.id}@${d}`, quelle: 'block', schicht: 'D', block: b.id, teil: z ? z.teil.id : null,
+        id: `${b.id}@${d}`, quelle: 'block', schicht: 'D', schritt: schrittVonBlock(z && z.teil), block: b.id, teil: z ? z.teil.id : null,
         modul: z ? z.modul.id : null, datum: d, start: min(b.start), ende: min(b.ende),
         titel: b.titel || null, zaehlt_min: 0, flags: [], mit: [], woechentlich: !b.datum,
       };
@@ -416,7 +443,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   }
   function frist(id, modul, datum, zeit, titel, wichtig, herkunft, teil = null) {
     vorkommen.push({
-      id, quelle: 'frist', schicht: 'C', modul, teil, datum, ganztag: true, punkt: zeit ? min(zeit) : undefined,
+      id, quelle: 'frist', schicht: 'C', schritt: 1, modul, teil, datum, ganztag: true, punkt: zeit ? min(zeit) : undefined,
       titel, wichtig: !!wichtig, unsicher: !!(herkunft && herkunft.unsicher), herkunft: (herkunft && herkunft.quelle) || null,
       zaehlt_min: 0, flags: [], mit: [],
     });
@@ -430,11 +457,12 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         if (!istDatum(x.datum)) continue;
         if (p.wahl && gewaehlt && x !== gilt) continue;
         const zeit = x.start ? { start: min(x.start), ende: x.ende ? min(x.ende) : min(x.start) + (p.dauer_min || 60) } : { ganztag: true };
+        // Ein Ausweich- oder Zweittermin ist „nicht wichtig“, solange Silas ihn nicht gewählt hat — und sperrt nichts.
+        const wichtig = x.wichtig !== false || (gewaehlt && x === gilt);
         vorkommen.push({
-          id: `${p.id}@${x.datum}`, quelle: 'pruefung', schicht: 'A', modul: m.id, pruefung: p.id,
+          id: `${p.id}@${x.datum}`, quelle: 'pruefung', schicht: 'A', schritt: 1, hart: wichtig, modul: m.id, pruefung: p.id,
           datum: x.datum, ...zeit, titel: [p.titel, x.label].filter(Boolean).join(' · '), ort: x.ort || null,
-          // Ein Ausweich- oder Zweittermin ist „nicht wichtig“, solange Silas ihn nicht gewählt hat.
-          wichtig: x.wichtig !== false || (gewaehlt && x === gilt), unsicher: !!x.unsicher, zaehlt_min: 0, flags: [], mit: [],
+          wichtig, unsicher: !!x.unsicher, zaehlt_min: 0, flags: [], mit: [],
           herkunft: x.quelle || p.quelle || null,
         });
       }
@@ -456,7 +484,8 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     const zeit = e.start && e.ende ? { start: min(e.start), ende: min(e.ende) } : e.start ? { punkt: min(e.start), ganztag: true } : { ganztag: true };
     vorkommen.push({
       id: e.id, quelle: e.art === 'frist' ? 'frist' : e.art === 'rahmen' ? 'rahmen' : 'einzel',
-      schicht: e.art === 'rahmen' ? 'R' : 'C', modul: e.modul || null, datum: e.datum, bis: e.bis || null, ...zeit,
+      schicht: e.art === 'rahmen' ? 'R' : 'C', schritt: 1, hart: !zeit.ganztag && e.art !== 'frist' && e.art !== 'rahmen',
+      modul: e.modul || null, datum: e.datum, bis: e.bis || null, ...zeit,
       titel: e.titel, ort: e.ort || null, wichtig: !!e.wichtig, unsicher: !!e.unsicher, art: e.art,
       zaehlt_min: 0, flags: [], mit: [], herkunft: e.quelle || null, notiz: e.notiz || null,
     });
@@ -482,12 +511,14 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         if ((neben(a) && b.quelle !== 'pruefung') || (neben(b) && a.quelle !== 'pruefung')) continue;
         a.mit.push(b.id); b.mit.push(a.id);
         konflikte.push({ datum: a.datum, a: a.id, b: b.id, minuten: ueber });
-        // Termin schlägt Block: Der Block verliert die überlappte Zeit, der Termin bleibt, wie er ist —
-        // er ist nicht schuld (der Kick-off am 19.10. war rot, weil ein Wochenblock auf ihm lag).
-        // Zwei Termine oder zwei Blöcke übereinander sind ein echter Konflikt für beide.
+        // Ein Termin ist gesperrt (V-0333, Silas: „während ein Präsenztermin stattfindet … darf es nicht möglich sein,
+        // dass man irgendetwas anderes macht“): Ein Block auf ihm verliert die überlappte Zeit, der Termin bleibt, wie
+        // er ist. Die Seite lässt keinen Block auf einen sichtbaren Termin legen; hier landet, was Silas erst später
+        // gesperrt hat (eine Gruppe gewählt, auf der schon ein Block lag) oder was nur an einzelnen Tagen trifft
+        // (der Kick-off unter einem Wochenblock). Zwei Termine oder zwei Blöcke übereinander sind ein Konflikt für beide.
         const blockA = a.quelle === 'block', blockB = b.quelle === 'block';
-        if (blockA && !blockB) { a.ueberlappt = (a.ueberlappt || 0) + ueber; marke(a, 'weicht'); }
-        else if (blockB && !blockA) { b.ueberlappt = (b.ueberlappt || 0) + ueber; marke(b, 'weicht'); }
+        if (blockA && !blockB) { a.ueberlappt = (a.ueberlappt || 0) + ueber; marke(a, 'gesperrt'); }
+        else if (blockB && !blockA) { b.ueberlappt = (b.ueberlappt || 0) + ueber; marke(b, 'gesperrt'); }
         else { marke(a, 'konflikt'); marke(b, 'konflikt'); }
       }
     }
@@ -603,6 +634,30 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   }
 
   // 7 · Lücken und Ampel je Teil
+  // Ein Block auf einem Termin (gesperrt): je Block eine Meldung, mit dem Namen dessen, was ihn sperrt. Trifft er in
+  // mindestens drei Wochen (oder an jedem seiner Tage) einen Termin, muss er weg — „du bist dran“. Trifft er nur an
+  // einzelnen Tagen (Kick-off, E-Test), fällt er dort weg — ein Hinweis.
+  const vkNach = new Map(vorkommen.map((v) => [v.id, v]));
+  const kurzVon = (id) => { const m = (angebot.module || []).find((x) => x.id === id); return m ? kurz(m) : null; };
+  const nameVon = (v) => (v.quelle === 'termin' ? `${kurzVon(v.modul)} · ${teile.get(v.teil).teil.titel}` : [kurzVon(v.modul), v.titel].filter(Boolean).join(' · '));
+  function sperren(vks) {
+    const proBlock = new Map();
+    for (const v of vks) if (v.quelle === 'block' && v.flags.includes('gesperrt')) proBlock.set(v.block, [...(proBlock.get(v.block) || []), v]);
+    const aus = [];
+    for (const [id, vs] of proBlock) {
+      const b = (plan.bloecke || []).find((x) => x.id === id);
+      const alle = vks.filter((v) => v.block === id).length;
+      const namen = [...new Set(vs.flatMap((v) => v.mit.map((x) => vkNach.get(x)).filter((o) => o && o.quelle !== 'block').map(nameVon)))].join(', ');
+      const wann = b.datum ? `am ${datumKurz(b.datum)}` : `${b.tag} ${b.start}–${b.ende}`;
+      const dauernd = vs.length >= 3 || vs.length === alle;
+      aus.push({
+        roh: 'plan', art: 'gesperrt', dauernd, block: id,
+        text: dauernd ? `Block ${wann} liegt ${alle > 1 ? `an ${vs.length} Tagen ` : ''}auf ${namen} — dort ist gesperrt, verschieben`
+          : `Block ${wann} fällt am ${vs.map((v) => datumKurz(v.datum)).join(', ')} teilweise weg (${namen})`,
+      });
+    }
+    return aus;
+  }
   for (const z of teile.values()) {
     const t = z.teil;
     z.fehlt_min = Math.max(0, z.soll_min - z.ist_min);
@@ -610,8 +665,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     z.gedeckt_min = Math.min(z.ist_min, Math.max(0, z.soll_min));
     const konflikte = z.vk.filter((v) => v.flags.includes('konflikt'));
     if (konflikte.length) flagge(z, 'plan', 'konflikt', `Überschneidung an ${konflikte.length} Termin${konflikte.length > 1 ? 'en' : ''} (erster: ${datumKurz(konflikte[0].datum)})`);
-    const weicht = z.vk.filter((v) => v.flags.includes('weicht'));
-    if (weicht.length) flagge(z, 'hinweis', 'weicht', `${weicht.length > 1 ? `${weicht.length} Blöcke weichen` : 'Ein Block weicht'} einem Termin (zuerst ${datumKurz(weicht[0].datum)}) — die überlappte Zeit zählt nicht`);
+    z.flags.push(...sperren(z.vk));
     if (z.soll_min > 0 && z.ist_min === 0 && !z.flags.some((f) => ['termine_offen', 'wahl_offen'].includes(f.art))) flagge(z, 'plan', 'ungeplant', `Nicht eingeplant — ${stunden(z.soll_min)} fehlen`);
     else if (z.fehlt_min >= regeln.toleranz_min && z.ist_min > 0) {
       // Strukturell: Alle Termine stehen fest, mehr gibt es nicht. Dann hilft kein Block, nur eine
@@ -725,13 +779,85 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   summe.ist_min = module.reduce((s, m) => s + m.ist_min, 0);
   summe.fehlt_min = Math.max(0, summe.soll_min - summe.gedeckt_min);
   summe.offen = module.reduce((s, m) => s + m.offen, 0);
+  // Blöcke ohne Bestandteil (Puffer, Wochenstart) haben kein Modul: Ihre Meldungen stehen hier.
+  const planFlags = sperren(vorkommen.filter((v) => v.quelle === 'block' && !v.teil));
+  for (const f of planFlags) f.stufe = einstufen(f, null, null, heute);
   summe.zaehler = Object.fromEntries(STUFEN.map((st) => [st, 0]));
   for (const r of module) { for (const f of r.flags) summe.zaehler[f.stufe] += 1; for (const z of r.teile) for (const f of z.flags) summe.zaehler[f.stufe] += 1; }
+  for (const f of planFlags) summe.zaehler[f.stufe] += 1;
   // Das Wochensoll: alle wöchentlichen Posten (Multiplikator 15) einer Woche, wie in Silas' Semesterplan.
   summe.woche_min = (angebot.module || []).reduce((s, m) => s + (m.posten || []).filter((p) => p.mult > 1).reduce((a, p) => a + p.h * 60, 0), 0);
 
   vorkommen.sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : (a.start ?? -1) - (b.start ?? -1)));
-  return { sem, regeln, wochen: wo, vorkommen, teile, module, summe, konflikte, heute: optionen.heute || null };
+  // Wiederholungen (Silas, 11.10.: „pro Eintrag, wie oft sich dieser Eintrag … bis zum Ende des Semesters wiederholt
+  // … da wird dann auch sofort klar, welche sich nicht wiederholen“). Ein Eintrag ist ein Muster eines Termins (eine
+  // Serie, eine Reihe), ein Block oder eine Prüfung; je Vorkommen: das wievielte (nr), wie viele insgesamt (gesamt) und
+  // wie viele ab ihm noch kommen, es eingeschlossen (rest).
+  const reihen = new Map();
+  for (const v of vorkommen) {
+    const k = v.quelle === 'termin' ? `t|${v.teil}|${v.option || ''}|${v.muster ?? 0}` : v.quelle === 'block' ? `b|${v.block}` : `e|${v.id}`;
+    reihen.set(k, [...(reihen.get(k) || []), v]);
+  }
+  for (const vs of reihen.values()) vs.forEach((v, i) => { v.nr = i + 1; v.gesamt = vs.length; v.rest = vs.length - i; });
+  return { sem, regeln, wochen: wo, vorkommen, teile, module, summe, konflikte, planFlags, heute: optionen.heute || null };
+}
+
+/** Je Schritt: wie viele Meldungen welcher Stufe, und wie viele Stunden seine Bestandteile tragen und gedeckt haben.
+ *  Meldungen an einem Modul (Prüfungen, Fristen) gehören zu Schritt 1, die Wahl eines Prüfungstermins zu Schritt 2. */
+export function schrittVonFlagge(f, z) {
+  if (z) return schrittVon(z.teil);
+  if (f.art === 'gesperrt') return 4;
+  return f.art === 'pruefung_wahl' ? 2 : 1;
+}
+export function schritte(erg) {
+  const aus = SCHRITTE.map((s) => ({ ...s, zaehler: Object.fromEntries(STUFEN.map((st) => [st, 0])), soll_min: 0, gedeckt_min: 0, teile: [] }));
+  for (const r of erg.module) {
+    for (const f of r.flags) aus[schrittVonFlagge(f, null) - 1].zaehler[f.stufe] += 1;
+    for (const z of r.teile) {
+      const s = aus[schrittVon(z.teil) - 1];
+      for (const f of z.flags) s.zaehler[f.stufe] += 1;
+      s.soll_min += z.soll_min; s.gedeckt_min += z.gedeckt_min; s.teile.push(z);
+    }
+  }
+  for (const f of erg.planFlags || []) aus[3].zaehler[f.stufe] += 1;
+  for (const s of aus) s.offen = s.zaehler.kritisch + s.zaehler.dran;
+  return aus;
+}
+
+/** Zurück auf die Grundlage (Silas: „wenn man auf Zurücksetzen drückt, die absolute Foundation muss sein …“): nimmt
+ *  alles ab Schritt `ab` weg — ab 2 die Gruppenwahl und die gewählten Prüfungstermine, ab 3 die Video-Blöcke, ab 4
+ *  die übrigen Blöcke. Was Silas über das Angebot weiß (Videolängen, Uhrzeiten, Anmeldungen, bestätigte Annahmen,
+ *  Umwidmungen), bleibt. Gibt einen neuen Plan zurück. */
+export function zuruecksetzen(plan, angebot, ab = 2) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  const teil = new Map(teileVon(angebot).map((x) => [x.teil.id, x.teil]));
+  if (ab <= 2) { delete neu.wahl; delete neu.pruefungstermin; }
+  neu.bloecke = (neu.bloecke || []).filter((b) => schrittVonBlock(b.teil ? teil.get(b.teil) : null) < ab);
+  return neu;
+}
+
+/** Was einen neuen oder verschobenen Block verbietet (V-0333): Gesperrt ist, was im Raster als Termin steht — in der
+ *  Standardwoche die wiederkehrenden Termine (Serien, Reihen ab drei Terminen, gewählte Gruppen), an einem Datum die
+ *  Termine und Prüfungen dieses Tages. Ein Wochenblock, der nur an einzelnen Tagen auf einen Termin trifft (der
+ *  Kick-off), bleibt erlaubt; dort fällt er weg (Meldung „gesperrt“, Hinweis). Ergebnis: die Namen dessen, was im Weg
+ *  ist — leer heißt frei. entwurf: { tag (0 = Mo), datum?, start, ende (Minuten), woechentlich }. */
+export function gesperrtDurch(angebot, plan, erg, { tag, datum = null, start, ende, woechentlich }) {
+  const trifft = (s, e) => s < ende && start < e;
+  const kurzVon = (id) => { const m = (angebot.module || []).find((x) => x.id === id); return m ? kurz(m) : ''; };
+  const aus = [];
+  if (woechentlich) {
+    for (const k of standardwoche(angebot, plan, erg)) {
+      if (k.art !== 'termin' || k.tag !== tag || !trifft(k.start, k.ende)) continue;
+      aus.push(`${kurzVon(k.modul)} · ${erg.teile.get(k.teil).teil.titel}`);
+    }
+  }
+  if (datum) {
+    for (const v of erg.vorkommen) {
+      if (!v.hart || v.datum !== datum || v.ganztag || v.start == null || !trifft(v.start, v.ende)) continue;
+      aus.push(v.quelle === 'termin' ? `${kurzVon(v.modul)} · ${erg.teile.get(v.teil).teil.titel}` : [kurzVon(v.modul), v.titel].filter(Boolean).join(' · '));
+    }
+  }
+  return [...new Set(aus)];
 }
 
 // ── Sichten ──────────────────────────────────────────────────────────────────────────────────────
@@ -918,10 +1044,13 @@ export function luecken(erg) {
     for (const f of r.flags) aus.push({ ...f, modul: r.modul.id, teil: null });
     for (const z of r.teile) for (const f of z.flags) if (!['aufteilung'].includes(f.art)) aus.push({ ...f, modul: r.modul.id, teil: z.teil.id });
   }
+  for (const f of erg.planFlags || []) aus.push({ ...f, modul: null, teil: null });
   return aus.sort((a, b) => RANG[a.stufe] - RANG[b.stufe]);
 }
 
-// ── Vorschläge ───────────────────────────────────────────────────────────────────────────────────
+// ── Hilfen zum Planen ────────────────────────────────────────────────────────────────────────────
+// Keine Vorschläge (V-0333, Silas: „Es sollen nicht so wie jetzt Vorschläge zu den ganzen Sachen kommen, sondern man
+// soll die selber wählen können“): Der Lernplan-Vorschlag ist entfernt; was bleibt, misst nur.
 
 /** Die größte freie Lücke eines Tages im Lernfenster: [start, ende] in Minuten, oder null (unter 60 min). */
 export function freieLuecke(erg, datum, extra = []) {
@@ -935,42 +1064,6 @@ export function freieLuecke(erg, datum, extra = []) {
     cursor = Math.max(cursor, e);
   }
   return beste;
-}
-
-/** Ein Lernplan vor einer Prüfung: Rückwärts vom Tag vor der Prüfung (der bleibt als Puffer frei)
- *  sucht er je Tag die größte freie Lücke im Lernfenster, höchstens einen Lerntag lang, bis die
- *  fehlenden Stunden gedeckt sind. Sonntage bleiben frei. Ergebnis sind Datumsblöcke zum Übernehmen. */
-export function lernplanVorschlag(erg, teilId, { tag_h, start, bis_tage = 120 } = {}) {
-  const z = erg.teile.get(teilId);
-  if (!z || !z.pruefungstermin) return [];
-  const r = erg.regeln;
-  const laenge = Math.round((tag_h || r.lerntag_h) * 60);
-  const [fa, fe] = (start ? [start, r.lernfenster[1]] : r.lernfenster).map(min);
-  let rest = z.fehlt_min;
-  const aus = [];
-  const pruefungstag = z.pruefungstermin.datum;
-  for (let i = 2; i <= bis_tage && rest > 0; i++) {
-    const d = plusTage(pruefungstag, -i);
-    if (d < erg.sem.vorlesung.von) break;
-    if (wochentag(d) === 6) continue;
-    const belegt = erg.vorkommen
-      .filter((v) => v.datum === d && v.start != null && v.ende != null && !v.ganztag)
-      .map((v) => [v.start, v.ende]);
-    if (erg.vorkommen.some((v) => v.datum === d && v.quelle === 'pruefung' && v.wichtig)) continue;
-    for (const a of aus) if (a.datum === d) belegt.push([min(a.start), min(a.ende)]);
-    belegt.sort((a, b) => a[0] - b[0]);
-    let beste = null, cursor = fa;
-    for (const [s, e] of [...belegt, [fe, fe]]) {
-      const ende = Math.min(s, fe);
-      if (ende - cursor >= 90 && (!beste || ende - cursor > beste[1] - beste[0])) beste = [cursor, ende];
-      cursor = Math.max(cursor, e);
-    }
-    if (!beste) continue;
-    const dauer = Math.min(laenge, beste[1] - beste[0], aufRaster(rest, r.raster_min));
-    aus.push({ datum: d, start: hhmm(beste[0]), ende: hhmm(beste[0] + dauer), teil: teilId });
-    rest -= dauer;
-  }
-  return aus.sort((a, b) => (a.datum < b.datum ? -1 : 1));
 }
 
 /** Wohin Stunden umgewidmet werden können, die strukturell nicht stattfinden: die Teile desselben

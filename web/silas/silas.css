@@ -247,10 +247,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .p-kopf { flex: none; display: flex; flex-direction: column; gap: 10px; }
 .p-zeile { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
 /* Die Bereiche der Mitte (V-0328): Vorlesungszeit · vorlesungsfreie Zeit · Offen & Annahmen · So wird gerechnet */
-.reiter { display: flex; gap: 2px; border-bottom: 1px solid var(--grau-5); overflow-x: auto; scrollbar-width: none; }
-.reiter button { padding: 6px 12px 8px; font-size: 13px; color: var(--grau-9); border-radius: 8px 8px 0 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
-.reiter button[aria-selected="true"] { color: var(--grau-10); font-weight: 600; box-shadow: inset 0 -2px 0 var(--grau-10); }
-.reiter .zahl, .offen-gruppe h3 .zahl { font-size: 11px; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--rot); color: #fff; display: inline-grid; place-items: center; }
+.p-weitere .zahl, .offen-gruppe h3 .zahl { font-size: 11px; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--rot); color: #fff; display: inline-grid; place-items: center; }
 .bereich { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 16px; padding: 4px 4px 32px 0; scrollbar-width: thin; }
 .bereich .satz, .bereich p.satz { color: var(--grau-9); font-size: 13px; }
 .p-titel { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
@@ -321,7 +318,6 @@ a { color: inherit; text-underline-offset: 2px; }
 .kachel.zaehlt-nicht { opacity: .45; }
 .kachel.zaehlt-nicht b { text-decoration: line-through; }
 .kachel.konflikt { box-shadow: 0 0 0 2px var(--rot); }
-.kachel.weicht { box-shadow: inset 0 0 0 2px var(--rot); }
 .kachel.blass { opacity: .28; }
 .kachel.hell { box-shadow: 0 0 0 2px var(--grau-10); z-index: 5; }
 .kachel.unsicher::before { content: "?"; position: absolute; right: 4px; bottom: 2px; font-weight: 700; color: var(--gelb-text); }
@@ -587,7 +583,6 @@ a { color: inherit; text-underline-offset: 2px; }
 .kachel.option { background: var(--wahl); color: var(--wahl-text); border: 1px solid var(--rand); outline: 2px dashed var(--linie-wahl); outline-offset: -5px; cursor: pointer; z-index: 3; }
 .kachel.option:hover { filter: brightness(1.04); }
 .kachel.option.abgewaehlt { opacity: .35; filter: grayscale(.7); }
-.kachel.option.vorschlag { background: var(--grau-1); color: var(--grau-10); outline: none; border: 1.5px dashed var(--rand); }
 .kachel.gewaehlt { outline: 2px solid var(--linie-wahl); outline-offset: -5px; }
 /* Eine Reihe (nur an einzelnen Tagen) ist Pflicht wie jeder Termin, nur heller und mit Anzahl — gestrichelt ist die Wahl. */
 .kachel.reihe { background: var(--vor); color: var(--tinte); border-style: solid; }
@@ -625,7 +620,6 @@ a { color: inherit; text-underline-offset: 2px; }
 .kachel.block[class*=" k-"] { background: repeating-linear-gradient(135deg, var(--kf) 0 6px, color-mix(in srgb, var(--kf) 35%, var(--grau-1)) 6px 11px); border-left: 5px solid var(--rand); }
 .kachel.pruefung { background: var(--k-pruefung-r); color: #fff; border-color: var(--k-pruefung-r); }
 .kachel.option[class*=" k-"] { outline: 2px dashed var(--linie-wahl); outline-offset: -5px; }
-.kachel.option.vorschlag[class*=" k-"] { background: var(--grau-1); color: var(--grau-10); outline: none; border: 1.5px dashed var(--kr); border-left: 5px solid var(--rand); }
 .kachel.gewaehlt[class*=" k-"] { outline: 2px solid var(--linie-wahl); outline-offset: -5px; }
 .t-sym[class*=" k-"] { background: var(--kf); color: var(--kt); }
 .mu-zeile[class*=" k-"] .mu-z.an { background: var(--kr); }
@@ -646,8 +640,6 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .m-zahl .fehlt { color: var(--grau-9); font-weight: 600; }
 @media (max-width: 1500px) { .bilanz .balken { display: none; } }
 
-/* Ein Block, der einem Termin ausweicht, verliert nur Zeit — ein Hinweis, kein Konflikt (V-0332) */
-.kachel.weicht { box-shadow: inset 0 0 0 2px var(--gelb); }
 .chip.freigabe[class*=" k-"] { background: var(--kf); color: var(--kt); }
 
 .kachel.reihe.gewaehlt[class*=" k-"] { background: var(--kf); }
@@ -656,3 +648,78 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 @media (max-width: 1600px) { .sync.ok { display: none; } }
 
 .m-zahl > span:last-child { white-space: nowrap; }
+
+/* ── V-0333: vier Schritte, Etikett und Wiederholungen je Kachel, Präsenz gesperrt ───────────────────
+   Silas, 11.10.2026: „Das Tool soll einen durch genau diese Entscheidungen durchführen … in jeder Kachel als Tag an
+   der Seite: Präsenz, Video oder EVL … und wie oft sich dieser Eintrag bis zum Ende des Semesters wiederholt.“ */
+.p-schritte { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.schritte { display: flex; gap: 4px; flex: 1 1 520px; min-width: 0; }
+.schritt { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--grau-5); background: var(--grau-1); text-align: left; }
+.schritt .s-nr { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--grau-4); color: var(--grau-9); flex: none; }
+.schritt.jetzt { border-color: var(--grau-10); box-shadow: inset 0 0 0 1px var(--grau-10); }
+.schritt.jetzt .s-nr { background: var(--grau-10); color: var(--grau-1); }
+.schritt .s-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.schritt .s-text b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.schritt .s-text small { font-size: 11px; color: var(--grau-8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.schritt .s-stand { margin-left: auto; flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; background: var(--st-flaeche); color: var(--st-text); }
+.schritt .s-stand.fertig { background: var(--grau-3); color: var(--grau-8); }
+.p-weitere { display: flex; gap: 2px; align-items: center; flex-wrap: wrap; }
+.p-weitere .knopf { height: 32px; padding: 0 8px; font-size: 13px; gap: 6px; }
+.p-weitere .knopf.an { background: var(--grau-4); color: var(--grau-10); border-color: transparent; font-weight: 600; }
+.schritt-tun { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--grau-1); border: 1px solid var(--grau-5); }
+.schritt-tun b { font-size: 13px; }
+.links-kopf .schritt-tun span { font-size: 12px; color: var(--grau-9); padding: 0; line-height: 1.35; }
+.links-kopf .links-satz { font-size: 11px; color: var(--grau-8); padding: 0 4px; }
+.modul.leer { opacity: .6; padding-bottom: 10px; }
+.modul.leer .m-kopf { pointer-events: auto; }
+.m-unter { font-size: 11px; font-weight: 600; color: var(--grau-8); text-transform: uppercase; letter-spacing: .04em; margin: 4px 0 -4px; }
+.plan-flaggen { padding: 10px; }
+.gruppen-wahl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.gruppen-wahl .t-zahlen { flex-basis: 100%; }
+.gruppen-wahl .gw-zahl { font-weight: 400; opacity: .75; }
+.zurueck-wahl { display: flex; flex-direction: column; gap: 6px; }
+.zurueck-wahl .knopf { height: auto; min-height: var(--ziel); padding: 8px 12px; justify-content: flex-start; text-align: left; flex-wrap: wrap; gap: 0 4px; }
+.zurueck-wahl .knopf small { font-weight: 400; opacity: .8; }
+
+/* Etikett als senkrechter Streifen an der rechten Kante (Silas: „als Tag an der Seite“), die Wiederholungen vorn in
+   Zeile 2 — so bleibt dem Titel die ganze Breite. */
+.kachel { padding-right: 17px; }
+.kachel .k-etikett { position: absolute; top: 0; right: 0; bottom: 0; width: 13px; height: auto; padding: 0; border-radius: 0; writing-mode: vertical-rl; text-orientation: mixed; display: flex; align-items: center; justify-content: flex-start; padding-top: 4px; font-size: 9px; line-height: 13px; letter-spacing: .06em; text-transform: uppercase; overflow: hidden; }
+.k-etikett, .k-anzahl { font-style: normal; font-weight: 700; white-space: nowrap; }
+.k-etikett { color: #fff; }
+.k-etikett.e-praesenz { background: var(--k-praesenz-r); }
+.k-etikett.e-video { background: var(--k-video-r); }
+.k-etikett.e-evl { background: var(--k-lernen-r); }
+.k-anzahl { display: inline-block; font-size: 9.5px; line-height: 13px; height: 13px; padding: 0 3px; margin-right: 4px; border-radius: 3px; vertical-align: 1px; background: var(--grau-1); color: var(--grau-10); box-shadow: inset 0 0 0 1px var(--grau-6); }
+.k-anzahl.einmal { background: var(--grau-10); color: var(--grau-1); box-shadow: none; }
+.legende i.k-etikett, .legende i.k-anzahl { width: auto; height: 14px; display: inline-block; font-size: 9.5px; line-height: 14px; padding: 0 4px; border-radius: 3px; text-transform: uppercase; letter-spacing: .04em; }
+.legende i.k-etikett + i.k-etikett { margin-left: -2px; }
+.kachel .k-marke { top: auto; bottom: 3px; right: 17px; }
+.kachel.unsicher::before { right: 17px; }
+
+/* Schichten: was zu einem späteren Schritt gehört, steht zart und ohne Griff da; ein früherer Block ist fest. */
+.kachel.lage-spaeter { opacity: .3; filter: saturate(.4); pointer-events: none; z-index: 1; }
+.kachel.lage-spaeter.hell { opacity: 1; filter: none; }
+.kachel.block.lage-frueher { cursor: pointer; filter: saturate(.75); }
+.raster.ohne-bloecke .r-tag { cursor: default; }
+.legende .lg-s { background: repeating-linear-gradient(135deg, var(--m1-vor) 0 4px, var(--m1-hauch) 4px 7px); border: 1px solid var(--m1-rand); opacity: .35; }
+
+/* Gesperrt: ein Block auf einem Termin muss weg (hellblau = du bist dran), einer, der an einzelnen Tagen weicht, ist
+   nur gekürzt. Beim Ziehen zeigt der Entwurf rot, dass er auf einem Termin läge. */
+.kachel.block.gesperrt { box-shadow: 0 0 0 2px var(--blau); }
+.kachel.block.gesperrt .k-zwei { color: var(--blau-text); font-weight: 600; opacity: 1; }
+.kachel.block.gekuerzt { box-shadow: inset 0 0 0 2px var(--grau-7); }
+.entwurf.gesperrt, .kachel.ziel-gesperrt { border-color: var(--rot); background: color-mix(in srgb, var(--rot) 18%, transparent); color: var(--rot-text); }
+.kachel.ziel-gesperrt { box-shadow: 0 0 0 2px var(--rot); }
+.meldung { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 20; max-width: min(560px, calc(100% - 24px)); padding: 10px 14px; border-radius: 10px; background: var(--grau-10); color: var(--grau-1); font-size: 13px; box-shadow: var(--schatten); }
+.plan { position: relative; }
+.p-fuss { gap: 4px 12px; font-size: 11px; }
+.p-fuss .legende { gap: 4px; }
+.p-zeile .p-titel { flex: 1 1 220px; }
+@media (max-width: 600px) {
+  /* Am Handy: der gezeigte Schritt mit Namen, die anderen nur mit Nummer und Stand. */
+  .schritt { padding: 6px; gap: 6px; }
+  .schritt:not(.jetzt) { flex: 0 0 auto; }
+  .schritt:not(.jetzt) .s-text { display: none; }
+  .schritt.jetzt { flex: 1 1 auto; }
+}
