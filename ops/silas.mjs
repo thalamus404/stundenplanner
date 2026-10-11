@@ -49,7 +49,8 @@ function schluessel() {
 async function api(weg, opts = {}) {
   const r = await fetch(`${BASIS}/silas/api/${weg}`, { ...opts, headers: { authorization: `Bearer ${schluessel()}`, 'content-type': 'application/json', 'user-agent': UA } });
   const text = await r.text();
-  let daten; try { daten = JSON.parse(text); } catch { daten = text; }
+  // Eine HTML-Fehlerseite (Cloudflare: „Deployment Not Found“ kurz nach dem Hochladen) nicht ganz ausgeben.
+  let daten; try { daten = JSON.parse(text); } catch { daten = text.replace(/\s+/g, ' ').slice(0, 200); }
   return { status: r.status, daten };
 }
 
