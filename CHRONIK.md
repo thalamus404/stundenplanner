@@ -12,6 +12,16 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas, Rückmeldung 1: Herkunft, Minimap, vorlesungsfreie Zeit, ISIS-Daten (V-0328)
+
+- Silas' erster Blick: Woher kommt jede Zahl, was sagt Bologna, jedes Video ist anders lang, die Auswahl soll rechts
+  aufleuchten, rechts eine Minimap des ganzen Semesters, die Bilanz soll das Zuviel abziehen, Annahmen und Warnungen an
+  einem Ort zum Ändern, Vorlesungszeit und vorlesungsfreie Zeit unterscheiden. Alles gebaut (docs/SILAS.md §2.5–§3).
+- Silas hatte alle fünf ISIS-Kurse heruntergeladen. Je Modul las ein Agent den Export, prüfte jede Angabe und trug
+  nach, was es gibt; was ISIS noch nicht nennt, bleibt rot. Ihre Funde zum Format (Einheiten ohne Datum, Abgaben im
+  Fenster, Anmeldungen an Gruppen, Wahl zwischen Prüfungsterminen, Prüfungsüberschneidung) sind ins Modell eingegangen.
+  Nichts davon wurde bei der TU abgerufen; der Export liegt nur privat auf dem NAS.
+
 ## 11.10.2026 — /silas: der Semesterplaner nach Leistungspunkten (V-0321)
 
 - Silas, nach einem Gespräch mit dem Fachbereich: Seit Bologna zählt nicht die SWS, sondern der Aufwand in
