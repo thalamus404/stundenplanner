@@ -82,6 +82,7 @@ const Z = {
   jetzt: {},            // je Schritt der Bestandteil, den Silas links gewählt hat (sonst der erste offene)
   sprung: null,         // { nach } — kurz in einen früheren Schritt zurückgesprungen (V-0336), danach zurück nach `nach`
   auf: {},              // je Schritt das Modul, das Silas trotz „fertig“ aufgeklappt hat
+  zrAuf: new Set(['zr-pause-0', 'zr-frei']), // Prüfungen: die aufgeklappten Zeiträume (anfangs die vorlesungsfreien)
   hell: null,           // Vorkommen-Id, die kurz hervorgehoben wird
   rueck: [],            // Rückgängig-Stapel (JSON der vorigen Stände)
   sync: { lage: 'ruhig', zeit: null, timer: null, laeuft: false, nochmal: false },
@@ -453,6 +454,29 @@ function reiheEl(n) {
   }));
 }
 
+/** Im Reiter Prüfungen: jede Prüfung nach Datum, mit dem, was an Vorbereitung noch offen ist (V-0338, Silas: „an der
+ *  Seite, wie viele Stunden sind noch offen … und wenn man auf die anklickt, wird hervorgehoben, welcher Test das ist
+ *  und welcher Zeitraum dir da besonders zum Üben bleibt“). */
+function pruefListeEl() {
+  const pz = [...Z.erg.teile.values()].filter((z) => z.teil.art === 'pruefung')
+    .sort((a, b) => ((a.pruefungstermin && a.pruefungstermin.datum) || '9') < ((b.pruefungstermin && b.pruefungstermin.datum) || '9') ? -1 : 1);
+  return h('ol', { class: 'reihe' }, ...pz.map((z) => {
+    const m = z.modul, x = z.pruefungstermin, dran = Z.setzen === z.teil.id;
+    const fertigt = z.fehlt_min < Z.erg.regeln.toleranz_min;
+    const art = z.pruefung ? M.pruefungsArt(z.pruefung) : 'klausur';
+    const li = h('li', { class: `m${m.farbe || 1}${dran ? ' dran' : ''}${fertigt ? ' fertig' : ''}` },
+      h('button', { type: 'button', class: 'r-zeile', 'data-act': 'setzen', 'data-teil': z.teil.id, 'aria-current': dran ? 'true' : null },
+        h('span', { class: `zl-marke a-${art} gilt r-art` }, h('i')), h('span', { class: 'r-name', text: `${M.kurz(m)} · ${z.pruefung ? z.pruefung.titel.replace(/\s*\(.*\)\s*/, '') : z.teil.titel}` }),
+        h('span', { class: 'r-stand', text: `${x ? M.datumKurz(x.datum) : 'offen'} · ${fertigt ? '✓' : `fehlt ${M.stunden(z.fehlt_min)}`}` })));
+    if (dran) {
+      const v = vorlauf(z);
+      li.append(h('p', { class: 'r-satz', text: `Vorbereitet ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${v ? ` Bei ${v.jeWoche} h je Woche ${v.wochen} ${v.wochen === 1 ? 'Woche' : 'Wochen'} Vorlauf — ab ${datumMitTag(v.von)}.` : ' Der Termin steht noch nicht fest.'} Tipp im Kalender einen Tag an.` }),
+        h('button', { type: 'button', class: 'knopf klein', 'data-act': 'pruefplan' }, sym('kalender'), 'In der Woche legen'));
+    }
+    return li;
+  }));
+}
+
 /** Im Prüfplan: jede Prüfungsvorbereitung nach Datum der Prüfung, mit Länge und „Block legen“. */
 function pruefReiheEl() {
   const pz = [...Z.erg.teile.values()].filter((z) => z.teil.art === 'pruefung')
@@ -486,9 +510,16 @@ function moduleZeichnen() {
     : Z.ansicht.bereich === 'pruefplan'
       ? h('div', { class: 'schritt-tun' }, h('b', { text: 'Vorbereitung in der Vorlesungszeit' }), h('span', { text: 'Wähl die Länge und „Block legen“: Er hängt am Zeiger, grün ist frei (7–22 Uhr, auch am Wochenende). In der Standardwoche liegt er jede Woche bis zum Tag vor der Prüfung, in einer echten Woche nur dort.' }), pruefReiheEl())
     : Z.ansicht.bereich === 'frei'
-      ? h('div', { class: 'schritt-tun' }, h('b', { text: 'Prüfungen' }), h('span', { text: 'Termine, Anmeldungen und die Vorbereitung. Die planst du ab Mitte des Semesters: Prüfung wählen, dann im Kalender die Tage antippen — oder „Vorlesungszeit öffnen“.' }))
+      ? h('div', { class: 'schritt-tun' }, h('b', { text: 'Prüfungen' }), h('span', { text: 'Wähl eine Prüfung: Sie leuchtet in der Zeitleiste, ihre Übungszeit ist im Kalender getönt, und die Zeiträume gehen auf. Dann Tage antippen — jeder Tipp ein Lernblock.' }), pruefListeEl())
       : h('div', { class: 'schritt-tun' }, h('b', { text: 'Dein Stundenplan' }), h('span', { text: 'Festgelegt — alles in Farbe. Ändern: oben „Stundenplan bearbeiten“ oder bei einem Bestandteil „In Schritt … bearbeiten“.' }));
-  const kopf = h('div', { class: 'links-kopf' }, tun,
+  // Die zwei Hauptansichten (V-0338, Silas: „Woche und Prüfungen noch etwas prominenter oben links … als die zwei
+  // Hauptfenster von diesem Tool“). Prüfungen gibt es erst, wenn der Stundenplan festgelegt ist.
+  const b = Z.ansicht.bereich;
+  const haupt = h('div', { class: 'hauptreiter', role: 'tablist', 'aria-label': 'Ansicht' },
+    h('button', { type: 'button', role: 'tab', 'aria-selected': String(!['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'plan' }, sym('kalender'), h('span', {}, h('b', { text: 'Woche' }), h('small', { text: fertig() ? 'dein Stundenplan' : `Schritt ${n} von 4` }))),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': String(['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'frei', disabled: !fertig(), title: fertig() ? null : 'Erst nach „Stundenplan festlegen“' },
+      sym('ziel'), h('span', {}, h('b', { text: 'Prüfungen' }), h('small', { text: fertig() ? 'Zeitleiste und Vorbereitung' : 'nach dem Festlegen' }))));
+  const kopf = h('div', { class: 'links-kopf' }, haupt, tun,
     fertig() || n > 2 ? h('div', { class: 'umschalter', role: 'group', 'aria-label': 'Zeitraum der Module' },
       h('button', { type: 'button', 'aria-pressed': String(!woche), 'data-act': 'links', 'data-wert': 'semester', text: 'Ganzes Semester' }),
       h('button', { type: 'button', 'aria-pressed': String(woche), 'data-act': 'links', 'data-wert': 'woche', text: 'Diese Woche' })) : null,
@@ -904,9 +935,7 @@ function planKopfZeichnen() {
         h('span', { class: `s-stand ${st.kl}`, text: st.text }));
     }));
   const weitere = h('div', { class: 'p-weitere' },
-    fertig() ? h('button', { type: 'button', class: `knopf leise${b === 'plan' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'plan', text: 'Woche' }) : null,
-    // Die Prüfungen erst nach dem Festlegen (Silas: „ab Mitte des Semesters“).
-    fertig() ? h('button', { type: 'button', class: `knopf leise${b === 'frei' || b === 'pruefplan' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'frei' }, 'Prüfungen', Z.schritte[4].offen ? h('span', { class: 'zahl', text: String(Z.schritte[4].offen) }) : null) : null,
+    // Woche und Prüfungen stehen als Hauptreiter oben links (V-0338).
     h('button', { type: 'button', class: `knopf leise${b === 'offen' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'offen' }, 'Offen & Annahmen', rot ? h('span', { class: 'zahl', text: String(rot) }) : null),
     h('button', { type: 'button', class: `knopf leise${b === 'erklaerung' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'erklaerung', text: 'So wird gerechnet' }),
     h('button', { type: 'button', class: 'knopf leise', 'data-act': 'zuruecksetzen', title: 'Zurück auf die Grundlage' }, sym('zurueck'), 'Zurücksetzen'));
@@ -1091,7 +1120,9 @@ function rasterZeichnen() {
   const wochenende = Z.ansicht.wochenende || pruefplan() || kacheln.some((k) => k.tag >= 5) || (!std && w.art !== 'vorlesung');
   const tage = wochenende ? 7 : 5;
   let h0 = 8, h1 = 20;
-  for (const k of kacheln) { h0 = Math.min(h0, Math.floor(k.start / 60)); h1 = Math.max(h1, Math.ceil(k.ende / 60)); }
+  // Die Fahrzeit vor dem ersten Termin (8:15 − 40 min) soll noch im Raster stehen.
+  const fahrt = (k) => (['termin', 'pruefung', 'einzel'].includes(k.art) ? Z.erg.regeln.pendeln_min : 0);
+  for (const k of kacheln) { h0 = Math.min(h0, Math.floor((k.start - fahrt(k)) / 60)); h1 = Math.max(h1, Math.ceil((k.ende + fahrt(k)) / 60)); }
   if (pruefplan()) { h0 = Math.min(h0, 7); h1 = Math.max(h1, 22); } // auch früh und abends
   h0 = Math.max(6, h0); h1 = Math.min(23, h1);
   geo = { h0, h1, tage, std, woche: w };
@@ -1171,6 +1202,14 @@ function rasterZeichnen() {
     spaltenEl.push(h('div', { class: `r-tag${frei ? ' frei' : ''}${d >= 5 ? ' wochenende' : ''}`, 'data-tag': String(d) }));
   }
   spalten(kacheln);
+  // Fahrzeit (V-0338): 40 min vor dem ersten und nach dem letzten Termin vor Ort, nur zum Sehen — grau gestrichelt,
+  // ohne Klick, sie sperrt nichts (M.fahrzeiten).
+  const fahrten = [];
+  for (let d = 0; d < tage; d++) {
+    const vorOrt = kacheln.filter((k) => k.tag === d && ['termin', 'pruefung', 'einzel'].includes(k.art))
+      .map((k) => ({ start: k.start, ende: k.ende, ort: k.ort, online: k.v && k.v.online }));
+    for (const [a, b] of M.fahrzeiten(vorOrt, Z.erg.regeln)) fahrten.push({ tag: d, start: Math.max(a, h0 * 60), ende: Math.min(b, h1 * 60) });
+  }
   const pos = (el, k) => {
     el.style.top = `${((k.start - h0 * 60) / ((h1 - h0) * 60)) * 100}%`;
     el.style.height = `calc(${((k.ende - k.start) / ((h1 - h0) * 60)) * 100}% - 1px)`;
@@ -1181,6 +1220,13 @@ function rasterZeichnen() {
     const el = kachelEl(k);
     pos(el, k);
     spaltenEl[k.tag].append(el);
+  }
+  for (const f of fahrten) {
+    if (f.ende - f.start < 10) continue;
+    const el = h('div', { class: 'fahrt', title: `Fahrzeit ${Z.erg.regeln.pendeln_min} min`, 'aria-hidden': 'true' }, h('span', { text: 'Fahrzeit' }));
+    el.style.top = `${((f.start - h0 * 60) / ((h1 - h0) * 60)) * 100}%`;
+    el.style.height = `${((f.ende - f.start) / ((h1 - h0) * 60)) * 100}%`;
+    spaltenEl[f.tag].append(el);
   }
   if (!std && heute() >= w.von && heute() <= w.bis) {
     const d = M.wochentag(heute()), m = jetztMin();
@@ -1375,33 +1421,69 @@ function bereichZeichnen() {
 /** Die vorlesungsfreie Zeit (Silas, 11.10.: „da fallen viele Präsenztermine raus, da hat man Platz, um zu planen,
  *  wann man welche Klausurvorbereitung macht“): oben jede Prüfung mit ihrer Vorbereitung, darunter die Tage der
  *  Weihnachtspause und der Zeit nach der Vorlesung. Prüfung wählen, dann Tage antippen: jeder Tipp ein Lerntag. */
-/** Die Zeitleiste des Semesters über dem Reiter Prüfungen (V-0337, Silas: „ganz oben nochmal so eine Master-Timeline,
- *  wo man das ganze Semester sieht, die Vorlesungszeit und die vorlesungsfreie Zeit … dass einem sofort klar wird, dass
- *  diese zwei Ausschnitte vorlesungsfreier Zeit das sind, was man unten als Zeiträume sieht, und auf dieser Skala A die
- *  Klausuren, B die E-Tests, C die Online-Tests und die schriftlichen Prüfungen“). Oben die Phasen (ein Klick auf eine
- *  vorlesungsfreie springt zu ihrem Kalender, einer auf die Vorlesungszeit öffnet sie), darunter je Art eine Spur mit
- *  jedem Termin; Ausweich- und Zweittermine hohl, der Termin, der gilt, gefüllt. */
+// ── Prüfungen (V-0337, umgebaut V-0338) ──────────────────────────────────────────────────────────
+// Silas, 11.10.: Die Zeitleiste nimmt zu viel Platz — alle Prüfungen auf EINE Spur, die Art an Farbe und Form; je
+// Prüfung ein Vorlauf („angenommen, du übst zwei Stunden in der Woche, wie viele Wochen solltest du vorher anfangen“);
+// darunter alle Zeiträume — Vorlesungszeit, vorlesungsfrei, Vorlesungszeit, vorlesungsfrei — zum Auf- und Zuklappen, mit
+// allen Prüfungen darin; die Prüfungen links wie bei der Wochenplanung, ein Klick hebt die Prüfung und ihre Übungszeit
+// hervor und öffnet die Zeiträume, in denen sie und die drei Wochen davor liegen.
+
+/** Die Zeiträume des Semesters in ihrer Reihenfolge: Vorlesungszeit, Pause, Vorlesungszeit, vorlesungsfreie Zeit. */
+function zeitraeume() {
+  const sem = Z.erg.sem;
+  const aus = [];
+  let cur = sem.vorlesung.von, n = 0;
+  (sem.frei || []).slice().sort((x, y) => (x.von < y.von ? -1 : 1)).forEach((f, i) => {
+    aus.push({ id: `zr-vl-${n++}`, art: 'vl', titel: 'Vorlesungszeit', von: cur, bis: M.plusTage(f.von, -1) });
+    aus.push({ id: `zr-pause-${i}`, art: 'pause', titel: f.titel || 'Vorlesungsfrei', von: f.von, bis: f.bis });
+    cur = M.plusTage(f.bis, 1);
+  });
+  aus.push({ id: `zr-vl-${n}`, art: 'vl', titel: 'Vorlesungszeit', von: cur, bis: sem.vorlesung.bis });
+  if (sem.ende && sem.ende > sem.vorlesung.bis) aus.push({ id: 'zr-frei', art: 'frei', titel: 'Vorlesungsfreie Zeit', von: M.plusTage(sem.vorlesung.bis, 1), bis: sem.ende });
+  return aus;
+}
+
+/** Der Vorlauf einer Prüfungsvorbereitung: bei `h` Stunden je Woche so viele Wochen vor der Prüfung anfangen, dass ihr
+ *  Soll erreicht ist (Silas: „wie viele Wochen solltest du anfangen vorher mit lernen, damit du am Ende auf die 40
+ *  Stunden kommst“). */
+function vorlauf(z) {
+  const x = z && z.pruefungstermin;
+  if (!x) return null;
+  const jeWoche = Z.ansicht.vorlaufH || 2;
+  const wochen = Math.max(1, Math.ceil(z.soll_min / 60 / jeWoche));
+  return { wochen, jeWoche, von: M.plusTage(x.datum, -7 * wochen), bis: M.plusTage(x.datum, -1), ziel: x.datum };
+}
+const pruefungsteilVon = (pid) => [...Z.erg.teile.values()].find((z) => z.teil.pruefung === pid) || null;
+
+/** Eine Prüfung wählen: links hervorgehoben, in der Zeitleiste und den Kalendern samt Übungszeit; die Zeiträume, in
+ *  denen sie und die drei Wochen davor liegen, gehen auf. Noch einmal wählen hebt die Wahl auf. */
+function pruefungWaehlen(teilId) {
+  Z.setzen = Z.setzen === teilId ? null : teilId;
+  const z = Z.setzen && Z.erg.teile.get(Z.setzen);
+  let ziel = null;
+  if (z && z.pruefungstermin) {
+    ziel = z.pruefungstermin.datum;
+    const ab = M.plusTage(ziel, -21);
+    for (const p of zeitraeume()) if (p.bis >= ab && p.von <= ziel) Z.zrAuf.add(p.id);
+  }
+  zeichnen(); bannerZeigen();
+  if (ziel) document.querySelector(`.kal-tag[data-datum="${ziel}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+/** Die Zeitleiste: die Zeiträume (ein Klick klappt ihren Kalender auf), darunter EINE Spur mit jeder Prüfung — Farbe und
+ *  Form nach Art (Klausur rund, E-Test eckig, Online-/schriftlicher Test Raute), gefüllt der Termin, der gilt, hohl
+ *  Ausweich- und Zweittermine; vor jedem geltenden Termin sein Vorlauf als Linie mit einem Strich am Anfang. */
 function zeitleisteEl() {
   const sem = Z.erg.sem;
-  const von = sem.vorlesung.von, bis = sem.ende && sem.ende > sem.vorlesung.bis ? sem.ende : sem.vorlesung.bis;
+  const zr = zeitraeume();
+  const von = zr[0].von, bis = zr[zr.length - 1].bis;
   const tage = M.tageZwischen(von, bis) + 1;
   const pct = (d) => Math.max(0, Math.min(100, (M.tageZwischen(von, d) / tage) * 100));
   const lage = (el, a, b) => { el.style.left = `${pct(a)}%`; el.style.width = `${((M.tageZwischen(a, b) + 1) / tage) * 100}%`; return el; };
-  // Phasen: Vorlesungszeit, ihre Pausen, danach vorlesungsfrei
-  const segs = [];
-  let cur = sem.vorlesung.von;
-  (sem.frei || []).slice().sort((a, b) => (a.von < b.von ? -1 : 1)).forEach((f, i) => {
-    segs.push({ art: 'vl', von: cur, bis: M.plusTage(f.von, -1) });
-    segs.push({ art: 'pause', von: f.von, bis: f.bis, ziel: `phase-pause-${i}`, titel: f.titel || 'Vorlesungsfrei' });
-    cur = M.plusTage(f.bis, 1);
-  });
-  segs.push({ art: 'vl', von: cur, bis: sem.vorlesung.bis });
-  if (bis > sem.vorlesung.bis) segs.push({ art: 'frei', von: M.plusTage(sem.vorlesung.bis, 1), bis, ziel: 'phase-frei', titel: 'Vorlesungsfreie Zeit' });
-  const phasen = h('div', { class: 'zl-phasen' }, ...segs.map((g) => lage(h('button', {
-    type: 'button', class: `zl-phase ${g.art}`, 'data-act': g.art === 'vl' ? 'pruefplan' : 'zur-phase', 'data-ziel': g.ziel || null,
-    title: `${g.art === 'vl' ? 'Vorlesungszeit — öffnen: Vorbereitung um den Stundenplan herum' : `${g.titel} — zum Kalender unten`} · ${datumMitTag(g.von)} – ${datumMitTag(g.bis)}`,
+  const phasen = h('div', { class: 'zl-phasen' }, ...zr.map((g) => lage(h('button', {
+    type: 'button', class: `zl-phase ${g.art}${Z.zrAuf.has(g.id) ? ' auf' : ''}`, 'data-act': 'zeitraum', 'data-ziel': g.id,
+    title: `${g.titel} · ${datumMitTag(g.von)} – ${datumMitTag(g.bis)} — aufklappen`,
   }, h('span', { text: g.art === 'vl' ? 'Vorlesungszeit' : g.art === 'pause' ? 'Pause' : 'vorlesungsfrei' })), g.von, g.bis)));
-  // Monate
   const skala = h('div', { class: 'zl-skala' });
   const MONATE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
   for (let d = `${von.slice(0, 7)}-01`; d <= bis; d = M.plusTage(d, 32).slice(0, 7) + '-01') {
@@ -1410,45 +1492,59 @@ function zeitleisteEl() {
   }
   const heuteEl = heute() >= von && heute() <= bis ? h('i', { class: 'zl-heute', title: `heute, ${datumMitTag(heute())}` }) : null;
   if (heuteEl) heuteEl.style.left = `${pct(heute())}%`;
-  // Spuren je Art
-  const spuren = [];
+  const gewaehlt = Z.setzen && Z.erg.teile.get(Z.setzen);
+  const spur = h('div', { class: 'zl-spur' });
   const offen = [];
-  M.PRUEFUNGSARTEN.forEach(([art, name], i) => {
-    const marken = [];
-    for (const r of Z.erg.module) {
-      for (const p of r.modul.pruefungen || []) {
-        if (M.pruefungsArt(p) !== art) continue;
-        const gilt = M.pruefungsTermin(r.modul, p.id, Z.stand.plan).termin;
-        const datiert = (p.termine || []).filter((x) => M.istDatum(x.datum));
-        if (!datiert.length) offen.push(`${M.kurz(r.modul)} ${p.titel}`);
-        for (const x of datiert) marken.push({ r, p, x, gilt: x === gilt, at: pct(x.datum) });
-      }
+  const marken = [];
+  for (const r of Z.erg.module) {
+    for (const p of r.modul.pruefungen || []) {
+      const art = M.pruefungsArt(p);
+      const z = pruefungsteilVon(p.id);
+      const gilt = M.pruefungsTermin(r.modul, p.id, Z.stand.plan).termin;
+      const datiert = (p.termine || []).filter((x) => M.istDatum(x.datum));
+      if (!datiert.length) offen.push(`${M.kurz(r.modul)} ${p.titel}`);
+      for (const x of datiert) marken.push({ r, p, x, z, art, gilt: x === gilt, at: pct(x.datum) });
     }
-    marken.sort((a, b) => a.at - b.at);
-    const spur = h('div', { class: 'zl-spur' });
-    for (const k of marken) {
-      const kurzTitel = k.p.titel.replace(/\s*\(.*\)\s*/, '').replace(/^Präsenzklausur$/, 'Klausur');
-      const el = h('button', { type: 'button', class: `zl-marke a-${art}${k.gilt ? ' gilt' : ''}${k.x.wichtig === false && !k.gilt ? ' ausweich' : ''}`, 'data-act': 'pruefung', 'data-pruefung': k.p.id,
-        title: `${M.kurz(k.r.modul)} · ${k.p.titel}${k.x.label ? ` (${k.x.label})` : ''} — ${datumMitTag(k.x.datum)}${k.x.start ? ` ${k.x.start}` : ''}${k.x.ort ? ` · ${k.x.ort}` : ''}` },
-        h('i'), h('span', { class: 'zl-text' }, h('b', { text: `${M.kurz(k.r.modul)} ${kurzTitel}` }), ` ${M.datumKurz(k.x.datum)}`));
-      el.style.left = `${k.at}%`;
-      spur.append(el);
+  }
+  marken.sort((a, b) => a.at - b.at);
+  for (const k of marken) {
+    const kurzTitel = k.p.titel.replace(/\s*\(.*\)\s*/, '').replace(/^Präsenzklausur$/, 'Klausur');
+    const dieser = gewaehlt && k.z && gewaehlt.teil.id === k.z.teil.id;
+    const el = h('button', { type: 'button', class: `zl-marke a-${k.art}${k.gilt ? ' gilt' : ''}${k.x.wichtig === false && !k.gilt ? ' ausweich' : ''}${dieser ? ' gewaehlt' : gewaehlt ? ' blass' : ''}`,
+      'data-act': k.z ? 'pruefung-ziel' : null, 'data-teil': k.z ? k.z.teil.id : null,
+      title: `${M.kurz(k.r.modul)} · ${k.p.titel}${k.x.label ? ` (${k.x.label})` : ''} — ${datumMitTag(k.x.datum)}${k.x.start ? ` ${k.x.start}` : ''}${k.x.ort ? ` · ${k.x.ort}` : ''}` },
+      h('i'), h('span', { class: 'zl-text' }, h('b', { text: `${M.kurz(k.r.modul)} ${kurzTitel}` }), ` ${M.datumKurz(k.x.datum)}`));
+    el.style.left = `${k.at}%`;
+    // Der Vorlauf nur vor dem Termin, der gilt.
+    const vl = k.gilt && k.z ? vorlauf(k.z) : null;
+    if (vl) {
+      const linie = h('i', { class: `zl-vorlauf a-${k.art}${vl.von < von ? ' davor' : ''}`, title: `Bei ${vl.jeWoche} h je Woche ${vl.wochen} ${vl.wochen === 1 ? 'Woche' : 'Wochen'} vorher anfangen (ab ${datumMitTag(vl.von)}${vl.von < von ? ', vor Semesterbeginn' : ''}) — ${M.stunden(k.z.soll_min)} Vorbereitung` });
+      const a = vl.von < von ? 0 : pct(vl.von);
+      linie.style.left = `${a}%`; linie.style.width = `${Math.max(0, k.at - a)}%`;
+      el.dataset.vorlauf = String(a);
+      spur.append(linie);
+      el.zlLinie = linie;
     }
-    spuren.push(h('div', { class: 'zl-reihe' }, h('span', { class: 'zl-name' }, h('b', { text: 'ABC'[i] }), ` ${name}`), spur));
-  });
+    spur.append(el);
+  }
+  const rate = h('select', { 'aria-label': 'Stunden je Woche für den Vorlauf', 'data-vorlauf': '1' }, ...[1, 2, 3, 4, 6, 8].map((n) => h('option', { value: String(n), selected: n === (Z.ansicht.vorlaufH || 2), text: `${n} h` })));
   return h('section', { class: 'zeitleiste' },
-    h('div', { class: 'zl-kopf' }, h('b', { text: 'Das Semester' }), h('span', { text: ` ${datumMitTag(von)} – ${datumMitTag(bis)} · ein Klick auf „vorlesungsfrei“ springt zum Kalender unten` }),
-      h('button', { type: 'button', class: 'knopf klein haupt', 'data-act': 'pruefplan' }, sym('kalender'), 'Vorlesungszeit öffnen')),
-    h('div', { class: 'zl-reihe' }, h('span', { class: 'zl-name' }), h('div', { class: 'zl-spur zl-oben' }, skala, phasen, heuteEl)),
-    ...spuren,
-    offen.length ? h('p', { class: 'zl-offen', text: `Termin noch offen: ${offen.join(', ')}` }) : null);
+    h('div', { class: 'zl-kopf' }, h('b', { text: 'Das Semester' }), h('span', { class: 'zl-satz', text: ` ${datumMitTag(von)} – ${datumMitTag(bis)}` }),
+      h('label', { class: 'zl-rate' }, 'Vorlauf bei', rate, 'je Woche'),
+      h('button', { type: 'button', class: 'knopf klein', 'data-act': 'pruefplan' }, sym('kalender'), 'Vorlesungszeit öffnen')),
+    h('div', { class: 'zl-oben' }, skala, phasen, heuteEl),
+    spur,
+    h('p', { class: 'zl-legende' }, ...M.PRUEFUNGSARTEN.map(([a, name]) => h('span', { class: `zl-marke a-${a} gilt` }, h('i'), name)),
+      h('span', { class: 'zl-marke ausweich a-klausur' }, h('i'), 'Ausweich-/Zweittermin'),
+      h('span', {}, h('i', { class: 'zl-vorlauf-muster' }), 'Vorlauf'),
+      offen.length ? h('span', { class: 'zl-offen', text: `Termin noch offen: ${offen.join(', ')}` }) : null));
 }
 
-/** Die Beschriftungen der Zeitleiste nach dem Zeichnen ordnen: Wer sich mit einer früheren überlappte, rutscht eine
- *  Zeile tiefer; wer rechts hinausragte, steht links vom Punkt. Gemessen an der echten Breite — geschätzt überlappten
- *  sie (V-0337, erster Entwurf). */
+/** Die Beschriftungen und Vorläufe der Zeitleiste nach dem Zeichnen ordnen: Was sich mit Früherem überlappte (der
+ *  Vorlauf zählt mit), rutscht eine Zeile tiefer; was rechts hinausragte, steht links vom Punkt. Gemessen an der echten
+ *  Breite — geschätzt überlappten sie (V-0337). */
 function zeitleisteAnordnen() {
-  for (const spur of document.querySelectorAll('.zeitleiste .zl-spur:not(.zl-oben)')) {
+  for (const spur of document.querySelectorAll('.zeitleiste .zl-spur')) {
     const W = spur.clientWidth;
     const enden = [];
     for (const m of spur.querySelectorAll('.zl-marke')) {
@@ -1457,81 +1553,89 @@ function zeitleisteAnordnen() {
       let w = m.offsetWidth;
       let a = x - 6, b = x - 6 + w;
       if (b > W) { m.classList.add('links'); w = m.offsetWidth; a = x + 6 - w; b = x + 6; }
+      if (m.dataset.vorlauf != null) a = Math.min(a, (parseFloat(m.dataset.vorlauf) / 100) * W);
       let e = enden.findIndex((ende) => ende < a - 6);
       if (e < 0) { e = enden.length; enden.push(0); }
       enden[e] = b;
-      m.style.top = `${4 + e * 19}px`;
+      m.style.top = `${4 + e * 20}px`;
+      if (m.zlLinie) m.zlLinie.style.top = `${4 + e * 20 + 5}px`;
     }
-    spur.style.minHeight = `${Math.max(1, enden.length) * 19 + 10}px`;
+    spur.style.minHeight = `${Math.max(1, enden.length) * 20 + 8}px`;
   }
+}
+
+/** Ein Kalender je Zeitraum: Wochen × Tage mit den Prüfungen (alle Arten), Fristen, Lernblöcken, dem, was der Plan an
+ *  dem Tag belegt, und der freien Zeit. Die gewählte Prüfung leuchtet, ihre Übungszeit (der Vorlauf) ist getönt. */
+function zeitraumKalender(p, sel) {
+  const wo = Z.erg.wochen;
+  const vl = sel ? vorlauf(sel) : null;
+  const vorlesung = p.art === 'vl';
+  const wochen = wo.filter((w) => w.bis >= p.von && w.von <= p.bis);
+  const kal = h('div', { class: 'kal' }, h('div', { class: 'kal-kopf' }, h('span'), ...M.TAGE.map((t) => h('span', { text: t }))));
+  for (const w of wochen) {
+    const zeile = h('div', { class: 'kal-zeile' },
+      h('button', { type: 'button', class: 'kal-woche', 'data-act': vorlesung ? 'pruefplan-woche' : 'zur-woche', 'data-woche': w.id, title: vorlesung ? 'Diese Woche öffnen (Stundenplan gesperrt)' : 'Diese Woche im Raster' }, h('b', { text: w.kurz }), h('span', { text: M.datumKurz(w.von) })));
+    for (let d = 0; d < 7; d++) {
+      const datum = M.plusTage(w.von, d);
+      const drin = datum >= p.von && datum <= p.bis;
+      const vk = Z.erg.vorkommen.filter((v) => v.datum === datum);
+      const ziel = vl && datum === vl.ziel;
+      const imVorlauf = vl && datum >= vl.von && datum <= vl.bis;
+      const zelle = h('div', { class: `kal-tag${drin ? '' : ' aus'}${datum === heute() ? ' heute' : ''}${d >= 5 ? ' we' : ''}${ziel ? ' ziel' : ''}${imVorlauf ? ' vorlauf' : ''}`, 'data-act': drin ? 'frei-tag' : null, 'data-datum': datum },
+        h('span', { class: 'kal-datum', text: M.datumKurz(datum) }));
+      for (const v of vk.filter((x) => x.quelle === 'pruefung')) {
+        const m = modulVon(v.modul);
+        const pr = (m.pruefungen || []).find((x) => x.id === v.pruefung);
+        zelle.append(h('span', { class: `kal-pruefung a-${pr ? M.pruefungsArt(pr) : 'klausur'}${v.wichtig ? '' : ' ausweich'}`, title: M.titelVon(v, Z.erg, Z.stand.angebot) },
+          `${M.kurz(m)} ${(pr ? pr.titel : v.titel).replace(/\s*\(.*\)\s*/, '').replace(/^Präsenzklausur$/, 'Klausur')}${v.start != null ? ` ${uhr(v.start)}` : ''}`));
+      }
+      for (const v of vk.filter((x) => x.quelle === 'frist')) {
+        const m = modulVon(v.modul);
+        zelle.append(h('span', { class: `kal-frist${v.wichtig ? ' wichtig' : ''}`, title: v.titel }, `${m ? M.kurz(m) : ''} Frist`));
+      }
+      for (const v of vk.filter((x) => x.quelle === 'block' && x.schritt === M.PRUEFUNGEN)) {
+        const z = Z.erg.teile.get(v.teil);
+        zelle.append(h('button', { type: 'button', class: `kal-block m${z.modul.farbe || 1} k-pruefung${v.zaehlt_min ? '' : ' zaehlt-nicht'}${sel && sel.teil.id === v.teil ? ' dieser' : ''}`, 'data-act': 'frei-block', 'data-block': v.block, 'data-datum': datum, title: `${M.kurz(z.modul)} · ${z.teil.titel} ${zeitspanne(v.start, v.ende)}` },
+          `${M.kurz(z.modul)} ${M.stunden(v.ende - v.start)}`));
+      }
+      if (drin) {
+        // Was der Stundenplan an diesem Tag belegt (Termine und Lernblöcke außer der Prüfungsvorbereitung), und was frei
+        // bleibt — in der Vorlesungszeit 7–22 Uhr, sonst im Lernfenster.
+        const belegt = vk.filter((x) => x.start != null && !x.ganztag && x.schritt !== M.PRUEFUNGEN && (x.quelle !== 'pruefung' || x.wichtig)).reduce((s, x) => s + (x.ende - x.start), 0);
+        if (belegt) zelle.append(h('span', { class: 'kal-termine', text: `Plan ${M.stunden(belegt)}` }));
+        const l = M.freieLuecke(Z.erg, datum, [], vorlesung ? Z.erg.regeln.pruef_fenster : null);
+        zelle.append(h('span', { class: 'kal-frei', text: l ? `frei ${M.stunden(l[1] - l[0])}` : 'voll' }));
+      }
+      zeile.append(zelle);
+    }
+    kal.append(zeile);
+  }
+  return kal;
 }
 
 function freiBoard() {
   const aus = [zeitleisteEl()];
-  const pz = [...Z.erg.teile.values()].filter((z) => z.teil.art === 'pruefung')
-    .sort((a, b) => ((a.pruefungstermin && a.pruefungstermin.datum) || '9') < ((b.pruefungstermin && b.pruefungstermin.datum) || '9') ? -1 : 1);
-  aus.push(h('div', { class: 'pk-reihe' }, ...pz.map((z) => {
-    const m = z.modul, t = z.teil, x = z.pruefungstermin;
-    const anteil = z.soll_min ? Math.min(1, z.ist_min / z.soll_min) : 1;
-    const balken = h('div', { class: 'balken' }, h('i')); balken.firstChild.style.width = `${anteil * 100}%`;
-    return h('div', { class: `pk m${m.farbe || 1}${Z.setzen === t.id ? ' an' : ''}${z.rot ? ' rot' : ''}` },
-      h('button', { type: 'button', class: 'pk-wahl', 'data-act': 'setzen', 'data-teil': t.id, 'aria-pressed': String(Z.setzen === t.id), title: 'Wählen, dann Tage antippen' },
-        h('span', { class: 'pk-titel' }, h('span', { class: 'm-punkt' }), `${M.kurz(m)} · ${z.pruefung ? z.pruefung.titel : t.titel}`),
-        h('span', { class: `pk-wann${x ? '' : ' rot'}`, text: x ? `${datumMitTag(x.datum)}${x.start ? ` ${x.start}` : ' · Uhrzeit offen'}` : 'Prüfungstermin offen' }),
-        h('span', { class: 'pk-zahl' }, `${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)} vorbereitet`, z.fehlt_min ? h('b', { text: ` · fehlen ${M.stunden(z.fehlt_min)}` }) : null),
-        balken));
-  })));
-  aus.push(h('p', { class: 'satz', text: Z.setzen && Z.erg.teile.get(Z.setzen)?.teil.art === 'pruefung'
-    ? 'Tipp einen Tag an: Er bekommt einen Lerntag (bis zu 6 h in der größten freien Lücke). Ein Tipp auf einen Lernblock bearbeitet ihn, ein Tipp auf die Woche öffnet sie im Raster.'
-    : 'Wähle oben eine Prüfung und tipp dann die Tage an, an denen du dafür lernst. Ein Tipp auf eine Woche öffnet sie im Raster — dort legst du Blöcke genau.' }));
-  const wo = Z.erg.wochen;
-  let pause = 0;
-  for (const p of M.phasen(Z.erg.sem).filter((x) => x.id !== 'vorlesung')) {
-    const anker = p.id === 'pause' ? `phase-pause-${pause++}` : 'phase-frei';
-    const wochen = wo.filter((w) => w.bis >= p.von && w.von <= p.bis);
-    const kal = h('div', { class: 'kal' }, h('div', { class: 'kal-kopf' }, h('span'), ...M.TAGE.map((t) => h('span', { text: t }))));
-    for (const w of wochen) {
-      const zeile = h('div', { class: 'kal-zeile' },
-        h('button', { type: 'button', class: 'kal-woche', 'data-act': 'zur-woche', 'data-woche': w.id, title: 'Diese Woche im Raster' }, h('b', { text: w.kurz }), h('span', { text: M.datumKurz(w.von) })));
-      for (let d = 0; d < 7; d++) {
-        const datum = M.plusTage(w.von, d);
-        const drin = datum >= p.von && datum <= p.bis;
-        const vk = Z.erg.vorkommen.filter((v) => v.datum === datum);
-        const zelle = h('div', { class: `kal-tag${drin ? '' : ' aus'}${datum === heute() ? ' heute' : ''}${d >= 5 ? ' we' : ''}`, 'data-act': drin ? 'frei-tag' : null, 'data-datum': datum },
-          h('span', { class: 'kal-datum', text: M.datumKurz(datum) }));
-        for (const v of vk.filter((x) => x.quelle === 'pruefung')) {
-          const m = modulVon(v.modul);
-          zelle.append(h('span', { class: 'kal-pruefung', title: M.titelVon(v, Z.erg, Z.stand.angebot) }, `${M.kurz(m)} ${v.start != null ? uhr(v.start) : ''}`));
-        }
-        for (const v of vk.filter((x) => x.quelle === 'frist')) {
-          const m = modulVon(v.modul);
-          zelle.append(h('span', { class: `kal-frist${v.wichtig ? ' wichtig' : ''}`, title: v.titel }, `${m ? M.kurz(m) : ''} Frist`));
-        }
-        for (const v of vk.filter((x) => x.quelle === 'block')) {
-          const z = v.teil ? Z.erg.teile.get(v.teil) : null;
-          zelle.append(h('button', { type: 'button', class: `kal-block m${z ? z.modul.farbe || 1 : ''} ${z ? `k-${M.kategorie(z.teil)}` : ''}${v.zaehlt_min ? '' : ' zaehlt-nicht'}`, 'data-act': 'frei-block', 'data-block': v.block, 'data-datum': datum, title: `${z ? `${M.kurz(z.modul)} · ${z.teil.titel}` : 'Puffer'} ${zeitspanne(v.start, v.ende)}` },
-            `${z ? M.kurz(z.modul) : 'Puffer'} ${M.stunden(v.ende - v.start)}`));
-        }
-        const termine = vk.filter((x) => x.quelle === 'termin' || x.quelle === 'einzel').length;
-        if (termine) zelle.append(h('span', { class: 'kal-termine', text: `${termine} Termin${termine > 1 ? 'e' : ''}` }));
-        if (drin) {
-          const l = M.freieLuecke(Z.erg, datum);
-          zelle.append(h('span', { class: 'kal-frei', text: l ? `frei ${M.stunden(l[1] - l[0])}` : 'voll' }));
-        }
-        zeile.append(zelle);
-      }
-      kal.append(zeile);
-    }
-    aus.push(h('section', { class: 'phase', id: anker }, h('h3', {}, p.titel, h('span', { text: ` ${datumMitTag(p.von)} – ${datumMitTag(p.bis)}` })), kal));
+  const sel = Z.setzen && Z.erg.teile.get(Z.setzen);
+  for (const p of zeitraeume()) {
+    const auf = Z.zrAuf.has(p.id);
+    const n = Z.erg.vorkommen.filter((v) => v.quelle === 'pruefung' && v.datum >= p.von && v.datum <= p.bis).length;
+    const sec = h('details', { class: `zeitraum ${p.art}`, id: p.id, open: auf, 'data-zr': p.id },
+      h('summary', {}, h('b', { text: p.titel }), h('span', { text: ` ${datumMitTag(p.von)} – ${datumMitTag(p.bis)}` }),
+        h('span', { class: 'zr-zahl', text: n ? `${n} Prüfung${n > 1 ? 'en' : ''}` : 'keine Prüfung' })),
+      auf ? zeitraumKalender(p, sel) : null);
+    aus.push(sec);
   }
   return aus;
 }
 
-/** Einen Lerntag setzen: die größte freie Lücke des Tages im Lernfenster, höchstens ein Lerntag lang. */
+/** Einen Lerntag setzen: die größte freie Lücke des Tages — in der vorlesungsfreien Zeit im Lernfenster bis zu einem
+ *  Lerntag (6 h), in der Vorlesungszeit um den Stundenplan herum (7–22 Uhr) bis zu 2 h. */
 function lerntagSetzen(teil, datum) {
-  const l = M.freieLuecke(Z.erg, datum);
-  if (!l) { alert('An diesem Tag ist im Lernfenster keine Stunde mehr frei.'); return; }
-  const dauer = Math.min(Math.round(Z.erg.regeln.lerntag_h * 60), l[1] - l[0]);
+  const vorlesung = datum >= Z.erg.sem.vorlesung.von && datum <= Z.erg.sem.vorlesung.bis && !M.istFrei(Z.erg.sem, datum);
+  // In der Vorlesungszeit zuerst im Lernfenster (9–19 Uhr), erst wenn dort nichts frei ist, früh oder abends (7–22 Uhr).
+  const l = M.freieLuecke(Z.erg, datum) || (vorlesung ? M.freieLuecke(Z.erg, datum, [], Z.erg.regeln.pruef_fenster) : null);
+  if (!l) { melden('An diesem Tag ist nichts mehr frei.'); return; }
+  const dauer = Math.min(Math.round((vorlesung ? Z.erg.regeln.evl_block_min : Z.erg.regeln.lerntag_h * 60)), l[1] - l[0]);
   aendern((s) => { s.plan.bloecke = [...(s.plan.bloecke || []), { id: neueId('l'), teil, datum, start: M.hhmm(l[0]), ende: M.hhmm(l[0] + dauer) }]; });
 }
 
@@ -1539,8 +1643,8 @@ function lerntagKarte(datum, nahe) {
   const kandidaten = [...Z.erg.teile.values()].filter((z) => z.teil.art === 'pruefung' && (!z.pruefungstermin || z.pruefungstermin.datum > datum))
     .sort((a, b) => b.fehlt_min - a.fehlt_min);
   karteOeffnen([
-    h('h3', { text: `Lerntag am ${datumMitTag(datum)}` }),
-    h('p', { class: 'satz', text: 'Für welche Prüfung? (Nur Prüfungen nach diesem Tag.)' }),
+    h('h3', { text: `Lernen am ${datumMitTag(datum)}` }),
+    h('p', { class: 'satz', text: 'Für welche Prüfung? (Nur Prüfungen nach diesem Tag.) Links eine Prüfung wählen spart diese Frage.' }),
     h('div', { class: 'wahl-liste' }, ...kandidaten.map((z) => h('button', { type: 'button', class: `m${z.modul.farbe || 1}`, onclick: () => { karteSchliessen(false); lerntagSetzen(z.teil.id, datum); } },
       h('span', { class: 'm-punkt' }), h('span', { text: `${M.kurz(z.modul)} · ${z.pruefung ? z.pruefung.titel : z.teil.titel}` }),
       h('span', { class: z.fehlt_min ? '' : 'grau', text: z.fehlt_min ? `fehlt ${M.stunden(z.fehlt_min)}` : 'gedeckt' })))),
@@ -1661,7 +1765,7 @@ function leisteZeichnen() {
     h('h2', { text: 'Semester' }),
     h('button', { class: 'knopf rund leise l-zu', type: 'button', 'data-act': 'leiste', 'aria-label': Z.ansicht.leiste ? 'Leiste einklappen' : 'Leiste ausklappen', title: 'Leiste ein-/ausklappen' }, sym('leiste')));
   fuellen(box, kopf,
-    h('p', { class: 'l-satz t-zahlen', text: 'Jede Spalte eine Woche, jede Zeile ein Bestandteil — Termine gefüllt, eigene Blöcke schraffiert, andere Schritte blass. Ein Klick auf eine Zelle zeigt die Woche, einer auf den Namen wählt den Bestandteil.' }),
+    h('p', { class: 'l-satz t-zahlen', text: 'Jede Spalte eine Woche, jede Zeile ein Bestandteil — Termine kräftig, eigene Blöcke heller, andere Schritte blass. Ein Klick auf eine Zelle zeigt die Woche, einer auf den Namen wählt den Bestandteil.' }),
     minimapEl(),
     h('h3', { class: 'l-zwischen', text: 'Unregelmäßig, ab heute' }),
     chronikEl());
@@ -2163,7 +2267,15 @@ function verdrahten() {
         break;
       }
       case 'pruefplan': Z.ansicht.bereich = 'pruefplan'; Z.ansicht.modus = 'standard'; Z.fokus = null; Z.setzen = null; ansichtMerken(); zeichnen(); bannerZeigen(); break;
-      case 'zur-phase': $(el.dataset.ziel)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); break;
+      case 'zeitraum': {
+        const id = el.dataset.ziel;
+        if (Z.zrAuf.has(id)) Z.zrAuf.delete(id); else Z.zrAuf.add(id);
+        bereichZeichnen();
+        if (Z.zrAuf.has(id)) $(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        break;
+      }
+      case 'pruefung-ziel': pruefungWaehlen(teil); break;
+      case 'pruefplan-woche': Z.ansicht.bereich = 'pruefplan'; Z.ansicht.modus = 'woche'; Z.ansicht.woche = el.dataset.woche; ansichtMerken(); zeichnen(); bannerZeigen(); break;
       case 'modus': if (Z.ansicht.bereich !== 'pruefplan') Z.ansicht.bereich = 'plan'; Z.ansicht.modus = el.dataset.modus; ansichtMerken(); zeichnen(); break;
       case 'bereich': Z.ansicht.bereich = el.dataset.bereich; Z.fokus = null; Z.setzen = null; ansichtMerken(); zeichnen(); bannerZeigen(); $('bereich').scrollTop = 0; break;
       case 'schritt': zumSchritt(Number(el.dataset.schritt), el.dataset.teil || null); break;
@@ -2205,7 +2317,7 @@ function verdrahten() {
       case 'leiste': Z.ansicht.leiste = !Z.ansicht.leiste; ansichtMerken(); zeichnen(); break;
       case 'rueck': rueckgaengig(); break;
       case 'kalender': kalenderKarte(el); break;
-      case 'setzen': Z.setzen = Z.setzen === teil ? null : teil; zeichnen(); bannerZeigen(); break;
+      case 'setzen': pruefungWaehlen(teil); break;
       case 'setzen-aus': Z.setzen = null; zeichnen(); bannerZeigen(); break;
       case 'neu-laden': neuLaden(); break;
       case 'ueberschreiben': if (confirm('Den Stand auf dem Server mit dem aus diesem Browser überschreiben?')) { Z.konflikt = null; speichern(true); } break;
@@ -2241,8 +2353,18 @@ function verdrahten() {
     if (d.act === 'woche-waehlen' && e.target.value) zurWoche(e.target.value);
     if (d.einheit) videoLaenge(d.einheit, e.target.value);
     if (d.annahme) annahmeAendern(d.annahme, e.target.value);
+    if (d.vorlauf) { Z.ansicht.vorlaufH = Number(e.target.value) || 2; ansichtMerken(); bereichZeichnen(); }
   });
   document.addEventListener('submit', formularAbschicken);
+  // Ein Zeitraum (details) auf- oder zugeklappt: merken und beim Öffnen den Kalender zeichnen.
+  document.addEventListener('toggle', (e) => {
+    const d = e.target;
+    if (!(d instanceof HTMLDetailsElement) || !d.dataset.zr) return;
+    const war = Z.zrAuf.has(d.dataset.zr);
+    if (d.open === war) return;
+    if (d.open) Z.zrAuf.add(d.dataset.zr); else Z.zrAuf.delete(d.dataset.zr);
+    bereichZeichnen();
+  }, true);
   document.addEventListener('keydown', (e) => {
     const inFeld = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
     if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.sprung && !Z.legen) sprungEnde(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; zeichnen(); bannerZeigen(); } return; }
@@ -2462,6 +2584,15 @@ function zeigerRunter(e) {
   if (kachel && kachel.dataset.act === 'block') return blockZiehen(e, kachel, rect);
   if (kachel && kachel.dataset.act) return; // Termine, Gruppen und Blöcke früherer Schritte sind Knöpfe (click)
   if (!e.target.closest('.r-tag')) return;
+  // Ein Klick auf eine leere Stelle hebt die Auswahl auf (V-0338, Silas: „wenn man rausklickt, einfach auf irgendeinen
+  // Blankspot im Stundenplan, … soll das wieder deselected werden“) — ein gewähltes Modul, einen Bestandteil, die Sache,
+  // die Silas links nach vorn geholt hat. Nur wenn nichts gewählt ist, erklärt der Klick, wie man legt.
+  const n = schritt();
+  if (Z.fokus || Z.setzen || (!fertig() && Z.jetzt[n])) {
+    Z.fokus = null; Z.setzen = null; if (!fertig()) Z.jetzt[n] = null; Z.auf[n] = null;
+    zeichnen(); bannerZeigen();
+    return;
+  }
   melden(fertig() ? 'Der Stundenplan ist festgelegt. Zum Ändern oben „Stundenplan bearbeiten“.'
     : schritt() === 1 ? 'Schritt 1 ist die Grundlage — hier legst du nichts.'
       : schritt() === 2 ? 'In Schritt 2 wählst du Gruppen: links oben steht, was dran ist; die Gruppen sind im Raster gestrichelt.'

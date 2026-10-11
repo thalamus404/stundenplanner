@@ -292,7 +292,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .raster.setzen .r-tag { cursor: crosshair; }
 .r-jetzt { position: absolute; left: 0; right: 0; height: 2px; background: var(--rot); z-index: 4; pointer-events: none; }
 
-/* Die Kacheln. Präsenz ist gefüllt (Pflicht), eigene Blöcke sind schraffiert (selbst gesetzt) — man
+/* Die Kacheln. Präsenz ist kräftig gefüllt (Pflicht), eigene Blöcke heller und ohne Streifen (seit V-0338) — man
    soll sie nie verwechseln (Übergabe Punkt 4). */
 .kachel {
   position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 4px 6px; overflow: hidden; z-index: 2;
@@ -304,7 +304,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .kachel .k-marke { position: absolute; top: 3px; right: 4px; font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 4px; background: var(--grau-1); color: var(--grau-10); opacity: 1; }
 .kachel.reihe { background: var(--vor); color: var(--tinte); border-style: dashed; }
 .kachel.block {
-  background: repeating-linear-gradient(135deg, var(--vor) 0 6px, var(--hauch) 6px 11px); color: var(--tinte);
+  background: color-mix(in srgb, var(--vor) 72%, var(--hauch)); color: var(--tinte);
   border: 1px solid var(--rand); border-left-width: 4px; cursor: grab;
 }
 .kachel.block.puffer { --vor: var(--grau-3); --hauch: var(--grau-1); --rand: var(--grau-6); --tinte: var(--grau-9); }
@@ -327,7 +327,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .legende i { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
 .legende .lg-a { background: var(--m1-wahl); border: 1px solid var(--m1-rand); }
 .legende .lg-r { background: var(--m1-vor); border: 1px dashed var(--m1-rand); }
-.legende .lg-d { background: repeating-linear-gradient(135deg, var(--m1-vor) 0 4px, var(--m1-hauch) 4px 7px); border: 1px solid var(--m1-rand); border-left-width: 3px; }
+.legende .lg-d { background: color-mix(in srgb, var(--m1-vor) 72%, var(--m1-hauch)); border: 1px solid var(--m1-rand); border-left-width: 3px; }
 .legende .lg-o { border: 1.5px dashed var(--m1-rand); }
 
 /* ── Rechts: das Unregelmäßige — Muster über das Semester und die Liste */
@@ -457,20 +457,6 @@ a { color: inherit; text-underline-offset: 2px; }
 .eh-laenge input:placeholder-shown { border-color: var(--rot); background: var(--rot-flaeche); }
 
 /* ── Vorlesungsfreie Zeit: Prüfungen oben, Tage darunter */
-.pk-reihe { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
-.pk { border: 1px solid var(--grau-5); border-radius: 10px; background: var(--grau-1); display: flex; flex-direction: column; gap: 6px; padding: 0 0 8px; }
-.pk.an { border-color: var(--rand); box-shadow: 0 0 0 2px var(--rand); }
-.pk.rot { border-left: 3px solid var(--rot); }
-.pk-wahl { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px 0; border-radius: 10px 10px 0 0; text-align: left; }
-.pk-titel { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
-.pk-wann { font-size: 12px; color: var(--grau-9); }
-.pk-wann.rot { color: var(--rot-text); font-weight: 600; }
-.pk-zahl { font-size: 12px; color: var(--grau-9); }
-.pk-zahl b { color: var(--rot-text); }
-.pk .balken > i { background: var(--rand); }
-.pk > .knopf { align-self: flex-start; margin-left: 10px; }
-.phase h3 { font-size: 14px; margin: 4px 0 6px; }
-.phase h3 span { font-weight: 400; color: var(--grau-8); font-size: 12px; }
 .kal { display: flex; flex-direction: column; gap: 3px; }
 .kal-kopf, .kal-zeile { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); gap: 3px; }
 .kal-kopf span { font-size: 11px; color: var(--grau-8); text-align: center; }
@@ -485,7 +471,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .kal-pruefung { font-size: 11px; font-weight: 700; background: var(--grau-10); color: var(--grau-1); border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kal-frist { font-size: 10px; font-weight: 600; background: var(--gelb-flaeche); color: var(--gelb-text); border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; }
 .kal-frist.wichtig { background: var(--rot-flaeche); color: var(--rot-text); }
-.kal-block { font-size: 11px; text-align: left; border-radius: 4px; padding: 0 4px; background: repeating-linear-gradient(135deg, var(--vor) 0 5px, var(--hauch) 5px 9px); color: var(--tinte); border-left: 3px solid var(--rand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kal-block { font-size: 11px; text-align: left; border-radius: 4px; padding: 0 4px; background: color-mix(in srgb, var(--vor) 72%, var(--hauch)); color: var(--tinte); border-left: 3px solid var(--rand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kal-block.zaehlt-nicht { opacity: .5; text-decoration: line-through; }
 .kal-termine { font-size: 10px; color: var(--grau-8); }
 .kal-frei { margin-top: auto; font-size: 10px; color: var(--grau-7); }
@@ -535,7 +521,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .mu-zeile.gewaehlt { background: var(--vor); border-radius: 4px; }
 .mu-zeile.blass { opacity: .35; }
 .mu-z.an { background: var(--rand); }
-.mu-z.lern { background: repeating-linear-gradient(135deg, var(--rand) 0 2px, var(--vor) 2px 4px); }
+.mu-z.lern { background: color-mix(in srgb, var(--rand) 55%, var(--vor)); }
 .mu-z.lern.leer { background: repeating-linear-gradient(135deg, var(--grau-6) 0 2px, transparent 2px 4px); }
 .mu-z.s1 { opacity: .55; }
 .mu-z.s2 { opacity: .8; }
@@ -616,13 +602,13 @@ a { color: inherit; text-underline-offset: 2px; }
 .k-pruefung { --kf: var(--k-pruefung-f); --kt: var(--k-pruefung-t); --kr: var(--k-pruefung-r); }
 .kachel[class*=" k-"] { background: var(--kf); color: var(--kt); border: 1px solid var(--kr); border-left: 5px solid var(--rand); }
 .kachel.reihe[class*=" k-"] { background: color-mix(in srgb, var(--kf) 55%, var(--grau-1)); }
-.kachel.block[class*=" k-"] { background: repeating-linear-gradient(135deg, var(--kf) 0 6px, color-mix(in srgb, var(--kf) 35%, var(--grau-1)) 6px 11px); border-left: 5px solid var(--rand); }
+.kachel.block[class*=" k-"] { background: color-mix(in srgb, var(--kf) 72%, var(--grau-1)); border-left: 5px solid var(--rand); }
 .kachel.pruefung { background: var(--k-pruefung-r); color: #fff; border-color: var(--k-pruefung-r); }
 .kachel.option[class*=" k-"] { outline: 2px dashed var(--linie-wahl); outline-offset: -5px; }
 .kachel.gewaehlt[class*=" k-"] { outline: 2px solid var(--linie-wahl); outline-offset: -5px; }
 .t-sym[class*=" k-"] { background: var(--kf); color: var(--kt); }
 .mu-zeile[class*=" k-"] .mu-z.an { background: var(--kr); }
-.mu-zeile[class*=" k-"] .mu-z.lern { background: repeating-linear-gradient(135deg, var(--kr) 0 2px, var(--kf) 2px 4px); }
+.mu-zeile[class*=" k-"] .mu-z.lern { background: color-mix(in srgb, var(--kr) 55%, var(--kf)); }
 .mu-zeile[class*=" k-"] .mu-z.pruefung { background: var(--k-pruefung-r); }
 .legende .lg-k { width: 14px; height: 12px; border-radius: 3px; background: var(--kf); border: 1px solid var(--kr); }
 .kal-block[class*=" k-"] { background: repeating-linear-gradient(135deg, var(--kf) 0 5px, color-mix(in srgb, var(--kf) 35%, var(--grau-1)) 5px 9px); color: var(--kt); }
@@ -702,7 +688,7 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
    verblassen, aber anders als die schon gewählten oder vorhandenen Grundlagentermine“). !important, weil die Farben
    der Arten und Formen (.kachel.block[class*=" k-"] …) spezifischer sind. */
 .kachel.lage-frueher { background: var(--grau-5) !important; color: var(--grau-9) !important; border: 1px solid var(--grau-6) !important; border-left: 5px solid var(--grau-7) !important; outline: none !important; box-shadow: none; }
-.kachel.lage-frueher.block { background: repeating-linear-gradient(135deg, var(--grau-5) 0 6px, var(--grau-4) 6px 11px) !important; cursor: pointer; }
+.kachel.lage-frueher.block { cursor: pointer; }
 .kachel.lage-frueher .k-etikett { background: var(--grau-7); }
 .kachel.lage-frueher .k-anzahl { background: var(--grau-4); color: var(--grau-9); }
 .raster.ohne-bloecke .r-tag { cursor: default; }
@@ -766,7 +752,6 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 
 /* V-0336: im selben Schritt schon gewählt/gelegt, aber nicht dran — hellgrau (frühere Schritte dunkelgrau, s. o.) */
 .kachel.lage-erledigt { background: var(--grau-3) !important; color: var(--grau-8) !important; border: 1px solid var(--grau-5) !important; border-left: 5px solid var(--grau-6) !important; outline: none !important; box-shadow: none; cursor: pointer; }
-.kachel.lage-erledigt.block { background: repeating-linear-gradient(135deg, var(--grau-3) 0 6px, var(--grau-2) 6px 11px) !important; }
 .kachel.lage-erledigt .k-etikett { background: var(--grau-6); }
 .kachel.lage-erledigt .k-anzahl { background: var(--grau-2); color: var(--grau-8); }
 /* Module, deren Sachen im Schritt alle erledigt sind: eingeklappt, grüner Haken, „ändern“ */
@@ -781,11 +766,7 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .zeitleiste { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; border: 1px solid var(--grau-5); border-radius: 12px; background: var(--grau-1); margin-bottom: 14px; }
 .zl-kopf { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; font-size: 13px; margin-bottom: 4px; }
 .zl-kopf span { color: var(--grau-8); font-size: 12px; margin-right: auto; }
-.zl-reihe { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: start; }
-.zl-name { font-size: 12px; color: var(--grau-9); padding-top: 4px; }
-.zl-name b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--grau-10); color: var(--grau-1); font-size: 11px; margin-right: 4px; }
 .zl-spur { position: relative; min-height: 64px; border-left: 1px solid var(--grau-4); border-right: 1px solid var(--grau-4); background: repeating-linear-gradient(90deg, transparent 0 calc(100% / 26 - 1px), var(--grau-3) calc(100% / 26 - 1px) calc(100% / 26)); }
-.zl-spur.zl-oben { min-height: 44px; background: none; border: 0; }
 .zl-skala { position: relative; height: 14px; }
 .zl-skala span { position: absolute; top: 0; font-size: 10px; color: var(--grau-8); transform: translateX(2px); border-left: 1px solid var(--grau-5); padding-left: 3px; line-height: 12px; }
 .zl-phasen { position: relative; height: 28px; }
@@ -805,11 +786,86 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .zl-marke.a-test { --mk: var(--k-video-r); }
 .zl-marke.a-etest i { border-radius: 3px; }
 .zl-marke.a-test i { border-radius: 2px; transform: rotate(45deg) scale(.85); }
-.zl-offen { font-size: 12px; color: var(--grau-8); margin: 4px 0 0 160px; }
 .r-legen { display: flex; gap: 6px; align-items: center; margin: 2px 8px 4px 23px; }
 .r-legen select { height: 28px; border-radius: 6px; border: 1px solid var(--grau-6); background: var(--grau-1); padding: 0 4px; font-size: 12px; }
 @media (max-width: 820px) {
-  .zl-reihe { grid-template-columns: 1fr; gap: 2px; }
-  .zl-offen { margin-left: 0; }
   .zl-marke .zl-text { display: none; }
+}
+
+/* ── V-0338 ─────────────────────────────────────────────────────────────────────────────────────── */
+/* Die zwei Hauptansichten oben links (Silas: „Woche und Prüfungen prominenter … die zwei Hauptfenster“). */
+.hauptreiter { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; padding: 3px; border-radius: 12px; background: var(--grau-4); min-width: 0; }
+.hauptreiter button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; text-align: left; min-height: 48px; color: var(--grau-9); min-width: 0; overflow: hidden; }
+.hauptreiter button .i { width: 20px; height: 20px; flex: none; }
+.hauptreiter button span { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.hauptreiter button b { font-size: 15px; color: var(--grau-10); }
+.hauptreiter button small { font-size: 11px; color: var(--grau-8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hauptreiter button[aria-selected="true"] { background: var(--grau-1); box-shadow: 0 1px 3px rgb(0 0 0 / .14); color: var(--grau-10); }
+.hauptreiter button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Fahrzeit: nur zum Sehen, grau gestrichelt, sperrt nichts. */
+.fahrt { position: absolute; left: 3px; right: 3px; z-index: 1; border: 1.5px dashed var(--grau-6); border-radius: 6px; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.fahrt span { font-size: 10px; color: var(--grau-8); letter-spacing: .03em; }
+
+/* Zeitleiste: EINE Spur für alle Prüfungen, Vorlauf als Linie mit Strich am Anfang. */
+.zl-kopf .zl-satz { margin-right: auto; }
+.zl-rate { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--grau-9); }
+.zl-rate select { height: 26px; border-radius: 6px; border: 1px solid var(--grau-6); background: var(--grau-1); padding: 0 2px; font-size: 12px; }
+.zl-oben { position: relative; min-height: 44px; }
+.zeitleiste .zl-spur { min-height: 40px; border-left: 1px solid var(--grau-4); border-right: 1px solid var(--grau-4); }
+.zl-phase.auf { box-shadow: inset 0 0 0 2px currentColor; }
+.zl-vorlauf { position: absolute; height: 2px; background: color-mix(in srgb, var(--grau-10) 45%, transparent); border-radius: 1px; pointer-events: none; }
+.zl-vorlauf::before { content: ""; position: absolute; left: 0; top: -4px; width: 2px; height: 10px; background: inherit; border-radius: 1px; }
+.zl-vorlauf.davor::before { content: "◂"; width: auto; height: auto; background: none; top: -8px; left: -2px; font-size: 11px; color: var(--grau-8); }
+.zl-marke.blass { opacity: .3; }
+.zl-marke.gewaehlt i { box-shadow: 0 0 0 3px var(--grau-1), 0 0 0 5px var(--mk); }
+.zl-marke.gewaehlt .zl-text b { text-decoration: underline; text-underline-offset: 2px; }
+.zl-legende { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; font-size: 11px; color: var(--grau-8); }
+.zl-legende .zl-marke { position: static; transform: none; align-items: center; color: var(--grau-8); }
+.zl-legende > span:not(.zl-marke) { display: inline-flex; align-items: center; gap: 4px; }
+.zl-vorlauf-muster { display: inline-block; width: 18px; height: 2px; background: color-mix(in srgb, var(--grau-10) 45%, transparent); }
+.zl-legende .zl-offen { margin-left: auto; }
+.reihe .r-zeile .r-art { position: static; transform: none; width: 10px; justify-content: center; }
+.reihe .r-zeile .r-art i { width: 9px; height: 9px; box-shadow: none; }
+
+/* Die Zeiträume zum Auf- und Zuklappen. */
+details.zeitraum { border: 1px solid var(--grau-5); border-radius: 12px; background: var(--grau-1); margin-bottom: 8px; }
+details.zeitraum > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 6px; padding: 10px 14px; font-size: 14px; border-radius: 12px; }
+details.zeitraum > summary::-webkit-details-marker { display: none; }
+details.zeitraum > summary::before { content: "▸"; color: var(--grau-8); font-size: 12px; transition: transform .15s; }
+details.zeitraum[open] > summary::before { transform: rotate(90deg); }
+details.zeitraum > summary span { color: var(--grau-8); font-size: 12px; }
+details.zeitraum > summary .zr-zahl { margin-left: auto; }
+details.zeitraum.vl > summary b { color: var(--k-praesenz-t); }
+details.zeitraum.pause > summary b, details.zeitraum.frei > summary b { color: var(--gruen); }
+details.zeitraum > .kal { padding: 0 10px 10px; }
+.kal-pruefung.a-klausur { background: var(--k-pruefung-r); color: #fff; }
+.kal-pruefung.a-etest { background: var(--k-quiz-r); color: #fff; }
+.kal-pruefung.a-test { background: var(--k-video-r); color: #fff; }
+.kal-pruefung.ausweich { background: transparent; color: var(--grau-9); box-shadow: inset 0 0 0 1px var(--grau-6); font-weight: 600; }
+.kal-tag.vorlauf { background: color-mix(in srgb, var(--blau) 9%, var(--grau-1)); border-color: color-mix(in srgb, var(--blau) 35%, var(--grau-5)); }
+.kal-tag.ziel { box-shadow: inset 0 0 0 2px var(--blau); background: color-mix(in srgb, var(--blau) 16%, var(--grau-1)); }
+.kal-block.dieser { box-shadow: 0 0 0 2px var(--blau); }
+
+/* Dark Mode, abgestimmt (Silas: „im Dark Mode sehen die Farben weird zusammengewürfelt und chaotisch aus“): die Farben der
+   Arten mit gleicher Helligkeit und Sättigung (OKLCH), Ränder und Streifen zurückgenommen — eine Farbe je Kachel spricht,
+   nicht drei. Die gemeinsamen Tokens (grau, m1–m8) bleiben wie in stil.css; nur ihr Gebrauch hier ist gedämpft. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --k-praesenz-f: oklch(.31 .045 262); --k-praesenz-t: oklch(.9 .035 262); --k-praesenz-r: oklch(.68 .09 262);
+    --k-video-f: oklch(.31 .045 305); --k-video-t: oklch(.9 .035 305); --k-video-r: oklch(.68 .09 305);
+    --k-lernen-f: oklch(.31 .045 80); --k-lernen-t: oklch(.9 .035 80); --k-lernen-r: oklch(.68 .09 80);
+    --k-aufgaben-f: oklch(.31 .045 200); --k-aufgaben-t: oklch(.9 .035 200); --k-aufgaben-r: oklch(.68 .09 200);
+    --k-quiz-f: oklch(.31 .045 150); --k-quiz-t: oklch(.9 .035 150); --k-quiz-r: oklch(.68 .09 150);
+    --k-pruefung-f: oklch(.31 .05 25); --k-pruefung-t: oklch(.9 .035 25); --k-pruefung-r: oklch(.66 .11 25);
+  }
+  .kachel[class*=" k-"] { border-color: color-mix(in oklab, var(--kr) 28%, transparent); border-left-color: color-mix(in oklab, var(--rand) 60%, var(--grau-1)); }
+  .kachel.block[class*=" k-"] { background: color-mix(in oklab, var(--kf) 78%, var(--grau-2)); border-left-color: color-mix(in oklab, var(--rand) 60%, var(--grau-1)); }
+  .kachel .k-etikett.e-praesenz { background: color-mix(in oklab, var(--k-praesenz-r) 55%, var(--grau-1)); }
+  .kachel .k-etikett.e-video { background: color-mix(in oklab, var(--k-video-r) 55%, var(--grau-1)); }
+  .kachel .k-etikett.e-evl { background: color-mix(in oklab, var(--k-lernen-r) 55%, var(--grau-1)); }
+  .kachel .k-etikett { color: var(--grau-10); }
+  .kachel .k-anzahl { background: transparent; color: var(--grau-9); box-shadow: inset 0 0 0 1px var(--grau-6); }
+  .kachel.pruefung { background: var(--k-pruefung-f); color: var(--k-pruefung-t); border-color: color-mix(in oklab, var(--k-pruefung-r) 45%, transparent); }
+  .t-sym[class*=" k-"], .mu-zeile[class*=" k-"] .mu-name { filter: saturate(.85); }
 }

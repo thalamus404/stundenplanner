@@ -737,3 +737,9 @@ details[open] > summary::before { transform: rotate(45deg); }
   .h-kopf { padding-bottom: 24px; }
   .h-recht { padding-block: 16px; }
 }
+
+/* Der Umbau-Hinweis (V-0338, Silas 11.10.2026: „Dieses Tool wurde gebaut unter der Annahme, dass Semesterwochenstunden
+   das ausschlaggebende Maß … und dass Informationen aus MOSES wahr sind. Diese Annahme wurde widerlegt, deshalb
+   befindet sich dieses Tool gerade im Umbau.“): klein, in den Farben der Hinweise, über dem Plan und dem Start. */
+.umbau { flex: none; align-self: center; margin: 0; max-width: 760px; padding: 6px 12px; border-radius: 8px; background: var(--hinweis-flaeche); color: var(--hinweis-text); font-size: 12px; line-height: 16px; text-align: center; }
+.hallo > .umbau { margin-top: 16px; }
