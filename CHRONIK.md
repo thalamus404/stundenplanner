@@ -12,6 +12,17 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas: Schritt für Schritt, festlegen, Prüfungen danach (V-0334)
+
+- Silas zu V-0333: Schritt 1 soll wirklich nur die Grundlage zeigen; in jedem weiteren Schritt ist alles Frühere grau
+  und Späteres unsichtbar; in Schritt 2 zeigt ein Klick auf Modul oder Bestandteil nur dessen Gruppen, nicht gewählte
+  verblassen anders als das Graue; links je Modul „1 von 2 gewählt“. Am Ende „Stundenplan festlegen“ — erst dann ist
+  alles farbig —, „Bearbeiten“ springt zurück und behält die Auswahl (docs/SILAS.md §2.8a, §3).
+- Prüfungen, ihre Anmeldungen und die Prüfungsvorbereitung sind kein Schritt mehr, sondern kommen nach dem Festlegen
+  (Reiter „Prüfungen“, Silas: „ab Mitte des Semesters“).
+- Silas' Plan beginnt neu ohne Auswahl: Zurücksetzen löscht nichts mehr, es legt beiseite (`plan.zurueckgesetzt`,
+  „Wiederherstellen“). Seine zwei Gruppen und 12 Blöcke aus dem alten Semesterplan liegen dort.
+
 ## 11.10.2026 — /silas als geführter Ablauf in vier Schritten (V-0333)
 
 - Silas: Der Planer soll durch genau die Entscheidungen führen, die er selbst trifft, in Schichten — Grundlage (feste

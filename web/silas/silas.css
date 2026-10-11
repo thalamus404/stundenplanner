@@ -697,12 +697,21 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .kachel .k-marke { top: auto; bottom: 3px; right: 17px; }
 .kachel.unsicher::before { right: 17px; }
 
-/* Schichten: was zu einem späteren Schritt gehört, steht zart und ohne Griff da; ein früherer Block ist fest. */
-.kachel.lage-spaeter { opacity: .3; filter: saturate(.4); pointer-events: none; z-index: 1; }
-.kachel.lage-spaeter.hell { opacity: 1; filter: none; }
-.kachel.block.lage-frueher { cursor: pointer; filter: saturate(.75); }
+/* Schichten (V-0334): Was in einem früheren Schritt steht, ist grau — gefüllt, lesbar, ohne Farbe der Art (Silas:
+   „immer beim nächsten Schritt ist alles aus den vorherigen Schritten dunkelgrau“). Späteres wird gar nicht gezeigt.
+   Eine nicht gewählte Gruppe verblasst ANDERS: ohne Füllung, gestrichelt in der Farbe ihrer Art („sollen zwar
+   verblassen, aber anders als die schon gewählten oder vorhandenen Grundlagentermine“). !important, weil die Farben
+   der Arten und Formen (.kachel.block[class*=" k-"] …) spezifischer sind. */
+.kachel.lage-frueher { background: var(--grau-5) !important; color: var(--grau-9) !important; border: 1px solid var(--grau-6) !important; border-left: 5px solid var(--grau-7) !important; outline: none !important; box-shadow: none; }
+.kachel.lage-frueher.block { background: repeating-linear-gradient(135deg, var(--grau-5) 0 6px, var(--grau-4) 6px 11px) !important; cursor: pointer; }
+.kachel.lage-frueher .k-etikett { background: var(--grau-7); }
+.kachel.lage-frueher .k-anzahl { background: var(--grau-4); color: var(--grau-9); }
+.kachel.option.abgewaehlt { background: transparent !important; color: var(--grau-8); border: 1.5px dashed var(--kr, var(--grau-7)) !important; border-left-width: 1.5px !important; outline: none !important; opacity: .85; filter: none; }
+.kachel.option.abgewaehlt .k-etikett { opacity: .5; }
+.kachel.option.abgewaehlt:hover { background: var(--grau-2) !important; }
 .raster.ohne-bloecke .r-tag { cursor: default; }
-.legende .lg-s { background: repeating-linear-gradient(135deg, var(--m1-vor) 0 4px, var(--m1-hauch) 4px 7px); border: 1px solid var(--m1-rand); opacity: .35; }
+.legende .lg-s { background: var(--grau-5); border: 1px solid var(--grau-6); border-left: 3px solid var(--grau-7); }
+.legende .lg-x { border: 1.5px dashed var(--k-praesenz-r); }
 
 /* Gesperrt: ein Block auf einem Termin muss weg (hellblau = du bist dran), einer, der an einzelnen Tagen weicht, ist
    nur gekürzt. Beim Ziehen zeigt der Entwurf rot, dass er auf einem Termin läge. */
@@ -723,3 +732,16 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
   .schritt:not(.jetzt) .s-text { display: none; }
   .schritt.jetzt { flex: 1 1 auto; }
 }
+
+/* V-0334: festgelegt, Modul-Filter, Wahlstand */
+.fertig-leiste { flex: 1 1 520px; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-radius: 10px; border: 1px solid var(--grau-5); background: var(--grau-1); flex-wrap: wrap; }
+.fertig-text { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; font-size: 13px; }
+.fertig-text .i { width: 16px; height: 16px; color: var(--gruen); }
+.fertig-text span { color: var(--grau-8); }
+.schritt-tun .knopf { align-self: flex-start; margin-top: 6px; height: 32px; font-size: 13px; gap: 6px; }
+.modul.filter { border-color: var(--grau-10); box-shadow: inset 0 0 0 1px var(--grau-10); }
+.t-stand.t-wahl { font-size: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.t-stand.t-wahl.gut { color: var(--gruen); }
+.t-stand.t-wahl.st-dran { color: var(--blau-text); }
+.t-stand.t-wahl.st-kommt { color: var(--grau-8); font-weight: 400; }
+.bedarf > b.bd-zwischen { flex-basis: 100%; margin-top: 4px; }
