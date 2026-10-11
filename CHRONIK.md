@@ -12,6 +12,18 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas: Wochenlast geprüft, hellgrau, einklappen, kurz zurück (V-0336)
+
+- Silas' festgelegter Plan zeigte 9 / 8,5 / 8,25 / 8 / 8 h je Tag. Geprüft: Die Standardwoche zählte Blöcke „alle n
+  Wochen“ und Reihen so, als lägen sie jede Woche (41,75 h); im Mittel der 16 echten Vorlesungswochen belegt der Plan
+  37,2 h. Verlangt sind laut Modulbeschreibungen 41,8 h je Vorlesungswoche (627 von 900 h; 273 h sind
+  Prüfungsvorbereitung). Zu viel geplant waren gut 60 h: PROG1 VL/Übung zweimal je Woche (+34 h, Silas entscheidet),
+  BuK-Videos zwei Blöcke (+10 h) und jede Vorgabe 16 statt 15 Wochen (+2 h je Teil) — die Vorgabe endet jetzt eine
+  Woche früher, die Standardwoche zeigt das echte Mittel.
+- Im selben Schritt Gewähltes ist hellgrau, frühere Schritte dunkelgrau; fertige Module klappen ein (grüner Haken,
+  „ändern“); ein Klick auf etwas aus einem früheren Schritt springt kurz dorthin zurück und danach von selbst wieder
+  vor (docs/SILAS.md §3).
+
 ## 11.10.2026 — /silas: geführt eine Sache nach der anderen, Blöcke an der Maus (V-0335)
 
 - Silas konnte in Schritt 3 auf keinem Gerät Blöcke zeichnen: Ein `const fertig` im Zeiger-Handler verdeckte das neue

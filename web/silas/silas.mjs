@@ -80,6 +80,8 @@ const Z = {
   setzen: null,         // Teil-Id der Prüfungsvorbereitung, für die man Lerntage antippt (festgelegt, Prüfungen)
   legen: null,          // { teil, dauer, alle, rest } — der Block, der am Zeiger hängt (V-0335)
   jetzt: {},            // je Schritt der Bestandteil, den Silas links gewählt hat (sonst der erste offene)
+  sprung: null,         // { nach } — kurz in einen früheren Schritt zurückgesprungen (V-0336), danach zurück nach `nach`
+  auf: {},              // je Schritt das Modul, das Silas trotz „fertig“ aufgeklappt hat
   hell: null,           // Vorkommen-Id, die kurz hervorgehoben wird
   rueck: [],            // Rückgängig-Stapel (JSON der vorigen Stände)
   sync: { lage: 'ruhig', zeit: null, timer: null, laeuft: false, nochmal: false },
@@ -108,6 +110,12 @@ function rechnen() {
     Z.ansicht.woche = (w || (heute() < wo[0].von ? wo[0] : wo[wo.length - 1])).id;
   }
   Z.schritte = M.schritte(Z.erg);
+  // Die Standardwoche zeigt je Tag das Mittel der echten Vorlesungswochen (V-0336): Vorher zählte sie Blöcke „alle n
+  // Wochen“ und Reihen (7×, 5×) so, als lägen sie jede Woche — 41,75 h statt Ø 37,2 h in Silas' Plan.
+  const vl = wo.filter((w) => w.art === 'vorlesung');
+  const mittel = { proTag: Array(7).fill(0), belegt: 0, ects: 0 };
+  for (const w of vl) { const x = M.woche(Z.erg, w.id); x.proTag.forEach((m, i) => { mittel.proTag[i] += m / vl.length; }); mittel.belegt += x.belegt_min / vl.length; mittel.ects += x.ects_min / vl.length; }
+  Z.mittel = mittel;
 }
 
 /** Jede Änderung geht hier durch: merken (Rückgängig), ändern, rechnen, zeichnen, speichern. */
@@ -414,7 +422,7 @@ function vorgabeText(vg, kurz = false) {
   const block = `${vg.anzahl > 1 ? `${vg.anzahl} × ` : ''}${M.stunden(vg.dauer_min)}`;
   const takt = vg.alle > 1 ? `alle ${vg.alle} Wochen` : 'jede Woche';
   if (kurz) return `${block} ${vg.alle > 1 ? `alle ${vg.alle} Wo.` : 'je Woche'}`;
-  return `${block} ${takt} — ${vg.wochen}× = ${M.stunden(vg.summe_min)} von ${M.stunden(vg.soll_min)}`;
+  return `${block} ${takt} — ${vg.wochen}×${vg.bis ? ` (bis ${M.datumKurz(vg.bis)})` : ''} = ${M.stunden(vg.summe_min)} von ${M.stunden(vg.soll_min)}`;
 }
 
 function reiheEl(n) {
@@ -520,6 +528,26 @@ function modulKarte(r) {
   const kritisch = zs.some((z) => z.stufe === 'kritisch') || wichtig.some((f) => f.stufe === 'kritisch');
   const unterPruefung = zs.filter((z) => z.teil.art === 'pruefung');
   const oben = zs.filter((z) => z.teil.art !== 'pruefung');
+  // Eingeklappt (V-0336, Silas: „sobald man für ein Modul in dem jeweiligen Schritt alles gewählt hat, soll sich das
+  // ganze Ding einklappen und da soll einfach nur ein grüner Haken hinter sein … und ein kleiner Button, … dass man das
+  // wieder aufklappt“): im Ablauf ab Schritt 2, wenn keine Sache des Moduls mehr offen ist — außer Silas hat es
+  // aufgeklappt oder die Sache, die dran ist, gehört zu ihm.
+  if (!fertig() && n >= 2 && zs.length) {
+    const r2 = reihe(n).filter((x) => x.z.modul === m);
+    const dran = jetztIn(n);
+    const offenBleibt = r2.some((x) => x.offen) || Z.auf[n] === m.id || (dran && dran.z.modul === m);
+    if (r2.length && !offenBleibt) {
+      const alle = r2.every((x) => x.fertig);
+      return h('section', { class: `modul m${m.farbe || 1} zu${kritisch ? ' rot' : ''}`, 'data-modul': m.id },
+        h('button', { class: 'm-kopf', type: 'button', 'data-act': 'aufklappen', 'data-modul': m.id, title: 'Aufklappen und ändern' },
+          h('span', { class: 'm-punkt' }), h('span', { class: 'm-name', text: M.kurz(m) }), h('span', { class: 'm-titel', text: m.titel }), h('span', { class: 'm-lp', text: `${m.lp} LP` })),
+        h('div', { class: 'm-fertig' },
+          alle ? h('span', { class: 'ok' }, sym('ok'), n === 2 ? 'alles gewählt' : 'alles gelegt') : h('span', { text: 'nichts wählbar — kommt noch' }),
+          h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'aufklappen', 'data-modul': m.id }, sym('stift'), n === 2 ? 'Wahl ändern' : 'Termine ändern')),
+        wichtig.length ? h('button', { type: 'button', class: `m-hinweis st-${st}`, 'data-act': 'bereich', 'data-bereich': 'offen', title: wichtig.map((f) => f.text).join('\n') }, sym(STUFE_SYM[st]),
+          wichtig.length === 1 ? wichtig[0].text.slice(0, 70) + (wichtig[0].text.length > 70 ? ' …' : '') : `${wichtig.length} Punkte`) : null);
+    }
+  }
   return h('section', { class: `modul m${m.farbe || 1}${kritisch ? ' rot' : ''}${leer ? ' leer' : ''}${filter ? ' filter' : ''}`, 'data-modul': m.id },
     h('button', { class: 'm-kopf', type: 'button', 'data-act': 'modul', 'data-modul': m.id, 'aria-pressed': String(filter), title: !fertig() && n === 2 ? 'Nur die Gruppen dieses Moduls im Raster' : 'Dieses Modul hervorheben' },
       h('span', { class: 'm-punkt' }), h('span', { class: 'm-name', text: M.kurz(m) }), h('span', { class: 'm-titel', text: m.titel }), h('span', { class: 'm-lp', text: `${m.lp} LP` })),
@@ -828,9 +856,13 @@ function pruefungFormulare(z, nurPruefung = false) {
 /** Der Stand eines Schritts für den Schrittknopf: rot, wenn etwas kritisch ist, hellblau mit Zahl, wenn Silas dran
  *  ist, sonst ein Haken (was noch kommt, liefert der Lehrstuhl). */
 function schrittStand(s) {
-  if (s.zaehler.kritisch) return { kl: 'st-kritisch', text: String(s.offen), titel: `${s.zaehler.kritisch} kritisch${s.zaehler.dran ? `, ${s.zaehler.dran} zu tun` : ''}` };
-  if (s.zaehler.dran) return { kl: 'st-dran', text: String(s.zaehler.dran), titel: `${s.zaehler.dran} zu tun` };
-  return { kl: 'fertig', text: '✓', titel: s.zaehler.kommt ? `nichts zu tun — ${s.zaehler.kommt} kommen noch` : 'nichts zu tun' };
+  // Ab Schritt 2 zählt, was in der Reihe noch offen ist (zu wählen, zu legen) — der grüne Haken heißt: alles erledigt
+  // (V-0336). Rot bleibt, was kritisch ist (die laufende MOSES-Anmeldung einer Gruppe).
+  const offen = s.nr >= 2 && s.nr <= 4 ? reihe(s.nr).filter((x) => x.offen).length : s.zaehler.dran;
+  const wort = s.nr === 2 ? 'zu wählen' : s.nr >= 3 ? 'zu legen' : 'zu tun';
+  if (s.zaehler.kritisch) return { kl: 'st-kritisch', text: offen ? String(offen) : '!', titel: `${s.zaehler.kritisch} kritisch${offen ? `, ${offen} ${wort}` : ''}` };
+  if (offen) return { kl: 'st-dran', text: String(offen), titel: `${offen} ${wort}` };
+  return { kl: 'fertig', text: '✓', titel: s.zaehler.kommt ? `alles erledigt — ${s.zaehler.kommt} Angaben kommen noch` : 'alles erledigt' };
 }
 
 function planKopfZeichnen() {
@@ -880,7 +912,7 @@ function planKopfZeichnen() {
   if (b === 'plan') {
     const std = Z.ansicht.modus === 'standard';
     const w = wo.find((x) => x.id === Z.ansicht.woche);
-    if (std) titel.append(h('b', { text: 'Standardwoche' }), h('span', { text: `jede Vorlesungswoche · Soll ≈ ${M.stunden(Z.erg.summe.woche_min)}` }));
+    if (std) titel.append(h('b', { text: 'Standardwoche' }), h('span', { title: 'Mittel der 16 Vorlesungswochen; Soll = die Wochenposten der Modulbeschreibungen', text: `Ø ${M.stunden(Math.round(Z.mittel.belegt / 15) * 15)} belegt je Vorlesungswoche · Soll ${M.stunden(Z.erg.summe.woche_min)}` }));
     else {
       const z = M.woche(Z.erg, w.id);
       const art = w.art === 'vorlesung' ? `Vorlesungswoche ${w.nr}` : w.art === 'frei' ? 'Vorlesungsfrei' : 'Prüfungszeit';
@@ -918,6 +950,14 @@ function bannerZeigen() {
     b.className = 'banner';
     fuellen(b, h('span', { text: `${M.kurz(z.modul)} · ${z.teil.titel}: Der Block (${M.stunden(Z.legen.dauer)}) hängt am Zeiger — klick, wo er ${Z.legen.alle > 1 ? `alle ${Z.legen.alle} Wochen` : 'jede Woche'} liegen soll${Z.legen.rest > 1 ? ` (noch ${Z.legen.rest})` : ''}. Grün ist frei${schritt() === 4 ? ', kräftig zwischen 10 und 18 Uhr' : ''}. Esc bricht ab.` }),
     h('button', { class: 'knopf', type: 'button', 'data-act': 'legen-aus', text: 'Abbrechen' }));
+    b.hidden = false; return;
+  }
+  if (Z.sprung) {
+    const j = jetztIn(schritt());
+    const was = j ? `${M.kurz(j.z.modul)} · ${j.z.teil.titel}` : '';
+    b.className = 'banner';
+    fuellen(b, h('span', { text: `Kurz zurück in Schritt ${schritt()}${was ? ` für ${was}` : ''}: ${schritt() === 2 ? 'wähl die Gruppe' : 'verschieb oder leg den Block'} — alles andere ist grau. Danach geht es von selbst zurück zu Schritt ${Z.sprung.nach}.` }),
+    h('button', { class: 'knopf', type: 'button', 'data-act': 'sprung-ende', text: `Zurück zu Schritt ${Z.sprung.nach}` }));
     b.hidden = false; return;
   }
   if (Z.setzen) {
@@ -959,17 +999,29 @@ function kachelnJetzt() {
     for (const k of out) k.lage = k.art === 'block' && k.schritt === M.PRUEFUNGEN ? 'jetzt' : 'fest';
     return out;
   }
-  const im = out.filter((k) => k.schritt <= n);
-  for (const k of im) k.lage = k.schritt < n ? 'frueher' : 'jetzt';
+  // Was dran ist, ist farbig; was im selben Schritt schon gewählt oder gelegt ist, aber zu einer anderen Sache gehört,
+  // hellgrau (erledigt — V-0336, Silas: „die im gleichen Schritt aber zu einer anderen Gruppe gehörenden und schon
+  // gewählten, die sollen dann hellgrau werden“); frühere Schritte dunkelgrau. Kurz zurückgesprungen (Z.sprung) ist ALLES
+  // außer der Sache, die dran ist, dunkelgrau — auch was aus späteren Schritten schon liegt („alle Wahlen, die man bis
+  // dahin getroffen hat, aus allen anderen Schritten, sollen auch dunkelgrau dort angezeigt werden“). (Nicht Z.rueck —
+  // das ist der Rückgängig-Stapel, und data-act="rueck" macht rückgängig.)
+  const dran = n >= 2 ? jetztIn(n) : null;
+  const dranId = dran && dran.z.teil.id;
+  const im = out.filter((k) => (Z.sprung ? k.schritt <= 4 : k.schritt <= n));
+  for (const k of im) {
+    if (k.schritt === n && (!dranId || k.teil === dranId)) k.lage = 'jetzt';
+    else if (k.schritt === n && !Z.sprung) k.lage = 'erledigt';
+    else k.lage = 'frueher';
+  }
   if (n !== 2) return im;
   // Schritt 2: nur die Gruppen der Wahl, die dran ist (V-0335, Silas: „du wählst halt genau gerade eine einzige Sache“).
-  // Ist sie schon gewählt, steht die gewählte durchgezogen da und die anderen verblassen (abgewaehlt) — zum Umwählen.
-  const j = jetztIn(2);
-  if (j && j.anzahl) {
-    const t = j.z.teil, gewaehlt = Z.stand.plan.wahl?.[t.id];
+  // Ist sie schon gewählt (umwählen, oder kurz zurückgesprungen), stehen alle ihre Gruppen da — die gewählte mit weißer
+  // Linie (Silas: „mit dem, der jetzt gerade ausgewählt ist, der soll dann weiß markiert sein“).
+  if (dran && dran.anzahl) {
+    const t = dran.z.teil, gewaehlt = Z.stand.plan.wahl?.[t.id];
     for (const o of M.optionsKacheln(Z.stand.angebot, Z.erg, t.id)) {
       if (o.option === gewaehlt) continue;
-      const k = { ...o, abgewaehlt: !!gewaehlt, schritt: 2, lage: 'jetzt' };
+      const k = { ...o, schritt: 2, lage: 'jetzt' };
       if (std) { if (!o.reihe || o.anzahl >= 3) im.push(k); }
       else {
         for (const x of o.termine) if (x.datum >= w.von && x.datum <= w.bis) im.push({ ...k, tag: M.wochentag(x.datum), start: x.start, ende: x.ende, datum: x.datum, rest: o.termine.filter((y) => y.datum >= x.datum).length });
@@ -1022,9 +1074,9 @@ function rasterZeichnen() {
   const kopf = [h('div')];
   for (let d = 0; d < tage; d++) {
     const datum = std ? null : M.plusTage(w.von, d);
-    const last = zahlen ? zahlen.proTag[d] : kacheln.filter((k) => k.tag === d && k.art !== 'option').reduce((s, k) => s + k.ende - k.start, 0);
+    const last = zahlen ? zahlen.proTag[d] : Z.mittel.proTag[d];
     kopf.push(h('div', { class: datum === heute() ? 'heute' : '' }, M.TAGE_LANG[d],
-      h('span', { class: `last${last > 10 * 60 ? ' voll' : ''}`, text: `${datum ? `${M.datumKurz(datum)} · ` : ''}${last ? M.stunden(last) : '—'}` })));
+      h('span', { class: `last${last > 10 * 60 ? ' voll' : ''}`, title: std ? 'Mittel der Vorlesungswochen (belegt, c.t. als Doppelstunde)' : null, text: `${datum ? `${M.datumKurz(datum)} · ` : 'Ø '}${last ? M.stunden(Math.round(last / 15) * 15) : '—'}` })));
   }
   fuellen($('r-kopf'), ...kopf);
 
@@ -1164,7 +1216,8 @@ function kachelEl(k) {
     if (k.v && k.v.titel) zeile2 = `${zeitspanne(k.start, k.ende)} · ${k.v.titel}`;
     if (k.schicht === 'B') { kl.push('gewaehlt'); const o = z && (z.teil.optionen || []).find((x) => x.id === (k.option || (k.v && k.v.option))); if (o) zeile2 = o.label; }
     if (k.unsicher) kl.push('unsicher');
-    act = 'kachel-teil';
+    // Eine gewählte Gruppe aus einem früheren Schritt: Klick springt kurz zurück; hellgrau im selben Schritt: wird dran.
+    act = k.lage === 'frueher' && k.schicht === 'B' && !fertig() ? 'kurz-zurueck' : k.lage === 'erledigt' ? 'jetzt' : 'kachel-teil';
   } else if (k.art === 'block') {
     const b = (Z.stand.plan.bloecke || []).find((x) => x.id === k.block);
     kl.push('block');
@@ -1185,11 +1238,10 @@ function kachelEl(k) {
     }
     // Nur Blöcke des gezeigten Schritts lassen sich ziehen; ein früherer springt in seinen Schritt zurück, festgelegt
     // zeigt ein Klick den Bestandteil.
-    act = k.lage === 'jetzt' ? 'block' : k.lage === 'frueher' ? 'block-frueher' : 'kachel-teil';
+    act = k.lage === 'jetzt' ? 'block' : k.lage === 'frueher' ? (fertig() ? 'kachel-teil' : 'kurz-zurueck') : k.lage === 'erledigt' ? 'jetzt' : 'kachel-teil';
   } else if (k.art === 'option') {
     kl.push('option');
-    if (k.abgewaehlt) kl.push('abgewaehlt');
-    titel = k.abgewaehlt ? `${M.kurz(m)} · ${z.teil.titel}` : `${M.kurz(m)} · ${z.teil.titel} wählen`;
+    titel = `${M.kurz(m)} · ${z.teil.titel} wählen`;
     zeile2 = k.label;
     if (k.kollision) marke = `trifft ${k.kollision}× einen Termin`;
     act = 'option';
@@ -1207,12 +1259,12 @@ function kachelEl(k) {
   if (k.lage !== 'frueher' && Z.fokus && Z.fokus.startsWith('modul:') && k.modul !== Z.fokus.slice(6)) kl.push('blass');
   if (Z.hell && k.vk && k.vk.some((v) => v.id === Z.hell)) kl.push('hell');
   const tip = [titel, zeile2,
-    k.lage === 'frueher' ? `steht schon (Schritt ${k.schritt})${k.art === 'block' ? ' — Klick: dorthin zurück' : ''}` : null,
+    k.lage === 'frueher' ? `steht schon (Schritt ${k.schritt})${(k.art === 'block' || k.schicht === 'B') && !fertig() ? ' — Klick: kurz dorthin zurück' : ''}` : k.lage === 'erledigt' ? 'schon gewählt — Klick: ändern' : null,
     ...(k.vk || []).flatMap((v) => v.flags).filter((x, i, a) => a.indexOf(x) === i).map((f) => ({ konflikt: 'Überschneidung', gesperrt: 'liegt auf einem Termin (gesperrt)', leer: 'kein Video in dieser Woche', nach_pruefung: 'nach der Prüfung' }[f]))].filter(Boolean).join('\n');
   const tags = kachelTags(k);
   const el = h(act === 'block' ? 'div' : act ? 'button' : 'div', {
     class: kl.join(' '), type: act && act !== 'block' ? 'button' : null, 'data-act': act, 'data-teil': k.teil || null,
-    'data-block': k.block || null, 'data-option': k.option || null, 'data-datum': k.datum || null, 'data-schritt': act === 'block-frueher' ? String(k.schritt) : null,
+    'data-block': k.block || null, 'data-option': k.option || null, 'data-datum': k.datum || null, 'data-schritt': act === 'kurz-zurueck' ? String(k.schritt) : null,
     title: tip, tabindex: act === 'block' ? '0' : null,
   }, h('b', { text: titel }), h('span', { class: 'k-zwei' }, tags.anzahl, zeile2), tags.etikett, marke ? h('span', { class: 'k-marke rot', text: marke }) : null);
   if (act === 'block') el.append(h('span', { class: 'k-griff', 'data-griff': '1' }));
@@ -1232,8 +1284,8 @@ function fussZeichnen() {
     !fertig() && n === 2 ? form('lg-w', 'zur Wahl') : null,
     fertig() || n >= 2 ? form('lg-g', 'gewählt') : null,
     n >= 3 || fertig() ? form('lg-d', 'dein Block') : null,
-    !fertig() && n > 1 ? form('lg-s', 'steht schon (frühere Schritte)') : null,
-    !fertig() && n === 2 ? form('lg-x', 'nicht gewählt') : null,
+    !fertig() && n > 1 ? form('lg-s', 'frühere Schritte') : null,
+    !fertig() && n > 1 ? form('lg-e', 'schon gewählt/gelegt, nicht dran') : null,
   ]);
 }
 
@@ -1888,8 +1940,28 @@ function fokussieren(teilId) {
   zeichnen(); bannerZeigen();
 }
 
+/** Kurz zurück (V-0336, Silas: „wenn man in einem weiteren Schritt ist und man klickt auf ein Event, das in einem
+ *  Schritt vorher war, dann soll man temporär in den vorherigen Schritt zurückspringen und wieder die
+ *  Auswahlmöglichkeiten haben“): Der frühere Schritt mit genau dieser Sache dran; nach der Änderung (eine Gruppe
+ *  gewählt, ein Block verschoben oder gelegt) geht es von selbst zurück. */
+function kurzZurueck(n, teilId) {
+  if (fertig() || !(n >= 2 && n <= 4) || !teilId) return;
+  Z.sprung = Z.sprung || { nach: schritt() };
+  Z.ansicht.schritt = n; Z.ansicht.bereich = 'plan';
+  Z.jetzt[n] = teilId; Z.legen = null; Z.fokus = null;
+  ansichtMerken(); zeichnen(); bannerZeigen();
+}
+function sprungEnde() {
+  if (!Z.sprung) return;
+  const nach = Z.sprung.nach;
+  Z.jetzt[schritt()] = null;
+  Z.sprung = null; Z.legen = null;
+  Z.ansicht.schritt = nach; ansichtMerken(); zeichnen(); bannerZeigen();
+}
+
 /** In einen Schritt springen (vor oder zurück). */
 function zumSchritt(n, teilId) {
+  Z.sprung = null;
   Z.ansicht.schritt = n;
   Z.ansicht.bereich = 'plan';
   Z.legen = null;
@@ -1949,7 +2021,7 @@ function verdrahten() {
         if (!vg) break;
         const da = (Z.stand.plan.bloecke || []).filter((b) => b.teil === teil && !b.datum).length;
         Z.jetzt[schritt()] = teil;
-        Z.legen = { teil, dauer: vg.dauer_min, alle: vg.alle, rest: Math.max(1, vg.anzahl - da) };
+        Z.legen = { teil, dauer: vg.dauer_min, alle: vg.alle, bis: vg.bis, rest: Math.max(1, vg.anzahl - da) };
         if (Z.ansicht.bereich !== 'plan') Z.ansicht.bereich = 'plan';
         zeichnen(); bannerZeigen();
         break;
@@ -1960,7 +2032,16 @@ function verdrahten() {
       case 'schritt': zumSchritt(Number(el.dataset.schritt), el.dataset.teil || null); break;
       case 'festlegen': festlegenKarte(el); break;
       case 'bearbeiten': if (el.dataset.schritt) bearbeiten(Number(el.dataset.schritt), teil || null); else bearbeitenKarte(el); break;
-      case 'block-frueher': zumSchritt(Number(el.dataset.schritt), teil || null); break;
+      case 'kurz-zurueck': kurzZurueck(Number(el.dataset.schritt), teil || null); break;
+      case 'sprung-ende': sprungEnde(); break;
+      case 'aufklappen': {
+        const n = schritt();
+        Z.auf[n] = el.dataset.modul;
+        const erste = reihe(n).find((x) => x.z.modul.id === el.dataset.modul);
+        if (erste) Z.jetzt[n] = erste.z.teil.id;
+        Z.legen = null; zeichnen(); bannerZeigen();
+        break;
+      }
       case 'quiz': Z.fokus = Z.fokus === `quiz:${teil}` ? null : `quiz:${teil}`; zeichnen(); break;
       case 'pruefung': Z.fokus = Z.fokus === `pruefung:${el.dataset.pruefung}` ? null : `pruefung:${el.dataset.pruefung}`; zeichnen(); break;
       case 'zuruecksetzen': zuruecksetzenKarte(el); break;
@@ -2005,6 +2086,7 @@ function verdrahten() {
         if (t) { Z.fokus = null; zeichnen(); }
         // Die Gruppe ist ab jetzt gesperrt. Lag dort schon ein Block, muss er in seinem Schritt weichen.
         const neu = [...new Set(Z.erg.vorkommen.filter((v) => v.flags.includes('gesperrt') && !vorher.has(v.block)).map((v) => v.block))];
+        if (Z.sprung) sprungEnde();
         if (o && o.kollision) melden(`Achtung: Diese Gruppe trifft ${o.kollision}× einen festen Termin.`);
         else if (neu.length) melden(`Gewählt. ${neu.length} ${neu.length > 1 ? 'Blöcke liegen' : 'Block liegt'} jetzt auf dieser Gruppe — in Schritt 3 oder 4 verschieben (hellblau markiert).`);
         break;
@@ -2026,7 +2108,7 @@ function verdrahten() {
   document.addEventListener('submit', formularAbschicken);
   document.addEventListener('keydown', (e) => {
     const inFeld = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
-    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; zeichnen(); bannerZeigen(); } return; }
+    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.sprung && !Z.legen) sprungEnde(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; zeichnen(); bannerZeigen(); } return; }
     if (inFeld) return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); rueckgaengig(); return; }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { if (!$('karte').hidden || !zeigtRaster()) return; e.preventDefault(); wocheSchritt(e.key === 'ArrowLeft' ? -1 : 1); }
@@ -2209,13 +2291,15 @@ function legenZeigen(e) {
 function ablegen(tag, y, rect) {
   const l = legenLage(tag, y, rect);
   if (l.im.length) { gesperrtMelden({ tag, datum: geo.std ? null : M.plusTage(geo.woche.von, tag), start: l.start, ende: l.ende, woechentlich: true }); return; }
-  const { teil, alle } = Z.legen;
+  const { teil, alle, bis } = Z.legen;
   const b = { id: neueId('b'), teil, tag: M.TAGE[tag], start: M.hhmm(l.start), ende: M.hhmm(l.ende) };
   if (alle > 1) b.alle = alle;
+  if (bis) b.bis = bis; // eine Woche vor dem Ende: die Modulbeschreibung rechnet 15 Wochen (M.vorgabe)
   Z.legen.rest -= 1;
   const weiter = Z.legen.rest > 0;
   if (!weiter) { Z.legen = null; Z.jetzt[schritt()] = null; }
   aendern((s) => { s.plan.bloecke = [...(s.plan.bloecke || []), b]; });
+  if (!weiter && Z.sprung) sprungEnde();
   bannerZeigen();
   const z = Z.erg.teile.get(teil);
   melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${M.TAGE[tag]} ${zeitspanne(l.start, l.ende)}${alle > 1 ? `, alle ${alle} Wochen` : ', jede Woche'} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${weiter ? ` Noch ${Z.legen.rest} Block${Z.legen.rest > 1 ? 'e' : ''} legen.` : ''}`);
@@ -2290,6 +2374,7 @@ function blockZiehen(e, kachel, rect) {
         if (x.datum) x.datum = M.plusTage(x.datum, neu.tag - tag0); else x.tag = M.TAGE[neu.tag];
       }
     });
+    if (Z.sprung) sprungEnde();
   };
   addEventListener('pointermove', weiter);
   addEventListener('pointerup', loslassen);
