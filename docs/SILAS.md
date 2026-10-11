@@ -202,6 +202,13 @@ zurückspringen, nur dass diesmal die Auswahl dahinter auch gespeichert wird“*
 dahin führt die Seite durch die Schritte, danach zeigt sie alles farbig; „Bearbeiten“ nimmt `festgelegt` weg und
 springt in einen Schritt, die Auswahl bleibt.
 
+**Vorgabe je Woche** (V-0335, `vorgabe(erg, teil)`): Für einen Video-Teil EIN Block jede Woche ab der ersten
+Freigabe, so lang, dass er das Soll (abzüglich der ±2 h) deckt, höchstens aber, was die Videos mit Puffer brauchen
+(mehr zählte nicht). Für EVL Blöcke von 1,5–2 h — k je Woche oder einer alle n Wochen (`alle` am Block; `versatz`
+verschiebt), was dem Soll am nächsten kommt, bei Gleichstand der längere Block. Mit Silas' Stand: STAT1-Screencasts
+1,5 h jede Woche (die Videos brauchen 23,5 h), STAT1-Nachbereitung 2 h jede Woche, TECHGI-Übung-Nachbereitung 2 h alle
+2 Wochen, PROG1-Labs 3 × 1:45 jede Woche. Was tatsächlich zählt, rechnet danach `rechnen()` an den echten Tagen.
+
 **Wiederholungen** (Silas: *„pro Eintrag, wie oft sich dieser Eintrag bis zum Ende des Semesters wiederholt — da wird
 dann auch sofort klar, welche sich nicht wiederholen“*): Jedes Vorkommen trägt `nr`, `gesamt` und `rest` (ab ihm noch,
 es eingeschlossen). Ein Eintrag ist ein Muster eines Termins (Serie oder Reihe, `muster`-Index), ein Block oder eine
@@ -233,11 +240,24 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 - **Links, was der Schritt will** (im Ablauf): oben ein Satz, was hier zu tun ist, und der Weg weiter; darunter je
   Modul nur die Teile dieses Schritts (Module ohne sie blass). Schritt 1 zeigt dazu die Quizze mit ihren Fristen.
   Schritt 2 zählt je Modul **„1 von 2 gewählt · 1 noch wählen“** (oder „kommt noch“), je Teil „gewählt ✓“, „wählen“,
-  „kommt noch“; ein Klick auf das **Modul** zeigt im Raster nur dessen Gruppen, ein Klick auf den **Bestandteil** nur
-  seine (Silas: *„wenn ich auf Statistik 1 klicke, sollen mir nur Gruppen zu wählen angezeigt werden, die
-  dazugehören“*). Jeder Teil: Art, Form, Stand und die Zeile in der Farbe seiner Stufe. Ein Klick klappt die Karte
-  auf: alle Meldungen, Soll und Ist, Woher, die Gruppen als Knöpfe, umwidmen, fehlende Angaben eintragen. Ein Teil
-  wählen heißt in Schritt 3 und 4 zugleich: Blöcke für ihn aufziehen.
+  „kommt noch“. Jeder Teil: Art, Form, Stand und die Zeile in der Farbe seiner Stufe. Ein Klick klappt die Karte auf:
+  alle Meldungen, Soll und Ist, Woher, die Gruppen als Knöpfe, die Vorgabe, umwidmen, fehlende Angaben eintragen.
+- **Geführt, eine Sache nach der anderen** (V-0335, Silas: *„dass man von oben nach unten durchgeführt wird … eine
+  Zusammenfassung, welche alle da gewählt werden und wie viele jeweils vorhanden sind … du wählst halt genau gerade
+  eine einzige Sache“*): Oben links steht in Schritt 2–4 die **Reihe** des Schritts in der Reihenfolge der Module — in
+  2 jede Wahl mit „4 Gruppen“, „0 vorhanden“ oder „✓ G4“, in 3 und 4 jeder Bestandteil mit seiner Vorgabe je Woche
+  oder „✓ 24 h“. **Dran** (hellblau) ist, was Silas dort anklickt, sonst die erste offene Sache; nach jeder Wahl, nach
+  jedem letzten Block rückt sie weiter. Ein Klick auf ein Modul macht seine erste offene Sache zu der, die dran ist.
+  In Schritt 2 stehen im Raster nur die Gruppen dieser einen Wahl.
+- **Block legen statt zeichnen** (V-0335, Silas: *„dass man sich einmal fest einen Slot pro Woche einplant … und der
+  soll hochgerechnet werden auf die ganzen Vorlesungswochen … die Vorgabe … müsstest du in der Woche zwei Stunden
+  blocken … an dem Mauszeiger rangeheftet dieser Block … anstatt dass man den zeichnet“*): Die Vorgabe (`vorgabe()`,
+  §2.8a) steht bei der Sache, die dran ist („1,5 h jede Woche — 16× = 24 h von 30 h“). „Block legen“ hängt einen Block
+  dieser Länge an den Zeiger; die freien Plätze (`freieFenster()` im Tagesfenster 08–20 Uhr) sind grün, in Schritt 4
+  kräftiger zwischen 10 und 18 Uhr (Silas: *„alles zwischen 10 und 18 Uhr preferred“*), und der Block rastet in den
+  freien Platz ein, in dem der Zeiger steht. Ein Klick legt ihn als Wochenblock (mit `alle`, wenn die Vorgabe es
+  sagt); auf Präsenz wird er rot und abgelehnt. Braucht die Sache mehrere Blöcke (PROG1-Labs: 3 × 1:45), bleibt der
+  nächste hängen. Esc oder „Abbrechen“ lässt los. Am Telefon und Surface legt ein Tipp ab.
 - **Das Raster nach Schichten** (V-0334, Silas: *„immer beim nächsten Schritt ist alles aus den vorherigen Schritten
   dunkelgrau … wirklich keine von den anderen Sachen soll eingetragen oder angezeigt werden“*): Schritt 1 zeigt nur
   die Grundlage. Ab Schritt 2 ist alles aus früheren Schritten **grau** (gefüllt, lesbar, ohne Farbe der Art); der
@@ -245,17 +265,16 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   (farbig, weiß gestrichelt); ist eine gewählt, ist sie weiß durchgezogen und die anderen **verblassen anders** als das
   Graue — ohne Füllung, gestrichelt in der Farbe ihrer Art —, sichtbar, solange ihr Modul oder Teil gewählt ist. Unter
   dem Raster: „Noch zu wählen“ und „Noch nicht wählbar — Termine kommen noch“. Ein grauer Block aus einem früheren
-  Schritt springt per Klick in seinen Schritt. Blöcke gibt es erst ab Schritt 3; auf Präsenz geht keiner (der Entwurf
-  wird rot, „gesperrt: …“).
+  Schritt springt per Klick in seinen Schritt. Blöcke gibt es erst ab Schritt 3; auf Präsenz geht keiner.
 - **Jede Kachel** trägt rechts senkrecht ihr **Etikett** — *Präsenz* (Termine, Gruppen, Prüfungen), *Video*, *EVL*
   (kurze Kacheln nur den Anfangsbuchstaben) — und vorn in Zeile 2, **wie oft** sie noch kommt: in der Standardwoche alle
   Termine des Eintrags, in einer echten Woche die ab diesem Tag; „1×“ dunkel heißt einmalig.
 - **Die Woche:** die **Standardwoche** (was jede Vorlesungswoche wiederkehrt; Reihen an ihrem typischen Platz
   mit „7×“ und „nächster 13.11.“; ein Wochenblock sagt „zählt 12 von 16“, wenn er nicht jede Woche zählt) oder eine
   **echte Woche** (jede Woche des Semesters, W01 … Pause … P8, mit Datum, Ganztägigem oben: Fristen, Prüfungen, die
-  Freigaben des Schritts). Im Raster ziehen setzt einen
-  Block (Standardwoche: jede Woche; echte Woche: fragt „nur am … / jeden …“); Blöcke lassen sich verschieben, an der
-  Unterkante verlängern, anklicken zum Bearbeiten. ← → wechselt die Woche, ⌘Z macht rückgängig, Esc schließt.
+  Freigaben des Schritts). Gelegte Blöcke lassen sich verschieben, an der Unterkante verlängern (EVL mindestens
+  1,5 h), anklicken zum Bearbeiten (auch Takt: jede, alle 2 … 8 Wochen). ← → wechselt die Woche, ⌘Z macht
+  rückgängig, Esc schließt.
 - **Farben nach Art** (V-0332, Silas: „Präsenzveranstaltung sollte das gleiche Farbschema haben bei allen Modulen …
   Quiz zum Beispiel immer grün“): Präsenz, Videos, Vor- und Nachbereitung, Aufgaben und Labs, Quiz und Tests, Prüfung —
   je eine Farbe (`kategorie()`), das Modul als Streifen links an jeder Kachel. Formen: fester Termin (gefüllt), **zur
@@ -275,7 +294,7 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   je Modul eine Summenzeile, darunter jeder Bestandteil, regelmäßig wie unregelmäßig, dazu Prüfungen und Fristen;
   Termine gefüllt, eigene Blöcke schraffiert, Freigaben als Punkt. Der links gewählte Bestandteil leuchtet, die anderen
   treten zurück; im Ablauf sind Zeilen anderer Schritte und die Prüfungen blass. Darunter die Chronik des Unregelmäßigen.
-- **Am Telefon** liegt alles untereinander, das Raster scrollt seitlich; ein Tipp legt einen Block mit Standardlänge an
+- **Am Telefon** liegt alles untereinander, das Raster scrollt seitlich; ein Tipp legt den hängenden Block ab
   (auch er nicht auf Präsenz). Die Schritte zeigen nur den gezeigten mit Namen, die anderen mit Nummer und Stand.
 
 ## 4. Stellschrauben (`REGELN` in `modell.mjs`, im Angebot unter `regeln` überschreibbar)
@@ -285,8 +304,10 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 | `lp_h` | 30 | AllgStuPO § 45 Abs. 2 |
 | `video_puffer_min`, `raster_min` | 15, 30 | Silas: 1:45 → 2 h |
 | `lerntag_h`, `lernfenster` | 6, 09–19 | Faustregel aus dem Semesterplan |
-| `toleranz_min` | 15 | darunter gilt eine Lücke als gedeckt |
+| `toleranz_min` | 120 | Silas, V-0332: Abweichungen bis ±2 h nicht melden |
 | `pendeln_min` | 45 | steht im Angebot; die Seite zeichnet es noch nicht (§8) |
+| `evl_block_min`, `evl_min_min` | 120, 90 | Silas, V-0335: „EVL-Block muss einfach zwei Stunden sein … mindestens anderthalb“ |
+| `evl_fenster`, `tag_fenster` | 10–18, 08–20 | bevorzugte und überhaupt gesuchte freie Plätze (Silas: „zwischen 10 und 18 Uhr preferred“) |
 
 ## 5. Das Datenformat
 
@@ -302,7 +323,7 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   notizen [], links {}}]`, `termine [{id, modul?, art: frist|info|rahmen, datum, bis?, start?, ende?, titel, ort?,
   wichtig?, unsicher?}]`.
 - **`plan`** — was Silas entschieden hat: `wahl {teil: option}`, `pruefungstermin {pruefung: datum}`, `bloecke [{id,
-  teil|null, tag | datum, start, ende, ab?, bis?, pause?, titel?}]`, `umwidmungen [{id, von, nach, h}]`,
+  teil|null, tag | datum, start, ende, ab?, bis?, pause?, alle?, versatz?, titel?}]`, `umwidmungen [{id, von, nach, h}]`,
   `bestaetigt {annahme-id: true}`, `angemeldet {pruefung- oder teil-id: true}`, `festgelegt` (Zeitpunkt, §2.8a),
   `zurueckgesetzt {am, ab, wahl, bloecke}` (was Zurücksetzen beiseitegelegt hat). (Ein `lernplan: true` an alten Blöcken
   aus dem entfernten Vorschlag wird nicht mehr gelesen.) Ein Teil kann mit `schritt: 1–4` in einen anderen Schritt
