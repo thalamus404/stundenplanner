@@ -82,8 +82,8 @@ eine Information. Optionen legt Silas auf der Seite selbst an — ISIS ist die Q
 | Art | Was zählt | Beispiel |
 |---|---|---|
 | `praesenz` | die Termine (Serie, Reihe) oder die gewählte Gruppe | VL, Übung, Tutorium, Kick-off |
-| `video` | Silas' Blöcke — aber nur ab der Freigabe eines Videos und nur so viele, wie es Videos gibt | EINFWI-Lehrvideos (12, montags), BuK-Videos (freitags) |
-| `selbst` | Silas' Blöcke; mit Einheiten (Quiz, Blatt) wie bei Videos, sonst jeder Block | Labs, Nachbereitung, ISIS-Quiz |
+| `video` | Silas' Blöcke — je Woche so viel, wie ihre Videos dauern (plus Puffer), und erst ab der Freigabe | STAT1-Screencasts (29, mit Länge je Video), EINFWI-Lehrvideos (12, montags), BuK-Videos (freitags) |
+| `selbst` | Silas' Blöcke; mit Einheiten (Quiz, Blatt, Abgabe) im Fenster der Einheit, sonst jeder Block | Labs, Nachbereitung, ISIS-Quiz, Quicktests |
 | `pruefung` | Silas' Blöcke vor dem Prüfungstermin | Klausurvorbereitung, Testvorbereitung |
 
 ### 2.5 Wie gezählt wird — jede Regel mit ihrem Grund
@@ -93,10 +93,20 @@ eine Information. Optionen legt Silas auf der Seite selbst an — ISIS ist die Q
    Präsenz ewig zu 75 % gedeckt. s.t.-Zeiten (10:00–11:00) zählen ihre echte Dauer.
 2. **Ein Wochenblock gilt in jeder Vorlesungswoche**, nicht in der Pause (außer `pause: true`) und nicht in der
    Prüfungszeit; mit `ab`/`bis` nur in einem Zeitraum. Für die Prüfungszeit gibt es Datumsblöcke.
-3. **Ein Video- oder Einheiten-Block zählt erst ab der Freigabe.** Die Blöcke eines Teils werden der Reihe nach den
-   Einheiten zugeordnet (Video 1 dem ersten Block am oder nach seiner Freigabe …). Ein Block ohne Einheit (Woche 1, vor
-   dem ersten Video) zählt nicht; ein Video ohne Block ist rot.
-4. **Prüfungsvorbereitung zählt nur vor der Prüfung** (vor dem Erst-Termin). Ein Block am oder nach dem Prüfungstag
+3. **Videos zählen je Woche, nach ihrer echten Länge** (V-0328; Silas: „Woche 2 … Screencast 3, 40 Minuten. Und
+   Screencast 4, auch 40 Minuten“). Jedes Video trägt seine Länge (`laenge_min`, sonst die Annahme `annahme_min`). Die
+   Videos einer Woche gehören zusammen: Die Woche braucht ihre Summe plus Puffer, aufgerundet (80 + 15 min → 2 h).
+   Silas' Blöcke füllen die Wochen der Reihe nach — ein Block deckt die früheste freigegebene Woche, die noch Zeit
+   braucht; so holt ein späterer Block eine verpasste Woche nach. Ein Block, für den es (noch) kein Video gibt, zählt
+   nicht; eine Woche ohne Block ist rot, ein zu kurzer Block gelb. Brauchen die Videos zusammen weniger als der Posten,
+   ist der Rest strukturell und lässt sich umwidmen.
+   **Quiz, Blätter, Abgaben** (`selbst` mit Einheiten): Mit erwarteter Dauer (`einheiten.dauer_min`) wie Videos; ohne
+   Dauer gilt ein **Fenster**: Ein Block zählt, solange eine Einheit offen ist (`ab` bis `bis`, ohne `bis` bis zur
+   nächsten Freigabe). Sonst zählte von zwei Lab-Blöcken je Woche nur einer. `bis` wird eine Frist. Einheiten ohne
+   Datum (`einheiten.anzahl`, `ab: null`) sind rot; bis dahin zählt jeder Block.
+4. **Prüfungsvorbereitung zählt nur vor der Prüfung** — vor dem Termin, den Silas schreibt: dem gewählten
+   (`plan.pruefungstermin`, etwa der Alternativtermin eines E-Tests oder der Zweittermin), sonst dem ersten regulären.
+   Bei einer echten Wahl (`pruefung.wahl`: zwei gleichwertige Termine) verschwindet der andere, sobald gewählt ist. Ein Block am oder nach dem Prüfungstag
    zählt nicht und ist rot.
 5. **Ein Termin schlägt einen Block.** Überlappt ein eigener Block an einem Tag einen Termin, verliert der Block die
    überlappte Zeit (gelber Hinweis am Teil). Der Termin bleibt, wie er ist. Gerechnet wird an den echten Tagen, nicht
@@ -123,6 +133,14 @@ Rot ist alles, was Silas noch tun muss — **Information fehlt** (ⓘ) oder **ni
 Ein Teil ist rot, sobald er eine Info- oder Plan-Flagge hat; ein Modul, sobald einer seiner Teile rot ist. Der Kopf
 zählt die roten Teile („12 offen“), ein Klick springt zum ersten.
 
+### 2.6a Fristen, die das Modell selbst bildet
+
+Aus `anmeldung {von, von_zeit, bis, bis_zeit, wo, nur}` — an einer Prüfung, an einem einzelnen Prüfungstermin oder an
+einem Bestandteil (die EINFWI-Übung über MOSES bis 14.10.) — werden die Fristen „Anmeldung öffnet/endet“; aus
+`einheiten.liste[].bis` die Fristen „… fällig“. Was an einer Prüfung oder Anmeldung `offen`/`unsicher` ist (Raum,
+Bestehensgrenze, Frist nur in MOSES), steht am Modul; ein Einzeltermin ohne Datum ebenso. Zwei Prüfungen, die sich
+überschneiden, sind rot am Modul.
+
 ### 2.7 Umwidmung
 
 Die EINFWI-Übung hat 30 h Präsenzzeit, findet aber nur 5× statt: 20 h können dort nie stattfinden. Sie gehören
@@ -141,6 +159,15 @@ bietet sie an, wenn eine Lücke strukturell ist (alle Termine bekannt, Gruppe ge
   Stunden gedeckt sind. Er erscheint gestrichelt in den echten Wochen; erst „Übernehmen“ legt Datumsblöcke an
   (`lernplan: true`, gemeinsam wieder entfernbar).
 
+## 2.9 Annahmen und Lücken an einem Ort
+
+Silas, 11.10.: *„Gibt es einen Ort, an dem ich einmal alle Annahmen als Liste sehe und auf diese antworten kann,
+beziehungsweise dort Werte verändern könnte manuell? Und genau das Gleiche mit den Warnungen.“* `annahmen()` sammelt
+die festen Regeln (mit Quelle, nicht änderbar), die Stellschrauben (`regeln`, änderbar), jede Aufteilung eines
+Postens (`soll_h`, änderbar — teilen sich genau zwei Teile einen Posten, bekommt der andere den Rest), jede
+Videolängen-Annahme (`annahme_min`) und jede `annahme` am Teil oder an einer Gruppe. Eine Annahme ist gelb, bis Silas
+sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Flaggen aller Teile und Module, rot vor gelb.
+
 ## 3. Die Seite
 
 - **Kopf:** Semester, die Bilanz („600 h von 900 h“, Balken) und die Zahl der roten Teile; der Speicherstand;
@@ -151,14 +178,25 @@ bietet sie an, wenn eine Lücke strukturell ist (alle Termine bekannt, Gruppe ge
   (die Gruppen stehen gestrichelt im Raster, mit „14× belegt“, wenn sie mit dem Plan kollidieren), Block setzen,
   Lernplan vorschlagen, umwidmen, fehlende Angaben eintragen (Termine, Gruppen, Prüfungstermin, Videolänge,
   Ausfälle). Ein Klick auf den Modulnamen zeigt die Aufwandstabelle neben dem, was davon eingeplant ist.
-- **Mitte, die Woche:** die **Standardwoche** (was jede Vorlesungswoche wiederkehrt; Reihen an ihrem typischen Platz
+- **Mitte, vier Bereiche** (V-0328): *Vorlesungszeit* (Standardwoche und die Wochen W01–W16), *Vorlesungsfreie
+  Zeit* (oben jede Prüfung mit ihrer Vorbereitung, darunter die Tage der Weihnachtspause und der Zeit nach der
+  Vorlesung: Prüfung wählen, Tage antippen — jeder Tipp ein Lerntag in der größten freien Lücke; Silas: „in der
+  vorlesungsfreien Zeit fallen viele Präsenztermine raus, da hat man Platz, um zu planen, wann man welche
+  Klausurvorbereitung macht“), *Offen & Annahmen* (§2.9, jede Zeile führt zum Formular) und *So wird gerechnet*
+  (Bologna, ECTS, die Aufwandstabelle am Beispiel eines Moduls, die Zählregeln, die Quellen).
+- **Die Woche:** die **Standardwoche** (was jede Vorlesungswoche wiederkehrt; Reihen an ihrem typischen Platz
   mit „nur 7× — nächster 13.11.“; ein Wochenblock zeigt „12/16“, wenn er nicht jede Woche zählt) oder eine **echte
   Woche** (W01 … P8, mit Datum, Ganztägigem oben: Fristen, Prüfungen, Video-Freigaben). Im Raster ziehen setzt einen
   Block (Standardwoche: jede Woche; echte Woche: fragt „nur am … / jeden …“); Blöcke lassen sich verschieben, an der
   Unterkante verlängern, anklicken zum Bearbeiten. ← → wechselt die Woche, ⌘Z macht rückgängig, Esc schließt.
-- **Rechts, das Unregelmäßige:** ein **Muster** über alle Wochen des Semesters — je Modul eine Zeile für jede Reihe,
-  die Video-Freigaben, Lernplan-Tage, Prüfungen und Fristen; ein Klick auf eine Woche zeigt sie — und darunter die
-  **Chronik**: alles Unregelmäßige nach Wochen, ab heute (Serien stehen in der Standardwoche, nicht hier).
+- **Kopf, die Bilanz:** *eingeplant − zu viel = gedeckt von Soll* (Silas: „die Zahl davor muss alles
+  zusammengerechnet sein und dahinter muss stehen minus so und so viele Stunden, die zu viel eingeplant sind“).
+- **Woher:** Die Karte eines Teils nennt die Zeile der Aufwandstabelle, den Anteil dieses Teils, Umwidmungen und die
+  Quelle der Termine (`quelle`). Videos stehen dort einzeln, mit einem Feld für ihre Länge.
+- **Rechts, die Minimap** (V-0328, Silas: „wie die Minimap, die die Semesterübersicht einmal in Wochenansicht gibt“):
+  je Modul eine Summenzeile, darunter jeder Bestandteil, regelmäßig wie unregelmäßig, dazu Prüfungen und Fristen;
+  Termine gefüllt, eigene Blöcke schraffiert, Freigaben als Punkt. Der links gewählte Bestandteil leuchtet, die anderen
+  treten zurück. Darunter die Chronik des Unregelmäßigen.
 - **Am Telefon** liegt alles untereinander, das Raster scrollt seitlich; ein Tipp legt einen Block mit Standardlänge an.
 
 ## 4. Stellschrauben (`REGELN` in `modell.mjs`, im Angebot unter `regeln` überschreibbar)
@@ -179,11 +217,17 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   fachsemester}`, `regeln`, `module [{id, nr, titel, kurz, lp, farbe 1–8, posten [{id, lv, titel, mult, h}],
   teile [{id, titel, art, posten, soll_h?, termine?, optionen? [{id, label, termine}], wahl?, einheiten?
   {liste? [{nr, ab, titel}], takt? {tag, von, bis}, laenge_min?, annahme_min?, offen?}, pruefung?, offen?, unsicher?,
-  hinweis?, ort?, online?}], pruefungen [{id, titel, dauer_min, termine [{datum, start?, ende?, ort?, label}]}],
+  hinweis?, annahme?, quelle?, ort?, online?, anmeldung?}], pruefungen [{id, titel, dauer_min, wahl?, offen?, unsicher?,
+  zulassung?, anmeldung?, termine [{datum|null, start?, ende?, ort?, label, wichtig?, offen?, unsicher?, quelle?,
+  anmeldung?}]}],
   notizen [], links {}}]`, `termine [{id, modul?, art: frist|info|rahmen, datum, bis?, start?, ende?, titel, ort?,
   wichtig?, unsicher?}]`.
-- **`plan`** — was Silas entschieden hat: `wahl {teil: option}`, `bloecke [{id, teil|null, tag | datum, start,
-  ende, ab?, bis?, pause?, titel?, lernplan?}]`, `umwidmungen [{id, von, nach, h}]`.
+- **`plan`** — was Silas entschieden hat: `wahl {teil: option}`, `pruefungstermin {pruefung: datum}`, `bloecke [{id,
+  teil|null, tag | datum, start, ende, ab?, bis?, pause?, titel?, lernplan?}]`, `umwidmungen [{id, von, nach, h}]`,
+  `bestaetigt {annahme-id: true}`.
+- **Einheiten** (`einheiten`): `liste [{nr, ab, titel, woche, laenge_min, bis?, bis_zeit?, quelle, offen?, unsicher?}]`
+  oder `takt {tag, von, bis}`; dazu `annahme_min` (Videos), `dauer_min` (Quiz/Blatt), `anzahl` (Datum noch offen), `offen`.
+- **Serie mit Angaben je Tag:** `tage {datum: {titel, ort, unsicher, quelle}}` — der Freitag mit Übung statt VL.
 - `pruefeAngebot()` lehnt ab, was formal nicht stimmt (doppelte Ids, unbekannte Art, kaputtes Muster); die API
   speichert dann nicht (422).
 
@@ -218,8 +262,12 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
 
 ## 8. Offen
 
-- Die echten Daten nachtragen, sobald ISIS sie nennt: STAT1-Tutorien und die Freitage der Präsenz, TECHGI-Übungsgruppen
-  und Quiz-Fristen, PROG1-Tutorials und -Labs, BuK-Prüfungstermine, Klausurtermine STAT1 und PROG1, Videolängen.
+- Die Daten kamen am 11.10. aus Silas' ISIS-Export, je Modul von einem Agenten gelesen (V-0328). Was ISIS noch nicht
+  nennt, steht rot unter „Offen & Annahmen“ (Tutorien, Übungsgruppen, Quiz- und Abgabefristen, Räume, Videolängen,
+  STAT1-Klausur) und wird auf der Seite nachgetragen.
+- Ein Termin für zwei Posten (PROG1: VL und Übungsanteile gemischt) bucht das Modell auf einen Posten; `posten` je
+  Muster wäre genauer. Einlass und Zeitfenster einer Prüfung (Erscheinen 08:15, 60 min im Fenster 08:30–10:30) und
+  Räume nach Nachnamen stehen nur als Text.
 - Pendeln (45 min vor dem ersten und nach dem letzten Campustermin eines Tages) als eigene Schicht zeichnen.
 - Das Study OS liest `/silas/api/ereignisse` (Vorgang im Airfield studyos).
 - Ob der Planer für alle kommt, entscheidet Silas; das Modell ist dafür schon allgemein.

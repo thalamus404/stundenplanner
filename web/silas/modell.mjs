@@ -92,6 +92,19 @@ export function wochen(sem) {
   }
   return aus;
 }
+/** Die Phasen des Semesters (Silas, 11.10.: „eine Unterscheidung zwischen Vorlesungszeit und vorlesungsfreier
+ *  Zeit … da hat man Platz, um zu planen, wann man welche Klausurvorbereitung macht“). */
+export function phasen(sem) {
+  const aus = [{ id: 'vorlesung', titel: 'Vorlesungszeit', von: sem.vorlesung.von, bis: sem.vorlesung.bis }];
+  for (const f of sem.frei || []) aus.push({ id: 'pause', titel: f.titel || 'Vorlesungsfrei', von: f.von, bis: f.bis });
+  if (sem.ende && sem.ende > sem.vorlesung.bis) aus.push({ id: 'frei', titel: 'Vorlesungsfreie Zeit', von: plusTage(sem.vorlesung.bis, 1), bis: sem.ende });
+  return aus;
+}
+export const phaseVon = (sem, datum) => {
+  const ps = phasen(sem);
+  return ps.find((p) => p.id !== 'vorlesung' && datum >= p.von && datum <= p.bis) || (datum >= sem.vorlesung.von && datum <= sem.vorlesung.bis ? ps[0] : null);
+};
+
 export const wocheVon = (wo, datum) => wo.find((w) => datum >= w.von && datum <= w.bis) || null;
 
 // ── Termine aus einem Muster ─────────────────────────────────────────────────────────────────────
@@ -114,13 +127,17 @@ export function termineAus(m, sem) {
     const ausser = new Set(m.ausser || []);
     for (; d <= m.bis; d = plusTage(d, 7 * (m.alle || 1))) {
       if (ausser.has(d) || (istFrei(sem, d) && !m.auch_frei)) continue;
-      aus.push({ datum: d, start: min(m.start), ende: min(m.ende), ort: m.ort || null, titel: null });
+      // Angaben zu einzelnen Tagen einer Serie (tage: {datum: {titel, ort, unsicher, quelle}}): der eine Freitag mit
+      // Übung statt VL, die Übung am 10.02. als Probeklausur — ohne die Serie in eine Reihe aufzulösen.
+      const tag = (m.tage || {})[d] || {};
+      aus.push({ datum: d, start: min(m.start), ende: min(m.ende), ort: tag.ort || m.ort || null, titel: tag.titel || null, quelle: tag.quelle || m.quelle || null, unsicher: tag.unsicher || null });
     }
   } else if (m.typ === 'reihe') {
     for (const x of m.daten || []) {
       aus.push({
         datum: x.datum, start: min(x.start || m.start), ende: min(x.ende || m.ende),
-        ort: x.ort || m.ort || null, titel: x.titel || null,
+        ort: x.ort || m.ort || null, titel: x.titel || null, quelle: x.quelle || m.quelle || null,
+        unsicher: x.unsicher || null,
       });
     }
   } else throw new Error(`Termin-Muster „${m.typ}“ unbekannt`);
@@ -151,10 +168,22 @@ export const postenGesamt = (p) => Math.round(p.mult * p.h * 60); // in Minuten
 export function einheiten(teil, sem) {
   const e = teil.einheiten;
   if (!e) return null;
-  if (Array.isArray(e.liste) && e.liste.length) return e.liste.map((x, i) => ({ nr: x.nr ?? i + 1, ab: x.ab, titel: x.titel || null }));
+  // Je Einheit (ein Video, ein Quiz) ihre eigene Länge: Silas, 11.10.: „Woche 2 … Screencast 3, 40 Minuten. Und
+  // Screencast 4, auch 40 Minuten.“ Eine Länge je Teil gilt nur, wo eine Einheit keine eigene hat.
+  const teilLaenge = Number.isFinite(e.laenge_min) ? e.laenge_min : null;
+  const voll = (x, i) => ({
+    nr: x.nr ?? i + 1, ab: x.ab, titel: x.titel || null, woche: x.woche ?? null,
+    laenge_min: Number.isFinite(x.laenge_min) ? x.laenge_min : teilLaenge,
+    bis: istDatum(x.bis) ? x.bis : null, bis_zeit: x.bis_zeit || null,
+    quelle: x.quelle || null, offen: x.offen || null, unsicher: x.unsicher || null,
+  });
+  if (Array.isArray(e.liste) && e.liste.length) {
+    const mit = e.liste.filter((x) => istDatum(x.ab)).map(voll);
+    return mit.length ? mit : null; // ohne ein einziges Datum: wie ohne Liste (jeder Block zählt), Lücke wird gemeldet
+  }
   if (e.takt && e.takt.tag && e.takt.von && e.takt.bis) {
     return termineAus({ typ: 'serie', tag: e.takt.tag, von: e.takt.von, bis: e.takt.bis, start: '00:00', ende: '00:00', ausser: e.takt.ausser, auch_frei: e.takt.auch_frei }, sem)
-      .map((x, i) => ({ nr: i + 1, ab: x.datum, titel: null }));
+      .map((x, i) => voll({ ab: x.datum }, i));
   }
   return null;
 }
@@ -164,11 +193,16 @@ export function videoBlockMin(laengeMin, regeln = REGELN) {
   return aufRaster(laengeMin + regeln.video_puffer_min, regeln.raster_min);
 }
 
-function pruefungsTermin(modul, pid) {
+/** Welcher Termin einer Prüfung zählt: der, den Silas gewählt hat (plan.pruefungstermin, z. B. E-Test am 24.11.
+ *  statt am 30.11. oder der Zweittermin), sonst der erste reguläre, sonst der erste datierte. */
+export function pruefungsTermin(modul, pid, plan = {}) {
   const p = (modul.pruefungen || []).find((x) => x.id === pid);
-  if (!p) return { pruefung: null, termin: null };
-  const termin = (p.termine || []).find((x) => istDatum(x.datum)) || null;
-  return { pruefung: p, termin };
+  if (!p) return { pruefung: null, termin: null, gewaehlt: false };
+  const datiert = (p.termine || []).filter((x) => istDatum(x.datum));
+  const wahl = (plan.pruefungstermin || {})[p.id];
+  const gewaehlt = wahl ? datiert.find((x) => x.datum === wahl) : null;
+  const termin = gewaehlt || datiert.find((x) => x.wichtig !== false) || datiert[0] || null;
+  return { pruefung: p, termin, gewaehlt: !!gewaehlt };
 }
 
 // ── Die Rechnung ─────────────────────────────────────────────────────────────────────────────────
@@ -206,7 +240,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         const vergeben = geschwister.filter((g) => g.soll_h != null).reduce((s, g) => s + g.soll_h * 60, 0);
         const offen = geschwister.filter((g) => g.soll_h == null);
         z.soll_min = Math.round((postenGesamt(p) - vergeben) / offen.length);
-        if (offen.length > 1) flagge(z, 'hinweis', 'aufteilung', `Aufteilung angenommen: ${p.titel} (${stunden(postenGesamt(p))}) zu gleichen Teilen auf ${offen.length} Bestandteile`);
+        if (offen.length > 1 && !(plan.bestaetigt || {})[`soll:${t.id}`]) flagge(z, 'hinweis', 'aufteilung', `Aufteilung angenommen: ${p.titel} (${stunden(postenGesamt(p))}) zu gleichen Teilen auf ${offen.length} Bestandteile`);
       }
       z.soll_orig_min = z.soll_min;
       teile.set(t.id, z);
@@ -242,6 +276,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
           option: option && option.id, datum: x.datum, start: x.start, ende: x.ende,
           ort: x.ort || quelle.ort || t.ort || null, online: quelle.online || t.online || null,
           titel: x.titel, ct: t.ct !== false, zaehlt_min: 0, flags: [], mit: [],
+          herkunft: x.quelle || quelle.quelle || t.quelle || null, unsicher: !!x.unsicher,
         };
         vorkommen.push(v); z.vk.push(v);
       }
@@ -278,26 +313,56 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
 
   // 4 · Prüfungen (Schicht A), Einzeltermine und Fristen (Schicht C) — sie tragen keine Lernstunden,
   //     aber sie belegen Zeit und binden die Prüfungsvorbereitung.
+  function anmeldeFristen(a, id, modul, titel, teil = null) {
+    if (!a) return;
+    const wo = a.wo ? ` (${String(a.wo).split(' (')[0]})` : '';
+    if (istDatum(a.von)) frist(`${id}-von`, modul, a.von, a.von_zeit, `${titel}: Anmeldung öffnet${wo}`, false, a, teil);
+    if (istDatum(a.bis)) frist(`${id}-bis`, modul, a.bis, a.bis_zeit, `${titel}: Anmeldung endet${wo}${a.nur ? ` — nur ${a.nur}` : ''}`, true, a, teil);
+  }
+  function frist(id, modul, datum, zeit, titel, wichtig, herkunft, teil = null) {
+    vorkommen.push({
+      id, quelle: 'frist', schicht: 'C', modul, teil, datum, ganztag: true, punkt: zeit ? min(zeit) : undefined,
+      titel, wichtig: !!wichtig, unsicher: !!(herkunft && herkunft.unsicher), herkunft: (herkunft && herkunft.quelle) || null,
+      zaehlt_min: 0, flags: [], mit: [],
+    });
+  }
   for (const m of angebot.module || []) {
     for (const p of m.pruefungen || []) {
+      // Bei einer echten Wahl (p.wahl: zwei gleichwertige Termine, einer wird geschrieben) verschwindet der andere,
+      // sobald Silas gewählt hat; Erst- und Zweittermin bleiben beide sichtbar.
+      const { termin: gilt, gewaehlt } = pruefungsTermin(m, p.id, plan);
       for (const x of p.termine || []) {
         if (!istDatum(x.datum)) continue;
+        if (p.wahl && gewaehlt && x !== gilt) continue;
         const zeit = x.start ? { start: min(x.start), ende: x.ende ? min(x.ende) : min(x.start) + (p.dauer_min || 60) } : { ganztag: true };
         vorkommen.push({
           id: `${p.id}@${x.datum}`, quelle: 'pruefung', schicht: 'A', modul: m.id, pruefung: p.id,
           datum: x.datum, ...zeit, titel: [p.titel, x.label].filter(Boolean).join(' · '), ort: x.ort || null,
           wichtig: x.wichtig !== false, unsicher: !!x.unsicher, zaehlt_min: 0, flags: [], mit: [],
+          herkunft: x.quelle || p.quelle || null,
         });
+      }
+      // Die Anmeldung zur Prüfung: ohne sie wird nichts bewertet (AllgStuPO § 63 Abs. 1).
+      anmeldeFristen(p.anmeldung, `${p.id}-anmeldung`, m.id, p.titel);
+      for (const x of p.termine || []) if (x.anmeldung) anmeldeFristen(x.anmeldung, `${p.id}@${x.datum}-anmeldung`, m.id, `${p.titel}${x.label ? ` (${x.label})` : ''}`);
+    }
+    // Auch eine Gruppe kann eine Anmeldung haben (EINFWI-Übung über MOSES bis 14.10.).
+    for (const t of m.teile || []) anmeldeFristen(t.anmeldung, `${t.id}-anmeldung`, m.id, t.titel, t.id);
+    // Abgaben und Schlusszeiten der Einheiten (Quiz, Blatt): Fristen der Schicht C.
+    for (const t of m.teile || []) {
+      for (const e of einheiten(t, sem) || []) {
+        if (e.bis) frist(`${t.id}#${e.nr}@bis`, m.id, e.bis, e.bis_zeit, `${t.titel} ${e.nr}${e.titel ? ` (${e.titel})` : ''} fällig`, false, e, t.id);
       }
     }
   }
   for (const e of angebot.termine || []) {
+    if (!istDatum(e.datum)) continue; // Datum offen: als Lücke am Modul (Schritt 8), nicht im Kalender
     const zeit = e.start && e.ende ? { start: min(e.start), ende: min(e.ende) } : e.start ? { punkt: min(e.start), ganztag: true } : { ganztag: true };
     vorkommen.push({
       id: e.id, quelle: e.art === 'frist' ? 'frist' : e.art === 'rahmen' ? 'rahmen' : 'einzel',
       schicht: e.art === 'rahmen' ? 'R' : 'C', modul: e.modul || null, datum: e.datum, bis: e.bis || null, ...zeit,
       titel: e.titel, ort: e.ort || null, wichtig: !!e.wichtig, unsicher: !!e.unsicher, art: e.art,
-      zaehlt_min: 0, flags: [], mit: [],
+      zaehlt_min: 0, flags: [], mit: [], herkunft: e.quelle || null, notiz: e.notiz || null,
     });
   }
 
@@ -341,26 +406,87 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     if (t.art === 'video' || t.art === 'selbst') {
       const liste = einheiten(t, sem);
       z.einheiten = liste;
+      const video = t.art === 'video';
+      const wort = video ? ['Video', 'Videos'] : ['Einheit', 'Einheiten'];
+      const annahme = (t.einheiten && (t.einheiten.laenge_min || t.einheiten.annahme_min)) || 90;
       if (liste) {
-        const frei = [...bloecke];
-        for (const e of liste) {
-          const i = frei.findIndex((v) => v.datum >= e.ab);
-          if (i < 0) { e.block = null; continue; }
-          e.block = frei[i].id; frei[i].einheit = e.nr;
-          frei.splice(i, 1);
+        // Die Einheiten einer Woche gehören zusammen (zwei Screencasts in Woche 2 schaut man in einem Block).
+        // Blöcke füllen die Wochen der Reihe nach: Ein Block deckt die früheste freigegebene Woche, die noch
+        // Zeit braucht — so holt ein späterer Block eine verpasste Woche nach. Ein Block, für den es (noch) nichts
+        // zu tun gibt, zählt nicht. Bei Videos braucht eine Woche die Summe ihrer Längen plus Puffer (videoBlockMin);
+        // bei Quiz und Blättern ohne Länge genau einen Block.
+        const gruppen = [];
+        for (const e of [...liste].sort((a, b) => (a.ab < b.ab ? -1 : a.ab > b.ab ? 1 : 0))) {
+          const mo = montagVon(e.ab);
+          let g = gruppen.find((x) => x.montag === mo);
+          if (!g) { g = { montag: mo, ab: e.ab, einheiten: [], bedarf_min: null, belegt_min: 0, bloecke: [] }; gruppen.push(g); }
+          g.einheiten.push(e);
         }
-        for (const v of frei) { v.zaehlt_min = 0; v.flags.push('leer'); }
-        if (frei.length) flagge(z, 'hinweis', 'leer', `${frei.length} ${frei.length > 1 ? 'Blöcke' : 'Block'} ohne ${t.art === 'video' ? 'Video' : 'Einheit'} (zuerst ${datumKurz(frei[0].datum)}) — die Zeit zählt nicht`);
-        const ohne = liste.filter((e) => !e.block);
-        if (ohne.length && bloecke.length) flagge(z, 'plan', 'einheit_ohne_block', `${ohne.length} von ${liste.length} ${t.art === 'video' ? 'Videos' : 'Einheiten'} ohne Block (ab ${datumKurz(ohne[0].ab)})`);
-      } else if (t.einheiten && t.einheiten.offen) flagge(z, 'info', 'freigabe_offen', t.einheiten.offen);
-      if (t.art === 'video') {
-        const laenge = t.einheiten && t.einheiten.laenge_min;
-        if (!laenge) flagge(z, 'info', 'laenge_offen', `Videolänge unbekannt${t.einheiten && t.einheiten.annahme_min ? ` — angenommen ${t.einheiten.annahme_min} min, Block ${stunden(videoBlockMin(t.einheiten.annahme_min, regeln))}` : ''}`);
+        // Quiz und Blätter mit erwarteter Bearbeitungszeit (einheiten.dauer_min, z. B. 1 h je ISIS-Quiz laut
+        // Aufwandstabelle) brauchen so viel Zeit je Woche; ohne sie genau einen Block.
+        const dauer = t.einheiten && Number.isFinite(t.einheiten.dauer_min) ? t.einheiten.dauer_min : null;
+        if (!video && dauer) for (const g of gruppen) g.bedarf_min = aufRaster(g.einheiten.length * dauer, regeln.raster_min);
+        if (video) {
+          for (const g of gruppen) {
+            g.laenge_min = g.einheiten.reduce((s, e) => s + (e.laenge_min ?? annahme), 0);
+            g.bedarf_min = videoBlockMin(g.laenge_min, regeln);
+            g.geschaetzt = g.einheiten.some((e) => e.laenge_min == null);
+          }
+        }
+        // Abgaben ohne erwartete Dauer (Prog1WINF-Aufgaben, Blätter): ein Fenster statt einer Menge — ein Block zählt,
+        // solange eine Einheit offen ist (ab ≤ Tag ≤ bis; ohne bis bis zur nächsten Freigabe bzw. Vorlesungsende).
+        // Sonst zählte von zwei Lab-Blöcken je Woche nur einer (PROG1-Agent, 11.10.).
+        const fenster = !video && !gruppen.some((g) => g.bedarf_min);
+        if (fenster) {
+          gruppen.forEach((g, n) => {
+            const bisListe = g.einheiten.map((e) => e.bis).filter(Boolean).sort();
+            g.bis = bisListe.length ? bisListe[bisListe.length - 1] : (gruppen[n + 1] ? plusTage(gruppen[n + 1].ab, -1) : sem.vorlesung.bis);
+          });
+        }
+        for (const v of bloecke) {
+          const g = fenster
+            ? gruppen.find((x) => x.ab <= v.datum && v.datum <= x.bis)
+            : gruppen.find((x) => x.ab <= v.datum && (x.bedarf_min == null ? !x.bloecke.length : x.belegt_min < x.bedarf_min));
+          if (!g) { v.zaehlt_min = 0; v.flags.push('leer'); continue; }
+          g.bloecke.push(v.id);
+          g.belegt_min += Math.max(0, v.ende - v.start - (v.ueberlappt || 0));
+          v.einheit = g.einheiten.map((e) => e.nr).join(' + ');
+          for (const e of g.einheiten) if (!e.block) e.block = v.id;
+        }
+        z.gruppen = gruppen;
+        const frei = bloecke.filter((v) => v.flags.includes('leer'));
+        if (frei.length) flagge(z, 'hinweis', 'leer', `${frei.length} ${frei.length > 1 ? 'Blöcke' : 'Block'} ohne ${wort[0]} (zuerst ${datumKurz(frei[0].datum)}) — die Zeit zählt nicht`);
+        const ohne = gruppen.filter((g) => !g.bloecke.length);
+        if (ohne.length && bloecke.length) flagge(z, 'plan', 'einheit_ohne_block', `${ohne.reduce((s, g) => s + g.einheiten.length, 0)} von ${liste.length} ${wort[1]} ohne Block (ab ${datumKurz(ohne[0].ab)})`);
+        const kurz = gruppen.filter((g) => g.bedarf_min && g.belegt_min > 0 && g.belegt_min < g.bedarf_min);
+        if (kurz.length) flagge(z, 'hinweis', 'zu_kurz', `${kurz.length} ${kurz.length > 1 ? 'Wochen' : 'Woche'}: Block kürzer als ${video ? 'die Videos' : 'die Einheiten'} (ab ${datumKurz(kurz[0].ab)}: ${stunden(kurz[0].belegt_min)} eingeplant, ${stunden(kurz[0].bedarf_min)} nötig)`);
+        if (video) {
+          const unbekannt = liste.filter((e) => e.laenge_min == null).length;
+          z.video_bedarf_min = gruppen.reduce((s, g) => s + g.bedarf_min, 0);
+          z.video_bekannt = unbekannt === 0;
+          if (unbekannt) flagge(z, 'info', 'laenge_offen', `${unbekannt} von ${liste.length} Videos ohne Länge — angenommen je ${annahme} min`);
+          if (z.video_bekannt && z.video_bedarf_min + regeln.toleranz_min < z.soll_min) z.video_rest_min = z.soll_min - z.video_bedarf_min;
+          const satz = `Die Videos brauchen mit Puffer ${stunden(z.video_bedarf_min)}${z.video_bekannt ? '' : ' (geschätzt)'}, der Posten sieht ${stunden(z.soll_min)} vor`;
+          if (Math.abs(z.video_bedarf_min - z.soll_min) > 60) flagge(z, 'hinweis', 'videozeit', satz + (z.video_bedarf_min < z.soll_min ? ' — der Rest gehört in Nachbereitung oder Prüfungsvorbereitung (umwidmen)' : ''));
+        }
+        const unsicher = liste.filter((e) => e.unsicher);
+        if (unsicher.length) flagge(z, 'hinweis', 'einheit_unsicher', `${unsicher.length} ${unsicher.length > 1 ? wort[1] : wort[0]} mit unsicherer Angabe: ${unsicher[0].unsicher}`);
+        if (t.einheiten.offen) flagge(z, 'info', 'freigabe_offen', t.einheiten.offen);
+        const ohneAb = (t.einheiten.liste || []).length - liste.length;
+        if (ohneAb > 0) flagge(z, 'info', 'freigabe_offen', `${ohneAb} weitere ${ohneAb > 1 ? wort[1] : wort[0]} ohne Freigabedatum`);
+        // Eine fehlende Videolänge meldet schon laenge_offen (einmal für alle) — nicht noch einmal je Video.
+        const offen = liste.filter((e) => e.offen && !(video && e.laenge_min == null));
+        if (offen.length) flagge(z, 'info', 'einheit_offen', `${offen.length} ${offen.length > 1 ? wort[1] : wort[0]}: ${offen[0].offen}`);
+      } else {
+        if (t.einheiten && t.einheiten.offen) flagge(z, 'info', 'freigabe_offen', t.einheiten.offen);
+        const ohneDatum = ((t.einheiten && t.einheiten.liste) || []).length;
+        const anzahl = t.einheiten && (t.einheiten.anzahl || ohneDatum);
+        if (anzahl && !(t.einheiten && t.einheiten.offen)) flagge(z, 'info', 'freigabe_offen', `${anzahl} ${wort[1]} ohne Freigabedatum`);
+        if (video && !(t.einheiten && t.einheiten.laenge_min)) flagge(z, 'info', 'laenge_offen', `Videolänge unbekannt${t.einheiten && t.einheiten.annahme_min ? ` — angenommen ${t.einheiten.annahme_min} min, Block ${stunden(videoBlockMin(t.einheiten.annahme_min, regeln))}` : ''}`);
       }
     }
     if (t.art === 'pruefung') {
-      const { pruefung, termin } = pruefungsTermin(z.modul, t.pruefung);
+      const { pruefung, termin } = pruefungsTermin(z.modul, t.pruefung, plan);
       z.pruefung = pruefung; z.pruefungstermin = termin;
       if (!pruefung) flagge(z, 'info', 'pruefung_fehlt', 'Zu diesem Lernblock gehört keine Prüfung');
       else if (!termin) flagge(z, 'info', 'datum_offen', `${pruefung.titel}: Termin steht noch nicht fest`);
@@ -388,14 +514,19 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     else if (z.fehlt_min >= regeln.toleranz_min && z.ist_min > 0) {
       // Strukturell: Alle Termine stehen fest, mehr gibt es nicht. Dann hilft kein Block, nur eine
       // Umwidmung in einen anderen Teil des Moduls.
-      const fest = t.art === 'praesenz' && !z.flags.some((f) => f.stufe === 'info');
-      z.strukturell = fest;
+      const fest = (t.art === 'praesenz' && !z.flags.some((f) => f.stufe === 'info'))
+        || (t.art === 'video' && z.video_rest_min && z.fehlt_min <= z.video_rest_min + regeln.toleranz_min);
+      z.strukturell = !!fest;
       flagge(z, 'plan', 'luecke', fest
-        ? `Nur ${z.vk.length} Termine: ${stunden(z.fehlt_min)} finden hier nicht statt — umwidmen`
+        ? (t.art === 'video' ? `Die Videos sind kürzer: ${stunden(z.fehlt_min)} bleiben übrig — umwidmen` : `Nur ${z.vk.length} Termine: ${stunden(z.fehlt_min)} finden hier nicht statt — umwidmen`)
         : `${stunden(z.fehlt_min)} fehlen noch (${stunden(z.ist_min)} von ${stunden(z.soll_min)})`);
     }
     if (z.ueber_min > Math.max(60, z.soll_min * 0.15)) flagge(z, 'hinweis', 'ueber', `${stunden(z.ueber_min)} mehr als in der Modulbeschreibung`);
     if (t.offen && !z.flags.some((f) => f.text === t.offen)) flagge(z, 'info', 'offen', t.offen);
+    // Eine Annahme ist gelb, bis Silas sie bestätigt (plan.bestaetigt) oder den Wert ändert.
+    const bestaetigt = (plan.bestaetigt || {});
+    if (t.annahme && !bestaetigt[`soll:${t.id}`]) flagge(z, 'hinweis', 'annahme', `Annahme: ${t.annahme}`);
+    for (const o of t.optionen || []) if (o.annahme && !bestaetigt[`option:${o.id}`]) flagge(z, 'hinweis', 'annahme', `${o.label}: ${o.annahme}`);
     if (t.unsicher) flagge(z, 'hinweis', 'unsicher', t.unsicher);
     if (t.hinweis) flagge(z, 'hinweis', 'hinweis', t.hinweis);
     z.rot = z.flags.some((f) => f.stufe === 'info' || f.stufe === 'plan');
@@ -416,10 +547,40 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
       flags: [],
     };
     r.fehlt_min = Math.max(0, soll - r.gedeckt_min);
+    // Was an einer Prüfung offen oder unsicher ist (Raum, Bestehensgrenze, Anmeldefrist), soll links sichtbar sein.
+    for (const p of m.pruefungen || []) {
+      if (p.offen) r.flags.push({ stufe: 'info', art: 'pruefung_offen', text: `${p.titel}: ${p.offen}`, pruefung: p.id });
+      if (p.unsicher) r.flags.push({ stufe: 'hinweis', art: 'pruefung_unsicher', text: `${p.titel}: ${p.unsicher}`, pruefung: p.id });
+      for (const x of p.termine || []) {
+        if (x.offen) r.flags.push({ stufe: 'info', art: 'pruefung_offen', text: `${p.titel}${x.label ? ` (${x.label})` : ''}: ${x.offen}`, pruefung: p.id });
+        if (x.unsicher && typeof x.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'pruefung_unsicher', text: `${p.titel}${x.label ? ` (${x.label})` : ''}: ${x.unsicher}`, pruefung: p.id });
+      }
+      const datiert = (p.termine || []).filter((x) => istDatum(x.datum));
+      if (p.wahl && datiert.length > 1 && !(plan.pruefungstermin || {})[p.id]) r.flags.push({ stufe: 'plan', art: 'pruefung_wahl', text: `${p.titel}: Termin wählen (${datiert.map((x) => datumKurz(x.datum)).join(' oder ')})`, pruefung: p.id });
+      const a = p.anmeldung;
+      if (a && a.offen) r.flags.push({ stufe: 'info', art: 'anmeldung_offen', text: `${p.titel}, Anmeldung: ${a.offen}`, pruefung: p.id });
+      if (a && typeof a.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'anmeldung_unsicher', text: `${p.titel}, Anmeldung: ${a.unsicher}`, pruefung: p.id });
+    }
+    for (const t of m.teile || []) {
+      const a = t.anmeldung;
+      if (a && a.offen) r.flags.push({ stufe: 'info', art: 'anmeldung_offen', text: `${t.titel}, Anmeldung: ${a.offen}` });
+      if (a && typeof a.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'anmeldung_unsicher', text: `${t.titel}, Anmeldung: ${a.unsicher}` });
+    }
+    for (const e of angebot.termine || []) {
+      if (e.modul === m.id && istDatum(e.datum) && typeof e.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'termin_unsicher', text: `${e.titel} (${datumKurz(e.datum)}): ${e.unsicher}` });
+      if (e.modul === m.id && !istDatum(e.datum)) r.flags.push({ stufe: 'info', art: 'frist_offen', text: `${e.titel}: Datum offen${e.offen ? ` — ${e.offen}` : ''}` });
+    }
+    const pk = vorkommen.filter((v) => v.modul === m.id && v.quelle === 'pruefung' && v.flags.includes('konflikt'));
+    for (const v of pk) r.flags.push({ stufe: 'plan', art: 'pruefung_konflikt', text: `${v.titel} am ${datumKurz(v.datum)} überschneidet sich mit ${v.mit.map((id) => { const o = vorkommen.find((x) => x.id === id); return o ? (o.modul ? `${o.modul} ${o.titel || ''}` : o.titel) : id; }).join(', ')}` });
+    // Je Posten müssen die Teile zusammen genau den Posten tragen — sonst fehlen Stunden still (oder es sind zu viele).
+    for (const p of m.posten || []) {
+      const summeTeile = zs.filter((z) => z.teil.posten === p.id).reduce((s, z) => s + z.soll_orig_min, 0);
+      if (Math.abs(summeTeile - postenGesamt(p)) > 1) r.flags.push({ stufe: 'info', art: 'posten_teile', text: `${p.titel}: Die Teile tragen ${stunden(summeTeile)}, der Posten hat ${stunden(postenGesamt(p))}` });
+    }
     // Prüfungen ohne Termin, an denen kein Lernblock hängt (BuK E-Test 2): sonst sähe man sie nirgends.
     const gebunden = new Set(zs.map((z) => z.teil.pruefung).filter(Boolean));
     for (const p of m.pruefungen || []) {
-      if (!gebunden.has(p.id) && !(p.termine || []).some((x) => istDatum(x.datum))) r.flags.push({ stufe: 'info', art: 'datum_offen', text: `${p.titel}: Termin steht noch nicht fest` });
+      if (!gebunden.has(p.id) && !(p.termine || []).some((x) => istDatum(x.datum))) r.flags.push({ stufe: 'info', art: 'datum_offen', text: `${p.titel}: Termin steht noch nicht fest`, pruefung: p.id });
     }
     if (Math.abs(posten - soll) > 1) r.flags.push({ stufe: 'info', art: 'posten_summe', text: `Die Aufwandstabelle ergibt ${stunden(posten)}, ${m.lp} LP sind ${stunden(soll)}` });
     r.rot = r.flags.some((f) => f.stufe !== 'hinweis') || zs.some((z) => z.rot);
@@ -431,6 +592,9 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     gedeckt_min: module.reduce((s, m) => s + m.gedeckt_min, 0),
     ueber_min: module.reduce((s, m) => s + m.ueber_min, 0),
   };
+  // Silas, 11.10.: „die Zahl davor muss alles zusammengerechnet sein und dahinter muss stehen minus so und so viele
+  // Stunden, die zu viel eingeplant sind.“ eingeplant − zu viel = gedeckt.
+  summe.ist_min = module.reduce((s, m) => s + m.ist_min, 0);
   summe.fehlt_min = Math.max(0, summe.soll_min - summe.gedeckt_min);
   summe.offen = module.reduce((s, m) => s + m.offen, 0);
   summe.info = [...teile.values()].filter((z) => z.info).length;
@@ -529,7 +693,74 @@ export function optionsKacheln(angebot, erg, teilId) {
   return aus;
 }
 
+// ── Annahmen und Lücken an einem Ort ────────────────────────────────────────────────────────────
+// Silas, 11.10.: „Gibt es einen Ort, an dem ich einmal alle Annahmen als Liste sehe und auf diese antworten kann,
+// beziehungsweise dort Werte verändern könnte manuell? Und genau das Gleiche mit den Warnungen.“
+
+/** Feste Regeln (mit Quelle, nicht änderbar) und Stellschrauben (änderbar, im Angebot unter `regeln`). */
+export const REGEL_TEXTE = [
+  { feld: 'lp_h', titel: '1 Leistungspunkt = 30 Zeitstunden', quelle: 'AllgStuPO der TU Berlin § 45 Abs. 2; Musterrechtsverordnung § 8: 25–30 h', fest: true },
+  { feld: 'ct', titel: 'Ein c.t.-Termin (16:15–17:45) belegt die Doppelstunde (2 h)', quelle: 'Modulbeschreibungen: 2 SWS = 2 h Präsenzzeit je Woche', fest: true },
+  { feld: 'video_puffer_min', titel: 'Puffer je Videowoche', einheit: 'min', quelle: 'Silas: „1:45 Video → 2 h einplanen“' },
+  { feld: 'raster_min', titel: 'Blöcke aufrunden auf', einheit: 'min', quelle: 'Silas: „1:45 Video → 2 h einplanen“' },
+  { feld: 'lerntag_h', titel: 'Länge eines Lerntags', einheit: 'h', quelle: 'Faustregel aus Silas’ Semesterplan: Stunden ÷ 6 = Lerntage' },
+  { feld: 'toleranz_min', titel: 'Lücken darunter gelten als gedeckt', einheit: 'min', quelle: 'Rundung' },
+];
+
+/** Alle Annahmen: jede mit Ort (Modul, Teil), Satz und — wo es einen gibt — dem Wert, den Silas ändern kann. */
+export function annahmen(angebot, erg) {
+  const aus = [];
+  const regeln = erg.regeln;
+  for (const r of REGEL_TEXTE) {
+    aus.push({ id: `regel:${r.feld}`, art: 'regel', titel: r.titel, quelle: r.quelle, fest: !!r.fest, feld: r.fest ? null : r.feld, wert: regeln[r.feld], einheit: r.einheit || null });
+  }
+  for (const z of erg.teile.values()) {
+    const t = z.teil, m = z.modul;
+    const auf = z.flags.find((f) => f.art === 'aufteilung');
+    if (t.annahme || auf || (t.soll_h != null && z.posten && Math.round(t.soll_h * 60) !== postenGesamt(z.posten))) {
+      aus.push({
+        id: `soll:${t.id}`, art: 'soll', modul: m.id, teil: t.id, titel: t.annahme || (auf ? auf.text : `Anteil am Posten „${z.posten.titel}“`),
+        quelle: t.quelle || null, feld: 'soll_h', wert: Math.round(z.soll_orig_min / 15) / 4, einheit: 'h',
+        satz: z.posten ? `${z.posten.titel}: ${z.posten.mult} × ${z.posten.h} h = ${stunden(postenGesamt(z.posten))} — dieser Teil trägt` : '',
+      });
+    }
+    if (t.art === 'video') {
+      const ohne = (z.einheiten || []).filter((e) => e.laenge_min == null).length;
+      if (ohne || !z.einheiten) {
+        aus.push({ id: `video:${t.id}`, art: 'video', modul: m.id, teil: t.id, titel: z.einheiten ? `${ohne} von ${z.einheiten.length} Videos ohne Länge — so lang angenommen` : 'Videolänge unbekannt — so lang angenommen', feld: 'annahme_min', wert: (t.einheiten && t.einheiten.annahme_min) || 90, einheit: 'min', quelle: 'Schätzung (2 SWS = 90 min)' });
+      }
+    }
+    for (const o of t.optionen || []) if (o.annahme) aus.push({ id: `option:${o.id}`, art: 'text', modul: m.id, teil: t.id, titel: `${o.label}: ${o.annahme}`, quelle: o.quelle || null });
+  }
+  return aus;
+}
+
+/** Alle Lücken und Warnungen, nach Stufe: rot (Info fehlt, nicht geplant), gelb (unsicher, Hinweis). */
+export function luecken(erg) {
+  const aus = [];
+  for (const r of erg.module) {
+    for (const f of r.flags) aus.push({ ...f, modul: r.modul.id, teil: null });
+    for (const z of r.teile) for (const f of z.flags) if (!['aufteilung'].includes(f.art)) aus.push({ ...f, modul: r.modul.id, teil: z.teil.id });
+  }
+  const rang = { info: 0, plan: 1, hinweis: 2 };
+  return aus.sort((a, b) => rang[a.stufe] - rang[b.stufe]);
+}
+
 // ── Vorschläge ───────────────────────────────────────────────────────────────────────────────────
+
+/** Die größte freie Lücke eines Tages im Lernfenster: [start, ende] in Minuten, oder null (unter 60 min). */
+export function freieLuecke(erg, datum, extra = []) {
+  const [fa, fe] = erg.regeln.lernfenster.map(min);
+  const belegt = erg.vorkommen.filter((v) => v.datum === datum && v.start != null && v.ende != null && !v.ganztag).map((v) => [v.start, v.ende]).concat(extra);
+  belegt.sort((a, b) => a[0] - b[0]);
+  let beste = null, cursor = fa;
+  for (const [s, e] of [...belegt, [fe, fe]]) {
+    const ende = Math.min(s, fe);
+    if (ende - cursor >= 60 && (!beste || ende - cursor > beste[1] - beste[0])) beste = [cursor, ende];
+    cursor = Math.max(cursor, e);
+  }
+  return beste;
+}
 
 /** Ein Lernplan vor einer Prüfung: Rückwärts vom Tag vor der Prüfung (der bleibt als Puffer frei)
  *  sucht er je Tag die größte freie Lücke im Lernfenster, höchstens einen Lerntag lang, bis die
@@ -550,7 +781,7 @@ export function lernplanVorschlag(erg, teilId, { tag_h, start, bis_tage = 120 } 
     const belegt = erg.vorkommen
       .filter((v) => v.datum === d && v.start != null && v.ende != null && !v.ganztag)
       .map((v) => [v.start, v.ende]);
-    if (erg.vorkommen.some((v) => v.datum === d && v.quelle === 'pruefung')) continue;
+    if (erg.vorkommen.some((v) => v.datum === d && v.quelle === 'pruefung' && v.wichtig)) continue;
     for (const a of aus) if (a.datum === d) belegt.push([min(a.start), min(a.ende)]);
     belegt.sort((a, b) => a[0] - b[0]);
     let beste = null, cursor = fa;
