@@ -12,6 +12,15 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas: Wochenend-Pakete, Tagessäulen, Pastell, Fahrzeit nach Hause, Mittag (V-0340)
+
+- Mit 2 h je Woche hätte die Vorbereitung vor Semesterbeginn anfangen müssen. Jetzt hat jede Prüfung zwei feste
+  Wochenenden davor (je 10 h, Fr–So) und nur der Rest wird nach vorne gerechnet; die Pakete stehen in der Modulkachel,
+  ihre Tage leuchten im Kalender, ein Tipp legt einen Lernblock, ein zweiter nimmt ihn heraus (docs/SILAS.md §3).
+- Jeder Tag im Prüfungskalender ist eine Säule (9 h = voll). Die Minimap zeigt unter „Woche“ nur die Vorlesungszeit.
+- Dunkler Modus in Pastell; Fahrzeit über den Kacheln (die Fahrt nach Hause war unter dem nächsten Block versteckt);
+  45 min Mittagspause zum Erinnern.
+
 ## 11.10.2026 — Umbau-Hinweis; /silas: Prüfungen neu, Hauptreiter, Fahrzeit, dunkler Modus (V-0338)
 
 - **stundenplanner.de** trägt über Plan und Start einen kleinen Hinweis (Silas): gebaut unter der Annahme, dass

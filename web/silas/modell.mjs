@@ -31,6 +31,9 @@ export const REGELN = {
   evl_fenster: ['10:00', '18:00'], // freie Plätze dazwischen sind bevorzugt („alles zwischen 10 und 18 Uhr preferred“)
   tag_fenster: ['08:00', '20:00'], // wo freie Plätze überhaupt gesucht werden
   pruef_fenster: ['07:00', '22:00'], // Prüfungsvorbereitung in der Vorlesungszeit: auch früh und abends (V-0337)
+  we_h: 10,              // Silas, V-0340: die zwei Wochenenden vor einer Prüfung je 10 h fest fürs Lernen
+  tag_voll_h: 9,         // Silas, V-0340: „neun Stunden heißt maximale Auslastung pro Tag“ (Säule = 100 %)
+  mittag_min: 45, mittag_fenster: ['11:30', '14:30'], // Silas, V-0340: 45 min Mittagspause, nur gezeigt
 };
 
 // ── Zeit ─────────────────────────────────────────────────────────────────────────────────────────
@@ -968,6 +971,53 @@ export function fahrzeiten(termine, regeln = REGELN) {
   if (!vorOrt.length) return [];
   const a = Math.min(...vorOrt.map((t) => t.start)), b = Math.max(...vorOrt.map((t) => t.ende));
   return [[a - regeln.pendeln_min, a], [b, b + regeln.pendeln_min]];
+}
+
+/** Die Pakete einer Prüfungsvorbereitung (V-0340, Silas: „pro Wochenende, bei den zwei Wochenenden vor einer Klausur
+ *  … pro Wochenende zehn Stunden, die auf jeden Fall fürs Lernen geblockt werden … und die Stunden, die dann übrig
+ *  bleiben, das sind die, die nach vorne gerechnet werden“): das Wochenende vor der Prüfung (Fr–So vor dem letzten
+ *  Sonntag davor), das Wochenende eine Woche früher, je höchstens we_h, und der Rest. Was an Lernblöcken in ein
+ *  Wochenende fällt, zählt zu ihm, alles andere zum Rest. Ergebnis: [{id, titel, von?, bis?, soll_min, ist_min}] oder
+ *  null (kein Termin). */
+export function pruefungsPakete(erg, teilId) {
+  const z = erg.teile.get(teilId);
+  if (!z || !z.pruefungstermin) return null;
+  const d = z.pruefungstermin.datum;
+  const wt = wochentag(d);
+  const so1 = plusTage(d, -(wt === 6 ? 7 : wt + 1));
+  const we = (so) => ({ von: plusTage(so, -2), bis: so });
+  const w1 = we(so1), w2 = we(plusTage(so1, -7));
+  const L = erg.regeln.we_h * 60;
+  const s1 = Math.min(L, z.soll_min), s2 = Math.min(L, Math.max(0, z.soll_min - s1));
+  const bl = z.vk.filter((v) => v.quelle === 'block');
+  const ist = (a, b) => bl.filter((v) => v.datum >= a && v.datum <= b).reduce((s, v) => s + v.zaehlt_min, 0);
+  const i1 = ist(w1.von, w1.bis), i2 = ist(w2.von, w2.bis);
+  const aus = [{ id: 'we1', titel: 'Wochenende davor', ...w1, soll_min: s1, ist_min: i1 }];
+  if (s2 > 0) aus.push({ id: 'we2', titel: 'Zwei Wochenenden davor', ...w2, soll_min: s2, ist_min: i2 });
+  const rest = Math.max(0, z.soll_min - s1 - s2);
+  if (rest > 0) aus.push({ id: 'rest', titel: 'Lernen davor', bis: plusTage(s2 > 0 ? w2.von : w1.von, -1), soll_min: rest, ist_min: Math.max(0, z.ist_min - i1 - i2) });
+  return aus;
+}
+
+/** Die Mittagspause eines Tages (V-0340, Silas: „einen Slot von 45 Minuten für Mittagspause … der hat keine logische
+ *  Konsequenz, da kann man drüber planen“): das erste freie Fenster von mittag_min im mittag_fenster; ist keins frei,
+ *  liegt sie trotzdem um 12:30 — sie soll man im Hinterkopf behalten. belegt: [[start, ende], …]. */
+export function mittagspause(belegt, regeln = REGELN) {
+  const [a, b] = regeln.mittag_fenster.map(min);
+  const frei = freieFenster(belegt, regeln.mittag_min, a, b)[0];
+  const start = frei ? frei[0] : min('12:30');
+  return [start, start + regeln.mittag_min];
+}
+
+/** Wie voll ein Tag ist: alles, was im Kalender liegt (Termine als Doppelstunde, Blöcke, geltende Prüfungen). */
+export function tagesLast(erg, datum) {
+  let summe = 0;
+  for (const v of erg.vorkommen) {
+    if (v.datum !== datum || v.ganztag || v.start == null || v.ende == null) continue;
+    if (v.quelle === 'pruefung' && !v.wichtig) continue;
+    summe += v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : v.ende - v.start;
+  }
+  return summe;
 }
 
 /** Freie Fenster eines Tages: wo zwischen von und bis (Minuten) ein Block der Länge dauer passt, ohne etwas zu
