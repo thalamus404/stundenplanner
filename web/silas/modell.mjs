@@ -24,7 +24,8 @@ export const REGELN = {
   lerntag_h: 6,         // Faustregel aus Silas' Semesterplan: Stunden ÷ 6 = Lerntage
   lernfenster: ['09:00', '19:00'],
   pendeln_min: 45,
-  toleranz_min: 15,     // darunter gilt eine Lücke als gedeckt
+  toleranz_min: 120,    // Silas, 11.10.: Abweichungen bis ±2 h nicht melden („sonst zu verwirrend“)
+  vorlauf_tage: 21,     // Vorbereitung auf eine Prüfung in der Vorlesungszeit wird so viele Tage vorher kritisch
 };
 
 // ── Zeit ─────────────────────────────────────────────────────────────────────────────────────────
@@ -158,6 +159,24 @@ export function teileVon(angebot) {
   for (const m of angebot.module || []) for (const t of m.teile || []) aus.push({ teil: t, modul: m });
   return aus;
 }
+/** Die Art eines Bestandteils für Farbe und Legende (Silas, 11.10.: „Präsenzveranstaltung sollte das gleiche
+ *  Farbschema haben bei allen Modulen … Klausurvorbereitung, Klausur, Fristen … Quiz zum Beispiel immer grün“).
+ *  Das Modul erkennt man am Streifen und am Kürzel; im Angebot überschreibt `kategorie` die Herleitung. */
+export const KATEGORIEN = [
+  ['praesenz', 'Präsenz'], ['video', 'Videos'], ['lernen', 'Vor- und Nachbereitung'], ['aufgaben', 'Aufgaben und Labs'],
+  ['quiz', 'Quiz und Tests'], ['pruefung', 'Prüfung'],
+];
+export function kategorie(t) {
+  if (t.kategorie) return t.kategorie;
+  if (t.art === 'praesenz') return 'praesenz';
+  if (t.art === 'video') return 'video';
+  if (t.art === 'pruefung') return 'pruefung';
+  const text = `${t.id} ${t.titel}`;
+  if (/quiz|quicktest|e-test|test/i.test(text)) return 'quiz';
+  if (/lab|aufgab|übungsbl|blatt|abgabe/i.test(text)) return 'aufgaben';
+  return 'lernen';
+}
+
 export const istWahl = (t) => t.art === 'praesenz' && (t.wahl || (t.optionen && t.optionen.length > 0));
 export const kurz = (m) => m.kurz || m.id;
 export const postenGesamt = (p) => Math.round(p.mult * p.h * 60); // in Minuten
@@ -205,6 +224,79 @@ export function pruefungsTermin(modul, pid, plan = {}) {
   return { pruefung: p, termin, gewaehlt: !!gewaehlt };
 }
 
+// ── Stufen ───────────────────────────────────────────────────────────────────────────────────────
+// kritisch (rot) · achtung (orange) · dran (hellblau: du bist dran — eintragen, festlegen, planen) · kommt (grau: der
+// Lehrstuhl liefert es noch) · spaeter (grau: Prüfungsvorbereitung, deren Zeit noch nicht da ist) · info (grau).
+export const STUFEN = ['kritisch', 'achtung', 'dran', 'kommt', 'spaeter', 'info'];
+export const STUFE_TEXT = { kritisch: 'kritisch', achtung: 'Achtung', dran: 'du bist dran', kommt: 'kommt noch', spaeter: 'später', info: 'Hinweis' };
+const RANG = Object.fromEntries(STUFEN.map((s, i) => [s, i]));
+export const hoechste = (flags) => flags.reduce((b, f) => (f.stufe && (b === 'ok' || RANG[f.stufe] < RANG[b]) ? f.stufe : b), 'ok');
+
+const PRUEFUNGSTHEMEN = new Set(['datum_offen', 'uhrzeit_offen', 'pruefung_offen', 'pruefung_unsicher', 'anmeldung_offen', 'anmeldung_unsicher', 'pruefung_wahl', 'pruefung_konflikt']);
+
+/** unbekannt (kein Prüfungstermin), bekannt (ein Termin steht), anmeldung (die Anmeldung des Moduls läuft). */
+export function pruefungsStand(m, heute) {
+  const ps = m.pruefungen || [];
+  const von = ps.map((p) => p.anmeldung && p.anmeldung.von).filter(istDatum).sort()[0];
+  if (heute && von && heute >= von) return 'anmeldung';
+  return ps.some((p) => (p.termine || []).some((x) => istDatum(x.datum))) ? 'bekannt' : 'unbekannt';
+}
+
+/** Ab wann eine fehlende Prüfungsvorbereitung kritisch ist: mit Beginn der vorlesungsfreien Zeit (Silas: „erst wenn
+ *  auch die vorlesungsfreie Zeit begonnen hat“); liegt die Prüfung in der Vorlesungszeit (E-Test, Online-Test),
+ *  regeln.vorlauf_tage vor ihr. */
+export function kritischAb(z, sem, regeln = REGELN) {
+  const x = z.pruefungstermin;
+  if (x && x.datum <= sem.vorlesung.bis) return plusTage(x.datum, -regeln.vorlauf_tage);
+  return plusTage(sem.vorlesung.bis, 1);
+}
+
+function anmeldeStufe(a, erledigt, heute, pruefung) {
+  if (!a || erledigt || !heute) return null;
+  const von = istDatum(a.von) ? a.von : null, bis = istDatum(a.bis) ? a.bis : null;
+  if (!von && !bis) return null; // ganz offen: das meldet anmeldung_offen
+  const wo = a.wo ? ` (${String(a.wo).split(' (')[0]})` : '';
+  const bisText = bis ? ` bis ${TAGE[wochentag(bis)]} ${datumKurz(bis)}${a.bis_zeit ? ` ${a.bis_zeit}` : ''}` : '';
+  if (bis && heute > bis) return { stufe: 'kritisch', text: `Anmeldefrist war am ${datumKurz(bis)} — angemeldet? Dann abhaken` };
+  const laeuft = von ? heute >= von : tageZwischen(heute, bis) <= 14;
+  if (!laeuft) return { stufe: 'info', text: von ? `Anmeldung ab ${TAGE[wochentag(von)]} ${datumKurz(von)}${bisText}${wo}` : `Anmeldung${bisText}${wo}` };
+  // Prüfung: rot, sobald die Anmeldung läuft (Silas). Gruppe: in der letzten Woche rot, davor „du bist dran“.
+  const rest = bis ? tageZwischen(heute, bis) : null;
+  return { stufe: pruefung || rest == null || rest <= 7 ? 'kritisch' : 'dran', text: `Jetzt anmelden${bisText}${wo}` };
+}
+
+function einstufen(f, z, stand, heute) {
+  if (f.stufe_fest) return f.stufe_fest;
+  const a = f.art;
+  if (PRUEFUNGSTHEMEN.has(a)) {
+    if (f.nur_ort || a === 'uhrzeit_offen') return 'achtung';
+    if (f.nur_neben) return 'info'; // zwei Zweittermine übereinander: nur wichtig, wenn beide nötig werden
+    if (a.endsWith('_unsicher')) return stand === 'anmeldung' ? 'achtung' : 'info';
+    return stand === 'anmeldung' ? 'kritisch' : stand === 'bekannt' ? 'achtung' : 'kommt';
+  }
+  if (z && z.teil.art === 'pruefung' && ['ungeplant', 'luecke', 'einheit_ohne_block'].includes(a)) {
+    return heute && z.kritisch_ab && heute >= z.kritisch_ab ? 'kritisch' : 'spaeter';
+  }
+  switch (a) {
+    case 'konflikt': return z && z.teil.art === 'praesenz' ? 'kritisch' : 'achtung';
+    case 'ungeplant': case 'luecke': case 'einheit_ohne_block': case 'wahl_offen': return 'dran';
+    case 'laenge_offen': return f.faellig ? 'dran' : 'kommt';
+    case 'zu_kurz': return 'dran';
+    // Was in einem Angebot „offen“ steht, liefert der Lehrstuhl noch (Termine, Fristen, Räume) — was Silas selbst tun
+    // muss (anmelden, wählen, Längen ablesen), hat eigene Meldungen.
+    case 'termine_offen': case 'freigabe_offen': case 'einheit_offen': case 'frist_offen': case 'offen': return 'kommt';
+    // Orange nur, was Silas prüfen oder ändern sollte: Unsicheres, Fehler im Angebot, Blöcke nach der Prüfung und
+    // selbst geplantes Zuviel über ±2 h. Annahmen stehen unter „Offen & Annahmen“, Blöcke ohne Video und kleine
+    // Überlappungen sind Hinweise.
+    // Unsicheres an einem Teil, dessen Termine ohnehin noch kommen (Tutorium „startet vermutlich in Woche 2“), ist
+    // ein Hinweis — sonst verdrängte „bitte prüfen“ das eigentliche „Termine kommen noch“.
+    case 'unsicher': return z && z.flags.some((x) => x.art === 'termine_offen') ? 'info' : 'achtung';
+    case 'nach_pruefung': case 'posten': case 'pruefung_fehlt': case 'posten_summe': case 'posten_teile': return 'achtung';
+    case 'ueber': return z && z.teil.art !== 'praesenz' ? 'achtung' : 'info';
+    default: return 'info'; // annahme, aufteilung, leer, weicht, einheit_unsicher, termin_unsicher, videozeit, hinweis
+  }
+}
+
 // ── Die Rechnung ─────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -221,7 +313,10 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   const wahl = plan.wahl || {};
   const vorkommen = [];
   const teile = new Map();
-  const flagge = (z, stufe, art, text) => z.flags.push({ stufe, art, text });
+  // Beim Erzeugen trägt jede Meldung ihre ROHE Art (info/plan/hinweis); welche Farbe sie zeigt, entscheidet
+  // erst einstufen() am Ende — nach Datum, Semesterphase und Stand der Prüfung (V-0332).
+  const flagge = (z, roh, art, text, extra) => z.flags.push({ roh, art, text, ...(extra || {}) });
+  const heute = optionen.heute || null;
 
   // 1 · Soll je Teil. Die Posten sind amtlich (Modulbeschreibung); ein Teil deckt einen Posten ganz
   //     oder seinen Anteil (soll_h). Teilen sich mehrere Teile einen Posten ohne Anteil, wird gleich
@@ -338,7 +433,8 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         vorkommen.push({
           id: `${p.id}@${x.datum}`, quelle: 'pruefung', schicht: 'A', modul: m.id, pruefung: p.id,
           datum: x.datum, ...zeit, titel: [p.titel, x.label].filter(Boolean).join(' · '), ort: x.ort || null,
-          wichtig: x.wichtig !== false, unsicher: !!x.unsicher, zaehlt_min: 0, flags: [], mit: [],
+          // Ein Ausweich- oder Zweittermin ist „nicht wichtig“, solange Silas ihn nicht gewählt hat.
+          wichtig: x.wichtig !== false || (gewaehlt && x === gilt), unsicher: !!x.unsicher, zaehlt_min: 0, flags: [], mit: [],
           herkunft: x.quelle || p.quelle || null,
         });
       }
@@ -380,6 +476,10 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         const a = liste[i], b = liste[j];
         const ueber = Math.min(a.ende, b.ende) - Math.max(a.start, b.start);
         if (ueber <= 0) continue;
+        // Ein Ausweich- oder Zweittermin einer Prüfung (wichtig: false) schreibt Silas nur im Notfall: Er verdrängt
+        // weder einen Termin noch einen Block (das BuK-Tutorium Mo 8–10 lag am 14.12. auf dem E-Test-Ausweichtermin).
+        const neben = (v) => v.quelle === 'pruefung' && !v.wichtig;
+        if ((neben(a) && b.quelle !== 'pruefung') || (neben(b) && a.quelle !== 'pruefung')) continue;
         a.mit.push(b.id); b.mit.push(a.id);
         konflikte.push({ datum: a.datum, a: a.id, b: b.id, minuten: ueber });
         // Termin schlägt Block: Der Block verliert die überlappte Zeit, der Termin bleibt, wie er ist —
@@ -464,7 +564,9 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
           const unbekannt = liste.filter((e) => e.laenge_min == null).length;
           z.video_bedarf_min = gruppen.reduce((s, g) => s + g.bedarf_min, 0);
           z.video_bekannt = unbekannt === 0;
-          if (unbekannt) flagge(z, 'info', 'laenge_offen', `${unbekannt} von ${liste.length} Videos ohne Länge — angenommen je ${annahme} min`);
+          // Die Länge eines Videos kann Silas erst ablesen, wenn es erschienen ist: nur das ist „du bist dran“.
+          const faellig = liste.filter((e) => e.laenge_min == null && heute && e.ab <= heute).length;
+          if (unbekannt) flagge(z, 'info', 'laenge_offen', `${unbekannt} von ${liste.length} Videos ohne Länge${faellig ? ` (${faellig} schon erschienen)` : ''} — angenommen je ${annahme} min`, { faellig });
           if (z.video_bekannt && z.video_bedarf_min + regeln.toleranz_min < z.soll_min) z.video_rest_min = z.soll_min - z.video_bedarf_min;
           const satz = `Die Videos brauchen mit Puffer ${stunden(z.video_bedarf_min)}${z.video_bekannt ? '' : ' (geschätzt)'}, der Posten sieht ${stunden(z.soll_min)} vor`;
           if (Math.abs(z.video_bedarf_min - z.soll_min) > 60) flagge(z, 'hinweis', 'videozeit', satz + (z.video_bedarf_min < z.soll_min ? ' — der Rest gehört in Nachbereitung oder Prüfungsvorbereitung (umwidmen)' : ''));
@@ -514,14 +616,14 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     else if (z.fehlt_min >= regeln.toleranz_min && z.ist_min > 0) {
       // Strukturell: Alle Termine stehen fest, mehr gibt es nicht. Dann hilft kein Block, nur eine
       // Umwidmung in einen anderen Teil des Moduls.
-      const fest = (t.art === 'praesenz' && !z.flags.some((f) => f.stufe === 'info'))
+      const fest = (t.art === 'praesenz' && !z.flags.some((f) => f.roh === 'info'))
         || (t.art === 'video' && z.video_rest_min && z.fehlt_min <= z.video_rest_min + regeln.toleranz_min);
       z.strukturell = !!fest;
       flagge(z, 'plan', 'luecke', fest
         ? (t.art === 'video' ? `Die Videos sind kürzer: ${stunden(z.fehlt_min)} bleiben übrig — umwidmen` : `Nur ${z.vk.length} Termine: ${stunden(z.fehlt_min)} finden hier nicht statt — umwidmen`)
         : `${stunden(z.fehlt_min)} fehlen noch (${stunden(z.ist_min)} von ${stunden(z.soll_min)})`);
     }
-    if (z.ueber_min > Math.max(60, z.soll_min * 0.15)) flagge(z, 'hinweis', 'ueber', `${stunden(z.ueber_min)} mehr als in der Modulbeschreibung`);
+    if (z.ueber_min > regeln.toleranz_min) flagge(z, 'hinweis', 'ueber', `${stunden(z.ueber_min)} mehr als in der Modulbeschreibung`);
     if (t.offen && !z.flags.some((f) => f.text === t.offen)) flagge(z, 'info', 'offen', t.offen);
     // Eine Annahme ist gelb, bis Silas sie bestätigt (plan.bestaetigt) oder den Wert ändert.
     const bestaetigt = (plan.bestaetigt || {});
@@ -529,9 +631,6 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     for (const o of t.optionen || []) if (o.annahme && !bestaetigt[`option:${o.id}`]) flagge(z, 'hinweis', 'annahme', `${o.label}: ${o.annahme}`);
     if (t.unsicher) flagge(z, 'hinweis', 'unsicher', t.unsicher);
     if (t.hinweis) flagge(z, 'hinweis', 'hinweis', t.hinweis);
-    z.rot = z.flags.some((f) => f.stufe === 'info' || f.stufe === 'plan');
-    z.info = z.flags.some((f) => f.stufe === 'info');
-    z.status = z.rot ? (z.info ? 'info' : 'fehlt') : z.flags.some((f) => f.stufe === 'hinweis') ? 'hinweis' : 'ok';
   }
 
   // 8 · Module und Semester
@@ -549,41 +648,70 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     r.fehlt_min = Math.max(0, soll - r.gedeckt_min);
     // Was an einer Prüfung offen oder unsicher ist (Raum, Bestehensgrenze, Anmeldefrist), soll links sichtbar sein.
     for (const p of m.pruefungen || []) {
-      if (p.offen) r.flags.push({ stufe: 'info', art: 'pruefung_offen', text: `${p.titel}: ${p.offen}`, pruefung: p.id });
-      if (p.unsicher) r.flags.push({ stufe: 'hinweis', art: 'pruefung_unsicher', text: `${p.titel}: ${p.unsicher}`, pruefung: p.id });
+      if (p.offen) r.flags.push({ roh: 'info', art: 'pruefung_offen', text: `${p.titel}: ${p.offen}`, pruefung: p.id });
+      if (p.unsicher) r.flags.push({ roh: 'hinweis', art: 'pruefung_unsicher', text: `${p.titel}: ${p.unsicher}`, pruefung: p.id });
       for (const x of p.termine || []) {
-        if (x.offen) r.flags.push({ stufe: 'info', art: 'pruefung_offen', text: `${p.titel}${x.label ? ` (${x.label})` : ''}: ${x.offen}`, pruefung: p.id });
-        if (x.unsicher && typeof x.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'pruefung_unsicher', text: `${p.titel}${x.label ? ` (${x.label})` : ''}: ${x.unsicher}`, pruefung: p.id });
+        // Steht das Datum, ist ein fehlender Raum oder eine fehlende Uhrzeit nur eine Warnung (Silas, 11.10.).
+        if (x.offen) r.flags.push({ roh: 'info', art: 'pruefung_offen', text: `${p.titel}${x.label ? ` (${x.label})` : ''}: ${x.offen}`, pruefung: p.id, nur_ort: istDatum(x.datum) && /raum|\bort\b|uhrzeit|zeit/i.test(x.offen) });
+        if (x.unsicher && typeof x.unsicher === 'string') r.flags.push({ roh: 'hinweis', art: 'pruefung_unsicher', text: `${p.titel}${x.label ? ` (${x.label})` : ''}: ${x.unsicher}`, pruefung: p.id });
       }
       const datiert = (p.termine || []).filter((x) => istDatum(x.datum));
-      if (p.wahl && datiert.length > 1 && !(plan.pruefungstermin || {})[p.id]) r.flags.push({ stufe: 'plan', art: 'pruefung_wahl', text: `${p.titel}: Termin wählen (${datiert.map((x) => datumKurz(x.datum)).join(' oder ')})`, pruefung: p.id });
+      if (p.wahl && datiert.length > 1 && !(plan.pruefungstermin || {})[p.id]) r.flags.push({ roh: 'plan', art: 'pruefung_wahl', text: `${p.titel}: Termin wählen (${datiert.map((x) => datumKurz(x.datum)).join(' oder ')})`, pruefung: p.id });
       const a = p.anmeldung;
-      if (a && a.offen) r.flags.push({ stufe: 'info', art: 'anmeldung_offen', text: `${p.titel}, Anmeldung: ${a.offen}`, pruefung: p.id });
-      if (a && typeof a.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'anmeldung_unsicher', text: `${p.titel}, Anmeldung: ${a.unsicher}`, pruefung: p.id });
+      if (a && a.offen) r.flags.push({ roh: 'info', art: 'anmeldung_offen', text: `${p.titel}, Anmeldung: ${a.offen}`, pruefung: p.id });
+      if (a && typeof a.unsicher === 'string') r.flags.push({ roh: 'hinweis', art: 'anmeldung_unsicher', text: `${p.titel}, Anmeldung: ${a.unsicher}`, pruefung: p.id });
     }
     for (const t of m.teile || []) {
       const a = t.anmeldung;
-      if (a && a.offen) r.flags.push({ stufe: 'info', art: 'anmeldung_offen', text: `${t.titel}, Anmeldung: ${a.offen}` });
-      if (a && typeof a.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'anmeldung_unsicher', text: `${t.titel}, Anmeldung: ${a.unsicher}` });
+      if (a && a.offen) r.flags.push({ roh: 'info', art: 'anmeldung_offen', text: `${t.titel}, Anmeldung: ${a.offen}` });
+      if (a && typeof a.unsicher === 'string') r.flags.push({ roh: 'hinweis', art: 'anmeldung_unsicher', text: `${t.titel}, Anmeldung: ${a.unsicher}` });
     }
     for (const e of angebot.termine || []) {
-      if (e.modul === m.id && istDatum(e.datum) && typeof e.unsicher === 'string') r.flags.push({ stufe: 'hinweis', art: 'termin_unsicher', text: `${e.titel} (${datumKurz(e.datum)}): ${e.unsicher}` });
-      if (e.modul === m.id && !istDatum(e.datum)) r.flags.push({ stufe: 'info', art: 'frist_offen', text: `${e.titel}: Datum offen${e.offen ? ` — ${e.offen}` : ''}` });
+      if (e.modul === m.id && istDatum(e.datum) && typeof e.unsicher === 'string') r.flags.push({ roh: 'hinweis', art: 'termin_unsicher', text: `${e.titel} (${datumKurz(e.datum)}): ${e.unsicher}` });
+      if (e.modul === m.id && !istDatum(e.datum)) r.flags.push({ roh: 'info', art: 'frist_offen', text: `${e.titel}: Datum offen${e.offen ? ` — ${e.offen}` : ''}` });
     }
     const pk = vorkommen.filter((v) => v.modul === m.id && v.quelle === 'pruefung' && v.flags.includes('konflikt'));
-    for (const v of pk) r.flags.push({ stufe: 'plan', art: 'pruefung_konflikt', text: `${v.titel} am ${datumKurz(v.datum)} überschneidet sich mit ${v.mit.map((id) => { const o = vorkommen.find((x) => x.id === id); return o ? (o.modul ? `${o.modul} ${o.titel || ''}` : o.titel) : id; }).join(', ')}` });
+    for (const v of pk) r.flags.push({ roh: 'plan', art: 'pruefung_konflikt', nur_neben: !v.wichtig && v.mit.every((id) => { const o = vorkommen.find((x) => x.id === id); return o && o.quelle === 'pruefung' && !o.wichtig; }), text: `${v.titel} am ${datumKurz(v.datum)} überschneidet sich mit ${v.mit.map((id) => { const o = vorkommen.find((x) => x.id === id); return o ? (o.modul ? `${o.modul} ${o.titel || ''}` : o.titel) : id; }).join(', ')}` });
     // Je Posten müssen die Teile zusammen genau den Posten tragen — sonst fehlen Stunden still (oder es sind zu viele).
     for (const p of m.posten || []) {
       const summeTeile = zs.filter((z) => z.teil.posten === p.id).reduce((s, z) => s + z.soll_orig_min, 0);
-      if (Math.abs(summeTeile - postenGesamt(p)) > 1) r.flags.push({ stufe: 'info', art: 'posten_teile', text: `${p.titel}: Die Teile tragen ${stunden(summeTeile)}, der Posten hat ${stunden(postenGesamt(p))}` });
+      if (Math.abs(summeTeile - postenGesamt(p)) > 1) r.flags.push({ roh: 'info', art: 'posten_teile', text: `${p.titel}: Die Teile tragen ${stunden(summeTeile)}, der Posten hat ${stunden(postenGesamt(p))}` });
     }
     // Prüfungen ohne Termin, an denen kein Lernblock hängt (BuK E-Test 2): sonst sähe man sie nirgends.
     const gebunden = new Set(zs.map((z) => z.teil.pruefung).filter(Boolean));
     for (const p of m.pruefungen || []) {
-      if (!gebunden.has(p.id) && !(p.termine || []).some((x) => istDatum(x.datum))) r.flags.push({ stufe: 'info', art: 'datum_offen', text: `${p.titel}: Termin steht noch nicht fest`, pruefung: p.id });
+      if (!gebunden.has(p.id) && !(p.termine || []).some((x) => istDatum(x.datum))) r.flags.push({ roh: 'info', art: 'datum_offen', text: `${p.titel}: Termin steht noch nicht fest`, pruefung: p.id });
     }
-    if (Math.abs(posten - soll) > 1) r.flags.push({ stufe: 'info', art: 'posten_summe', text: `Die Aufwandstabelle ergibt ${stunden(posten)}, ${m.lp} LP sind ${stunden(soll)}` });
-    r.rot = r.flags.some((f) => f.stufe !== 'hinweis') || zs.some((z) => z.rot);
+    if (Math.abs(posten - soll) > 1) r.flags.push({ roh: 'info', art: 'posten_summe', text: `Die Aufwandstabelle ergibt ${stunden(posten)}, ${m.lp} LP sind ${stunden(soll)}` });
+
+    // Anmeldungen (Prüfung und Gruppe): „Jetzt anmelden“, solange das Fenster offen ist und Silas sie nicht als
+    // erledigt markiert hat (plan.angemeldet). Die Stufe steht hier fest, nicht in einstufen().
+    const angemeldet = plan.angemeldet || {};
+    for (const p of m.pruefungen || []) {
+      const st = anmeldeStufe(p.anmeldung, angemeldet[p.id], heute, true);
+      if (st) r.flags.push({ roh: 'plan', art: 'anmelden', text: `${p.titel}: ${st.text}`, pruefung: p.id, stufe_fest: st.stufe, anmeldung: p.id });
+    }
+    for (const z of zs) {
+      const st = anmeldeStufe(z.teil.anmeldung, angemeldet[z.teil.id], heute, false);
+      if (st) z.flags.push({ roh: 'plan', art: 'anmelden', text: `${z.teil.titel}: ${st.text}`, stufe_fest: st.stufe, anmeldung: z.teil.id });
+    }
+
+    // Die Stufe jeder Meldung (V-0332). Silas, 11.10.: Orange = Achtung (Raum oder Uhrzeit fehlt, wenn das Datum
+    // steht), Hellblau = „das musst du noch eintragen oder festlegen“, Grau = Hinweis, Rot nur kritisch. Alles zur
+    // Prüfung ist grau, solange kein Prüfungstermin bekannt ist, orange, sobald einer bekannt ist, und rot, sobald für
+    // dieses Modul die Anmeldung läuft. Die Prüfungsvorbereitung wird erst kritisch, wenn ihre Zeit da ist.
+    const stand = pruefungsStand(m, heute);
+    r.pruefungsstand = stand;
+    for (const z of zs) {
+      if (z.teil.art === 'pruefung') z.kritisch_ab = kritischAb(z, sem, regeln);
+      for (const f of z.flags) f.stufe = einstufen(f, z, stand, heute);
+      z.stufe = hoechste(z.flags);
+      z.rot = z.stufe === 'kritisch';
+      z.status = z.stufe;
+    }
+    for (const f of r.flags) f.stufe = einstufen(f, null, stand, heute);
+    r.stufe = hoechste([...r.flags, ...zs.map((z) => ({ stufe: z.stufe }))]);
+    r.rot = r.stufe === 'kritisch';
     r.offen = zs.filter((z) => z.rot).length;
     return r;
   });
@@ -597,7 +725,8 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   summe.ist_min = module.reduce((s, m) => s + m.ist_min, 0);
   summe.fehlt_min = Math.max(0, summe.soll_min - summe.gedeckt_min);
   summe.offen = module.reduce((s, m) => s + m.offen, 0);
-  summe.info = [...teile.values()].filter((z) => z.info).length;
+  summe.zaehler = Object.fromEntries(STUFEN.map((st) => [st, 0]));
+  for (const r of module) { for (const f of r.flags) summe.zaehler[f.stufe] += 1; for (const z of r.teile) for (const f of z.flags) summe.zaehler[f.stufe] += 1; }
   // Das Wochensoll: alle wöchentlichen Posten (Multiplikator 15) einer Woche, wie in Silas' Semesterplan.
   summe.woche_min = (angebot.module || []).reduce((s, m) => s + (m.posten || []).filter((p) => p.mult > 1).reduce((a, p) => a + p.h * 60, 0), 0);
 
@@ -615,6 +744,7 @@ export function woche(erg, wocheId) {
   let ects = 0, belegt = 0;
   for (const v of vk) {
     if (v.ganztag || v.start == null || v.ende == null) continue;
+    if (v.quelle === 'pruefung' && !v.wichtig) continue; // Ausweichtermin: nur im Notfall
     const d = wochentag(v.datum < w.von ? w.von : v.datum);
     // Belegt ist, was im Kalender blockiert ist: ein c.t.-Termin mit seiner Doppelstunde (16–18).
     const dauer = v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : v.ende - v.start;
@@ -623,6 +753,52 @@ export function woche(erg, wocheId) {
     ects += v.zaehlt_min;
   }
   return { woche: w, vorkommen: vk, proTag, belegt_min: belegt, ects_min: ects };
+}
+
+/** Was in einer Woche dran wäre und was davon eingeplant ist — je Bestandteil (Silas, 11.10.: „für diese Woche: was
+ *  wäre theoretisch dran und was ist davon tatsächlich eingeplant … und dann unten in dieser Liste, was ist noch
+ *  offen“). Ohne wocheId: die Standardwoche (eine typische Vorlesungswoche). Prüfungsvorbereitung gehört in die
+ *  vorlesungsfreie Zeit und fehlt hier. grund: ok · kommt (Termine kommen noch) · waehlen · planen. */
+export function wochenBedarf(angebot, plan, erg, wocheId = null) {
+  const w = wocheId ? erg.wochen.find((x) => x.id === wocheId) : null;
+  const vlWochen = erg.wochen.filter((x) => x.art === 'vorlesung').length || 15;
+  const inWoche = (v) => w && v.datum >= w.von && v.datum <= w.bis;
+  const kacheln = w ? null : standardwoche(angebot, plan, erg);
+  const aus = [];
+  for (const z of erg.teile.values()) {
+    const t = z.teil;
+    if (t.art === 'pruefung') continue;
+    const woechentlich = z.posten && z.posten.mult > 1;
+    const vorlesung = !w || w.art === 'vorlesung';
+    let soll = 0, ist = 0, grund = 'ok';
+    if (w) ist = z.vk.filter(inWoche).reduce((s, v) => s + v.zaehlt_min, 0);
+    else ist = kacheln.filter((k) => k.teil === t.id && !k.reihe).reduce((s, k) => s + (k.art === 'termin' ? zaehltMin(k.start, k.ende, t.ct !== false) : k.ende - k.start), 0);
+    if (t.art === 'praesenz') {
+      const ohneTermine = z.flags.some((f) => f.art === 'termine_offen');
+      const ohneWahl = z.flags.some((f) => f.art === 'wahl_offen');
+      if (ohneTermine) { soll = vorlesung && woechentlich ? Math.round(z.soll_min / vlWochen) : 0; grund = 'kommt'; }
+      else if (ohneWahl) {
+        const opt = (t.optionen || [])[0];
+        const termine = opt ? muster(opt).flatMap((mu) => termineAus(mu, erg.sem)) : [];
+        soll = w ? termine.filter((x) => x.datum >= w.von && x.datum <= w.bis).reduce((s, x) => s + zaehltMin(x.start, x.ende), 0) : (termine[0] ? zaehltMin(termine[0].start, termine[0].ende) : 0);
+        grund = 'waehlen';
+      } else soll = ist; // Termine stehen fest: Was stattfindet, ist auch im Plan.
+    } else if (!woechentlich || !vorlesung) {
+      soll = 0; // einmalige Posten (Literatur 5 h) zählen fürs Semester, nicht für eine Woche
+    } else if (w && z.gruppen && z.gruppen.length) {
+      // Videos und Einheiten: was in dieser Woche geschaut wird — die Woche des ersten Blocks, der eine Freigabe deckt,
+      // ohne Block die Woche der Freigabe. Ein BuK-Video vom Freitag, das Silas am Montag darauf schaut, gehört in die
+      // Woche des Montags, nicht in die der Freigabe (sonst fehlte es in jeder Woche einmal scheinbar).
+      const schauwoche = (g) => { const v = g.bloecke.length && z.vk.find((x) => x.id === g.bloecke[0]); return v ? montagVon(v.datum) : g.montag; };
+      soll = z.gruppen.filter((g) => schauwoche(g) === w.id).reduce((s, g) => s + (g.bedarf_min || Math.round(z.soll_min / vlWochen)), 0);
+      if (!soll && t.art === 'selbst' && z.gruppen.some((g) => g.ab <= w.bis && (!g.bis || g.bis >= w.von))) soll = Math.round(z.soll_min / vlWochen);
+    } else soll = Math.round(z.soll_min / vlWochen);
+    const offen = Math.max(0, soll - ist);
+    if (grund === 'ok' && offen >= 15) grund = 'planen';
+    if (grund !== 'ok' && grund !== 'planen' && !soll) grund = 'ok';
+    aus.push({ z, soll_min: soll, ist_min: ist, offen_min: grund === 'ok' ? 0 : offen, grund });
+  }
+  return aus;
 }
 
 /** Der häufigste Wochentag und die Zeit eines Musters — wo eine Reihe in der Standardwoche steht. */
@@ -742,8 +918,7 @@ export function luecken(erg) {
     for (const f of r.flags) aus.push({ ...f, modul: r.modul.id, teil: null });
     for (const z of r.teile) for (const f of z.flags) if (!['aufteilung'].includes(f.art)) aus.push({ ...f, modul: r.modul.id, teil: z.teil.id });
   }
-  const rang = { info: 0, plan: 1, hinweis: 2 };
-  return aus.sort((a, b) => rang[a.stufe] - rang[b.stufe]);
+  return aus.sort((a, b) => RANG[a.stufe] - RANG[b.stufe]);
 }
 
 // ── Vorschläge ───────────────────────────────────────────────────────────────────────────────────

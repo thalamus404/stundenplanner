@@ -136,8 +136,11 @@ try {
   } else if (befehl === 'senden' && arg) {
     const neu = JSON.parse(readFileSync(arg, 'utf8'));
     if (!zusammenfassen(neu)) process.exit(1);
+    // Basis ist die Version, auf der die Datei beruht (aus `holen`), nicht die jetzige des Servers: Hat Silas
+    // inzwischen geändert, lehnt der Server mit 409 ab, statt seine Änderung still zu überschreiben (V-0332).
     const jetzt = await api('stand');
-    const basis = jetzt.status === 200 ? jetzt.daten.version : null;
+    const basis = Number.isInteger(neu.version) ? neu.version : jetzt.status === 200 ? jetzt.daten.version : null;
+    if (jetzt.status === 200 && basis !== jetzt.daten.version) throw new Error(`Der Server hat Version ${jetzt.daten.version}, die Datei beruht auf ${basis} — erst neu holen und zusammenführen`);
     const { status, daten } = await api('stand', { method: 'PUT', body: JSON.stringify({ basis, angebot: neu.angebot, plan: neu.plan || {} }) });
     if (status !== 200) throw new Error(`PUT stand: ${status} ${JSON.stringify(daten)}`);
     console.log(`  ✓ gespeichert als Version ${daten.version}`);
