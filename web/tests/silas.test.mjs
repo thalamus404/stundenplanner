@@ -117,12 +117,31 @@ test('Wochenblock: zählt in Vorlesungswochen, in der Pause nur mit pause: true'
   assert.equal(M.rechnen(angebot(), plan).teile.get('bsp-vn').ist_min, (18 - 3) * 120);
 });
 
-test('Block auf einem Termin: der Block verliert die Überlappung, der Termin bleibt grün', () => {
+test('Block auf einem Termin: gesperrt — der Block verliert die Überlappung, der Termin bleibt grün', () => {
   const e = M.rechnen(angebot(), { bloecke: [{ id: 'b1', teil: 'bsp-vn', datum: '2030-10-15', start: '10:00', ende: '12:00' }] });
   const vl = e.teile.get('bsp-vl'), vn = e.teile.get('bsp-vn');
   assert.equal(vn.ist_min, 120 - 90);
-  assert.ok(vn.vk[0].flags.includes('weicht'));
+  assert.ok(vn.vk[0].flags.includes('gesperrt'));
   assert.ok(!vl.flags.some((f) => f.art === 'konflikt'));
+  // Ein Datumsblock auf einem Termin muss weg: „du bist dran“, mit dem Namen dessen, was ihn sperrt.
+  const f = vn.flags.find((x) => x.art === 'gesperrt');
+  assert.equal(f.stufe, 'dran');
+  assert.match(f.text, /BSP · VL/);
+});
+
+test('Gesperrt: ein Wochenblock, der nur an einzelnen Tagen auf einen Termin trifft, ist ein Hinweis; jede Woche ist „verschieben“', () => {
+  // G1 findet an drei Montagen statt: Ein Montagsblock darauf trifft drei Tage → dauernd. Zwei Tage → Hinweis.
+  const a = angebot();
+  a.module[0].teile[3].optionen[0].termine.daten.pop();
+  const e = M.rechnen(a, { wahl: { 'bsp-ue': 'g1' }, bloecke: [{ id: 'b1', teil: 'bsp-vn', tag: 'Mo', start: '14:00', ende: '16:00' }] });
+  const f = e.teile.get('bsp-vn').flags.find((x) => x.art === 'gesperrt');
+  assert.equal(f.stufe, 'info');
+  assert.match(f.text, /fällt am 04\.11\., 02\.12\. teilweise weg/);
+  const e2 = M.rechnen(angebot(), { bloecke: [{ id: 'b2', teil: null, tag: 'Di', start: '10:00', ende: '11:00', titel: 'Puffer' }] });
+  assert.equal(e2.planFlags.length, 1, 'ein Puffer ohne Teil meldet sich am Plan');
+  assert.equal(e2.planFlags[0].stufe, 'dran');
+  assert.ok(e2.summe.zaehler.dran >= 1);
+  assert.ok(M.luecken(e2).some((x) => x.art === 'gesperrt' && x.modul === null));
 });
 
 test('Zwei Termine übereinander sind ein Konflikt für beide', () => {
@@ -170,14 +189,86 @@ test('Ohne Prüfungstermin fehlt eine Angabe, und eine falsche Aufwandstabelle f
   assert.ok(e.module[0].flags.some((f) => f.art === 'posten_summe'));
 });
 
-test('Lernplan: rückwärts vor der Prüfung, Tag davor frei, sonntags nie, deckt die Lücke', () => {
-  const e = M.rechnen(angebot(), {});
-  const b = M.lernplanVorschlag(e, 'bsp-pv');
-  const summe = b.reduce((s, x) => s + M.min(x.ende) - M.min(x.start), 0);
-  assert.ok(summe >= 90 * 60);
-  assert.ok(b.every((x) => x.datum < '2031-03-02'), 'der Tag vor der Prüfung bleibt frei');
-  assert.ok(b.every((x) => M.wochentag(x.datum) !== 6), 'kein Sonntag');
-  assert.ok(b.every((x) => M.min(x.ende) - M.min(x.start) <= 6 * 60));
+// ── Die vier Schritte (V-0333) ───────────────────────────────────────────────────────────────────
+
+test('Schritte: feste Präsenz 1, Gruppen 2, Videos 3, alles andere 4 — Blöcke folgen ihrem Teil', () => {
+  const a = angebot();
+  const t = Object.fromEntries(a.module[0].teile.map((x) => [x.id, M.schrittVon(x)]));
+  assert.deepEqual(t, { 'bsp-vl': 1, 'bsp-video': 3, 'bsp-vn': 4, 'bsp-ue': 2, 'bsp-pv': 4 });
+  // Präsenz ohne Termine und ohne Gruppen (die Gruppen kommen noch) gehört zu den Gruppen.
+  assert.equal(M.schrittVon({ id: 'x', art: 'praesenz' }), 2);
+  assert.equal(M.schrittVonBlock(null), 4);
+  const e = M.rechnen(a, { wahl: { 'bsp-ue': 'g2' }, bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '11:00' }] });
+  const s = M.schritte(e);
+  assert.deepEqual(s.map((x) => x.titel), ['Grundlage', 'Gruppen', 'Videos', 'EVL']);
+  assert.equal(s.reduce((n, x) => n + x.soll_min, 0), 180 * 60, 'jeder Teil in genau einem Schritt');
+  assert.ok(e.vorkommen.filter((v) => v.quelle === 'termin' && v.teil === 'bsp-ue').every((v) => v.schritt === 2 && v.hart));
+  assert.ok(e.vorkommen.filter((v) => v.block === 'v').every((v) => v.schritt === 3));
+  assert.ok(e.vorkommen.filter((v) => v.quelle === 'frist').every((v) => v.schritt === 1 && !v.hart));
+  assert.equal(s[3].offen, s[3].zaehler.kritisch + s[3].zaehler.dran);
+});
+
+test('Zurücksetzen: ab 2 fallen Gruppen, Prüfungswahl und alle Blöcke weg, ab 3 nur Blöcke, ab 4 nur Lernblöcke', () => {
+  const a = angebot();
+  const plan = {
+    wahl: { 'bsp-ue': 'g1' }, pruefungstermin: { 'bsp-klausur': '2031-03-03' }, angemeldet: { 'bsp-klausur': true },
+    bestaetigt: { 'soll:bsp-video': true }, umwidmungen: [{ id: 'u', von: 'bsp-ue', nach: 'bsp-pv', h: 2 }],
+    bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '11:00' }, { id: 'n', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }, { id: 'p', teil: null, tag: 'Fr', start: '08:00', ende: '08:30' }],
+  };
+  const r2 = M.zuruecksetzen(plan, a, 2);
+  assert.equal(r2.wahl, undefined);
+  assert.equal(r2.pruefungstermin, undefined);
+  assert.deepEqual(r2.bloecke, []);
+  assert.deepEqual(r2.angemeldet, plan.angemeldet, 'was Silas weiß, bleibt');
+  assert.deepEqual(r2.bestaetigt, plan.bestaetigt);
+  assert.deepEqual(r2.umwidmungen, plan.umwidmungen);
+  const r3 = M.zuruecksetzen(plan, a, 3);
+  assert.deepEqual(r3.wahl, plan.wahl);
+  assert.deepEqual(r3.bloecke, []);
+  assert.deepEqual(M.zuruecksetzen(plan, a, 4).bloecke.map((b) => b.id), ['v']);
+  assert.equal(plan.bloecke.length, 3, 'der alte Plan bleibt unverändert (Rückgängig)');
+  // Nach dem Zurücksetzen steht die Grundlage: alle festen Termine, nichts aus den Schritten 2–4.
+  const e = M.rechnen(a, r2);
+  assert.ok(e.vorkommen.every((v) => v.schritt === 1));
+  assert.equal(e.teile.get('bsp-vl').vk.length, 16);
+});
+
+test('Gesperrt beim Planen: Wochenblock auf einer Serie oder gewählten Gruppe nein, an einem Tag nur auf dessen Termine', () => {
+  const a = angebot();
+  const plan = { wahl: { 'bsp-ue': 'g2' } };
+  const e = M.rechnen(a, plan);
+  const m = M.min;
+  assert.deepEqual(M.gesperrtDurch(a, plan, e, { tag: 1, start: m('09:00'), ende: m('10:30'), woechentlich: true }), ['BSP · VL']);
+  assert.deepEqual(M.gesperrtDurch(a, plan, e, { tag: 2, start: m('08:00'), ende: m('09:00'), woechentlich: true }), ['BSP · Übung'], 'gewählte Gruppe ist gesperrt');
+  assert.deepEqual(M.gesperrtDurch(a, plan, e, { tag: 1, start: m('12:00'), ende: m('14:00'), woechentlich: true }), []);
+  assert.deepEqual(M.gesperrtDurch(a, {}, M.rechnen(a, {}), { tag: 2, start: m('08:00'), ende: m('09:00'), woechentlich: true }), [], 'ungewählte Gruppen sperren nichts');
+  // Ein Datum: die Klausur sperrt ihren Tag, eine Frist (ganztägig) nichts.
+  assert.deepEqual(M.gesperrtDurch(a, plan, e, { tag: 0, datum: '2031-03-03', start: m('09:00'), ende: m('10:30'), woechentlich: false }), ['BSP · Klausur']);
+  assert.deepEqual(M.gesperrtDurch(a, plan, e, { tag: 5, datum: '2030-11-30', start: m('09:00'), ende: m('23:59'), woechentlich: false }), []);
+});
+
+test('Wiederholungen: je Eintrag das wievielte, wie viele insgesamt und wie viele ab ihm noch kommen', () => {
+  const plan = { wahl: { 'bsp-ue': 'g1' }, bloecke: [{ id: 'b1', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }] };
+  const e = M.rechnen(angebot(), plan);
+  const vl = e.vorkommen.filter((v) => v.teil === 'bsp-vl');
+  assert.deepEqual([vl[0].nr, vl[0].gesamt, vl[0].rest], [1, 16, 16]);
+  assert.deepEqual([vl[15].nr, vl[15].rest], [16, 1]);
+  const ue = e.vorkommen.filter((v) => v.teil === 'bsp-ue');
+  assert.deepEqual(ue.map((v) => v.rest), [3, 2, 1]);
+  assert.ok(e.vorkommen.filter((v) => v.block === 'b1').every((v) => v.gesamt === 16));
+  const k = e.vorkommen.find((v) => v.quelle === 'pruefung');
+  assert.deepEqual([k.gesamt, k.rest], [1, 1], 'die Klausur wiederholt sich nicht');
+});
+
+test('Seite: Kinder werden nur über fuellen() ersetzt — replaceChildren(null) schriebe „null“ als Text', () => {
+  const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');
+  assert.equal((seite.match(/\.replaceChildren\(/g) || []).length, 1, 'replaceChildren nur in fuellen()');
+});
+
+test('Keine Vorschläge mehr: der Lernplan-Vorschlag ist aus Modell und Seite entfernt', () => {
+  assert.equal(M.lernplanVorschlag, undefined);
+  const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');
+  assert.ok(!/lernplanVorschlag|Lernplan vorschlagen|data-act': 'lernplan'/.test(seite));
 });
 
 test('Standardwoche: Serien und Wochenblöcke, eine Reihe mit Anzahl, Einzeltermine nicht', () => {

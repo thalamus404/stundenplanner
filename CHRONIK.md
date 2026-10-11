@@ -12,6 +12,17 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas als geführter Ablauf in vier Schritten (V-0333)
+
+- Silas: Der Planer soll durch genau die Entscheidungen führen, die er selbst trifft, in Schichten — Grundlage (feste
+  Präsenz, Prüfungen, Quizze), Gruppen, Videos, EVL —, ohne Vorschläge, mit Zurückspringen und einem Zurücksetzen auf
+  die Grundlage. Jede Kachel trägt ihr Etikett (Präsenz, Video, EVL) und wie oft sie bis zum Semesterende noch kommt
+  (docs/SILAS.md §2.8a, §3).
+- Präsenz und gewählte Gruppen sind gesperrt: Auf sie lässt sich kein Block legen; ein Block, der durch eine spätere
+  Gruppenwahl darauf landet, ist hellblau „verschieben“ (§2.5 Regel 5). Der Lernplan-Vorschlag ist entfernt.
+- Zweimal schrieb die Seite „null“ als Text (`replaceChildren` mit leerem Kind): Jedes Ersetzen geht jetzt durch
+  `fuellen()`, ein Test hält das so.
+
 ## 11.10.2026 — /silas, Rückmeldung 2: Stufen, Farben nach Art, Wochenbedarf (V-0332)
 
 - Silas: Man wird „erschlagen von roten Fehlermeldungen“, „du musst noch was eintragen“ war so rot wie ein Fehler, die

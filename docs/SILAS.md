@@ -108,9 +108,15 @@ eine Information. Optionen legt Silas auf der Seite selbst an — ISIS ist die Q
    (`plan.pruefungstermin`, etwa der Alternativtermin eines E-Tests oder der Zweittermin), sonst dem ersten regulären.
    Bei einer echten Wahl (`pruefung.wahl`: zwei gleichwertige Termine) verschwindet der andere, sobald gewählt ist. Ein Block am oder nach dem Prüfungstag
    zählt nicht und ist rot.
-5. **Ein Termin schlägt einen Block.** Überlappt ein eigener Block an einem Tag einen Termin, verliert der Block die
-   überlappte Zeit (gelber Hinweis am Teil). Der Termin bleibt, wie er ist. Gerechnet wird an den echten Tagen, nicht
-   im Wochenraster: Eine Übungsgruppe, die nur an fünf Terminen stattfindet, stört die übrigen Wochen nicht.
+5. **Präsenz ist gesperrt** (V-0333, Silas: *„während ein Präsenztermin stattfindet, darf es nicht möglich sein, dass
+   man irgendetwas anderes macht … und bei Tutoriumsterminen, wenn man eine Gruppe gewählt hat, müssen die danach auch
+   geblockt sein … alles andere kann man rumschieben“*). Termine (`hart`: Präsenz, gewählte Gruppen, Prüfungen außer
+   ungewählten Ausweichterminen, Einzeltermine mit Uhrzeit) sperren ihre Zeit: Die Seite lässt keinen Block darauf
+   legen (`gesperrtDurch()` — in der Standardwoche gegen alles Wiederkehrende, an einem Datum gegen die Termine des
+   Tages). Liegt trotzdem einer darauf — weil Silas danach eine Gruppe gewählt hat oder ein Wochenblock nur an einzelnen
+   Tagen trifft —, verliert der Block die überlappte Zeit (`gesperrt`). Trifft er in mindestens drei Wochen (oder an
+   jedem seiner Tage), muss er weg: hellblau „verschieben“. Trifft er nur einzeln (Kick-off, E-Test), fällt er dort weg:
+   ein Hinweis. Gerechnet wird an den echten Tagen, nicht im Wochenraster.
 6. **Zwei Termine übereinander sind ein Konflikt** (rot an beiden): Eine andere Gruppe wählen.
 7. **Gedeckt ist je Teil höchstens sein Soll.** Zu viel bei den Labs gleicht zu wenig bei der Nachbereitung nicht aus:
    Modul und Semester zählen die Summe der gedeckten Stunden, das Mehr steht als gelber Hinweis daneben
@@ -127,10 +133,10 @@ Stufe vergibt `einstufen()` am Ende, nach dem heutigen Datum, der Semesterphase 
 |---|---|---|---|
 | `kritisch` | rot | jetzt handeln | eine Anmeldung läuft; zwei feste Termine übereinander; Prüfungsthemen, sobald die Anmeldung des Moduls läuft; Prüfungsvorbereitung, wenn ihre Zeit da ist |
 | `achtung` | orange | prüfen | Unsicheres; Raum oder Uhrzeit fehlt bei bekanntem Datum; selbst geplantes Zuviel über 2 h; Block nach der Prüfung; Prüfungsthemen, sobald ein Termin bekannt ist |
-| `dran` | hellblau | du bist dran | Gruppe wählen, Blöcke setzen, Videolängen ablesen (nur erschienene Videos), umwidmen; eine Gruppenanmeldung (in der letzten Woche rot) |
+| `dran` | hellblau | du bist dran | Gruppe wählen, Blöcke setzen, einen Block von einem Termin wegschieben (gesperrt), Videolängen ablesen (nur erschienene Videos), umwidmen; eine Gruppenanmeldung (in der letzten Woche rot) |
 | `kommt` | grau | kommt noch | Termine, Fristen, Gruppen, die der Lehrstuhl noch nicht veröffentlicht hat; Prüfungsthemen, solange kein Termin bekannt ist |
 | `spaeter` | grau | später | Prüfungsvorbereitung vor ihrer Zeit: kritisch ab Beginn der vorlesungsfreien Zeit, bei Prüfungen in der Vorlesungszeit (E-Test, Online-Test) `vorlauf_tage` (21) vorher |
-| `info` | grau | Hinweis | Annahmen (sie stehen unter „Offen & Annahmen“), Hinweise aus ISIS, Blöcke ohne Video, kleine Überlappungen |
+| `info` | grau | Hinweis | Annahmen (sie stehen unter „Offen & Annahmen“), Hinweise aus ISIS, Blöcke ohne Video, Wochenblöcke, die an einzelnen Tagen einem Termin weichen |
 
 - **±2 h:** Lücken und Zuviel unter `toleranz_min` (120 min) werden nicht gemeldet (Silas: „sonst zu verwirrend“).
 - **Anmelden:** `plan.angemeldet[id]` hakt eine Anmeldung ab (Prüfung oder Gruppe); bis dahin steht „Jetzt anmelden — bis …“.
@@ -152,16 +158,44 @@ trotzdem zum Modul. Silas' Semesterplan sagt, wohin: „die freie Zeit gehört i
 Umwidmung `{von, nach, h}` nimmt das Soll beim einen Teil weg und gibt es dem anderen; die 180 h bleiben. Die Seite
 bietet sie an, wenn eine Lücke strukturell ist (alle Termine bekannt, Gruppe gewählt).
 
-### 2.8 Vorschläge
+### 2.8 Keine Vorschläge (V-0333)
 
-- **Videoblock:** Videolänge + 15 min Puffer, auf 30 min aufgerundet (Silas: „1:45 Video → 2 h einplanen“). Ist die
-  Länge unbekannt, nimmt das Angebot eine Annahme (`annahme_min`, 90 min für eine 2-SWS-Vorlesung) und der Teil bleibt
-  rot, bis die echte Länge eingetragen ist.
-- **Lernplan vor einer Prüfung** (`lernplanVorschlag`): rückwärts ab dem Tag vor dem Tag vor der Prüfung — der Tag
-  direkt davor bleibt als Puffer frei —, je Tag die größte freie Lücke im Lernfenster 09–19 Uhr, höchstens ein
-  Lerntag (6 h, Faustregel aus Silas' Semesterplan: Stunden ÷ 6 = Lerntage), Sonntage frei, bis die fehlenden
-  Stunden gedeckt sind. Er erscheint gestrichelt in den echten Wochen; erst „Übernehmen“ legt Datumsblöcke an
-  (`lernplan: true`, gemeinsam wieder entfernbar).
+Silas, 11.10.: *„Es sollen nicht so wie jetzt Vorschläge zu den ganzen Sachen kommen, sondern man soll die selber wählen
+können.“* Der Lernplan-Vorschlag (bis V-0332 `lernplanVorschlag`) ist entfernt. Was bleibt, misst nur:
+
+- **Videoblock:** Videolänge + 15 min Puffer, auf 30 min aufgerundet (Silas: „1:45 Video → 2 h einplanen“) — die
+  Länge, die ein Block zum Aufziehen anfangs hat. Ist die Länge unbekannt, nimmt das Angebot eine Annahme
+  (`annahme_min`, 90 min für eine 2-SWS-Vorlesung), bis die echte eingetragen ist.
+- **Lerntag** (Prüfungszeit, Schritt 4): Silas tippt einen Tag an; der Block liegt in der größten freien Lücke des
+  Lernfensters 09–19 Uhr, höchstens 6 h (Faustregel aus Silas' Semesterplan: Stunden ÷ 6 = Lerntage). Den Tag wählt
+  er, verschieben kann er ihn im Raster.
+
+### 2.8a Die vier Schritte (V-0333)
+
+Silas, 11.10.: *„Die absolute Foundation muss sein, alle bestätigten Pflichtpräsenztermine sind dort eingetragen und
+die Quizze … Dann der zweite Layer, das sind Optionstermine … Tutoriumsgruppe XY oder Übungsgruppe XY … dann die dritte
+Schicht, Screencasts und alles, was eigentlich eine Präsenzveranstaltung wäre, aber über ein Video … und dann als letzte
+Sache für alle Sachen eine Vor- und Nachbereitung. Das Tool soll einen durch genau diese Entscheidungen durchführen und
+man soll die selber treffen … und zurückspringen können.“* Jeder Teil gehört zu genau einem Schritt (`schrittVon`,
+im Angebot mit `schritt` überschreibbar), jedes Vorkommen trägt ihn (`schritt`):
+
+| Schritt | Was | Teile | Silas tut |
+|---|---|---|---|
+| 1 Grundlage | feste Präsenztermine, Prüfungen, Quizze, Fristen, Einzeltermine | Präsenz mit eigenen Terminen | nichts wählen — prüfen, fehlende Uhrzeit/Raum eintragen |
+| 2 Gruppen | Tutorien und Übungen mit Gruppen; Prüfungen mit mehreren Terminen | Präsenz mit `optionen` oder ohne Termine (die Gruppen kommen noch) | Gruppe wählen oder eintragen; welchen Prüfungstermin |
+| 3 Videos | Screencasts, Lehrvideos | `video` | Blöcke legen |
+| 4 EVL | eigenverantwortliches Lernen: Vor-/Nachbereitung, Labs, Quizze bearbeiten, Prüfungsvorbereitung | `selbst`, `pruefung` | Blöcke legen, Lerntage |
+
+Ein Block gehört zum Schritt seines Teils (`schrittVonBlock`: Video 3, sonst 4, auch ohne Teil). `schritte(erg)`
+zählt je Schritt die Meldungen nach Stufe (Modul-Meldungen zu Schritt 1, `pruefung_wahl` zu 2, Puffer-Blöcke zu 4).
+**Zurücksetzen** (`zuruecksetzen(plan, angebot, ab)`) nimmt alles ab Schritt `ab` weg — ab 2 `wahl` und
+`pruefungstermin`, ab 3 die Video-Blöcke, ab 4 die übrigen Blöcke — und lässt, was Silas über das Semester weiß
+(`angemeldet`, `bestaetigt`, `umwidmungen`, Videolängen und Uhrzeiten im Angebot). Danach steht nur noch Schritt 1.
+
+**Wiederholungen** (Silas: *„pro Eintrag, wie oft sich dieser Eintrag bis zum Ende des Semesters wiederholt — da wird
+dann auch sofort klar, welche sich nicht wiederholen“*): Jedes Vorkommen trägt `nr`, `gesamt` und `rest` (ab ihm noch,
+es eingeschlossen). Ein Eintrag ist ein Muster eines Termins (Serie oder Reihe, `muster`-Index), ein Block oder eine
+Prüfung/ein Einzeltermin (immer 1).
 
 ## 2.9 Annahmen und Lücken an einem Ort
 
@@ -174,23 +208,37 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 
 ## 3. Die Seite
 
-- **Kopf:** Semester, die Bilanz („600 h von 900 h“, Balken) und die Zahl der roten Teile; der Speicherstand;
+- **Kopf:** Semester, die Bilanz („600 h von 900 h“, Balken) und die Zähler (kritisch, zu tun); der Speicherstand;
   „Kalender“ (die Abos, §6).
-- **Links, die Module:** je Modul LP, eingeplant von Soll, darunter jeder Teil mit Art (Termin, Gruppen, Video,
-  Lernen, Prüfung), Form („Do 16:15–17:45 · A 151“, „Wahl · 12 Gruppen“), Stand (32/30 h) und der roten Zeile, was
-  fehlt. Ein Klick klappt die Karte des Teils auf: alle Flaggen, Soll und Ist, und was man tun kann — Gruppe wählen
-  (die Gruppen stehen gestrichelt im Raster, mit „14× belegt“, wenn sie mit dem Plan kollidieren), Block setzen,
-  Lernplan vorschlagen, umwidmen, fehlende Angaben eintragen (Termine, Gruppen, Prüfungstermin, Videolänge,
-  Ausfälle). Ein Klick auf den Modulnamen zeigt die Aufwandstabelle neben dem, was davon eingeplant ist.
-- **Mitte, vier Bereiche** (V-0328): *Vorlesungszeit* (Standardwoche und die Wochen W01–W16), *Vorlesungsfreie
-  Zeit* (oben jede Prüfung mit ihrer Vorbereitung, darunter die Tage der Weihnachtspause und der Zeit nach der
-  Vorlesung: Prüfung wählen, Tage antippen — jeder Tipp ein Lerntag in der größten freien Lücke; Silas: „in der
-  vorlesungsfreien Zeit fallen viele Präsenztermine raus, da hat man Platz, um zu planen, wann man welche
-  Klausurvorbereitung macht“), *Offen & Annahmen* (§2.9, jede Zeile führt zum Formular) und *So wird gerechnet*
-  (Bologna, ECTS, die Aufwandstabelle am Beispiel eines Moduls, die Zählregeln, die Quellen).
+- **Oben in der Mitte, die vier Schritte** (V-0333, §2.8a): je ein Knopf mit Stand (rot kritisch, hellblau mit Zahl
+  „zu tun“, sonst ✓). Man springt frei vor und zurück. Daneben *Offen & Annahmen* (§2.9, jede Zeile führt zum
+  Formular), *So wird gerechnet* (Bologna, ECTS, die Schritte, die Aufwandstabelle am Beispiel, die Zählregeln, die
+  Quellen) und **Zurücksetzen** (ab Schritt 2, ab 3 oder nur 4 — jede Wahl sagt, was sie entfernt; ⌘Z holt es zurück).
+- **Links, was der Schritt will:** oben ein Satz, was hier zu tun ist; darunter je Modul nur die Teile dieses
+  Schritts (Module ohne sie blass, „nichts zu entscheiden“). Schritt 1 zeigt dazu die Quizze mit ihren Fristen und
+  jede Prüfung mit Terminen, Anmeldung und dem Formular für Datum/Zeit/Raum; Schritt 2 die Prüfungen mit mehreren
+  Terminen (welchen schreibst du?); Schritt 4 die Prüfungsvorbereitung eigens und oben Puffer-Blöcke, die auf einem
+  Termin liegen. Jeder Teil: Art, Form („Do 16:15–17:45 · A 151“, „Wahl · 12 Gruppen“), Stand (32/30 h) und die
+  Zeile in der Farbe seiner Stufe. Ein Klick klappt die Karte auf: alle Meldungen, Soll und Ist, Woher, die Gruppen als
+  Knöpfe (mit Zahl der Termine und „trifft 3× einen Termin“), umwidmen, fehlende Angaben eintragen. Ein Teil wählen
+  heißt in Schritt 3 und 4 zugleich: Blöcke für ihn aufziehen. Ein Teil eines anderen Schritts holt diesen Schritt.
+- **Das Raster nach Schichten:** Der gezeigte Schritt ist voll da; was zu einem **späteren** gehört, steht zart und ohne
+  Griff dahinter (nimmt keine Breite); ein Block eines **früheren** Schritts ist fest — ein Klick springt in seinen
+  Schritt zurück (Silas: „dann kann ich in dem Schritt zurückgehen und sagen, dann lege ich die halt woanders hin“).
+  Die Gruppen zur Wahl (gestrichelt) stehen nur in Schritt 2. Blöcke gibt es erst ab Schritt 3; das „Wofür?“ bietet
+  nur Teile des Schritts an. Auf Präsenz geht kein Block: Beim Aufziehen und Verschieben wird der Entwurf rot
+  („gesperrt: BUK · Tutorium“), loslassen legt nichts an und sagt warum. Ein Block, der dauernd auf einem Termin liegt,
+  ist hellblau umrandet („verschieben“).
+- **Jede Kachel** trägt rechts senkrecht ihr **Etikett** — *Präsenz* (Termine, Gruppen, Prüfungen), *Video*, *EVL*
+  (kurze Kacheln nur den Anfangsbuchstaben) — und vorn in Zeile 2, **wie oft** sie noch kommt: in der Standardwoche alle
+  Termine des Eintrags, in einer echten Woche die ab diesem Tag; „1×“ dunkel heißt einmalig.
+- **Schritt 4, Prüfungszeit:** dritter Knopf neben Standardwoche/Echte Woche — oben jede Prüfung mit ihrer
+  Vorbereitung, darunter die Tage der Weihnachtspause und der Zeit nach der Vorlesung: Prüfung wählen, Tage antippen —
+  jeder Tipp ein Lerntag (§2.8). Ein Tipp auf die Woche öffnet sie im Raster.
 - **Die Woche:** die **Standardwoche** (was jede Vorlesungswoche wiederkehrt; Reihen an ihrem typischen Platz
-  mit „nur 7× — nächster 13.11.“; ein Wochenblock zeigt „12/16“, wenn er nicht jede Woche zählt) oder eine **echte
-  Woche** (W01 … P8, mit Datum, Ganztägigem oben: Fristen, Prüfungen, Video-Freigaben). Im Raster ziehen setzt einen
+  mit „7×“ und „nächster 13.11.“; ein Wochenblock sagt „zählt 12 von 16“, wenn er nicht jede Woche zählt) oder eine
+  **echte Woche** (jede Woche des Semesters, W01 … Pause … P8, mit Datum, Ganztägigem oben: Fristen, Prüfungen, die
+  Freigaben des Schritts). Im Raster ziehen setzt einen
   Block (Standardwoche: jede Woche; echte Woche: fragt „nur am … / jeden …“); Blöcke lassen sich verschieben, an der
   Unterkante verlängern, anklicken zum Bearbeiten. ← → wechselt die Woche, ⌘Z macht rückgängig, Esc schließt.
 - **Farben nach Art** (V-0332, Silas: „Präsenzveranstaltung sollte das gleiche Farbschema haben bei allen Modulen …
@@ -199,11 +247,10 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   Wahl** (gefüllt, weiß gestrichelte Linie innen — solange nicht gewählt, stehen alle Gruppen im Plan), **gewählt**
   (weiß durchgezogen; die anderen nur noch ausgegraut, wenn der Teil gewählt ist), nur an einzelnen Tagen (heller, mit
   Anzahl), dein Block (schraffiert).
-- **Unter dem Raster:** was in dieser Woche (Standardwoche: jede Woche) dran wäre, aber noch nicht im Plan ist
-  (`wochenBedarf()`): grau „Termine kommen noch“, hellblau „Block setzen“ oder „Gruppe wählen“. Videos zählen in der
-  Woche, in der ein Block sie deckt.
-- **Links: Ganzes Semester | Diese Woche.** Die Woche ist die im Raster gezeigte. Im Bereich Vorlesungszeit stehen die
-  Prüfungsteile als eine graue Zeile („in der vorlesungsfreien Zeit“), in der vorlesungsfreien Zeit umgekehrt.
+- **Unter dem Raster:** was in dieser Woche (Standardwoche: jede Woche) im gezeigten Schritt dran wäre, aber noch
+  nicht im Plan ist (`wochenBedarf()`): grau „Termine kommen noch“, hellblau „Block setzen“ oder „Gruppe wählen“.
+  Videos zählen in der Woche, in der ein Block sie deckt.
+- **Links: Ganzes Semester | Diese Woche** (ab Schritt 2). Die Woche ist die im Raster gezeigte.
 - **Ohne Uhrzeit:** Ein Termin mit Datum, aber ohne Uhrzeit steht über dem Raster; ein Klick trägt Uhrzeit und Ort nach.
 - **Kopf, die Bilanz:** *eingeplant − zu viel = gedeckt von Soll* (Silas: „die Zahl davor muss alles
   zusammengerechnet sein und dahinter muss stehen minus so und so viele Stunden, die zu viel eingeplant sind“).
@@ -212,8 +259,9 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 - **Rechts, die Minimap** (V-0328, Silas: „wie die Minimap, die die Semesterübersicht einmal in Wochenansicht gibt“):
   je Modul eine Summenzeile, darunter jeder Bestandteil, regelmäßig wie unregelmäßig, dazu Prüfungen und Fristen;
   Termine gefüllt, eigene Blöcke schraffiert, Freigaben als Punkt. Der links gewählte Bestandteil leuchtet, die anderen
-  treten zurück. Darunter die Chronik des Unregelmäßigen.
-- **Am Telefon** liegt alles untereinander, das Raster scrollt seitlich; ein Tipp legt einen Block mit Standardlänge an.
+  treten zurück, Zeilen anderer Schritte sind blass. Darunter die Chronik des Unregelmäßigen.
+- **Am Telefon** liegt alles untereinander, das Raster scrollt seitlich; ein Tipp legt einen Block mit Standardlänge an
+  (auch er nicht auf Präsenz). Die Schritte zeigen nur den gezeigten mit Namen, die anderen mit Nummer und Stand.
 
 ## 4. Stellschrauben (`REGELN` in `modell.mjs`, im Angebot unter `regeln` überschreibbar)
 
@@ -239,8 +287,10 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   notizen [], links {}}]`, `termine [{id, modul?, art: frist|info|rahmen, datum, bis?, start?, ende?, titel, ort?,
   wichtig?, unsicher?}]`.
 - **`plan`** — was Silas entschieden hat: `wahl {teil: option}`, `pruefungstermin {pruefung: datum}`, `bloecke [{id,
-  teil|null, tag | datum, start, ende, ab?, bis?, pause?, titel?, lernplan?}]`, `umwidmungen [{id, von, nach, h}]`,
-  `bestaetigt {annahme-id: true}`.
+  teil|null, tag | datum, start, ende, ab?, bis?, pause?, titel?}]`, `umwidmungen [{id, von, nach, h}]`,
+  `bestaetigt {annahme-id: true}`, `angemeldet {pruefung- oder teil-id: true}`. (Ein `lernplan: true` an alten Blöcken
+  aus dem entfernten Vorschlag wird nicht mehr gelesen.) Ein Teil kann mit `schritt: 1–4` in einen anderen Schritt
+  gestellt werden (§2.8a).
 - **Einheiten** (`einheiten`): `liste [{nr, ab, titel, woche, laenge_min, bis?, bis_zeit?, quelle, offen?, unsicher?}]`
   oder `takt {tag, von, bis}`; dazu `annahme_min` (Videos), `dauer_min` (Quiz/Blatt), `anzahl` (Datum noch offen), `offen`.
 - **Serie mit Angaben je Tag:** `tage {datum: {titel, ort, unsicher, quelle}}` — der Freitag mit Übung statt VL.
