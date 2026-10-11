@@ -12,6 +12,20 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas: der Semesterplaner nach Leistungspunkten (V-0321)
+
+- Silas, nach einem Gespräch mit dem Fachbereich: Seit Bologna zählt nicht die SWS, sondern der Aufwand in
+  Leistungspunkten (1 LP = 30 h). Der Stundenplaner „so wie er jetzt existiert“ ergibt dafür keinen Sinn. Unter
+  `stundenplanner.de/silas`, erst nur für ihn, ein Planer mit neuer Logik: Jede Stunde der Aufwandstabellen soll
+  einen festen Platz im Kalender haben — Termine, gewählte Gruppen, eigene Blöcke für Videos, Labs, Vor- und
+  Nachbereitung und Klausurvorbereitung. Rot, was an Information fehlt oder nicht geplant ist; rechts das
+  Unregelmäßige als Muster über das Semester. Das Modell steht in docs/SILAS.md.
+- Privat, weil das Repo öffentlich ist: Silas' Semester (ISIS-Angaben, seine Wahl) liegt nur im KV-Speicher hinter
+  `/silas/api`, mit Schlüssel — die erste Funktion mit Speicher. Das Study OS soll später von dort lesen; die
+  Richtung ist nur Study OS → Stundenplanner (AGENTS.md §2 ④ um diese Brücke ergänzt).
+- Die Daten kamen aus Silas' Übergabe im Studienordner (Semesterplan & Checkliste, Stand 11.10.) und den
+  Aufwandstabellen der fünf Modulbeschreibungen; nichts wurde bei der TU abgerufen.
+
 ## 06.10.2026 — Kalender-Abo „Stundenplan“ (V-0271)
 
 - Silas: „dass man beim ‚in eigenen Kalender übernehmen‘ ein neuer Kalender namens Stundenplan angelegt

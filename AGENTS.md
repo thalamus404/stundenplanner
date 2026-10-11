@@ -61,6 +61,10 @@ nichts mit SILAS.OS, dem Study OS oder dem TOWER gemein: kein Abruf, keine Daten
 Dienst, kein Schlüssel und keine Datei von dort. Er wird höchstens im TOWER gebaut und liegt
 vielleicht am selben Ort (Silas, 04.10.2026: „da darf niemals irgendwas vermischt werden“). Was
 du aus dem Vorbild übernimmst, kopierst du und nennst die Herkunft (§1). Die Wahrheit ist git.
+**Eine gewollte Brücke, in einer Richtung:** `/silas`, Silas' persönlicher Semesterplaner (V-0321,
+[docs/SILAS.md](docs/SILAS.md)), soll später in der Timeline des Study OS erscheinen (Silas, 11.10.2026). Dafür
+**liest das Study OS** `/silas/api/ereignisse` mit einem Schlüssel des Stundenplanners. Der Stundenplanner selbst
+fragt nie etwas von dort ab und nimmt nichts von dort; sein Speicher ist ein eigener KV-Namensraum bei Cloudflare.
 
 **⑤ Bedeutung, Prioritäten und Grundentscheidungen entscheidet Silas**, die technische Umsetzung
 der Agent. Was in den Scope gehört, gehört dazu: Funktionen, Hochschulen, Lizenz, Betrieb,
