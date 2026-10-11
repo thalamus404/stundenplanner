@@ -12,6 +12,14 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas: Lernblöcke erst ab dem Stoff, Bezug zum Stoff beim Legen (V-0342)
+
+- Silas prüfte seinen Plan vor dem ersten Unitag: Am Montag standen PROG1-Quicktests und EINFWI-Nachbereitung, obwohl
+  PROG1 erst Donnerstag und EINFWI erst mit dem Kick-off am 19.10. beginnt. Ein Lernblock zählt jetzt erst ab dem
+  ersten Stoff seines Moduls; neue Blöcke (auch Videoblöcke) beginnen dort, ältere bieten „Erst ab …“ an.
+- Beim Legen sind die Plätze direkt nach dem Stoff gerahmt, ein belegter wird mit dem genannt, was dort liegt; Blöcke,
+  die meist weit weg vom Stoff liegen, tragen eine Marke (docs/SILAS.md §2.5 6a/6b, §3).
+
 ## 11.10.2026 — /silas: Wochenend-Pakete, Tagessäulen, Pastell, Fahrzeit nach Hause, Mittag (V-0340)
 
 - Mit 2 h je Woche hätte die Vorbereitung vor Semesterbeginn anfangen müssen. Jetzt hat jede Prüfung zwei feste

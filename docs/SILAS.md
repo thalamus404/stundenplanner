@@ -118,6 +118,22 @@ eine Information. Optionen legt Silas auf der Seite selbst an — ISIS ist die Q
    jedem seiner Tage), muss er weg: hellblau „verschieben“. Trifft er nur einzeln (Kick-off, E-Test), fällt er dort weg:
    ein Hinweis. Gerechnet wird an den echten Tagen, nicht im Wochenraster.
 6. **Zwei Termine übereinander sind ein Konflikt** (rot an beiden): Eine andere Gruppe wählen.
+6a. **Ein Lernblock zählt erst ab dem Stoff seines Moduls** (V-0342, Silas' Prüfung vor dem ersten Unitag: *„morgen
+   steht bei mir Programmieren 1 Quick Tests, 16 bis 18 Uhr“* — PROG1 beginnt am Donnerstag). Der Stoff eines
+   `selbst`-Teils sind die Präsenztermine und Videos derselben Lehrveranstaltung (`lv` des Postens: VL-Nachbereitung →
+   VL; STAT1-IV → IV-Präsenz und Screencasts), ohne `lv` alles des Moduls (BuK-Vor-/Nachbereitung). Vor dem ersten
+   Stoff — dem Ende des ersten Termins oder der ersten Freigabe (`stoff_ab`) — gibt es nichts vor- oder
+   nachzubereiten: Der Block zählt nicht (`vor_stoff`, ein Hinweis), so wie ein Videoblock ohne Video. Teile mit
+   Einheiten (Quizze) regeln das über ihre Freigaben. Hat die eigene Lehrveranstaltung noch keine Termine (TECHGI-Übung,
+   PROG1-Tutorial), gilt der Beginn des ganzen Moduls.
+6b. **Bezug zum Stoff** (V-0342, Silas: *„eine Logik …, die einem beim Erstellen hilft, dass man thematisch die Dinge
+   gut zusammen gruppiert“*). Jedes zählende Vorkommen eines Lernblocks trägt `bezug`: **direkt** (am selben Tag
+   höchstens `bezug_direkt_min` nach einem Termin oder geschauten Videoblock seines Stoffs, oder so knapp vor einer
+   Präsenz), **nah** (bis `bezug_nah_tage` danach), **fern** (später) oder **ohne** (in den sieben Tagen davor kein
+   Stoff — etwa die Nachbereitung vor dem Screencast derselben Woche). Ein Video zählt als Stoff erst, wenn ein Block
+   es schaut. Liegt ein Block in mehr als der Hälfte seiner Wochen fern oder ohne, steht am Teil ein Hinweis („weit weg
+   vom Stoff“), auf der Kachel eine Marke. Ohne Termine der eigenen Lehrveranstaltung urteilt der Bezug nicht
+   (`offen`). Er zählt nichts ab, er hilft beim Legen (§3).
 7. **Gedeckt ist je Teil höchstens sein Soll.** Zu viel bei den Labs gleicht zu wenig bei der Nachbereitung nicht aus:
    Modul und Semester zählen die Summe der gedeckten Stunden, das Mehr steht als gelber Hinweis daneben
    („34 h mehr als in der Modulbeschreibung“ — die PROG1-Präsenz hat zwei Termine je Woche statt 2 SWS).
@@ -210,6 +226,17 @@ dem Ende aufhören (`bis`): Die Modulbeschreibungen rechnen mit 15 Wochen, das S
 plante jede Vorgabe 32 h für 30 h (V-0336, Silas' Prüfung der Wochenlast). Mit Silas' Stand: STAT1-Screencasts
 1,5 h jede Woche (die Videos brauchen 23,5 h), STAT1-Nachbereitung 2 h jede Woche, TECHGI-Übung-Nachbereitung 2 h alle
 2 Wochen, PROG1-Labs 3 × 1:45 jede Woche. Was tatsächlich zählt, rechnet danach `rechnen()` an den echten Tagen.
+Ein Block beginnt, wo es etwas für ihn gibt (V-0342, Silas: *„wieso ist das durchgestrichen? Kein Video in der Woche …
+weil das noch nicht da anfängt“*): `ab` der Vorgabe ist die erste Freigabe (Videos, Quizze) bzw. der erste Stoff des
+Moduls (§2.5 6a); der gelegte Block trägt es, davor liegt er gar nicht erst. Die Wochen der Vorgabe zählen ab dort.
+Ein älterer Block, der davor beginnt, bietet in seiner Karte „Erst ab …“ an.
+
+**Beim Stoff legen** (V-0342): Hängt ein Lernblock am Zeiger, sind die freien Plätze direkt nach einem Termin oder
+Videoblock seines Stoffs — und direkt vor einer Präsenz — gerahmt und beschriftet („direkt nach STAT1 · IV ·
+Screencasts“); der Block rastet dort ein. Ist so ein Platz schon belegt, nennt das Banner, was dort liegt (Silas'
+EINFWI-Video Di 12–14, danach die PROG1-Labs): Das ist vielleicht das Verschiebbare. Die Meldung nach dem Ablegen sagt,
+wo der Block meist zum Stoff liegt; die Karte eines Blocks ebenso. Unter dem Raster ist eine Woche vor dem ersten Stoff
+nichts „dran“ (`wochenBedarf`).
 
 **Wiederholungen** (Silas: *„pro Eintrag, wie oft sich dieser Eintrag bis zum Ende des Semesters wiederholt — da wird
 dann auch sofort klar, welche sich nicht wiederholen“*): Jedes Vorkommen trägt `nr`, `gesamt` und `rest` (ab ihm noch,
@@ -386,6 +413,7 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 | `we_h` | 10 | Silas, V-0340: die zwei Wochenenden vor einer Prüfung je 10 h fest fürs Lernen |
 | `tag_voll_h` | 9 | Silas, V-0340: „neun Stunden heißt maximale Auslastung pro Tag“ (Säule = 100 %) |
 | `mittag_min`, `mittag_fenster` | 45, 11:30–14:30 | Silas, V-0340: Mittagspause, nur gezeigt |
+| `bezug_direkt_min`, `bezug_nah_tage` | 120, 3 | V-0342: bis 2 h nach dem Stoff (oder vor einer Präsenz) ist „direkt“, bis 3 Tage „nah“ (Präsenz Fr → Nachbereitung Mo), später „weit weg vom Stoff“ |
 
 ## 5. Das Datenformat
 

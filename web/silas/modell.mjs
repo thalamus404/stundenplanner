@@ -34,6 +34,8 @@ export const REGELN = {
   we_h: 10,              // Silas, V-0340: die zwei Wochenenden vor einer Prüfung je 10 h fest fürs Lernen
   tag_voll_h: 9,         // Silas, V-0340: „neun Stunden heißt maximale Auslastung pro Tag“ (Säule = 100 %)
   mittag_min: 45, mittag_fenster: ['11:30', '14:30'], // Silas, V-0340: 45 min Mittagspause, nur gezeigt
+  bezug_direkt_min: 120, // V-0342: ein Lernblock höchstens 2 h nach seinem Stoff (oder vor einer Präsenz), am selben Tag = „direkt“ …
+  bezug_nah_tage: 3,     // … bis 3 Tage danach „nah“ (Präsenz Fr → Nachbereitung Mo), später „weit weg vom Stoff“
 };
 
 // ── Zeit ─────────────────────────────────────────────────────────────────────────────────────────
@@ -166,6 +168,20 @@ export function teileVon(angebot) {
   const aus = [];
   for (const m of angebot.module || []) for (const t of m.teile || []) aus.push({ teil: t, modul: m });
   return aus;
+}
+
+/** Der Stoff eines Lernblocks (V-0342): die Präsenz- und Videoteile seines Moduls, die Termine oder Freigaben haben —
+ *  die derselben Lehrveranstaltung (lv des Postens: VL-Nachbereitung → VL, STAT1-IV → IV-Präsenz und Screencasts).
+ *  Hat die eigene Lehrveranstaltung noch keine Termine (eine Übung ohne Zeiten), gilt für den Beginn der Stoff des
+ *  ganzen Moduls, aber kein Bezug (eigen: false). Posten ohne lv (BuK: Vor-/Nachbereitung) gehören zum ganzen Modul.
+ *  teile: die Map aus rechnen(). */
+function stoffTeile(teile, z) {
+  const lv = z.posten && z.posten.lv;
+  const datiert = [...teile.values()].filter((x) => x.modul === z.modul && ['praesenz', 'video'].includes(x.teil.art)
+    && (x.vk.some((v) => v.quelle === 'termin') || (x.einheiten && x.einheiten.length)));
+  if (!lv) return { teile: datiert, eigen: true };
+  const gleich = datiert.filter((x) => x.posten && x.posten.lv === lv);
+  return gleich.length ? { teile: gleich, eigen: true } : { teile: datiert, eigen: false };
 }
 /** Die Art eines Bestandteils für Farbe und Legende (Silas, 11.10.: „Präsenzveranstaltung sollte das gleiche
  *  Farbschema haben bei allen Modulen … Klausurvorbereitung, Klausur, Fristen … Quiz zum Beispiel immer grün“).
@@ -663,6 +679,79 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     z.ist_min = z.vk.reduce((s, v) => s + v.zaehlt_min, 0);
   }
 
+  // 6b · Stoff und Bezug (V-0342, Silas' Prüfung vor dem ersten Unitag: „morgen steht bei mir Programmieren 1 Quick
+  //      Tests, 16 bis 18 Uhr“ — PROG1 beginnt erst am Donnerstag; „eine Logik …, dass man thematisch die Dinge gut
+  //      zusammen gruppiert“). Ein Lernblock (art selbst) gehört zum Stoff seines Moduls: zu den Präsenzterminen und
+  //      Videos derselben Lehrveranstaltung (lv des Postens), sonst zu allem Stoff des Moduls (stoffTeile). Vor dem ersten
+  //      Stoff gibt es nichts vor- oder nachzubereiten: Der Block zählt nicht (vor_stoff) — so wie ein Videoblock ohne
+  //      Video. Teile mit Einheiten (Quizze) regeln das schon über ihre Freigaben. Danach sagt `bezug` am Vorkommen, wie
+  //      nah er am Stoff liegt: direkt (am selben Tag höchstens bezug_direkt_min nach ihm oder vor einer Präsenz), nah
+  //      (bis bezug_nah_tage danach), fern (später) oder ohne (in den 7 Tagen davor kein Stoff). Gesehen zählt ein
+  //      Video erst, wenn ein Block es schaut — die Nachbereitung gehört hinter den Videoblock, nicht hinter die Freigabe.
+  const absMin = (datum, m) => tageZwischen(sem.vorlesung.von, datum) * 1440 + m;
+  for (const z of teile.values()) {
+    if (z.teil.art !== 'selbst') continue;
+    const { teile: stoff, eigen } = stoffTeile(teile, z);
+    z.stoff_teile = stoff.map((x) => x.teil.id);
+    z.stoff_eigen = eigen;
+    if (!stoff.length) continue;
+    // Der erste Stoff: das Ende des ersten Präsenztermins oder der Tag der ersten Freigabe.
+    let erst = null;
+    for (const x of stoff) {
+      for (const v of x.vk) if (v.quelle === 'termin' && (!erst || absMin(v.datum, v.ende) < erst.abs)) erst = { abs: absMin(v.datum, v.ende), datum: v.datum, teil: x };
+      for (const e of x.einheiten || []) if (!erst || absMin(e.ab, 0) < erst.abs) erst = { abs: absMin(e.ab, 0), datum: e.ab, teil: x };
+    }
+    if (!erst) continue;
+    z.stoff_ab = erst.datum;
+    const bloecke = z.vk.filter((v) => v.quelle === 'block');
+    if (!z.einheiten) {
+      const vor = bloecke.filter((v) => absMin(v.datum, v.start) < erst.abs);
+      for (const v of vor) { v.zaehlt_min = 0; v.flags.push('vor_stoff'); }
+      if (vor.length) {
+        const wer = `${erst.teil.teil.art === 'video' ? 'erstes Video' : erst.teil.teil.titel} ${TAGE[wochentag(erst.datum)]} ${datumKurz(erst.datum)}`;
+        flagge(z, 'hinweis', 'vor_stoff', `${vor.length} ${vor.length > 1 ? 'Blöcke liegen' : 'Block liegt'} vor dem ersten Stoff (${wer}) — davor gibt es nichts vor- oder nachzubereiten, die Zeit zählt nicht`);
+        z.ist_min = z.vk.reduce((s, v) => s + v.zaehlt_min, 0);
+      }
+    }
+    // Der Bezug je Vorkommen — nur, wenn der Stoff derselben Lehrveranstaltung Termine hat (eine Übung ohne Zeiten
+    // sagt nichts darüber, wo ihre Nachbereitung hingehört).
+    const ereignisse = stoff.flatMap((x) => x.vk.filter((v) => v.quelle === 'termin' || (v.quelle === 'block' && x.teil.art === 'video' && v.zaehlt_min > 0))
+      .map((v) => ({ v, x, a: absMin(v.datum, v.start), e: absMin(v.datum, v.ende) })));
+    const name = (o) => `${o.x.teil.titel} (${TAGE[wochentag(o.v.datum)]} ${hhmm(o.v.start)})`;
+    const weit = [];
+    for (const v of bloecke) {
+      if (!(v.zaehlt_min > 0)) continue;
+      if (!eigen) { v.bezug = { lage: 'offen' }; continue; }
+      const a = absMin(v.datum, v.start), e = absMin(v.datum, v.ende);
+      let nach = null, vor = null, spaeter = null;
+      for (const o of ereignisse) {
+        if (o.e <= a && o.e >= a - 7 * 1440 && (!nach || o.e > nach.e)) nach = o;
+        if (o.v.quelle === 'termin' && o.v.datum === v.datum && o.a >= e && (!vor || o.a < vor.a)) vor = o;
+        if (o.a >= e && o.a <= a + 7 * 1440 && (!spaeter || o.a < spaeter.a)) spaeter = o;
+      }
+      const tage = nach ? tageZwischen(nach.v.datum, v.datum) : null;
+      const direktNach = !!nach && tage === 0 && a - nach.e <= regeln.bezug_direkt_min;
+      const direktVor = !!vor && vor.a - e <= regeln.bezug_direkt_min;
+      const lage = direktNach || direktVor ? 'direkt' : nach && tage <= regeln.bezug_nah_tage ? 'nah' : nach ? 'fern' : 'ohne';
+      const text = direktVor && !direktNach ? `direkt vor ${name(vor)}`
+        : nach ? `${direktNach ? 'direkt' : tage === 0 ? 'am selben Tag' : tage === 1 ? 'einen Tag' : `${tage} Tage`} nach ${name(nach)}`
+        : spaeter ? `vor dem Stoff (${name(spaeter)}) — davor gibt es nichts nachzubereiten` : 'in den sieben Tagen davor kein Stoff';
+      v.bezug = { lage, text, nach: nach ? nach.v.id : null, vor: vor ? vor.v.id : null };
+      if (lage === 'fern' || lage === 'ohne') weit.push(v);
+    }
+    // Ein Hinweis am Teil, wenn ein Block meistens weit weg liegt — nicht wegen einer einzelnen ersten Woche.
+    const proBlock = new Map();
+    for (const v of weit) proBlock.set(v.block, [...(proBlock.get(v.block) || []), v]);
+    for (const vs of proBlock.values()) {
+      const alle = bloecke.filter((v) => v.block === vs[0].block && v.zaehlt_min > 0).length;
+      if (vs.length * 2 <= alle) continue;
+      const b = (plan.bloecke || []).find((x) => x.id === vs[0].block);
+      const wann = b && b.datum ? datumKurz(b.datum) : b ? `${b.tag} ${b.start}` : datumKurz(vs[0].datum);
+      const bsp = vs.find((v) => v.bezug.lage === 'fern') || vs[0]; // eine typische Woche, nicht die erste
+      flagge(z, 'hinweis', 'bezug', `Block ${wann} liegt meist weit weg vom Stoff (${datumKurz(bsp.datum)}: ${bsp.bezug.text}) — direkt danach bleibt mehr hängen`, { block: vs[0].block });
+    }
+  }
+
   // 7 · Lücken und Ampel je Teil
   // Ein Block auf einem Termin (gesperrt): je Block eine Meldung, mit dem Namen dessen, was ihn sperrt. Trifft er in
   // mindestens drei Wochen (oder an jedem seiner Tage) einen Termin, muss er weg — „du bist dran“. Trifft er nur an
@@ -923,20 +1012,25 @@ export function gesperrtDurch(angebot, plan, erg, { tag, datum = null, start, en
  *  - EVL: Blöcke von evl_min_min bis evl_block_min (1,5–2 h, Silas: „mindestens anderthalb Stunden … einfach zwei
  *    Stunden“); k je Woche oder einer alle n Wochen — was dem Soll am nächsten kommt, bei Gleichstand der längere Block.
  *  Ergebnis: { dauer_min, anzahl (je Woche), alle (jede n-te Woche), wochen (wie oft er liegt), summe_min, soll_min,
- *  bis (letzter Tag, wenn er eine Woche vor dem Ende aufhört) }
+ *  bis (letzter Tag, wenn er eine Woche vor dem Ende aufhört), ab (erster Tag, wenn der Stoff später beginnt) }
  *  oder null (Präsenz, Prüfung, kein Soll). Was tatsächlich zählt, rechnet danach rechnen() an den echten Tagen. */
 export function vorgabe(erg, teilId) {
   const z = erg.teile.get(teilId);
   if (!z || !(z.soll_min > 0) || !['video', 'selbst'].includes(z.teil.art)) return null;
   const r = erg.regeln;
-  const vlWochen = erg.wochen.filter((w) => w.art === 'vorlesung');
+  const alleWochen = erg.wochen.filter((w) => w.art === 'vorlesung');
+  // Ein Block beginnt, wo es etwas für ihn gibt (V-0342, Silas: „wieso ist das durchgestrichen? Kein Video in der
+  // Woche … weil das noch nicht da anfängt“): ein Videoblock mit der ersten Freigabe, ein Lernblock mit dem ersten
+  // Stoff seines Moduls (rechnen() 6b). `ab` kommt an den Block, davor liegt er gar nicht erst.
+  // Mit Einheiten (Videos, Quizze) beginnt er mit der ersten Freigabe, sonst mit dem ersten Stoff seines Moduls.
+  const erstes = z.gruppen && z.gruppen.length ? z.gruppen[0].ab : z.teil.art === 'selbst' ? z.stoff_ab : null;
+  const ab = erstes && alleWochen.length && erstes > alleWochen[0].von ? erstes : null;
+  const vlWochen = ab ? alleWochen.filter((w) => w.bis >= ab) : alleWochen;
   const vl = vlWochen.length || 15;
   if (z.teil.art === 'video') {
-    const ab = z.gruppen && z.gruppen.length ? montagVon(z.gruppen[0].ab) : vlWochen[0].von;
-    const w = vlWochen.filter((x) => x.von >= ab).length || vl;
     const ziel = Math.max(r.raster_min, Math.min(z.soll_min - r.toleranz_min, z.video_bedarf_min || Infinity));
-    const dauer = Math.max(r.raster_min, aufRaster(ziel / w, r.raster_min));
-    return { dauer_min: dauer, anzahl: 1, alle: 1, wochen: w, summe_min: dauer * w, soll_min: z.soll_min, video_min: z.video_bedarf_min || null, bis: null };
+    const dauer = Math.max(r.raster_min, aufRaster(ziel / vl, r.raster_min));
+    return { dauer_min: dauer, anzahl: 1, alle: 1, wochen: vl, summe_min: dauer * vl, soll_min: z.soll_min, video_min: z.video_bedarf_min || null, bis: null, ab };
   }
   // Die Modulbeschreibungen rechnen mit 15 Wochen, das Semester hat 16 Vorlesungswochen: Ein Wochenblock darf darum
   // eine Woche früher enden (`bis`) — sonst plante jede Vorgabe 32 h für 30 h (Silas' Prüfung der Wochenlast, V-0336).
@@ -952,7 +1046,7 @@ export function vorgabe(erg, teilId) {
           const abstand = Math.abs(summe - z.soll_min);
           if (!beste || abstand < beste.abstand - 1) {
             beste = { dauer_min: L, anzahl: k, alle, wochen, summe_min: summe, soll_min: z.soll_min, abstand,
-              bis: wochen < moeglich ? vlWochen[(wochen - 1) * alle].bis : null };
+              bis: wochen < moeglich ? vlWochen[(wochen - 1) * alle].bis : null, ab };
           }
         }
       }
@@ -1091,7 +1185,13 @@ export function wochenBedarf(angebot, plan, erg, wocheId = null) {
       const schauwoche = (g) => { const v = g.bloecke.length && z.vk.find((x) => x.id === g.bloecke[0]); return v ? montagVon(v.datum) : g.montag; };
       soll = z.gruppen.filter((g) => schauwoche(g) === w.id).reduce((s, g) => s + (g.bedarf_min || Math.round(z.soll_min / vlWochen)), 0);
       if (!soll && t.art === 'selbst' && z.gruppen.some((g) => g.ab <= w.bis && (!g.bis || g.bis >= w.von))) soll = Math.round(z.soll_min / vlWochen);
-    } else soll = Math.round(z.soll_min / vlWochen);
+    } else {
+      // Ein Lernblock hat erst ab dem ersten Stoff seines Moduls etwas zu tun (V-0342): davor nichts, danach das Soll
+      // verteilt auf die Wochen ab dort — sonst stünde in W01 „EINFWI-Nachbereitung 2 h dran“ vor dem Kick-off.
+      const ab = t.art === 'selbst' ? z.stoff_ab : null;
+      const ab_wochen = ab ? erg.wochen.filter((x) => x.art === 'vorlesung' && x.bis >= ab).length || vlWochen : vlWochen;
+      soll = w && ab && w.bis < ab ? 0 : Math.round(z.soll_min / ab_wochen);
+    }
     const offen = Math.max(0, soll - ist);
     if (grund === 'ok' && offen >= 15) grund = 'planen';
     if (grund !== 'ok' && grund !== 'planen' && !soll) grund = 'ok';
