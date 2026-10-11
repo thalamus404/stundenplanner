@@ -338,6 +338,22 @@ test('Freie Fenster: wo ein Block der Länge passt, ohne etwas zu überdecken', 
   assert.deepEqual(M.freieFenster([[m('09:00'), m('10:30')]], 120, m('08:00'), m('12:00')), []);
 });
 
+test('Prüfungsarten für die Zeitleiste: Klausur, E-Test, Online- und schriftliche Tests', () => {
+  assert.equal(M.pruefungsArt({ id: 'x-klausur', titel: 'Präsenzklausur (80 P)' }), 'klausur');
+  assert.equal(M.pruefungsArt({ id: 'x-etest1', titel: 'E-Test 1 (10 P, 20 min)' }), 'etest');
+  assert.equal(M.pruefungsArt({ id: 'x-test', titel: 'Online-Test (20 P)' }), 'test', '„Online-Test“ ist kein E-Test');
+  assert.equal(M.pruefungsArt({ id: 'x-test', titel: 'Schriftlicher Test (80 P, 60 min)' }), 'test');
+  assert.equal(M.pruefungsArt({ id: 'x', titel: 'Portfolio', art: 'klausur' }), 'klausur', 'art im Angebot gilt');
+});
+
+test('Prüfungsvorbereitung in der Vorlesungszeit: Wochenblock am Samstag bis zum Tag vor der Prüfung zählt', () => {
+  const plan = { bloecke: [{ id: 'p', teil: 'bsp-pv', tag: 'Sa', start: '09:00', ende: '12:00', bis: '2031-03-02' }] };
+  const z = M.rechnen(angebot(), plan).teile.get('bsp-pv');
+  assert.equal(z.vk.length, 16, 'jede Vorlesungswoche einmal');
+  assert.equal(z.ist_min, 16 * 180);
+  assert.equal(M.wochentag(z.vk[0].datum), 5);
+});
+
 test('Keine Vorschläge mehr: der Lernplan-Vorschlag ist aus Modell und Seite entfernt', () => {
   assert.equal(M.lernplanVorschlag, undefined);
   const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');

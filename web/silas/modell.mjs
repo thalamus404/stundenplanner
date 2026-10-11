@@ -30,6 +30,7 @@ export const REGELN = {
   evl_min_min: 90,      // … „mindestens anderthalb Stunden“
   evl_fenster: ['10:00', '18:00'], // freie Plätze dazwischen sind bevorzugt („alles zwischen 10 und 18 Uhr preferred“)
   tag_fenster: ['08:00', '20:00'], // wo freie Plätze überhaupt gesucht werden
+  pruef_fenster: ['07:00', '22:00'], // Prüfungsvorbereitung in der Vorlesungszeit: auch früh und abends (V-0337)
 };
 
 // ── Zeit ─────────────────────────────────────────────────────────────────────────────────────────
@@ -267,6 +268,18 @@ const RANG = Object.fromEntries(STUFEN.map((s, i) => [s, i]));
 export const hoechste = (flags) => flags.reduce((b, f) => (f.stufe && (b === 'ok' || RANG[f.stufe] < RANG[b]) ? f.stufe : b), 'ok');
 
 const PRUEFUNGSTHEMEN = new Set(['datum_offen', 'uhrzeit_offen', 'pruefung_offen', 'pruefung_unsicher', 'anmeldung_offen', 'anmeldung_unsicher', 'pruefung_wahl', 'pruefung_konflikt']);
+
+/** Die Art einer Prüfung für die Zeitleiste (V-0337, Silas: „A die Klausuren, B die E-Tests, C die Online-Tests und
+ *  die schriftlichen Prüfungen und alles, was eine Prüfungsleistung ist“). Im Angebot überschreibt `art` die Herleitung
+ *  aus dem Titel. */
+export const PRUEFUNGSARTEN = [['klausur', 'Klausuren'], ['etest', 'E-Tests'], ['test', 'Online- und schriftliche Tests']];
+export function pruefungsArt(p) {
+  if (p.art && PRUEFUNGSARTEN.some(([a]) => a === p.art)) return p.art;
+  const t = `${p.id} ${p.titel}`;
+  if (/\be-?test/i.test(t)) return 'etest'; // nicht „Online-Test“ (onlin-e-Test)
+  if (/klausur/i.test(t)) return 'klausur';
+  return 'test';
+}
 
 /** unbekannt (kein Prüfungstermin), bekannt (ein Termin steht), anmeldung (die Anmeldung des Moduls läuft). */
 export function pruefungsStand(m, heute) {

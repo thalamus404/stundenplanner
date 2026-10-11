@@ -237,7 +237,21 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 - **Festgelegt** ruhen die Schritte: „Stundenplan festgelegt am …“ und **Stundenplan bearbeiten** (welcher Schritt?).
   Reiter *Woche*, *Prüfungen* (die Prüfungen mit Terminen, Anmeldung und Formularen, ihre Vorbereitung, der Kalender
   der vorlesungsfreien Zeit: Prüfung wählen, Tage antippen — jeder Tipp ein Lerntag, §2.8), *Offen & Annahmen*, *So
-  wird gerechnet*. Im Raster ist alles farbig und fest; ziehen lassen sich nur noch die Lerntage. Ein Bestandteil
+  wird gerechnet*.
+- **Prüfungen, oben die Zeitleiste** (V-0337, Silas: *„ganz oben eine Master-Timeline, wo man das ganze Semester
+  sieht, die Vorlesungszeit und die vorlesungsfreie Zeit … und auf dieser Skala A die Klausuren, B die E-Tests, C die
+  Online-Tests und die schriftlichen Prüfungen“*): das Semester von Beginn bis Ende mit den Monaten und heute, darüber
+  die Phasen — Vorlesungszeit, Pause, vorlesungsfrei (ein Klick auf eine vorlesungsfreie springt zu ihrem Kalender
+  unten) —, darunter drei Spuren (`pruefungsArt()`: Klausuren · E-Tests · Online- und schriftliche Tests) mit jedem
+  Termin: gefüllt, was gilt, hohl Ausweich- und Zweittermine; ein Klick öffnet die Prüfung links. Die Beschriftungen
+  ordnet die Seite nach ihrer gemessenen Breite in Zeilen und klappt sie am rechten Rand nach links.
+- **Vorlesungszeit öffnen** (V-0337, Silas: *„der Stundenplan muss in der Ansicht auf jeden Fall gelockt sein, aber
+  außerhalb des Stundenplans — vor den Zeiträumen, nach den Zeiträumen und am Wochenende — kann man auch während der
+  Vorlesungszeit Prüfungsvorbereitung einrichten … sich wiederholende Termine“*): das Raster mit allen sieben Tagen
+  von 7 bis 22 Uhr; der Stundenplan ist dunkelgrau und fest, die Prüfungen farbig. Links jede Prüfungsvorbereitung nach
+  Prüfungsdatum mit Länge (1–4 h) und „Block legen“; freie Plätze (`pruef_fenster` 07–22 Uhr) sind grün. In der
+  Standardwoche liegt der Block jede Woche bis zum Tag vor der Prüfung (`bis`), in einer echten Woche nur an diesem
+  Tag. Im Raster ist alles farbig und fest; ziehen lassen sich nur noch die Lerntage. Ein Bestandteil
   zeigt „In Schritt n bearbeiten“.
 - **Links, was der Schritt will** (im Ablauf): oben ein Satz, was hier zu tun ist, und der Weg weiter; darunter je
   Modul nur die Teile dieses Schritts (Module ohne sie blass). Schritt 1 zeigt dazu die Quizze mit ihren Fristen.
@@ -325,6 +339,7 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 | `pendeln_min` | 45 | steht im Angebot; die Seite zeichnet es noch nicht (§8) |
 | `evl_block_min`, `evl_min_min` | 120, 90 | Silas, V-0335: „EVL-Block muss einfach zwei Stunden sein … mindestens anderthalb“ |
 | `evl_fenster`, `tag_fenster` | 10–18, 08–20 | bevorzugte und überhaupt gesuchte freie Plätze (Silas: „zwischen 10 und 18 Uhr preferred“) |
+| `pruef_fenster` | 07–22 | Prüfungsvorbereitung in der Vorlesungszeit: auch früh und abends (V-0337) |
 
 ## 5. Das Datenformat
 
