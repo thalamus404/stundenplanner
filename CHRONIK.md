@@ -12,6 +12,14 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 11.10.2026 — /silas: Prüfungen mit Semester-Zeitleiste und Vorbereitung in der Vorlesungszeit (V-0337)
+
+- Silas sah im Reiter Prüfungen nicht, wann E-Test 1, E-Test 2 und der Online-Test sind. Oben steht jetzt die
+  Zeitleiste des ganzen Semesters mit den Phasen und je einer Spur für Klausuren, E-Tests und Online-/schriftliche
+  Tests; die vorlesungsfreien Abschnitte führen zu ihrem Kalender (docs/SILAS.md §3).
+- „Vorlesungszeit öffnen“: das Raster mit gesperrtem Stundenplan, sieben Tage, 7–22 Uhr; Prüfungsvorbereitung wird
+  abgelegt — in der Standardwoche jede Woche bis zum Tag vor der Prüfung, in einer echten Woche einmal.
+
 ## 11.10.2026 — /silas: Wochenlast geprüft, hellgrau, einklappen, kurz zurück (V-0336)
 
 - Silas' festgelegter Plan zeigte 9 / 8,5 / 8,25 / 8 / 8 h je Tag. Geprüft: Die Standardwoche zählte Blöcke „alle n
