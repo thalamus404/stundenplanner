@@ -116,22 +116,26 @@ eine Information. Optionen legt Silas auf der Seite selbst an — ISIS ist die Q
    Modul und Semester zählen die Summe der gedeckten Stunden, das Mehr steht als gelber Hinweis daneben
    („34 h mehr als in der Modulbeschreibung“ — die PROG1-Präsenz hat zwei Termine je Woche statt 2 SWS).
 
-### 2.6 Rot und gelb
+### 2.6 Die Stufen: rot, orange, hellblau, grau (V-0332)
 
-Rot ist alles, was Silas noch tun muss — **Information fehlt** (ⓘ) oder **nicht im Plan** (⚠):
+Silas, 11.10.: *„Orange ist Achtung, Hinweis … Raum noch nicht bekannt ist keine kritische Warnung. Wenn man das Datum
+von etwas kennt, kann es schon mal nicht kritisch sein“* — und *„was muss der User jetzt selber eintragen? … markiert als
+hellblau: das musst du noch eintragen, das musst du noch festlegen“.* Jede Meldung entsteht mit einer rohen Art; ihre
+Stufe vergibt `einstufen()` am Ende, nach dem heutigen Datum, der Semesterphase und dem Stand der Prüfung:
 
-| Code | Stufe | Wann |
-|---|---|---|
-| `termine_offen` | Info | Präsenz ohne Termine, Wahl ohne Gruppen |
-| `datum_offen`, `uhrzeit_offen` | Info | Prüfung ohne Datum oder ohne Uhrzeit |
-| `laenge_offen`, `freigabe_offen`, `offen` | Info | Videolänge, Freigabetag, eine offene Angabe aus dem Angebot |
-| `wahl_offen` | Plan | Gruppen da, keine gewählt |
-| `ungeplant`, `luecke` | Plan | nichts oder zu wenig eingeplant; bei Präsenz mit allen Terminen: strukturell → umwidmen |
-| `einheit_ohne_block`, `nach_pruefung`, `konflikt` | Plan | siehe §2.5 |
-| `unsicher`, `hinweis`, `aufteilung`, `ueber`, `weicht`, `leer` | Hinweis (gelb) | prüfen, aber kein Fehler |
+| Stufe | Farbe | Was | Beispiele |
+|---|---|---|---|
+| `kritisch` | rot | jetzt handeln | eine Anmeldung läuft; zwei feste Termine übereinander; Prüfungsthemen, sobald die Anmeldung des Moduls läuft; Prüfungsvorbereitung, wenn ihre Zeit da ist |
+| `achtung` | orange | prüfen | Unsicheres; Raum oder Uhrzeit fehlt bei bekanntem Datum; selbst geplantes Zuviel über 2 h; Block nach der Prüfung; Prüfungsthemen, sobald ein Termin bekannt ist |
+| `dran` | hellblau | du bist dran | Gruppe wählen, Blöcke setzen, Videolängen ablesen (nur erschienene Videos), umwidmen; eine Gruppenanmeldung (in der letzten Woche rot) |
+| `kommt` | grau | kommt noch | Termine, Fristen, Gruppen, die der Lehrstuhl noch nicht veröffentlicht hat; Prüfungsthemen, solange kein Termin bekannt ist |
+| `spaeter` | grau | später | Prüfungsvorbereitung vor ihrer Zeit: kritisch ab Beginn der vorlesungsfreien Zeit, bei Prüfungen in der Vorlesungszeit (E-Test, Online-Test) `vorlauf_tage` (21) vorher |
+| `info` | grau | Hinweis | Annahmen (sie stehen unter „Offen & Annahmen“), Hinweise aus ISIS, Blöcke ohne Video, kleine Überlappungen |
 
-Ein Teil ist rot, sobald er eine Info- oder Plan-Flagge hat; ein Modul, sobald einer seiner Teile rot ist. Der Kopf
-zählt die roten Teile („12 offen“), ein Klick springt zum ersten.
+- **±2 h:** Lücken und Zuviel unter `toleranz_min` (120 min) werden nicht gemeldet (Silas: „sonst zu verwirrend“).
+- **Anmelden:** `plan.angemeldet[id]` hakt eine Anmeldung ab (Prüfung oder Gruppe); bis dahin steht „Jetzt anmelden — bis …“.
+- **Ausweich- und Zweittermine**, die Silas nicht gewählt hat, verdrängen nichts und zählen nicht zur Tageslast; sie
+  stehen über dem Raster.
 
 ### 2.6a Fristen, die das Modell selbst bildet
 
@@ -189,6 +193,18 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   Woche** (W01 … P8, mit Datum, Ganztägigem oben: Fristen, Prüfungen, Video-Freigaben). Im Raster ziehen setzt einen
   Block (Standardwoche: jede Woche; echte Woche: fragt „nur am … / jeden …“); Blöcke lassen sich verschieben, an der
   Unterkante verlängern, anklicken zum Bearbeiten. ← → wechselt die Woche, ⌘Z macht rückgängig, Esc schließt.
+- **Farben nach Art** (V-0332, Silas: „Präsenzveranstaltung sollte das gleiche Farbschema haben bei allen Modulen …
+  Quiz zum Beispiel immer grün“): Präsenz, Videos, Vor- und Nachbereitung, Aufgaben und Labs, Quiz und Tests, Prüfung —
+  je eine Farbe (`kategorie()`), das Modul als Streifen links an jeder Kachel. Formen: fester Termin (gefüllt), **zur
+  Wahl** (gefüllt, weiß gestrichelte Linie innen — solange nicht gewählt, stehen alle Gruppen im Plan), **gewählt**
+  (weiß durchgezogen; die anderen nur noch ausgegraut, wenn der Teil gewählt ist), nur an einzelnen Tagen (heller, mit
+  Anzahl), dein Block (schraffiert).
+- **Unter dem Raster:** was in dieser Woche (Standardwoche: jede Woche) dran wäre, aber noch nicht im Plan ist
+  (`wochenBedarf()`): grau „Termine kommen noch“, hellblau „Block setzen“ oder „Gruppe wählen“. Videos zählen in der
+  Woche, in der ein Block sie deckt.
+- **Links: Ganzes Semester | Diese Woche.** Die Woche ist die im Raster gezeigte. Im Bereich Vorlesungszeit stehen die
+  Prüfungsteile als eine graue Zeile („in der vorlesungsfreien Zeit“), in der vorlesungsfreien Zeit umgekehrt.
+- **Ohne Uhrzeit:** Ein Termin mit Datum, aber ohne Uhrzeit steht über dem Raster; ein Klick trägt Uhrzeit und Ort nach.
 - **Kopf, die Bilanz:** *eingeplant − zu viel = gedeckt von Soll* (Silas: „die Zahl davor muss alles
   zusammengerechnet sein und dahinter muss stehen minus so und so viele Stunden, die zu viel eingeplant sind“).
 - **Woher:** Die Karte eines Teils nennt die Zeile der Aufwandstabelle, den Anteil dieses Teils, Umwidmungen und die
