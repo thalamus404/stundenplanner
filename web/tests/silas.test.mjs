@@ -191,45 +191,69 @@ test('Ohne Prüfungstermin fehlt eine Angabe, und eine falsche Aufwandstabelle f
 
 // ── Die vier Schritte (V-0333) ───────────────────────────────────────────────────────────────────
 
-test('Schritte: feste Präsenz 1, Gruppen 2, Videos 3, alles andere 4 — Blöcke folgen ihrem Teil', () => {
+test('Schritte: feste Präsenz 1, Gruppen 2, Videos 3, Selbststudium 4, Prüfungsvorbereitung 5 — Blöcke folgen ihrem Teil', () => {
   const a = angebot();
   const t = Object.fromEntries(a.module[0].teile.map((x) => [x.id, M.schrittVon(x)]));
-  assert.deepEqual(t, { 'bsp-vl': 1, 'bsp-video': 3, 'bsp-vn': 4, 'bsp-ue': 2, 'bsp-pv': 4 });
+  assert.deepEqual(t, { 'bsp-vl': 1, 'bsp-video': 3, 'bsp-vn': 4, 'bsp-ue': 2, 'bsp-pv': M.PRUEFUNGEN });
   // Präsenz ohne Termine und ohne Gruppen (die Gruppen kommen noch) gehört zu den Gruppen.
   assert.equal(M.schrittVon({ id: 'x', art: 'praesenz' }), 2);
   assert.equal(M.schrittVonBlock(null), 4);
   const e = M.rechnen(a, { wahl: { 'bsp-ue': 'g2' }, bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '11:00' }] });
   const s = M.schritte(e);
-  assert.deepEqual(s.map((x) => x.titel), ['Grundlage', 'Gruppen', 'Videos', 'EVL']);
+  assert.deepEqual(s.map((x) => x.titel), ['Grundlage', 'Gruppen', 'Videos', 'EVL', 'Prüfungen']);
   assert.equal(s.reduce((n, x) => n + x.soll_min, 0), 180 * 60, 'jeder Teil in genau einem Schritt');
   assert.ok(e.vorkommen.filter((v) => v.quelle === 'termin' && v.teil === 'bsp-ue').every((v) => v.schritt === 2 && v.hart));
   assert.ok(e.vorkommen.filter((v) => v.block === 'v').every((v) => v.schritt === 3));
   assert.ok(e.vorkommen.filter((v) => v.quelle === 'frist').every((v) => v.schritt === 1 && !v.hart));
+  // Prüfungen sind nicht im Ablauf (V-0334): die Klausur, ihre Anmeldung und ihre Vorbereitung gehören zu Schritt 5.
+  assert.ok(e.vorkommen.filter((v) => v.quelle === 'pruefung').every((v) => v.schritt === M.PRUEFUNGEN && v.hart));
+  assert.equal(M.schrittVonBlock(a.module[0].teile.find((x) => x.id === 'bsp-pv')), M.PRUEFUNGEN);
+  // Anmeldungen: die einer Gruppe gehört zu Schritt 2, die einer Prüfung zu den Prüfungen.
+  const b = angebot();
+  b.module[0].teile[3].anmeldung = { von: '2030-10-14', bis: '2030-10-16', wo: 'MOSES' };
+  b.module[0].pruefungen[0].anmeldung = { von: '2030-11-01', bis: '2030-11-20', wo: 'MOSES' };
+  const fr = M.rechnen(b, {}).vorkommen.filter((v) => v.quelle === 'frist' && /anmeldung/.test(v.id));
+  assert.deepEqual(fr.map((v) => [v.id, v.schritt]), [['bsp-ue-anmeldung-von', 2], ['bsp-ue-anmeldung-bis', 2], ['bsp-klausur-anmeldung-von', M.PRUEFUNGEN], ['bsp-klausur-anmeldung-bis', M.PRUEFUNGEN]]);
   assert.equal(s[3].offen, s[3].zaehler.kritisch + s[3].zaehler.dran);
 });
 
-test('Zurücksetzen: ab 2 fallen Gruppen, Prüfungswahl und alle Blöcke weg, ab 3 nur Blöcke, ab 4 nur Lernblöcke', () => {
+test('Zurücksetzen: ab 2 fallen Gruppen und alle Blöcke heraus, ab 3 nur Blöcke, ab 4 nur Lernblöcke — Prüfungen bleiben', () => {
   const a = angebot();
   const plan = {
     wahl: { 'bsp-ue': 'g1' }, pruefungstermin: { 'bsp-klausur': '2031-03-03' }, angemeldet: { 'bsp-klausur': true },
     bestaetigt: { 'soll:bsp-video': true }, umwidmungen: [{ id: 'u', von: 'bsp-ue', nach: 'bsp-pv', h: 2 }],
-    bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '11:00' }, { id: 'n', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }, { id: 'p', teil: null, tag: 'Fr', start: '08:00', ende: '08:30' }],
+    festgelegt: '2030-10-20T10:00:00.000Z',
+    bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '11:00' }, { id: 'n', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }, { id: 'p', teil: null, tag: 'Fr', start: '08:00', ende: '08:30' },
+      { id: 'l', teil: 'bsp-pv', datum: '2031-02-20', start: '09:00', ende: '15:00' }],
   };
-  const r2 = M.zuruecksetzen(plan, a, 2);
+  const r2 = M.zuruecksetzen(plan, a, 2, { am: '2030-10-21T08:00:00.000Z' });
   assert.equal(r2.wahl, undefined);
-  assert.equal(r2.pruefungstermin, undefined);
-  assert.deepEqual(r2.bloecke, []);
+  assert.deepEqual(r2.pruefungstermin, plan.pruefungstermin, 'die Prüfungswahl gehört nicht zum Ablauf');
+  assert.deepEqual(r2.bloecke.map((b) => b.id), ['l'], 'die Lerntage vor der Prüfung bleiben');
+  assert.equal(r2.festgelegt, undefined, 'zurückgesetzt ist der Plan wieder in Arbeit');
+  // Nichts wird gelöscht: Was herausfällt, liegt beiseite und kommt mit wiederherstellen() zurück.
+  assert.deepEqual(r2.zurueckgesetzt.wahl, plan.wahl);
+  assert.deepEqual(r2.zurueckgesetzt.bloecke.map((b) => b.id), ['v', 'n', 'p']);
+  const zurueck = M.wiederherstellen(r2);
+  assert.deepEqual(zurueck.wahl, plan.wahl);
+  assert.deepEqual(zurueck.bloecke.map((b) => b.id).sort(), ['l', 'n', 'p', 'v']);
+  assert.equal(zurueck.zurueckgesetzt, undefined);
+  // Ein zweites Zurücksetzen legt dazu, statt zu überschreiben; Wiederherstellen überschreibt keine neue Wahl.
+  const zweimal = M.zuruecksetzen({ ...r2, wahl: { 'bsp-ue': 'g2' } }, a, 2);
+  assert.deepEqual(zweimal.zurueckgesetzt.wahl, { 'bsp-ue': 'g2' });
+  assert.equal(zweimal.zurueckgesetzt.bloecke.length, 3);
+  assert.deepEqual(M.wiederherstellen({ ...r2, wahl: { 'bsp-ue': 'g2' } }).wahl, { 'bsp-ue': 'g2' });
   assert.deepEqual(r2.angemeldet, plan.angemeldet, 'was Silas weiß, bleibt');
   assert.deepEqual(r2.bestaetigt, plan.bestaetigt);
   assert.deepEqual(r2.umwidmungen, plan.umwidmungen);
   const r3 = M.zuruecksetzen(plan, a, 3);
   assert.deepEqual(r3.wahl, plan.wahl);
-  assert.deepEqual(r3.bloecke, []);
-  assert.deepEqual(M.zuruecksetzen(plan, a, 4).bloecke.map((b) => b.id), ['v']);
-  assert.equal(plan.bloecke.length, 3, 'der alte Plan bleibt unverändert (Rückgängig)');
+  assert.deepEqual(r3.bloecke.map((b) => b.id), ['l']);
+  assert.deepEqual(M.zuruecksetzen(plan, a, 4).bloecke.map((b) => b.id), ['v', 'l']);
+  assert.equal(plan.bloecke.length, 4, 'der alte Plan bleibt unverändert (Rückgängig)');
   // Nach dem Zurücksetzen steht die Grundlage: alle festen Termine, nichts aus den Schritten 2–4.
   const e = M.rechnen(a, r2);
-  assert.ok(e.vorkommen.every((v) => v.schritt === 1));
+  assert.ok(e.vorkommen.every((v) => v.schritt === 1 || v.schritt === M.PRUEFUNGEN));
   assert.equal(e.teile.get('bsp-vl').vk.length, 16);
 });
 
