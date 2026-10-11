@@ -411,7 +411,10 @@ a { color: inherit; text-underline-offset: 2px; }
   .buehne, .buehne.ohne-leiste { flex: none; grid-template-columns: var(--links) minmax(0, 1fr); align-items: start; }
   .module { position: sticky; top: 8px; max-height: calc(100dvh - 16px); }
   .raster { flex: none; height: clamp(520px, calc(100dvh - 190px), 900px); }
-  .leiste { grid-column: 1 / -1; overflow: visible; }
+  /* Die Modulspalte klebt (sticky) — ihr Halt ist die ganze Bühne, also auch die Zeile der Semester-Übersicht darunter:
+     Sie lag beim Scrollen über der Minimap (V-0342, Sichtung bei 865 px, live seit V-0321). Die Übersicht schiebt sich
+     deshalb deckend über die Spalte. */
+  .leiste { grid-column: 1 / -1; overflow: visible; position: relative; z-index: 3; background: var(--grau-2); }
   .ohne-leiste .leiste > :not(.l-kopf) { display: flex; }
   .l-zu { display: none; }
 }
