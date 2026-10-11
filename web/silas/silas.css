@@ -582,7 +582,6 @@ a { color: inherit; text-underline-offset: 2px; }
 /* Wahltermine: ausgefüllt, weiße Linie innen — gestrichelt = noch wählen, durchgezogen = gewählt */
 .kachel.option { background: var(--wahl); color: var(--wahl-text); border: 1px solid var(--rand); outline: 2px dashed var(--linie-wahl); outline-offset: -5px; cursor: pointer; z-index: 3; }
 .kachel.option:hover { filter: brightness(1.04); }
-.kachel.option.abgewaehlt { opacity: .35; filter: grayscale(.7); }
 .kachel.gewaehlt { outline: 2px solid var(--linie-wahl); outline-offset: -5px; }
 /* Eine Reihe (nur an einzelnen Tagen) ist Pflicht wie jeder Termin, nur heller und mit Anzahl — gestrichelt ist die Wahl. */
 .kachel.reihe { background: var(--vor); color: var(--tinte); border-style: solid; }
@@ -706,12 +705,9 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .kachel.lage-frueher.block { background: repeating-linear-gradient(135deg, var(--grau-5) 0 6px, var(--grau-4) 6px 11px) !important; cursor: pointer; }
 .kachel.lage-frueher .k-etikett { background: var(--grau-7); }
 .kachel.lage-frueher .k-anzahl { background: var(--grau-4); color: var(--grau-9); }
-.kachel.option.abgewaehlt { background: transparent !important; color: var(--grau-8); border: 1.5px dashed var(--kr, var(--grau-7)) !important; border-left-width: 1.5px !important; outline: none !important; opacity: .85; filter: none; }
-.kachel.option.abgewaehlt .k-etikett { opacity: .5; }
-.kachel.option.abgewaehlt:hover { background: var(--grau-2) !important; }
 .raster.ohne-bloecke .r-tag { cursor: default; }
 .legende .lg-s { background: var(--grau-5); border: 1px solid var(--grau-6); border-left: 3px solid var(--grau-7); }
-.legende .lg-x { border: 1.5px dashed var(--k-praesenz-r); }
+.legende .lg-e { background: var(--grau-3); border: 1px solid var(--grau-5); border-left: 3px solid var(--grau-6); }
 
 /* Gesperrt: ein Block auf einem Termin muss weg (hellblau = du bist dran), einer, der an einzelnen Tagen weicht, ist
    nur gekürzt. Beim Ziehen zeigt der Entwurf rot, dass er auf einem Termin läge. */
@@ -767,3 +763,16 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .frei-fenster.bevorzugt { background: color-mix(in srgb, var(--gruen) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gruen) 45%, transparent); }
 .entwurf.legen { border-style: solid; background: color-mix(in srgb, var(--blau) 18%, var(--grau-1)); border-color: var(--blau); color: var(--blau-text); z-index: 7; }
 .entwurf.legen.gesperrt { border-color: var(--rot); background: color-mix(in srgb, var(--rot) 18%, var(--grau-1)); color: var(--rot-text); }
+
+/* V-0336: im selben Schritt schon gewählt/gelegt, aber nicht dran — hellgrau (frühere Schritte dunkelgrau, s. o.) */
+.kachel.lage-erledigt { background: var(--grau-3) !important; color: var(--grau-8) !important; border: 1px solid var(--grau-5) !important; border-left: 5px solid var(--grau-6) !important; outline: none !important; box-shadow: none; cursor: pointer; }
+.kachel.lage-erledigt.block { background: repeating-linear-gradient(135deg, var(--grau-3) 0 6px, var(--grau-2) 6px 11px) !important; }
+.kachel.lage-erledigt .k-etikett { background: var(--grau-6); }
+.kachel.lage-erledigt .k-anzahl { background: var(--grau-2); color: var(--grau-8); }
+/* Module, deren Sachen im Schritt alle erledigt sind: eingeklappt, grüner Haken, „ändern“ */
+.modul.zu { padding-bottom: 10px; gap: 4px; }
+
+.m-fertig { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--grau-8); }
+.m-fertig .ok { color: var(--gruen); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+.m-fertig .ok .i { width: 15px; height: 15px; }
+.schritt .s-stand.fertig { background: color-mix(in srgb, var(--gruen) 16%, var(--grau-1)); color: var(--gruen); }

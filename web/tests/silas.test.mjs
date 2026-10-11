@@ -305,14 +305,18 @@ test('Vorgabe je Woche: Video so lang wie Soll ÷ Videowochen, höchstens der Vi
   // brauchen; die Vorgabe deckt den Bedarf in den 15 Wochen ab der ersten Freigabe: 4 h ÷ 15 → 30 min.
   assert.deepEqual([v.anzahl, v.alle, v.wochen, v.dauer_min], [1, 1, 15, 30]);
   assert.equal(v.video_min, 240);
-  // 20 h Nachbereitung in 16 Wochen: 1,5 h jede Woche (24 h) und 2 h alle zwei Wochen (16 h) liegen gleich weit
-  // weg — bei Gleichstand gilt der längere Block.
+  // 20 h Nachbereitung in 16 Vorlesungswochen: am nächsten liegt 1,5 h jede Woche, eine Woche vor Schluss endend
+  // (15 × 1,5 h = 22,5 h); 2 h alle zwei Wochen (16 h) läge weiter weg.
   const n = M.vorgabe(e, 'bsp-vn');
-  assert.deepEqual([n.dauer_min, n.anzahl, n.alle, n.wochen, n.summe_min], [120, 1, 2, 8, 16 * 60]);
-  // 30 h: 2 h jede Woche.
+  assert.deepEqual([n.dauer_min, n.anzahl, n.alle, n.wochen, n.summe_min], [90, 1, 1, 15, 15 * 90]);
+  const vl = e.wochen.filter((w) => w.art === 'vorlesung');
+  assert.equal(n.bis, vl[14].bis, 'endet mit der 15. Vorlesungswoche');
+  // 30 h: 2 h jede Woche, 15 Wochen — genau das Soll (V-0336: vorher 16 × 2 h = 32 h).
   const a = angebot(); a.module[0].teile[1].soll_h = 0; // die Videos geben ihren Anteil ab: Nachbereitung 30 h
   const n30 = M.vorgabe(M.rechnen(a, {}), 'bsp-vn');
-  assert.deepEqual([n30.dauer_min, n30.anzahl, n30.alle], [120, 1, 1]);
+  assert.deepEqual([n30.dauer_min, n30.anzahl, n30.alle, n30.wochen, n30.summe_min], [120, 1, 1, 15, 30 * 60]);
+  const mitBis = M.rechnen(a, { bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00', bis: n30.bis }] });
+  assert.equal(mitBis.teile.get('bsp-vn').ist_min, 30 * 60, 'der gelegte Block trägt genau das Soll');
   assert.equal(M.vorgabe(e, 'bsp-vl'), null, 'Präsenz hat keine Vorgabe');
   assert.equal(M.vorgabe(e, 'bsp-pv'), null, 'die Prüfungsvorbereitung kommt nach dem Festlegen');
 });
