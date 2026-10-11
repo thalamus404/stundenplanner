@@ -205,7 +205,9 @@ springt in einen Schritt, die Auswahl bleibt.
 **Vorgabe je Woche** (V-0335, `vorgabe(erg, teil)`): Für einen Video-Teil EIN Block jede Woche ab der ersten
 Freigabe, so lang, dass er das Soll (abzüglich der ±2 h) deckt, höchstens aber, was die Videos mit Puffer brauchen
 (mehr zählte nicht). Für EVL Blöcke von 1,5–2 h — k je Woche oder einer alle n Wochen (`alle` am Block; `versatz`
-verschiebt), was dem Soll am nächsten kommt, bei Gleichstand der längere Block. Mit Silas' Stand: STAT1-Screencasts
+verschiebt), was dem Soll am nächsten kommt, bei Gleichstand der längere Block. Ein Wochenblock darf eine Woche vor
+dem Ende aufhören (`bis`): Die Modulbeschreibungen rechnen mit 15 Wochen, das Semester hat 16 Vorlesungswochen — sonst
+plante jede Vorgabe 32 h für 30 h (V-0336, Silas' Prüfung der Wochenlast). Mit Silas' Stand: STAT1-Screencasts
 1,5 h jede Woche (die Videos brauchen 23,5 h), STAT1-Nachbereitung 2 h jede Woche, TECHGI-Übung-Nachbereitung 2 h alle
 2 Wochen, PROG1-Labs 3 × 1:45 jede Woche. Was tatsächlich zählt, rechnet danach `rechnen()` an den echten Tagen.
 
@@ -248,7 +250,20 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   2 jede Wahl mit „4 Gruppen“, „0 vorhanden“ oder „✓ G4“, in 3 und 4 jeder Bestandteil mit seiner Vorgabe je Woche
   oder „✓ 24 h“. **Dran** (hellblau) ist, was Silas dort anklickt, sonst die erste offene Sache; nach jeder Wahl, nach
   jedem letzten Block rückt sie weiter. Ein Klick auf ein Modul macht seine erste offene Sache zu der, die dran ist.
-  In Schritt 2 stehen im Raster nur die Gruppen dieser einen Wahl.
+  In Schritt 2 stehen im Raster nur die Gruppen dieser einen Wahl; ist sie schon gewählt, alle ihre Gruppen, die
+  gewählte weiß umrandet.
+- **Farben im Ablauf** (V-0336): Was dran ist, ist farbig; was im selben Schritt schon gewählt oder gelegt ist, aber
+  zu einer anderen Sache gehört, **hellgrau** (ein Klick macht es zu der Sache, die dran ist); frühere Schritte
+  **dunkelgrau**. Module, deren Sachen im Schritt alle erledigt sind, klappen ein — grüner Haken „alles gewählt“ /
+  „alles gelegt“ (oder „nichts wählbar — kommt noch“) und „Wahl ändern“ / „Termine ändern“. Der Schrittknopf oben
+  zählt, was in der Reihe noch offen ist, sonst ✓ grün; ein roter „!“ heißt: etwas Kritisches (eine laufende
+  Anmeldung).
+- **Kurz zurück** (V-0336, Silas: *„wenn man in einem weiteren Schritt ist und man klickt auf ein Event, das in einem
+  Schritt vorher war, soll man temporär in den vorherigen Schritt zurückspringen … und es sollen alle Wahlen aus allen
+  anderen Schritten dunkelgrau angezeigt werden“*): Ein Klick auf eine dunkelgraue gewählte Gruppe oder einen
+  dunkelgrauen Block holt dessen Schritt mit genau dieser Sache dran; alles andere — auch was aus späteren Schritten
+  schon liegt — ist dunkelgrau. Nach der Wahl, dem Verschieben oder dem Legen geht es von selbst zurück (Esc oder
+  „Zurück zu Schritt …“ ohne Änderung).
 - **Block legen statt zeichnen** (V-0335, Silas: *„dass man sich einmal fest einen Slot pro Woche einplant … und der
   soll hochgerechnet werden auf die ganzen Vorlesungswochen … die Vorgabe … müsstest du in der Woche zwei Stunden
   blocken … an dem Mauszeiger rangeheftet dieser Block … anstatt dass man den zeichnet“*): Die Vorgabe (`vorgabe()`,
@@ -269,7 +284,9 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 - **Jede Kachel** trägt rechts senkrecht ihr **Etikett** — *Präsenz* (Termine, Gruppen, Prüfungen), *Video*, *EVL*
   (kurze Kacheln nur den Anfangsbuchstaben) — und vorn in Zeile 2, **wie oft** sie noch kommt: in der Standardwoche alle
   Termine des Eintrags, in einer echten Woche die ab diesem Tag; „1×“ dunkel heißt einmalig.
-- **Die Woche:** die **Standardwoche** (was jede Vorlesungswoche wiederkehrt; Reihen an ihrem typischen Platz
+- **Die Woche:** die **Standardwoche** (was jede Vorlesungswoche wiederkehrt; im Kopf je Tag und für die Woche das
+  **Mittel der echten Vorlesungswochen** — „Ø 7,5 h“, c.t. als Doppelstunde — neben dem Soll der Modulbeschreibungen;
+  bis V-0336 zählte sie Blöcke „alle n Wochen“ und Reihen, als lägen sie jede Woche; Reihen an ihrem typischen Platz
   mit „7×“ und „nächster 13.11.“; ein Wochenblock sagt „zählt 12 von 16“, wenn er nicht jede Woche zählt) oder eine
   **echte Woche** (jede Woche des Semesters, W01 … Pause … P8, mit Datum, Ganztägigem oben: Fristen, Prüfungen, die
   Freigaben des Schritts). Gelegte Blöcke lassen sich verschieben, an der Unterkante verlängern (EVL mindestens

@@ -906,7 +906,8 @@ export function gesperrtDurch(angebot, plan, erg, { tag, datum = null, start, en
  *    leer). Aufs Raster aufgerundet. Was liegen bleibt, holt der nächste Block nach (rechnen(), Schritt 6).
  *  - EVL: Blöcke von evl_min_min bis evl_block_min (1,5–2 h, Silas: „mindestens anderthalb Stunden … einfach zwei
  *    Stunden“); k je Woche oder einer alle n Wochen — was dem Soll am nächsten kommt, bei Gleichstand der längere Block.
- *  Ergebnis: { dauer_min, anzahl (je Woche), alle (jede n-te Woche), wochen (wie oft er liegt), summe_min, soll_min }
+ *  Ergebnis: { dauer_min, anzahl (je Woche), alle (jede n-te Woche), wochen (wie oft er liegt), summe_min, soll_min,
+ *  bis (letzter Tag, wenn er eine Woche vor dem Ende aufhört) }
  *  oder null (Präsenz, Prüfung, kein Soll). Was tatsächlich zählt, rechnet danach rechnen() an den echten Tagen. */
 export function vorgabe(erg, teilId) {
   const z = erg.teile.get(teilId);
@@ -919,16 +920,25 @@ export function vorgabe(erg, teilId) {
     const w = vlWochen.filter((x) => x.von >= ab).length || vl;
     const ziel = Math.max(r.raster_min, Math.min(z.soll_min - r.toleranz_min, z.video_bedarf_min || Infinity));
     const dauer = Math.max(r.raster_min, aufRaster(ziel / w, r.raster_min));
-    return { dauer_min: dauer, anzahl: 1, alle: 1, wochen: w, summe_min: dauer * w, soll_min: z.soll_min, video_min: z.video_bedarf_min || null };
+    return { dauer_min: dauer, anzahl: 1, alle: 1, wochen: w, summe_min: dauer * w, soll_min: z.soll_min, video_min: z.video_bedarf_min || null, bis: null };
   }
+  // Die Modulbeschreibungen rechnen mit 15 Wochen, das Semester hat 16 Vorlesungswochen: Ein Wochenblock darf darum
+  // eine Woche früher enden (`bis`) — sonst plante jede Vorgabe 32 h für 30 h (Silas' Prüfung der Wochenlast, V-0336).
+  // Mehr wird nicht gekürzt: Ein Block soll das Semester durchlaufen, nicht nach W10 aufhören.
   let beste = null;
   for (let L = r.evl_block_min; L >= r.evl_min_min; L -= 15) {
     for (let k = 1; k <= 4; k++) {
       for (let alle = 1; alle <= (k === 1 ? 8 : 1); alle++) {
-        const wochen = Math.ceil(vl / alle);
-        const summe = k * L * wochen;
-        const abstand = Math.abs(summe - z.soll_min);
-        if (!beste || abstand < beste.abstand - 1) beste = { dauer_min: L, anzahl: k, alle, wochen, summe_min: summe, soll_min: z.soll_min, abstand };
+        const moeglich = Math.ceil(vl / alle);
+        for (const wochen of [moeglich, moeglich - 1]) {
+          if (wochen < 1) continue;
+          const summe = k * L * wochen;
+          const abstand = Math.abs(summe - z.soll_min);
+          if (!beste || abstand < beste.abstand - 1) {
+            beste = { dauer_min: L, anzahl: k, alle, wochen, summe_min: summe, soll_min: z.soll_min, abstand,
+              bis: wochen < moeglich ? vlWochen[(wochen - 1) * alle].bis : null };
+          }
+        }
       }
     }
   }
