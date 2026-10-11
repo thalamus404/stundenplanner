@@ -611,7 +611,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .mu-zeile[class*=" k-"] .mu-z.lern { background: color-mix(in srgb, var(--kr) 55%, var(--kf)); }
 .mu-zeile[class*=" k-"] .mu-z.pruefung { background: var(--k-pruefung-r); }
 .legende .lg-k { width: 14px; height: 12px; border-radius: 3px; background: var(--kf); border: 1px solid var(--kr); }
-.kal-block[class*=" k-"] { background: repeating-linear-gradient(135deg, var(--kf) 0 5px, color-mix(in srgb, var(--kf) 35%, var(--grau-1)) 5px 9px); color: var(--kt); }
+.kal-block[class*=" k-"] { background: var(--kb, color-mix(in srgb, var(--kf) 72%, var(--grau-1))); color: var(--kt); }
 .chip.zeitlos { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
 
 .stufen-legende { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--grau-9); }
@@ -804,8 +804,13 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .hauptreiter button:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Fahrzeit: nur zum Sehen, grau gestrichelt, sperrt nichts. */
-.fahrt { position: absolute; left: 3px; right: 3px; z-index: 1; border: 1.5px dashed var(--grau-6); border-radius: 6px; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.fahrt span { font-size: 10px; color: var(--grau-8); letter-spacing: .03em; }
+/* Fahrzeit und Mittag liegen über den Kacheln, durchsichtig und ohne Klick (V-0340: die Fahrt nach Hause lag sonst
+   unter dem nächsten Block). Fahrzeit grau gestrichelt, Mittag bernstein gepunktet. */
+.fahrt, .mittag { position: absolute; left: 2px; right: 2px; z-index: 4; border-radius: 6px; pointer-events: none; display: flex; align-items: flex-end; justify-content: flex-end; overflow: hidden; }
+.fahrt { border: 2px dashed var(--grau-8); background: color-mix(in srgb, var(--grau-8) 10%, transparent); }
+.mittag { border: 2px dotted var(--hinweis); background: color-mix(in srgb, var(--hinweis) 10%, transparent); }
+.fahrt span, .mittag span { font-size: 9.5px; font-weight: 700; line-height: 12px; padding: 0 4px; margin: 1px 15px 1px 0; border-radius: 3px; background: var(--grau-1); color: var(--grau-9); letter-spacing: .03em; }
+.mittag span { color: var(--hinweis-text); }
 
 /* Zeitleiste: EINE Spur für alle Prüfungen, Vorlauf als Linie mit Strich am Anfang. */
 .zl-kopf .zl-satz { margin-right: auto; }
@@ -847,25 +852,56 @@ details.zeitraum > .kal { padding: 0 10px 10px; }
 .kal-tag.ziel { box-shadow: inset 0 0 0 2px var(--blau); background: color-mix(in srgb, var(--blau) 16%, var(--grau-1)); }
 .kal-block.dieser { box-shadow: 0 0 0 2px var(--blau); }
 
-/* Dark Mode, abgestimmt (Silas: „im Dark Mode sehen die Farben weird zusammengewürfelt und chaotisch aus“): die Farben der
-   Arten mit gleicher Helligkeit und Sättigung (OKLCH), Ränder und Streifen zurückgenommen — eine Farbe je Kachel spricht,
-   nicht drei. Die gemeinsamen Tokens (grau, m1–m8) bleiben wie in stil.css; nur ihr Gebrauch hier ist gedämpft. */
+/* ── V-0340 ─────────────────────────────────────────────────────────────────────────────────────── */
+/* Die Tage im Prüfungskalender als Säulen: voll bei tag_voll_h (9 h), darüber rot getönt (Silas: „neun Stunden heißt
+   maximale Auslastung pro Tag“). Die Säule liegt hinter dem Inhalt. */
+.kal-tag::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--fuell, 0%); border-radius: 0 0 7px 7px; background: color-mix(in srgb, var(--blau) 20%, transparent); pointer-events: none; }
+.kal-tag.uebervoll::before { background: color-mix(in srgb, var(--rot) 28%, transparent); }
+.kal-tag > * { position: relative; z-index: 1; }
+.kal-datum { display: flex; justify-content: space-between; gap: 4px; }
+.kal-datum small { font-size: 10px; color: var(--grau-8); font-weight: 600; }
+.kal-tag.paket { box-shadow: inset 0 0 0 2px var(--blau); background: color-mix(in srgb, var(--blau) 8%, var(--grau-1)); }
+/* Zeitleiste: die zwei Wochenenden als kräftige Stücke */
+.zl-we { position: absolute; height: 6px; border-radius: 3px; background: var(--mk-we, var(--grau-10)); opacity: .8; pointer-events: none; }
+.zl-we.a-klausur { --mk-we: var(--k-pruefung-r); } .zl-we.a-etest { --mk-we: var(--k-quiz-r); } .zl-we.a-test { --mk-we: var(--k-video-r); }
+/* Modulkacheln im Reiter Prüfungen */
+.modul.pm { gap: 6px; }
+.modul.pm .m-lp.gut { color: var(--gruen); font-weight: 700; }
+.pm-pruefung { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; }
+.pm-pruefung .r-art { position: static; transform: none; }
+.pm-pruefung .r-art i { width: 10px; height: 10px; box-shadow: none; }
+.pm-pruefung span:last-child { color: var(--grau-9); }
+.pm-pakete .reihe { margin-top: 4px; }
+.pm-pakete .r-satz { margin: 0 8px 2px 23px; }
+.reihe .r-warn { color: var(--gelb-text); }
+.pm-hinweise { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--grau-4); padding-top: 6px; }
+.pm-hinweise p { margin: 0; display: flex; gap: 4px; align-items: flex-start; font-size: 11px; line-height: 14px; color: var(--grau-8); }
+.pm-hinweise p span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pm-hinweise p .i { width: 12px; height: 12px; flex: none; margin-top: 1px; }
+.pm-hinweise p.st-kritisch { color: var(--rot-text); }
+.pm-hinweise p.st-achtung { color: var(--gelb-text); }
+
+/* Dunkel (V-0338 erster Anlauf, gedämpft — Silas: „noch zu hässlich … fröhlicher oder pastellfarbener … jetzt sehen
+   die echt matschig aus“; V-0340): Pastellflächen mit dunkler Schrift, gleiche Helligkeit und Sättigung je Art (OKLCH),
+   eigene Blöcke ein wenig gedämpfter, Etiketten kräftig. Die mit stil.css geteilten Tokens (grau, m1–m8) bleiben. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --k-praesenz-f: oklch(.31 .045 262); --k-praesenz-t: oklch(.9 .035 262); --k-praesenz-r: oklch(.68 .09 262);
-    --k-video-f: oklch(.31 .045 305); --k-video-t: oklch(.9 .035 305); --k-video-r: oklch(.68 .09 305);
-    --k-lernen-f: oklch(.31 .045 80); --k-lernen-t: oklch(.9 .035 80); --k-lernen-r: oklch(.68 .09 80);
-    --k-aufgaben-f: oklch(.31 .045 200); --k-aufgaben-t: oklch(.9 .035 200); --k-aufgaben-r: oklch(.68 .09 200);
-    --k-quiz-f: oklch(.31 .045 150); --k-quiz-t: oklch(.9 .035 150); --k-quiz-r: oklch(.68 .09 150);
-    --k-pruefung-f: oklch(.31 .05 25); --k-pruefung-t: oklch(.9 .035 25); --k-pruefung-r: oklch(.66 .11 25);
+    --k-praesenz-f: oklch(.84 .065 262); --k-praesenz-t: oklch(.27 .06 262); --k-praesenz-r: oklch(.7 .11 262); --k-praesenz-b: oklch(.76 .06 262);
+    --k-video-f: oklch(.84 .065 305); --k-video-t: oklch(.27 .06 305); --k-video-r: oklch(.7 .11 305); --k-video-b: oklch(.76 .06 305);
+    --k-lernen-f: oklch(.86 .075 85); --k-lernen-t: oklch(.29 .06 70); --k-lernen-r: oklch(.72 .11 80); --k-lernen-b: oklch(.78 .07 85);
+    --k-aufgaben-f: oklch(.85 .065 195); --k-aufgaben-t: oklch(.27 .06 200); --k-aufgaben-r: oklch(.7 .1 200); --k-aufgaben-b: oklch(.77 .06 195);
+    --k-quiz-f: oklch(.85 .07 150); --k-quiz-t: oklch(.27 .06 150); --k-quiz-r: oklch(.7 .11 150); --k-quiz-b: oklch(.77 .065 150);
+    --k-pruefung-f: oklch(.83 .07 25); --k-pruefung-t: oklch(.29 .07 25); --k-pruefung-r: oklch(.68 .13 25); --k-pruefung-b: oklch(.75 .07 25);
   }
-  .kachel[class*=" k-"] { border-color: color-mix(in oklab, var(--kr) 28%, transparent); border-left-color: color-mix(in oklab, var(--rand) 60%, var(--grau-1)); }
-  .kachel.block[class*=" k-"] { background: color-mix(in oklab, var(--kf) 78%, var(--grau-2)); border-left-color: color-mix(in oklab, var(--rand) 60%, var(--grau-1)); }
-  .kachel .k-etikett.e-praesenz { background: color-mix(in oklab, var(--k-praesenz-r) 55%, var(--grau-1)); }
-  .kachel .k-etikett.e-video { background: color-mix(in oklab, var(--k-video-r) 55%, var(--grau-1)); }
-  .kachel .k-etikett.e-evl { background: color-mix(in oklab, var(--k-lernen-r) 55%, var(--grau-1)); }
-  .kachel .k-etikett { color: var(--grau-10); }
-  .kachel .k-anzahl { background: transparent; color: var(--grau-9); box-shadow: inset 0 0 0 1px var(--grau-6); }
-  .kachel.pruefung { background: var(--k-pruefung-f); color: var(--k-pruefung-t); border-color: color-mix(in oklab, var(--k-pruefung-r) 45%, transparent); }
-  .t-sym[class*=" k-"], .mu-zeile[class*=" k-"] .mu-name { filter: saturate(.85); }
+  .k-praesenz { --kb: var(--k-praesenz-b); } .k-video { --kb: var(--k-video-b); } .k-lernen { --kb: var(--k-lernen-b); }
+  .k-aufgaben { --kb: var(--k-aufgaben-b); } .k-quiz { --kb: var(--k-quiz-b); } .k-pruefung { --kb: var(--k-pruefung-b); }
+  .kachel[class*=" k-"] { background: var(--kf); color: var(--kt); border-color: color-mix(in oklab, var(--kr) 55%, transparent); border-left-color: var(--rand); }
+  .kachel.block[class*=" k-"] { background: var(--kb); border-left-color: var(--rand); }
+  .kachel .k-etikett.e-praesenz { background: oklch(.55 .12 262); }
+  .kachel .k-etikett.e-video { background: oklch(.55 .12 305); }
+  .kachel .k-etikett.e-evl { background: oklch(.55 .1 75); }
+  .kachel .k-etikett { color: #fff; }
+  .kachel .k-anzahl { background: transparent; color: inherit; box-shadow: inset 0 0 0 1px color-mix(in oklab, currentColor 40%, transparent); }
+  .kachel.pruefung { background: var(--k-pruefung-f); color: var(--k-pruefung-t); border-color: var(--k-pruefung-r); }
+  .t-sym[class*=" k-"], .mu-zeile[class*=" k-"] .mu-name { filter: none; }
 }

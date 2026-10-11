@@ -248,15 +248,29 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   du übst zwei Stunden in der Woche, wie viele Wochen solltest du vorher anfangen, damit du auf die 40 Stunden
   kommst“*): Soll der Vorbereitung ÷ Stunden je Woche (oben wählbar, 1–8 h, Standard 2 h); beginnt er vor dem Semester,
   läuft die Linie links mit einem Pfeil aus. Die Seite ordnet Beschriftungen und Linien nach gemessener Breite in Zeilen.
+- **Prüfungen, die Übungszeit in Paketen** (V-0340, Silas: *„pro Wochenende, bei den zwei Wochenenden vor einer
+  Klausur … pro Wochenende zehn Stunden, die auf jeden Fall fürs Lernen geblockt werden … die Stunden, die dann übrig
+  bleiben, werden nach vorne gerechnet“*): `pruefungsPakete()` — das Wochenende vor der Prüfung (Fr–So vor dem letzten
+  Sonntag davor), eins früher, je höchstens `we_h` (10 h), und „Lernen davor“ mit dem Rest; Lernblöcke zählen zu dem
+  Paket, in dessen Tage sie fallen. Der Vorlauf in der Zeitleiste rechnet nur noch den Rest nach vorne (vor dem zweiten
+  Wochenende), die Wochenenden stehen als kräftige Stücke auf der Linie. Teilen sich Prüfungen ein Wochenende (PROG1,
+  BuK und TECHGI wollen 12.–14.02.), sagt das Paket es.
+- **Links je Modul eine Kachel** (V-0340, Silas: *„statt Statistik 1 Klausur soll die in der Statistik-1-Kachel
+  angezeigt werden, und darunter die verschiedenartigen Übungszeiten … dass eine Klausur stattfindet, klein als Hinweis
+  ganz unten“*): Kopf mit dem, was fehlt, je Prüfung eine Zeile (Art, Datum); aufgeklappt (Klick, oder eine Wahl darin)
+  die Pakete mit Tagen und Stand, darunter „Termine, Zeiten und Räume“; ganz unten klein, auf zwei Zeilen gekürzt, die
+  Hinweise zur Prüfung. Ein Paket wählen: seine Tage leuchten im Kalender (Lernen davor: sein Vorlauf), die Zeiträume
+  von Paket, Prüfung und den drei Wochen davor gehen auf.
+- **Verteilen durch Antippen** (V-0340, Silas: *„dass ich einfach durch erneutes Klicken die wieder rausnehme, sodass man
+  schnell Sachen verteilen kann“*): Ein Tipp auf einen Tag legt einen Lernblock der gewählten Prüfung in die größte
+  freie Lücke — so lang, wie das Paket des Tages noch braucht, höchstens 6 h (unter der Woche in der Vorlesungszeit
+  2 h), zuerst 9–19 Uhr, sonst 7–22 Uhr; ist das Paket voll, sagt er es. Ein zweiter Tipp auf den Tag oder auf den Block
+  nimmt ihn wieder heraus.
 - **Prüfungen, darunter die Zeiträume** als aufklappbare Kalender (Wochen × Tage) mit allen Prüfungen (nach Art
-  gefärbt, Ausweichtermine hohl), Fristen, Lernblöcken, dem, was der Plan belegt, und der freien Zeit (Vorlesungszeit:
-  um den Stundenplan herum 7–22 Uhr; vorlesungsfrei: im Lernfenster). Links jede Prüfung nach Datum mit dem, was an
-  Vorbereitung noch fehlt (Silas: *„nach demselben Prinzip wie bei der Wochenplanung … wie viele Stunden sind noch
-  offen“*). Eine Prüfung wählen (links oder in der Zeitleiste): Sie leuchtet, die anderen treten zurück, ihr Tag ist
-  im Kalender umrandet, ihre Übungszeit (der Vorlauf) getönt, und die Zeiträume, in denen sie und die drei Wochen davor
-  liegen, gehen auf. Ein Tipp auf einen Tag legt einen Lernblock — vorlesungsfrei bis 6 h, in der Vorlesungszeit bis 2 h,
-  zuerst im Lernfenster, sonst früh oder abends. Ein Tipp auf eine Woche der Vorlesungszeit öffnet sie gesperrt
-  (s. u.).
+  gefärbt, Ausweichtermine hohl), Fristen und Lernblöcken. **Jeder Tag ist eine Säule** (V-0340, Silas: *„jede
+  Tageskachel ein Teil von einem Säulendiagramm … 100 % ausgefüllt, wenn neun Stunden verplant sind“*): `tagesLast()`
+  füllt den Tag von unten, `tag_voll_h` (9 h) ist voll, darüber rot getönt; die Stunden stehen klein neben dem Datum.
+  Ein Tipp auf eine Woche der Vorlesungszeit öffnet sie gesperrt (s. u.).
 - **Vorlesungszeit öffnen** (V-0337, Silas: *„der Stundenplan muss in der Ansicht auf jeden Fall gelockt sein, aber
   außerhalb des Stundenplans — vor den Zeiträumen, nach den Zeiträumen und am Wochenende — kann man auch während der
   Vorlesungszeit Prüfungsvorbereitung einrichten … sich wiederholende Termine“*): das Raster mit allen sieben Tagen
@@ -269,8 +283,14 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   nach vorn geholte Sache, die gewählte Prüfung); nur wenn nichts gewählt ist, erklärt er, wie man legt.
 - **Fahrzeit** (V-0338, Silas: *„beim ersten Präsenztermin eines Tages 40 Minuten Fahrzeit davor … und bei dem letzten
   auch nochmal … nicht freigehalten, sondern visuell, mit einer grauen Strichellinie“*): `fahrzeiten()` — vor dem
-  frühesten und nach dem spätesten Termin vor Ort (Online zählt nicht), `pendeln_min` 40; grau gestrichelt hinter den
-  Kacheln, sie sperrt nichts.
+  frühesten und nach dem spätesten Termin vor Ort (Online zählt nicht), `pendeln_min` 40; grau gestrichelt (2 px) und
+  seit V-0340 ÜBER den Kacheln, durchsichtig — die Fahrt nach Hause lag sonst unter dem nächsten Block. Sie sperrt
+  nichts.
+- **Mittagspause** (V-0340, Silas: *„einen Slot von 45 Minuten für Mittagspause … der hat keine logische Konsequenz,
+  da kann man drüber planen … dass man im Hinterkopf behält, dass man auch noch essen möchte“*): `mittagspause()` — Mo–Fr
+  45 min im ersten freien Fenster 11:30–14:30, sonst um 12:30; bernstein gepunktet über den Kacheln.
+- **Minimap** (V-0340): unter „Woche“ nur die Vorlesungszeit bis zur letzten Vorlesungswoche, unter „Prüfungen“ das
+  ganze Semester.
 - **Links, was der Schritt will** (im Ablauf): oben ein Satz, was hier zu tun ist, und der Weg weiter; darunter je
   Modul nur die Teile dieses Schritts (Module ohne sie blass). Schritt 1 zeigt dazu die Quizze mit ihren Fristen.
   Schritt 2 zählt je Modul **„1 von 2 gewählt · 1 noch wählen“** (oder „kommt noch“), je Teil „gewählt ✓“, „wählen“,
@@ -324,10 +344,11 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   Freigaben des Schritts). Gelegte Blöcke lassen sich verschieben, an der Unterkante verlängern (EVL mindestens
   1,5 h), anklicken zum Bearbeiten (auch Takt: jede, alle 2 … 8 Wochen). ← → wechselt die Woche, ⌘Z macht
   rückgängig, Esc schließt.
-- **Dunkel** (V-0338, Silas: *„im Dark Mode sehen die Farben zusammengewürfelt und chaotisch aus“*): die Farben der
-  Arten in OKLCH mit gleicher Helligkeit und Sättigung, Ränder, Modulstreifen und Etikett gedämpft; eigene Blöcke ohne
-  Streifen, nur heller gefüllt (Silas: *„die als dein Block markierten sind hinten so gestreift … das macht es
-  komischer“*). Die mit stil.css geteilten Tokens (grau, m1–m8) bleiben gleich (Test).
+- **Dunkel** (V-0338, Silas: *„im Dark Mode sehen die Farben zusammengewürfelt und chaotisch aus“*; V-0340: *„noch zu
+  hässlich … fröhlicher, pastellfarbener … matschig“*): Pastellflächen mit dunkler Schrift, je Art gleiche Helligkeit
+  und Sättigung (OKLCH), eigene Blöcke etwas gedämpfter (`--k-*-b`), Etiketten kräftig; keine Streifen (Silas: *„die als
+  dein Block markierten sind hinten so gestreift … das macht es komischer“*). Die mit stil.css geteilten Tokens (grau,
+  m1–m8) bleiben gleich (Test).
 - **Farben nach Art** (V-0332, Silas: „Präsenzveranstaltung sollte das gleiche Farbschema haben bei allen Modulen …
   Quiz zum Beispiel immer grün“): Präsenz, Videos, Vor- und Nachbereitung, Aufgaben und Labs, Quiz und Tests, Prüfung —
   je eine Farbe (`kategorie()`), das Modul als Streifen links an jeder Kachel. Formen: fester Termin (gefüllt), **zur
@@ -362,6 +383,9 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 | `evl_block_min`, `evl_min_min` | 120, 90 | Silas, V-0335: „EVL-Block muss einfach zwei Stunden sein … mindestens anderthalb“ |
 | `evl_fenster`, `tag_fenster` | 10–18, 08–20 | bevorzugte und überhaupt gesuchte freie Plätze (Silas: „zwischen 10 und 18 Uhr preferred“) |
 | `pruef_fenster` | 07–22 | Prüfungsvorbereitung in der Vorlesungszeit: auch früh und abends (V-0337) |
+| `we_h` | 10 | Silas, V-0340: die zwei Wochenenden vor einer Prüfung je 10 h fest fürs Lernen |
+| `tag_voll_h` | 9 | Silas, V-0340: „neun Stunden heißt maximale Auslastung pro Tag“ (Säule = 100 %) |
+| `mittag_min`, `mittag_fenster` | 45, 11:30–14:30 | Silas, V-0340: Mittagspause, nur gezeigt |
 
 ## 5. Das Datenformat
 
