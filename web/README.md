@@ -38,6 +38,7 @@ python3 ops/sicht.py --web web               # misst DESIGN §8 in allen Fenster
 | `tests/` | `node --test` für die `.mjs`, gegen `tests/fixtures/plan.json` (synthetisch, Format §5); `planwahl.test.mjs` mit einem erfundenen Baum im Format von `index.json` |
 | `impressum.html`, `datenschutz.html`, `recht.css` | gehören zum Betrieb, nicht zu diesem Teil |
 | `daten/` | erzeugt (`abruf/bauen.py`), nicht im Repo |
+| `silas/` | **/silas**, Silas' privater Semesterplaner nach Leistungspunkten (V-0321): eigene Seite, eigenes Modell (`modell.mjs`), eigene Regeln — kein Code von hier wird dort benutzt und umgekehrt. Ohne Daten: Die liegen hinter `/silas/api` (`functions/silas/api`). Vertrag: [`docs/SILAS.md`](../docs/SILAS.md) |
 
 Die reine Logik steht in den `.mjs`, damit Node sie ohne Browser prüfen kann. Wer etwas an
 Auswahl, Konflikten, Spuren oder Filtern ändert, ändert es dort und schreibt den Test dazu;
@@ -230,7 +231,7 @@ Google- und Outlook-Kalender übernehmen.
 wollte „einen neuen Kalender namens Stundenplan“, und das kann nur ein Abo: Eine Datei fragt am
 iPhone bei „Alle hinzufügen“ nach einem vorhandenen Kalender. `aboAdressen()` baut aus der Auswahl
 (dasselbe Format wie der Link aus „Stundenplan speichern“) `webcal://…/abo/stundenplan.ics?plan=…&w=…`
-und den Google-Link `calendar.google.com/calendar/render?cid=…`. Dahinter steht die einzige Funktion
+und den Google-Link `calendar.google.com/calendar/render?cid=…`. Dahinter steht die Funktion des Abos
 der Seite, `functions/abo/[datei].js` (Cloudflare Pages Function): Sie liest die öffentlichen Daten
 derselben Auslieferung, rechnet mit denselben Modulen wie der Browser und gibt die Datei mit
 `X-WR-CALNAME:Stundenplan` und `REFRESH-INTERVAL` 6 Stunden zurück. Sie speichert nichts. Nur `/abo/*`

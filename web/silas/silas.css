@@ -1,0 +1,409 @@
+/* /silas — der persönliche Semesterplaner (V-0321, docs/SILAS.md). Die Tokens sind dieselben wie in
+   web/stil.css (Farben je Modul, Grautöne, hell und dunkel); web/tests/silas.test.mjs hält sie gleich.
+   Ein Schema ändert nur Tokens, nie eine Regel (wie stil.css, V-0236). Alles Übrige ist neu: Raster,
+   Leisten und Karten dieser Seite teilen keine Regel mit dem öffentlichen Planer. */
+
+:root {
+  color-scheme: light dark;
+  --grau-1: #fdfdff; --grau-2: #f7f8fb; --grau-3: #eef0f3; --grau-4: #e5e6e9; --grau-5: #d7d9dc;
+  --grau-6: #bcbec0; --grau-7: #7f8083; --grau-8: #6d6f71; --grau-9: #545557; --grau-10: #1d1e20;
+  --konflikt: #cc2827; --konflikt-text: #a51f1e; --konflikt-flaeche: #ffebe8;
+  --hinweis: #c17a00; --hinweis-text: #7b4c00; --hinweis-flaeche: #fef0d4;
+  /* Rollen (V-0236, §5.2). Der Fuß tritt zurück (V-0237), seit V-0243 und V-0246 noch blasser (Silas:
+     „noch ein bisschen blasser“): hell #707274 (4,55:1), dunkel #7c7d80 (4,56:1). Blasser geht nicht:
+     Darunter fiele kleiner Text unter 4,5:1 (WCAG AA, §5.5), und ops/sicht.py würde rot. */
+  --fuss-text: #707274;
+  --ebene: #fdfdff;
+  --rand-ebene: var(--grau-5);
+  --schatten: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12);
+  --ein: cubic-bezier(.2, 0, 0, 1);
+  --aus: cubic-bezier(.3, 0, 1, 1);
+  --h-min: 20.5px;
+  --ziel: 32px;
+  --zm: 28px;
+  --rand-x: 24px;
+  --m1-hauch: #fdfdff; --m1-rand: #488acb; --m1-flaeche: #b4d8ff; --m1-tinte: #0e375c;
+  --m2-hauch: #fdfdff; --m2-rand: #ac7d1b; --m2-flaeche: #eecf9c; --m2-tinte: #483000;
+  --m3-hauch: #fdfdff; --m3-rand: #4a9a5e; --m3-flaeche: #b2e3bb; --m3-tinte: #0d401e;
+  --m4-hauch: #fdfdff; --m4-rand: #bb6690; --m4-flaeche: #fbc1db; --m4-tinte: #53223b;
+  --m5-hauch: #fdfdff; --m5-rand: #03999f; --m5-flaeche: #98e4e8; --m5-tinte: #003e41;
+  --m6-hauch: #fdfdff; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
+  --m7-hauch: #fdfdff; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
+  --m8-hauch: #fdfdff; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
+  /* Eingeplant und Vorschlag je Schema (Silas, 05.10.2026, V-0251): Hell war eingeplant die Tinte, eine
+     dunkle, „matschige“ Fläche mit weißer Schrift; jetzt die Pastellfläche wie die Formate links, mit
+     Tinte als Schrift, und der Vorschlag noch heller (halb Fläche, halb Weiß). Dunkel bleibt, wie es war. */
+  --m1-wahl: var(--m1-flaeche); --m1-wahl-text: var(--m1-tinte); --m1-vor: #d9ebff;
+  --m2-wahl: var(--m2-flaeche); --m2-wahl-text: var(--m2-tinte); --m2-vor: #f6e6ce;
+  --m3-wahl: var(--m3-flaeche); --m3-wahl-text: var(--m3-tinte); --m3-vor: #d8f0dd;
+  --m4-wahl: var(--m4-flaeche); --m4-wahl-text: var(--m4-tinte); --m4-vor: #fcdfed;
+  --m5-wahl: var(--m5-flaeche); --m5-wahl-text: var(--m5-tinte); --m5-vor: #caf1f4;
+  --m6-wahl: var(--m6-flaeche); --m6-wahl-text: var(--m6-tinte); --m6-vor: #ece4ff;
+  --m7-wahl: var(--m7-flaeche); --m7-wahl-text: var(--m7-tinte); --m7-vor: #fee2d2;
+  --m8-wahl: var(--m8-flaeche); --m8-wahl-text: var(--m8-tinte); --m8-vor: #e8ecd1;
+  --lg-wahl: var(--m1-flaeche);
+}
+:root {
+  /* Eigene Rollen dieser Seite — aus den Tokens oben zusammengesetzt, also in beiden Schemata richtig. */
+  --rot: var(--konflikt); --rot-text: var(--konflikt-text); --rot-flaeche: var(--konflikt-flaeche);
+  --gelb: var(--hinweis); --gelb-text: var(--hinweis-text); --gelb-flaeche: var(--hinweis-flaeche);
+  --gruen: #2f8a4a;
+  --links: 312px; --rechts: 336px; --zeit: 44px;
+  font: 14px/20px system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grau-1: #252628; --grau-2: #111213; --grau-3: #1b1c1e; --grau-4: #202224; --grau-5: #2f3032;
+    --grau-6: #46484a; --grau-7: #737477; --grau-8: #8b8c8f; --grau-9: #bfc1c3; --grau-10: #e6e8ea;
+    --konflikt: #ef675c; --konflikt-text: #f8a59b; --konflikt-flaeche: #3b1c19;
+    --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
+    --fuss-text: #7c7d80;
+    --ebene: #303234;
+    --rand-ebene: rgb(255 255 255 / .1);
+    --schatten: none;
+    --m1-hauch: #252628; --m1-rand: #70a3d8; --m1-flaeche: #233c56; --m1-tinte: #bad8f8;
+    --m2-hauch: #252628; --m2-rand: #bd9857; --m2-flaeche: #4a3716; --m2-tinte: #e8d1ac;
+    --m3-hauch: #252628; --m3-rand: #72af7f; --m3-flaeche: #24432b; --m3-tinte: #bcdfc2;
+    --m4-hauch: #252628; --m4-rand: #cb86a7; --m4-flaeche: #502e3f; --m4-tinte: #f2c6d9;
+    --m5-hauch: #252628; --m5-rand: #48b0b6; --m5-flaeche: #0a4346; --m5-tinte: #aae0e2;
+    --m6-hauch: #252628; --m6-rand: #a791d1; --m6-flaeche: #3f3453; --m6-tinte: #d9cdf4;
+    --m7-hauch: #252628; --m7-rand: #ce8d68; --m7-flaeche: #52321f; --m7-tinte: #f3cbb5;
+    --m8-hauch: #252628; --m8-rand: #9ca65f; --m8-flaeche: #3a3e1a; --m8-tinte: #d2d9b0;
+    --m1-wahl: var(--m1-tinte); --m1-wahl-text: var(--grau-1); --m1-vor: var(--m1-flaeche);
+    --m2-wahl: var(--m2-tinte); --m2-wahl-text: var(--grau-1); --m2-vor: var(--m2-flaeche);
+    --m3-wahl: var(--m3-tinte); --m3-wahl-text: var(--grau-1); --m3-vor: var(--m3-flaeche);
+    --m4-wahl: var(--m4-tinte); --m4-wahl-text: var(--grau-1); --m4-vor: var(--m4-flaeche);
+    --m5-wahl: var(--m5-tinte); --m5-wahl-text: var(--grau-1); --m5-vor: var(--m5-flaeche);
+    --m6-wahl: var(--m6-tinte); --m6-wahl-text: var(--grau-1); --m6-vor: var(--m6-flaeche);
+    --m7-wahl: var(--m7-tinte); --m7-wahl-text: var(--grau-1); --m7-vor: var(--m7-flaeche);
+    --m8-wahl: var(--m8-tinte); --m8-wahl-text: var(--grau-1); --m8-vor: var(--m8-flaeche);
+    --lg-wahl: var(--grau-10);
+    --gruen: #6cc183;
+  }
+}
+/* Ein Modul bekommt seine Farbe über die Klasse m1 … m8 (Stelle im Plan, reihum, §5.3). */
+.m1 { --hauch: var(--m1-hauch); --rand: var(--m1-rand); --flaeche: var(--m1-flaeche); --tinte: var(--m1-tinte); --wahl: var(--m1-wahl); --wahl-text: var(--m1-wahl-text); --vor: var(--m1-vor); }
+.m2 { --hauch: var(--m2-hauch); --rand: var(--m2-rand); --flaeche: var(--m2-flaeche); --tinte: var(--m2-tinte); --wahl: var(--m2-wahl); --wahl-text: var(--m2-wahl-text); --vor: var(--m2-vor); }
+.m3 { --hauch: var(--m3-hauch); --rand: var(--m3-rand); --flaeche: var(--m3-flaeche); --tinte: var(--m3-tinte); --wahl: var(--m3-wahl); --wahl-text: var(--m3-wahl-text); --vor: var(--m3-vor); }
+.m4 { --hauch: var(--m4-hauch); --rand: var(--m4-rand); --flaeche: var(--m4-flaeche); --tinte: var(--m4-tinte); --wahl: var(--m4-wahl); --wahl-text: var(--m4-wahl-text); --vor: var(--m4-vor); }
+.m5 { --hauch: var(--m5-hauch); --rand: var(--m5-rand); --flaeche: var(--m5-flaeche); --tinte: var(--m5-tinte); --wahl: var(--m5-wahl); --wahl-text: var(--m5-wahl-text); --vor: var(--m5-vor); }
+.m6 { --hauch: var(--m6-hauch); --rand: var(--m6-rand); --flaeche: var(--m6-flaeche); --tinte: var(--m6-tinte); --wahl: var(--m6-wahl); --wahl-text: var(--m6-wahl-text); --vor: var(--m6-vor); }
+.m7 { --hauch: var(--m7-hauch); --rand: var(--m7-rand); --flaeche: var(--m7-flaeche); --tinte: var(--m7-tinte); --wahl: var(--m7-wahl); --wahl-text: var(--m7-wahl-text); --vor: var(--m7-vor); }
+.m8 { --hauch: var(--m8-hauch); --rand: var(--m8-rand); --flaeche: var(--m8-flaeche); --tinte: var(--m8-tinte); --wahl: var(--m8-wahl); --wahl-text: var(--m8-wahl-text); --vor: var(--m8-vor); }
+:root { --ziel: 32px; }
+@media (pointer: coarse) { :root { --ziel: 44px; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: var(--grau-2); color: var(--grau-10); }
+body { margin: 0; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+p, h1, h2, h3, ul, ol { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+h1, h2, h3, b, strong { font-size: inherit; font-weight: 600; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; position: relative; }
+button::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0; transition: opacity 100ms linear; pointer-events: none; }
+@media (hover: hover) { button:hover::after { opacity: .07; } }
+button:active::after { opacity: .1; }
+button:disabled { opacity: .4; cursor: default; }
+button:disabled::after { display: none; }
+a { color: inherit; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--grau-10); outline-offset: 2px; }
+.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.symbole { position: fixed; top: 0; left: 0; width: 0; height: 0; overflow: hidden; }
+.nur-sr { position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.knopf {
+  height: var(--ziel); min-width: var(--ziel); padding: 0 12px; border-radius: 8px; border: 1px solid var(--grau-6);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; background: var(--grau-1);
+  text-decoration: none; position: relative;
+}
+.knopf.haupt { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); font-weight: 600; }
+.knopf.klein { height: 28px; padding: 0 10px; font-size: 13px; }
+.knopf.rot { color: var(--rot-text); border-color: var(--rot); }
+.knopf.leise { border-color: transparent; background: none; }
+.knopf.an { background: var(--grau-10); color: var(--grau-1); border-color: var(--grau-10); }
+
+/* ── Der Schlüssel (ohne ihn zeigt die Seite nichts) */
+.tor { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.tor-karte { width: min(420px, 100%); display: flex; flex-direction: column; gap: 16px; text-align: center; }
+.tor-karte .wortmarke { height: 24px; margin: 0 auto 8px; }
+.tor-karte p { color: var(--grau-9); }
+.tor-karte form { display: flex; gap: 8px; }
+.tor-karte input { flex: 1; min-width: 0; height: var(--ziel); padding: 0 10px; border-radius: 8px; border: 1px solid var(--grau-6); background: var(--grau-1); }
+.tor-fehler { color: var(--rot-text); }
+
+/* ── Die Zonen */
+.seite { height: 100vh; height: 100dvh; display: flex; flex-direction: column; gap: 14px; padding: 14px 20px 16px; max-width: 2560px; margin: 0 auto; }
+.kopf { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 20px; min-height: 52px; }
+.k-links { display: flex; flex-direction: column; min-width: 0; }
+.k-links b { font-size: 15px; }
+.k-links span { color: var(--grau-8); font-size: 12px; line-height: 16px; }
+.name { display: flex; align-items: center; gap: 10px; color: var(--grau-10); text-decoration: none; }
+.wortmarke { display: block; height: 22px; width: auto; aspect-ratio: 7669 / 930; fill: currentColor; }
+.name .marke-zusatz { font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--grau-9); border: 1px solid var(--grau-6); border-radius: 6px; padding: 1px 6px; }
+.k-rechts { display: flex; justify-content: flex-end; align-items: center; gap: 10px; min-width: 0; }
+.sync { font-size: 12px; color: var(--grau-8); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.sync.fehler { color: var(--rot-text); }
+.sync.offen { color: var(--gelb-text); }
+
+/* Die Bilanz: wie viel vom Semester einen festen Platz hat. */
+.bilanz { display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 12px; border-radius: 10px; border: 1px solid var(--grau-5); background: var(--grau-1); min-width: 0; }
+.bilanz-text { display: flex; flex-direction: column; line-height: 16px; white-space: nowrap; }
+.bilanz-text b { font-size: 14px; }
+.bilanz-text span { font-size: 12px; color: var(--grau-8); }
+.balken { position: relative; height: 6px; border-radius: 3px; background: var(--grau-4); overflow: hidden; }
+.balken > i { position: absolute; inset: 0 auto 0 0; background: var(--grau-10); border-radius: inherit; }
+.balken > i.ueber { background: var(--gelb); }
+.bilanz .balken { width: 120px; }
+.zaehler { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 8px; font-weight: 600; font-size: 13px; }
+.zaehler.rot { background: var(--rot-flaeche); color: var(--rot-text); }
+.zaehler.gut { background: var(--grau-3); color: var(--grau-9); }
+
+.buehne { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--links) minmax(0, 1fr) var(--rechts); gap: 20px; }
+.buehne.ohne-leiste { grid-template-columns: var(--links) minmax(0, 1fr) 44px; }
+
+/* ── Links: die Module mit allen Bestandteilen */
+.module { overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 2px 6px 24px 2px; scrollbar-width: thin; }
+.modul { border: 1px solid var(--grau-5); border-radius: 12px; background: var(--grau-1); padding: 12px 10px 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+.modul.rot { border-color: var(--rand); }
+.m-kopf { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; border-radius: 6px; }
+.m-punkt { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--rand); flex: none; align-self: center; }
+.m-name { font-weight: 600; }
+.m-titel { color: var(--grau-8); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.m-lp { font-size: 12px; color: var(--grau-9); white-space: nowrap; }
+.m-zahl { font-size: 12px; color: var(--grau-9); display: flex; justify-content: space-between; gap: 8px; }
+.m-zahl .fehlt { color: var(--rot-text); font-weight: 600; }
+.modul .balken > i { background: var(--rand); }
+.m-hinweis { font-size: 12px; color: var(--rot-text); }
+.m-teile { display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; }
+.teil {
+  width: 100%; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 0 8px; align-items: start;
+  padding: 6px 6px; border-radius: 8px; text-align: left;
+}
+.teil.fokus { background: var(--grau-3); box-shadow: inset 0 0 0 1px var(--grau-6); }
+.t-sym { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--tinte); background: var(--vor); margin-top: -1px; }
+.t-sym .i { width: 14px; height: 14px; }
+.t-sym.leer { background: none; color: var(--grau-8); box-shadow: inset 0 0 0 1px var(--grau-6); }
+.t-text { min-width: 0; display: flex; flex-direction: column; }
+.t-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-form { font-size: 12px; line-height: 16px; color: var(--grau-8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-lage { font-size: 12px; line-height: 16px; font-weight: 600; display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+.t-lage.rot { color: var(--rot-text); }
+.t-lage.gelb { color: var(--gelb-text); }
+.t-lage .i { width: 12px; height: 12px; }
+.t-stand { font-size: 12px; color: var(--grau-9); white-space: nowrap; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.t-stand .balken { width: 44px; height: 4px; }
+.t-stand .balken > i { background: var(--rand); }
+.t-stand.rot { color: var(--rot-text); font-weight: 600; }
+.teil[data-status="ok"] .t-stand::before { content: ""; }
+
+/* Die Karte eines Teils, unter seiner Zeile aufgeklappt: was fehlt, und was man tun kann. */
+.t-karte { margin: 2px 2px 8px 30px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.t-flaggen { display: flex; flex-direction: column; gap: 4px; }
+.flagge { display: grid; grid-template-columns: 14px 1fr; gap: 6px; line-height: 17px; }
+.flagge .i { width: 14px; height: 14px; margin-top: 2px; }
+/* f-…, nicht .plan: Die Klasse .plan gehört der Mitte (display: flex) und hätte jede rote Zeile umgebrochen. */
+.flagge.f-info, .flagge.f-plan { color: var(--rot-text); }
+.flagge.f-hinweis { color: var(--gelb-text); }
+.t-zahlen { color: var(--grau-9); font-size: 12px; }
+.t-aktionen { display: flex; flex-wrap: wrap; gap: 6px; }
+.formular { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 10px; border-radius: 10px; background: var(--grau-3); }
+.formular label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--grau-9); min-width: 0; }
+.formular label.breit, .formular .breit { grid-column: 1 / -1; }
+.formular input, .formular select { height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--grau-6); background: var(--grau-1); min-width: 0; width: 100%; }
+.formular .zeile { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; }
+.formular .satz { grid-column: 1 / -1; font-size: 12px; color: var(--grau-9); }
+.klappe > summary { cursor: pointer; font-size: 12px; color: var(--grau-9); padding: 2px 0; }
+.klappe[open] > summary { margin-bottom: 6px; }
+.vorschau-liste { font-size: 12px; color: var(--grau-9); display: flex; flex-direction: column; gap: 2px; max-height: 160px; overflow: auto; }
+
+/* ── Mitte: Wochenkopf und Raster */
+.plan { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.p-kopf { flex: none; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.p-titel { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
+.p-titel b { font-size: 15px; }
+.p-titel span { font-size: 12px; color: var(--grau-8); }
+.p-titel span.rot { color: var(--rot-text); }
+.p-kopf select { height: var(--ziel); border-radius: 8px; border: 1px solid var(--grau-6); background: var(--grau-1); padding: 0 6px; width: 132px; }
+.p-nav { display: flex; gap: 4px; align-items: center; }
+.umschalter { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--grau-4); gap: 2px; }
+.umschalter button { height: calc(var(--ziel) - 4px); padding: 0 10px; border-radius: 8px; font-size: 13px; }
+.umschalter button[aria-pressed="true"] { background: var(--grau-1); box-shadow: 0 1px 2px rgb(0 0 0 / .12); font-weight: 600; }
+.banner { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--grau-10); color: var(--grau-1); font-size: 13px; }
+.banner .knopf { height: 26px; background: transparent; border-color: rgb(255 255 255 / .35); color: inherit; }
+.banner.warn { background: var(--rot-flaeche); color: var(--rot-text); }
+.banner.warn .knopf { border-color: var(--rot); }
+.banner span { flex: 1; }
+
+.ganztag { flex: none; display: grid; grid-template-columns: var(--zeit) repeat(var(--tage), minmax(0, 1fr)); gap: 0; }
+.ganztag:empty { display: none; }
+.gt-tag { display: flex; flex-direction: column; gap: 2px; padding: 0 3px; min-width: 0; }
+.chip { display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 15px; padding: 2px 6px; border-radius: 6px; background: var(--grau-3); color: var(--grau-9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chip.frist { background: var(--gelb-flaeche); color: var(--gelb-text); font-weight: 600; }
+.chip.wichtig { background: var(--rot-flaeche); color: var(--rot-text); }
+.chip.pruefung { background: var(--grau-10); color: var(--grau-1); font-weight: 600; }
+.chip.freigabe { background: var(--vor); color: var(--tinte); }
+.chip.rahmen { background: none; box-shadow: inset 0 0 0 1px var(--grau-5); }
+
+.raster-rahmen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.r-kopf { flex: none; display: grid; grid-template-columns: var(--zeit) repeat(var(--tage), minmax(0, 1fr)); }
+.r-kopf div { text-align: center; padding: 2px 0 6px; font-size: 13px; color: var(--grau-9); display: flex; flex-direction: column; line-height: 16px; }
+.r-kopf div span { font-size: 11px; color: var(--grau-8); }
+.r-kopf div.heute { color: var(--grau-10); font-weight: 600; }
+.r-kopf div .last { font-size: 11px; color: var(--grau-8); font-weight: 400; }
+.r-kopf div .last.voll { color: var(--rot-text); }
+.raster { flex: 1; min-height: 280px; position: relative; display: grid; grid-template-columns: var(--zeit) repeat(var(--tage), minmax(0, 1fr)); border-top: 1px solid var(--grau-5); user-select: none; -webkit-user-select: none; }
+.r-zeiten { position: relative; }
+.r-zeiten span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 11px; color: var(--grau-8); }
+.r-tag { position: relative; border-left: 1px solid var(--grau-5); background-image: linear-gradient(var(--grau-4) 1px, transparent 1px); background-size: 100% var(--stunde); touch-action: pan-y; }
+.r-tag:last-child { border-right: 1px solid var(--grau-5); }
+.r-tag.frei { background-color: var(--grau-3); }
+.r-tag.wochenende { background-color: color-mix(in srgb, var(--grau-3) 60%, transparent); }
+.raster.setzen .r-tag { cursor: crosshair; }
+.r-jetzt { position: absolute; left: 0; right: 0; height: 2px; background: var(--rot); z-index: 4; pointer-events: none; }
+
+/* Die Kacheln. Präsenz ist gefüllt (Pflicht), eigene Blöcke sind schraffiert (selbst gesetzt) — man
+   soll sie nie verwechseln (Übergabe Punkt 4). */
+.kachel {
+  position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 4px 6px; overflow: hidden; z-index: 2;
+  display: flex; flex-direction: column; gap: 1px; font-size: 12px; line-height: 15px; text-align: left;
+  background: var(--wahl); color: var(--wahl-text); border: 1px solid var(--rand);
+}
+.kachel b { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kachel span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .9; }
+.kachel .k-marke { position: absolute; top: 3px; right: 4px; font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 4px; background: var(--grau-1); color: var(--grau-10); opacity: 1; }
+.kachel.reihe { background: var(--vor); color: var(--tinte); border-style: dashed; }
+.kachel.block {
+  background: repeating-linear-gradient(135deg, var(--vor) 0 6px, var(--hauch) 6px 11px); color: var(--tinte);
+  border: 1px solid var(--rand); border-left-width: 4px; cursor: grab;
+}
+.kachel.block.puffer { --vor: var(--grau-3); --hauch: var(--grau-1); --rand: var(--grau-6); --tinte: var(--grau-9); }
+.kachel.block.zieht { cursor: grabbing; opacity: .85; z-index: 6; box-shadow: 0 6px 18px rgb(0 0 0 / .18); }
+.kachel.block .k-griff { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
+.kachel.option { background: var(--grau-1); color: var(--grau-10); border: 1.5px dashed var(--rand); cursor: pointer; z-index: 3; }
+.kachel.option:hover { background: var(--vor); }
+.kachel.option .k-marke.rot { background: var(--rot); color: #fff; }
+.kachel.pruefung { background: var(--grau-10); color: var(--grau-1); border-color: var(--grau-10); }
+.kachel.einzel { background: var(--grau-4); color: var(--grau-10); border-color: var(--grau-6); }
+.kachel.zaehlt-nicht { opacity: .45; }
+.kachel.zaehlt-nicht b { text-decoration: line-through; }
+.kachel.konflikt { box-shadow: 0 0 0 2px var(--rot); }
+.kachel.weicht { box-shadow: inset 0 0 0 2px var(--rot); }
+.kachel.blass { opacity: .28; }
+.kachel.hell { box-shadow: 0 0 0 2px var(--grau-10); z-index: 5; }
+.kachel.unsicher::before { content: "?"; position: absolute; right: 4px; bottom: 2px; font-weight: 700; color: var(--gelb-text); }
+.entwurf { position: absolute; left: 2px; right: 2px; border-radius: 6px; border: 2px dashed var(--grau-10); background: rgb(127 127 127 / .12); z-index: 6; pointer-events: none; font-size: 11px; padding: 2px 6px; color: var(--grau-10); font-weight: 600; }
+.p-fuss { flex: none; font-size: 12px; color: var(--grau-8); display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.legende { display: inline-flex; align-items: center; gap: 6px; }
+.legende i { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
+.legende .lg-a { background: var(--m1-wahl); border: 1px solid var(--m1-rand); }
+.legende .lg-r { background: var(--m1-vor); border: 1px dashed var(--m1-rand); }
+.legende .lg-d { background: repeating-linear-gradient(135deg, var(--m1-vor) 0 4px, var(--m1-hauch) 4px 7px); border: 1px solid var(--m1-rand); border-left-width: 3px; }
+.legende .lg-o { border: 1.5px dashed var(--m1-rand); }
+
+/* ── Rechts: das Unregelmäßige — Muster über das Semester und die Liste */
+.leiste { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 0 4px 24px 0; scrollbar-width: thin; }
+/* Flex-Kinder mit overflow schrumpfen sonst auf null (das Muster war ein Strich). */
+.leiste > * { flex: none; }
+.ohne-leiste .leiste > :not(.l-kopf) { display: none; }
+.ohne-leiste .l-kopf h2, .ohne-leiste .l-kopf .l-satz { display: none; }
+.l-kopf { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; background: var(--grau-2); z-index: 2; padding-bottom: 4px; }
+.l-kopf h2 { font-size: 15px; flex: 1; }
+.muster { border: 1px solid var(--grau-5); border-radius: 12px; background: var(--grau-1); padding: 10px; display: flex; flex-direction: column; gap: 3px; overflow-x: auto; }
+.mu-zeile { display: grid; grid-template-columns: 88px repeat(var(--wochen), minmax(5px, 1fr)); align-items: center; gap: 1px; min-width: 0; }
+.mu-zeile > span:first-child { font-size: 11px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--grau-9); padding-right: 4px; }
+.mu-kopf > button { font-size: 9px; color: var(--grau-8); text-align: left; height: 16px; border-radius: 3px; padding: 0; overflow: visible; white-space: nowrap; }
+.mu-kopf > button:not(:empty) { box-shadow: inset 1px 0 0 var(--grau-6); padding-left: 1px; }
+.mu-kopf > button.pause { color: var(--grau-6); }
+.mu-kopf > button.zeigt { background: var(--grau-10); color: var(--grau-1); }
+.mu-kopf > button.jetzt { box-shadow: inset 0 -2px 0 var(--rot); }
+.mu-z { height: 12px; border-radius: 3px; background: var(--grau-3); position: relative; }
+.mu-z.pause { background: repeating-linear-gradient(135deg, var(--grau-3) 0 2px, transparent 2px 4px); }
+.mu-z.zeigt { box-shadow: 0 0 0 1px var(--grau-10); }
+.mu-z.an { background: var(--rand); }
+.mu-z.an.zwei { background: var(--tinte); }
+.mu-z.frist { background: var(--gelb); }
+.mu-z.pruefung { background: var(--grau-10); }
+.mu-z.unsicher::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--gelb); }
+.mu-gruppe { font-size: 11px; font-weight: 600; color: var(--grau-10); margin-top: 6px; }
+.chronik { display: flex; flex-direction: column; gap: 10px; }
+.ch-woche { display: flex; flex-direction: column; gap: 2px; }
+.ch-woche > h3 { font-size: 12px; color: var(--grau-8); font-weight: 600; display: flex; justify-content: space-between; padding: 0 6px; }
+.ch-woche.jetzt > h3 { color: var(--grau-10); }
+.ch-eintrag { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 6px; padding: 4px 6px; border-radius: 8px; width: 100%; font-size: 12px; line-height: 16px; text-align: left; }
+.ch-eintrag .ch-wann { color: var(--grau-8); }
+.ch-eintrag .ch-was { min-width: 0; }
+.ch-eintrag .ch-was b { font-weight: 600; }
+.ch-eintrag .ch-was span { color: var(--grau-8); }
+.ch-eintrag.frist .ch-was b { color: var(--gelb-text); }
+.ch-eintrag.wichtig .ch-was b { color: var(--rot-text); }
+.ch-eintrag.pruefung { background: var(--grau-3); }
+.ch-eintrag .m-punkt { width: 8px; height: 8px; border-width: 2px; display: inline-block; margin-right: 4px; vertical-align: 0; }
+.ch-leer { font-size: 12px; color: var(--grau-8); padding: 0 6px; }
+
+/* ── Schwebende Karte (Block bearbeiten, Wofür?, Kalender) */
+.karte {
+  position: fixed; z-index: 20; width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+  background: var(--ebene); border: 1px solid var(--rand-ebene); border-radius: 12px; box-shadow: var(--schatten);
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 13px;
+}
+.karte h3 { font-size: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.karte .satz { color: var(--grau-9); }
+.wahl-liste { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow: auto; margin: 0 -4px; }
+.wahl-liste button { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 6px; border-radius: 8px; width: 100%; }
+.wahl-liste button span:last-child { font-size: 12px; color: var(--rot-text); white-space: nowrap; }
+.wahl-liste .m-punkt { width: 10px; height: 10px; }
+.wahl-liste .grau { color: var(--grau-8); }
+.karte .feld { display: flex; gap: 6px; align-items: center; }
+.karte .feld input, .karte .feld select { height: 30px; border-radius: 6px; border: 1px solid var(--grau-6); background: var(--grau-1); padding: 0 6px; min-width: 0; }
+.karte .feld input[type="time"] { width: 92px; }
+.karte .zeile { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.karte code { font-size: 11px; word-break: break-all; background: var(--grau-3); padding: 4px 6px; border-radius: 6px; display: block; user-select: all; }
+.schleier { position: fixed; inset: 0; z-index: 19; }
+
+/* ── Schmale Fenster: alles untereinander, das Raster scrollt seitlich */
+@media (min-width: 1600px) { :root { --rechts: 372px; } }
+@media (max-width: 1280px) { :root { --links: 276px; --rechts: 300px; } }
+/* Bis 1100 px (Silas' Fenster ist 865 px breit): Die Seite scrollt, statt alles in eine Bildschirmhöhe zu
+   pressen — sonst wurde das Raster flach und die Legende lag darüber. Das Raster hat eine feste Höhe, die
+   Modulspalte scrollt für sich, das Unregelmäßige steht darunter in voller Breite. Der Kopf hat zwei Zeilen. */
+@media (max-width: 1100px) {
+  .seite { height: auto; min-height: 100dvh; }
+  .kopf { grid-template-areas: "links name rechts" "bilanz bilanz sync"; row-gap: 10px; }
+  .k-links { grid-area: links; }
+  .name { grid-area: name; }
+  .k-rechts { display: contents; }
+  .k-rechts > .knopf { grid-area: rechts; justify-self: end; }
+  .bilanz { grid-area: bilanz; }
+  .bilanz .balken { flex: 1; width: auto; }
+  .sync { grid-area: sync; justify-self: end; }
+  .buehne, .buehne.ohne-leiste { flex: none; grid-template-columns: var(--links) minmax(0, 1fr); align-items: start; }
+  .module { position: sticky; top: 8px; max-height: calc(100dvh - 16px); }
+  .raster { flex: none; height: clamp(520px, calc(100dvh - 190px), 900px); }
+  .leiste { grid-column: 1 / -1; overflow: visible; }
+  .ohne-leiste .leiste > :not(.l-kopf) { display: flex; }
+  .l-zu { display: none; }
+}
+@media (max-width: 820px) {
+  .seite { height: auto; min-height: 100dvh; padding: 10px 12px 24px; }
+  /* Am Telefon: Schriftzug und Kalender oben, die Bilanz darunter über die ganze Breite. */
+  .kopf { display: flex; flex-wrap: wrap; gap: 8px 12px; grid-template-areas: none; }
+  .module { position: static; max-height: none; }
+  .name { order: 1; flex: 1; min-width: 0; }
+  .name .wortmarke { height: 18px; }
+  .k-rechts { display: contents; }
+  .k-rechts > .knopf { order: 2; }
+  .bilanz { order: 3; flex: 1 1 100%; }
+  .bilanz .balken { flex: 1; width: auto; }
+  .sync { order: 4; }
+  .k-links { order: 5; flex: 1 1 100%; }
+  .buehne, .buehne.ohne-leiste { display: flex; flex-direction: column; }
+  .plan { order: 1; }
+  .module { order: 2; overflow: visible; padding: 0; }
+  .leiste { order: 3; }
+  .raster-rahmen { overflow-x: auto; }
+  .r-kopf, .raster, .ganztag { min-width: 640px; }
+  .raster { height: 640px; flex: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

@@ -4,12 +4,12 @@
 // webcal://www.stundenplanner.de/abo/stundenplan.ics?plan=…&w=… antippt, bekommt in Apple Kalender, Google
 // Kalender oder Outlook einen eigenen Kalender „Stundenplan“, und der holt Änderungen aus MOSES von selbst.
 //
-// Die einzige Funktion der Seite, eine Cloudflare Pages Function. Sie hält nichts fest: keine Datenbank,
+// Die Funktion des Kalender-Abos, eine Cloudflare Pages Function. Sie hält nichts fest: keine Datenbank,
 // kein Speicher, kein Protokoll. Die Auswahl steht in der Adresse, im selben Format wie der Link aus
 // „Stundenplan speichern“ (auswahl.mjs teilenLesen); die Termine liest sie aus den öffentlichen Dateien
 // derselben Auslieferung (daten/, über env.ASSETS), also genau dem Stand der Seite. Gerechnet wird mit
 // denselben Modulen wie im Browser (auswahl.mjs, planwahl.mjs, ics.mjs): eine Rechnung, zwei Orte.
-// Nur /abo/* ruft diese Funktion (web/_routes.json); alles andere bleibt statisch. Ist das Kontingent der
+// Nur /abo/* ruft diese Funktion (web/_routes.json; /silas/api/* hat eine eigene, functions/silas); alles andere bleibt statisch. Ist das Kontingent der
 // Funktionen erschöpft, scheitert nur das Abo, die Seite nicht, und der Kalender behält seinen alten Stand.
 
 import * as A from '../../web/auswahl.mjs';
