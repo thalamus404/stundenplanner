@@ -14,6 +14,11 @@
 //   GET  kalender/<k>.ics → Kalender-Abo (termine | lernen | alles); der Schlüssel steht hier in der
 //                           Adresse (?k=), weil ein Kalender keine Kopfzeile senden kann
 //   GET  verlauf[/<id>]   → die stündlichen Sicherungen der letzten 60 Tage
+//   GET  plaene           → die Probepläne: [{ nr, version, geaendert }]
+//
+// Probepläne (V-0345, Silas: „verschiedene Stundenpläne abspeichern … unter stundenplanner.de/silas/1, 2, 3 … einfach
+// nur fürs Testen“): `stand?plan=1…9` liest und schreibt einen eigenen Stand (KV `stand:<n>`), mit derselben Sperre.
+// Sie haben keine Sicherungen, und Ereignisse und Kalender kommen immer aus dem echten Plan.
 //
 // Das Study OS liest später mit demselben Schlüssel (Kopfzeile Authorization: Bearer …). Der
 // Stundenplanner selbst fragt nie etwas von dort ab: Die Richtung ist Study OS → Stundenplanner.
@@ -50,10 +55,11 @@ async function darf(request, env, url, mitAdresse) {
   return gleich(await sha256(k), String(env.SILAS_SCHLUESSEL).trim().toLowerCase());
 }
 
-async function lesen(env) {
-  const roh = await env.SILAS.get('stand');
+async function lesen(env, schluessel = 'stand') {
+  const roh = await env.SILAS.get(schluessel);
   return roh ? JSON.parse(roh) : null;
 }
+const PLAN = /^[1-9]$/;
 
 const stundenSchluessel = (d) => 'verlauf:' + d.toISOString().slice(0, 13).replace(/[-T]/g, '');
 
@@ -65,8 +71,13 @@ export async function silasApi(request, env, jetzt = new Date()) {
   if (recht === 'aus') return fehler(503, 'Der Speicher von /silas ist noch nicht eingerichtet (docs/BETRIEB.md).');
   if (!recht) return fehler(401, 'Schlüssel fehlt oder stimmt nicht.');
 
+  // Welcher Stand: der echte oder ein Probeplan (?plan=1…9).
+  const plan = url.searchParams.get('plan');
+  if (plan != null && !PLAN.test(plan)) return fehler(400, 'Probepläne heißen 1 bis 9.');
+  const ort = plan ? `stand:${plan}` : 'stand';
+
   if (weg === 'stand' && request.method === 'GET') {
-    const s = await lesen(env);
+    const s = await lesen(env, ort);
     return s ? json(200, s) : fehler(404, 'Noch kein Stand gespeichert.');
   }
 
@@ -79,17 +90,17 @@ export async function silasApi(request, env, jetzt = new Date()) {
     const maengel = M.pruefeAngebot(neu.angebot);
     if (maengel.length) return json(422, { fehler: 'Das Angebot ist nicht gültig.', maengel });
     try { M.rechnen(neu.angebot, neu.plan); } catch (e) { return json(422, { fehler: 'Der Plan lässt sich nicht rechnen.', maengel: [String(e.message || e)] }); }
-    const alt = await lesen(env);
+    const alt = await lesen(env, ort);
     // Optimistische Sperre: Wer auf einem älteren Stand geändert hat, überschreibt nicht still den
     // neueren eines anderen Geräts. `basis: null` heißt „ich weiß, es ist leer“ — oder, mit
     // `erzwingen: true`, „überschreiben“ (der Knopf dafür fragt vorher).
     if (alt && !neu.erzwingen && neu.basis !== alt.version) return json(409, { fehler: 'Auf einem anderen Gerät geändert.', version: alt.version, geaendert: alt.geaendert });
     const stand = { schema: 1, version: (alt ? alt.version : 0) + 1, geaendert: jetzt.toISOString(), angebot: neu.angebot, plan: neu.plan };
     const text = JSON.stringify(stand);
-    await env.SILAS.put('stand', text);
+    await env.SILAS.put(ort, text);
     // Eine Sicherung je Stunde (dieselbe Stunde überschreibt): genug, um einen Fehlgriff zurückzuholen,
-    // und unter dem Tageskontingent von KV (1000 Schreibvorgänge) auch bei viel Planen.
-    await env.SILAS.put(stundenSchluessel(jetzt), text, { expirationTtl: VERLAUF_TAGE * 86400 });
+    // und unter dem Tageskontingent von KV (1000 Schreibvorgänge) auch bei viel Planen. Nur der echte Plan.
+    if (!plan) await env.SILAS.put(stundenSchluessel(jetzt), text, { expirationTtl: VERLAUF_TAGE * 86400 });
     return json(200, { version: stand.version, geaendert: stand.geaendert });
   }
 
@@ -107,6 +118,18 @@ export async function silasApi(request, env, jetzt = new Date()) {
     return new Response(K.ics(M.ereignisse(s.angebot, s.plan), { kalender: ics[1], jetzt }), {
       headers: { ...KOPF, 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `inline; filename="${ics[1]}.ics"` },
     });
+  }
+
+  if (weg === 'plaene' && request.method === 'GET') {
+    const liste = await env.SILAS.list({ prefix: 'stand:' });
+    const plaene = [];
+    for (const k of liste.keys) {
+      const nr = k.name.slice(6);
+      if (!PLAN.test(nr)) continue;
+      const s = await lesen(env, k.name);
+      if (s) plaene.push({ nr: Number(nr), version: s.version, geaendert: s.geaendert });
+    }
+    return json(200, { plaene: plaene.sort((a, b) => a.nr - b.nr) });
   }
 
   if (weg === 'verlauf' && request.method === 'GET') {

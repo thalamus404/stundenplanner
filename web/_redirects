@@ -1,0 +1,22 @@
+# Cloudflare Pages: Weiterleitungen (V-0345). Die Probepläne von /silas liegen unter /silas/1 … /silas/9 — dieselbe Seite,
+# die den Plan aus der Adresse liest (web/silas/silas.mjs, PLAN_NR; Speicher: functions/silas/api, ?plan=n).
+# 200 heißt: die Seite /silas/ ausliefern, die Adresse bleibt. Ohne Schrägstrich am Ende, sonst zeigten die relativen
+# Pfade der Seite (silas.css, silas.mjs) nach /silas/1/… — darum leitet die Form mit Schrägstrich dorthin um.
+/silas/1/ /silas/1 301
+/silas/2/ /silas/2 301
+/silas/3/ /silas/3 301
+/silas/4/ /silas/4 301
+/silas/5/ /silas/5 301
+/silas/6/ /silas/6 301
+/silas/7/ /silas/7 301
+/silas/8/ /silas/8 301
+/silas/9/ /silas/9 301
+/silas/1 /silas/ 200
+/silas/2 /silas/ 200
+/silas/3 /silas/ 200
+/silas/4 /silas/ 200
+/silas/5 /silas/ 200
+/silas/6 /silas/ 200
+/silas/7 /silas/ 200
+/silas/8 /silas/ 200
+/silas/9 /silas/ 200

@@ -173,6 +173,10 @@ einem Klon oder Arbeitsbaum (der Schlüssel kommt aus `<hauptklon>/betrieb/.env`
   in Silas' Browsern neu öffnen. Die Kalender-Abos tragen den Schlüssel in der Adresse und müssen dann neu abonniert werden.
 - **Sicherungen:** je Stunde eine (60 Tage) unter `verlauf:JJJJMMTTHH` im KV; `GET /silas/api/verlauf` listet sie.
   `holen` ist die Sicherung von Hand.
+- **Probepläne** (V-0345): `/silas/1` … `/silas/9` liefert `web/_redirects` als dieselbe Seite aus (200); ihr Stand liegt
+  im selben KV unter `stand:<n>` (ohne Sicherung), `GET /silas/api/plaene` listet sie. `ops/silas.mjs` holt und sendet
+  nur den echten Plan. Einen Probeplan löschen: im Cloudflare-Dashboard den Schlüssel `stand:<n>` im KV entfernen —
+  nur auf Silas' Wunsch.
 - **Kontingent:** KV im Free-Plan 1000 Schreibvorgänge am Tag; ein Speichern sind zwei. Die Seite speichert 0,9 s
   nach der letzten Änderung, nicht bei jedem Ziehen.
 - **Abschalten** (§2 ③): die Namensräume löschen, die Bindung und das Geheimnis aus dem Pages-Projekt, `web/silas/`,

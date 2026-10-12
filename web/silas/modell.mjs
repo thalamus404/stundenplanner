@@ -23,7 +23,7 @@ export const REGELN = {
   raster_min: 30,
   lerntag_h: 6,         // Faustregel aus Silas' Semesterplan: Stunden ÷ 6 = Lerntage
   lernfenster: ['09:00', '19:00'],
-  pendeln_min: 40,       // Silas, 11.10. (V-0338): „40 Minuten Fahrzeit“ vor dem ersten und nach dem letzten Präsenztermin
+  pendeln_min: 45,       // Silas, 12.10. (V-0345): „45 Minuten vor dem ersten Präsenzmodul … und 45 Minuten nach dem letzten“ (V-0338: 40)
   toleranz_min: 120,    // Silas, 11.10.: Abweichungen bis ±2 h nicht melden („sonst zu verwirrend“)
   vorlauf_tage: 21,     // Vorbereitung auf eine Prüfung in der Vorlesungszeit wird so viele Tage vorher kritisch
   evl_block_min: 120,   // Silas, 11.10. (V-0335): „EVL-Block muss einfach zwei Stunden sein“ …
@@ -1053,7 +1053,30 @@ export function vorgabe(erg, teilId) {
     }
   }
   delete beste.abstand;
+  // Seltener als jede zweite Woche ist kein Wochenmuster (V-0345, Silas: „alles, was weniger häufig als jede zweite
+  // Woche stattfindet, das soll man dann manuell in die echten Wochen reinlegen, wo es tatsächlich gebraucht wird“):
+  // `einzeln` — so viele Blöcke dieser Länge, je einer an einem Tag, den Silas in einer echten Woche wählt.
+  if (beste.alle > 2) Object.assign(beste, { einzeln: true, anzahl: 1, alle: 1, bis: null });
   return beste;
+}
+
+/** Wo ein einzelner Block liegen darf (V-0345, Silas: „wenn genaue Termine bekannt sind, dann soll man es nur auf die
+ *  Termine innerhalb der Woche legen … wenn noch keine genauen Termine bekannt sind, nur in die Woche“): mit Einheiten
+ *  (Quiz, Abgabe) die Tage, an denen eine offen ist — von ihrer Freigabe bis zu ihrer Frist, ohne Frist bis zur nächsten
+ *  Freigabe —, sonst jeder Tag der Vorlesungszeit ab dem ersten Stoff. Ergebnis: (datum) → true/false. */
+export function blockTagErlaubt(erg, teilId) {
+  const z = erg.teile.get(teilId);
+  if (!z) return () => false;
+  const sem = erg.sem;
+  const ab = z.stoff_ab || sem.vorlesung.von;
+  if (z.gruppen && z.gruppen.length) {
+    const fenster = z.gruppen.map((g, i) => {
+      const bis = g.bis || (z.gruppen[i + 1] ? plusTage(z.gruppen[i + 1].ab, -1) : sem.vorlesung.bis);
+      return [g.ab, bis];
+    });
+    return (d) => fenster.some(([a, b]) => d >= a && d <= b);
+  }
+  return (d) => d >= ab && d <= sem.vorlesung.bis && !istFrei(sem, d);
 }
 
 /** Die Fahrzeit eines Tages (V-0338, Silas: „beim ersten Präsenztermin eines Tages 40 Minuten Fahrzeit davor … und bei
@@ -1095,11 +1118,17 @@ export function pruefungsPakete(erg, teilId) {
 
 /** Die Mittagspause eines Tages (V-0340, Silas: „einen Slot von 45 Minuten für Mittagspause … der hat keine logische
  *  Konsequenz, da kann man drüber planen“): das erste freie Fenster von mittag_min im mittag_fenster; ist keins frei,
- *  liegt sie trotzdem um 12:30 — sie soll man im Hinterkopf behalten. belegt: [[start, ende], …]. */
-export function mittagspause(belegt, regeln = REGELN) {
+ *  liegt sie trotzdem um 12:30 — sie soll man im Hinterkopf behalten. belegt: [[start, ende], …] — mit den Fahrzeiten
+ *  des Tages, sonst lag sie vor einem Termin um 12:15 genau in der Fahrt (V-0345). fest: der Anfang, den Silas für
+ *  diesen Tag gezogen hat (plan.mittag, Minuten) — er gilt ohne Rücksicht auf das Belegte. */
+export function mittagspause(belegt, regeln = REGELN, fest = null) {
+  if (Number.isFinite(fest)) return [fest, fest + regeln.mittag_min];
   const [a, b] = regeln.mittag_fenster.map(min);
   const frei = freieFenster(belegt, regeln.mittag_min, a, b)[0];
-  const start = frei ? frei[0] : min('12:30');
+  // Kein ganzes Fenster: in die längste Lücke zwischen zwei Terminen (Fr 13:45–14:15 zwischen BuK und PROG1), statt mitten
+  // in eine Vorlesung; ohne jede Lücke um 12:30.
+  const luecke = frei ? null : freieFenster(belegt, 15, a, b).sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]))[0];
+  const start = frei ? frei[0] : luecke ? luecke[0] : min('12:30');
   return [start, start + regeln.mittag_min];
 }
 
@@ -1176,8 +1205,10 @@ export function wochenBedarf(angebot, plan, erg, wocheId = null) {
         soll = w ? termine.filter((x) => x.datum >= w.von && x.datum <= w.bis).reduce((s, x) => s + zaehltMin(x.start, x.ende), 0) : (termine[0] ? zaehltMin(termine[0].start, termine[0].ende) : 0);
         grund = 'waehlen';
       } else soll = ist; // Termine stehen fest: Was stattfindet, ist auch im Plan.
-    } else if (!woechentlich || !vorlesung) {
-      soll = 0; // einmalige Posten (Literatur 5 h) zählen fürs Semester, nicht für eine Woche
+    } else if (!woechentlich || !vorlesung || (vorgabe(erg, t.id) || {}).einzeln) {
+      // einmalige Posten (Literatur 5 h) zählen fürs Semester, nicht für eine Woche — und was einzeln liegt (seltener
+      // als alle zwei Wochen, V-0345), hat keinen Wochenbedarf
+      soll = 0;
     } else if (w && z.gruppen && z.gruppen.length) {
       // Videos und Einheiten: was in dieser Woche geschaut wird — die Woche des ersten Blocks, der eine Freigabe deckt,
       // ohne Block die Woche der Freigabe. Ein BuK-Video vom Freitag, das Silas am Montag darauf schaut, gehört in die
