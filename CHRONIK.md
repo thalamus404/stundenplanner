@@ -12,6 +12,20 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 12.10.2026 — /silas: Fortschritt je Schritt und Modul, Unregelmäßiges unter Prüfungen (V-0354)
+
+- Silas' Rückmeldung beim Neuaufbau seines Plans: oben links statt des erklärenden Satzes ein Fortschrittsbalken je
+  Schritt (grün geplant, gelb bekannt und noch offen, grau noch nicht bekannt), je Modul derselbe Balken; fertige Sachen
+  klappen mit grünem Haken ein, unbekannte mit grauem, ein Modul ohne Offenes zeigt nur Name, Balken und „Blöcke ändern“.
+  Der Schrittknopf trägt den vollen grünen Haken erst bei 100 %, sonst einen gestrichelten, wenn nur noch Unbekanntes fehlt.
+- Was in echten Wochen gelegt wird (Quicktests, Vorbereitung auf die EINFWI-Übungen, BuK-Literatur), steht nicht mehr im
+  Ablauf, sondern unter „Prüfungen“ an seinen Bezugsterminen — „In W07 legen“ öffnet die Woche vor dem Termin mit dem
+  Block am Zeiger; ohne Termine bleibt es offen (Folgeentscheidung). Die Standardwoche ist das Gerüst des Regelmäßigen;
+  seltenere Reihen stehen nur als Umriss da.
+- „Block verschieben“ statt „Block legen“, wenn schon einer liegt (die Blöcke leuchten auf); Festlegen nennt, was bekannt,
+  aber nicht gelegt ist („Trotzdem festlegen“); unter Prüfungen „Wahl ändern“ statt der Terminknöpfe, Details und
+  Hinweise zugeklappt.
+
 ## 12.10.2026 — /silas rechnet nach dem Kontingent-Modell (V-0349)
 
 - Silas fand die Rechnung unverständlich (120/120/162/90/140 h bei je 6 LP; BuK „138 von 140“ trotz Überschuss) und ließ

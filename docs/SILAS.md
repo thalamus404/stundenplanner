@@ -244,8 +244,30 @@ alle Sachen eine Vor- und Nachbereitung.“* Jedes Element gehört zu genau eine
 | 1 Grundlage | feste Präsenztermine und Einzeltermine | Präsenz mit eigenen Terminen | prüfen, fehlende Uhrzeit/Raum eintragen |
 | 2 Gruppen | Tutorien und Übungen mit Gruppen, ihre Anmeldungen | Präsenz mit `optionen` oder ohne Termine | Gruppe wählen oder eintragen; mit Zuteilung: anmelden, Zuteilung bestätigen |
 | 3 Videos | Screencasts, Lehrvideos | `video` | Blöcke legen |
-| 4 EVL | Vor-/Nachbereitung, Labs, Quizze, Vorbereitung auf Übungen | `selbst` | Blöcke legen (die Übungs-Nachbereitung erst mit Übungsterminen) |
-| 5 Prüfungen (`PRUEFUNGEN`) | der Prüfungs-Topf: Prüfungen, ihre Fristen, Vorbereitung, Probeklausur, Fragestunde — **nicht im Ablauf** | `pruefung`, `topf: 'pruefung'` | nach dem Festlegen, unter „Prüfungen“ |
+| 4 EVL | Vor-/Nachbereitung, Labs, wöchentliche Quizze — was mindestens jede zweite Woche einen Block braucht | `selbst` | Blöcke legen (die Übungs-Nachbereitung erst mit Übungsterminen) |
+| 5 Prüfungen (`PRUEFUNGEN`) | der Prüfungs-Topf: Prüfungen, ihre Fristen, Vorbereitung, Probeklausur, Fragestunde — und seit V-0354 das **Unregelmäßige** — **nicht im Ablauf** | `pruefung`, `topf: 'pruefung'`, `z.unregel` | nach dem Festlegen, unter „Prüfungen“ |
+
+**Unregelmäßiges** (V-0354, `rechnen()` 7b, Silas, 12.10.: *„Alle Blöcke, die in einer echten Woche gelegt werden
+sollen, sollen nicht in der ursprünglichen Planung auftauchen. Diese kommen mit zu den irregulären Terminen für
+Quizvorbereitung, Prüfungsvorbereitung etc. auf die Prüfungen-Seite (Literatur und Praxis, Vorbereitung auf die Übungen,
+Quicktests) … In der Woche-Ansicht entsteht das Grundgerüst mit allen Terminen, die mindestens alle 2 Wochen regulär
+stattfinden … Ist [das Datum] schon bekannt, kann man Lerneinheiten schon planen, wenn das nicht bekannt ist, soll das als
+offen dastehen“*): Ein Element des Semester-Topfs, dessen Vorgabe `einzeln` ist (seltener als jede zweite Woche, oder
+ein einmaliger Posten) oder das `vorbereitung_auf` hat, bekommt `z.unregel` und eine **Kopie** seines Teils mit
+`schritt: 5` (das Angebot wird gespeichert und bleibt unberührt); seine Blöcke und Fristen stehen in Schritt 5, das
+Zurücksetzen lässt sie liegen. Der Topf bleibt Semester. `unregelmaessig: true|false` im Angebot entscheidet von Hand.
+`unregelmaessige(erg)` gibt je Element seine **Bezugstermine** als Einheiten mit Fenster `ab–bis` und `ziel` (der
+Termin): Einheiten mit Daten (Quicktests mit Öffnen/Schließen, „Vorbereitung auf …“ je Übung) sind bekannt, Einheiten nur
+mit `anzahl` offen (eine Folgeentscheidung, grau), ein einmaliger Posten ohne Termin ein Fenster über die Vorlesungszeit.
+Die Blöcke gehen der Reihe nach in das früheste Fenster, das ihren Tag enthält und noch Zeit braucht.
+
+**Fortschritt** (V-0354, `fortschritt(erg, z)`, `fortschrittVon(erg, zs)`, Silas: *„Grün = geplant, Grau = nicht
+geplant, weil nicht bekannt, Gelb = nicht geplant, obwohl bekannt“*): je Element in Minuten seines Kontingents
+`{k, gruen, gelb, grau, status}`; `status` ist **fertig** (alles grün), **unbekannt** (nichts gelb, aber grau) oder
+**offen**. Präsenz: fest oder gewählt (auch als Wunsch vor der Zuteilung) grün, Gruppen ohne Termine grau, eine offene
+Wahl gelb. Selbststudium und Videos: gelegt grün — ganz, wenn es in der Toleranz liegt oder die Wochenblöcke so lang sind,
+wie die Vorgabe will —, der Rest gelb, ein wartendes Fenster grau. Unregelmäßiges je Bezugstermin (offene Termine grau),
+Prüfungsvorbereitung ohne Prüfungstermin grau.
 
 Ein Block gehört zum Schritt seines Elements (`schrittVonBlock`: Video 3, Prüfungs-Topf 5, sonst 4). **Zurücksetzen**
 (`zuruecksetzen(plan, angebot, ab, {am})`) nimmt alles aus den Schritten `ab` bis 4 heraus und **hebt es in
@@ -268,8 +290,10 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
 - **Kopf:** Semester, die Bilanz (V-0349: „900 h = 595,5 Semester + 304,5 Prüfungen“, der Balken teilt die zwei Töpfe,
   ein dunkler Strich darunter ist, was mit ✓ erledigt ist) und die Zähler (kritisch, zu tun); der Speicherstand;
   „Kalender“ (die Abos, §6).
-- **Oben in der Mitte, die vier Schritte** (V-0333, §2.8a): je ein Knopf mit Stand (rot kritisch, hellblau mit Zahl
-  „zu tun“, sonst ✓). Man springt frei vor und zurück; links führt „Weiter: 3 · Videos“ zum nächsten, in Schritt 4
+- **Oben in der Mitte, die vier Schritte** (V-0333, §2.8a): je ein Knopf mit Stand — seit V-0354 aus dem Fortschritt
+  (§2.10): eine Zahl, solange Bekanntes offen ist (rot, wenn darunter etwas kritisch ist), ein **gestrichelter grüner
+  Haken**, wenn alles Wählbare gewählt und gelegt ist, aber noch etwas kommt (Silas: *„alles, was ich jetzt wählen kann,
+  wurde tatsächlich auch gewählt, aber es gibt halt noch mehr“*), und der **volle grüne Haken** erst bei 100 %. Man springt frei vor und zurück; links führt „Weiter: 3 · Videos“ zum nächsten, in Schritt 4
   „Stundenplan festlegen“ (die Karte davor nennt, was noch offen ist). Daneben *Offen* (§2.9, §2.11), *Abgleich* (§2.8),
   *So wird gerechnet* und **Zurücksetzen** (ab Schritt 2, ab 3 oder nur 4; was herausfällt, liegt beiseite —
   „Wiederherstellen“).
@@ -304,7 +328,20 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   Datum, mit Stand (§ 63) und einem Balken aus erledigt (dunkel), geplant, Vorschlag (blau schraffiert) und „passt
   nicht“ (rot). Gewählt (Klick, auch in Zeitleiste und Tabelle) zeigt sie alles: Kontingent mit Herkunft („50 h + aus
   der Übung 20 h“) und den Terminen im Topf, Fenster, Termin wählen, Stand und Punkte, Fristen als Verweise, den
-  **Vorschlag** mit „Vorschlag übernehmen“, „Künftige Lernblöcke entfernen“ und die Termin-Formulare.
+  **Vorschlag** mit „Vorschlag übernehmen“, „Künftige Lernblöcke entfernen“ und die Termin-Formulare. Seit V-0354
+  (Silas: *„Wenn man einen Testtermin wählt, soll der Auswahlknopf verschwinden … nur noch ‚Wahl ändern‘ … Auch hier
+  sollen standardmäßig zugeklappt sein: Details (Kontingent-Rechnung) und Hinweise (Meldungen bzw. Fehler)“*): ein
+  gewählter Termin steht als „Gewählt: …“ mit **Wahl ändern** (`Z.wahlAuf`); „Details · Kontingent“ und „Hinweise · n“
+  (Info fehlt, Fristen) sind zugeklappt — eine Frist in den nächsten 7 Tagen steht in der Zeile.
+- **Prüfungen, darunter „Unregelmäßig — an Termine gebunden“** (V-0354, §2.10, Silas zu den Quicktests: *„falls schon
+  bekannt, wann die stattfinden, dann sollte mein Zeiger sofort in die Woche springen, wo das ist … wenn es noch nicht
+  bekannt ist, soll es … als Folgeentscheidung kommen“*): je Element (`unregelmaessige()`) „nächster 02.11. · 1 von 5
+  gelegt“, „frei in der Vorlesungszeit“ oder „12 Termine offen · Info fehlt bis 16.10.“, mit Balken. Gewählt: je
+  Bezugstermin eine Zeile mit gelegt/soll und **„In W07 legen“** — die Woche vor dem Termin öffnet sich mit gesperrtem
+  Stundenplan, der Block (Dauer der Einheit) hängt am Zeiger und darf nur im Fenster der Einheit liegen
+  (`Z.legen.fenster`), der Termin leuchtet kurz. Im Kalender sind die Fenster getönt und die Termine umrandet; ein Tipp
+  legt einen Block oder nimmt ihn heraus. Blöcke des Unregelmäßigen tragen das Etikett EVL (nicht „Prüfung“);
+  „Vorbereitung auf …“ hat keinen Bezug zum Stoff davor (`rechnen()` 6b).
 - **Verteilen durch Antippen und Ziehen** (V-0340, V-0349, Silas: *„man soll auch draufklicken und ziehen … auf einen
   Tag raufklicken und dann runterziehen“*): Mit einer gewählten Prüfung legt ein Tipp auf einen Tag Lernzeit — so viel,
   wie offen ist, höchstens 6 h, in die freien Strecken (`lernStrecken()`); ein zweiter Tipp auf den Tag oder den Block
@@ -342,8 +379,19 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   `plan.mittag[datum]` (durchgezogen), ein Doppelklick aufs Schild macht sie wieder automatisch.
 - **Minimap** (V-0340): unter „Woche“ nur die Vorlesungszeit bis zur letzten Vorlesungswoche, unter „Prüfungen“ das
   ganze Semester.
-- **Links, was der Schritt will** (im Ablauf): oben ein Satz, was hier zu tun ist, und der Weg weiter; darunter je
-  Modul nur die Teile dieses Schritts (Module ohne sie blass) — nur, was im Schritt zu wählen oder zu legen ist
+- **Links oben der Fortschritt** (V-0354, Silas: *„ganz oben bei Grundlage eine Progress Bar, die von 0 % bis 100 %
+  geht“* und *„Die Hinweise unter ‚Woche‘ und ‚Prüfungen‘ bitte wegmachen, die nehmen nur wertvollen Platz weg“*): statt
+  des erklärenden Satzes (er steht noch im Tooltip) der Schritt mit Prozent, sein Balken grün · gelb · grau und
+  „Weiter“ bzw. „Stundenplan festlegen“; festgelegt der Fortschritt des Semesters, unter „Prüfungen“ der von Schritt 5.
+- **Je Modul ein Balken, und was fertig ist, klappt ein** (V-0354, Silas: *„Sobald alles von einem Format in dem Modul
+  gelegt ist, soll es sich einklappen und auch einen grünen Haken zeigen. Wenn die Termine zum Wählen fehlen, dann ein
+  grauer Haken, aber auch eingeklappt. Sobald alle Formate eines Moduls eingeklappt sind, soll sich das Modul selbst
+  einklappen und nur noch Namen, Progress Bar und ‚Blöcke ändern‘ anzeigen“*): Im Ablauf der Fortschritt des Moduls in
+  diesem Schritt, festgelegt der des ganzen Moduls (auch Prüfungen und Unregelmäßiges). Eine fertige Sache ist eine Zeile
+  mit grünem Haken, eine unbekannte mit grauem („Gruppen kommen noch“, „wartet auf Übung“); ein Klick macht sie zur
+  Sache, die dran ist. Ein Modul ohne Offenes zeigt Name, Balken mit Prozent und „Wahl ändern“ / „Blöcke ändern“
+  („Ansehen“ in Schritt 1, festgelegt und wo nur Graues ist); aufgeklappt klappt ein Klick auf den Kopf es wieder zu.
+- **Was der Schritt will** (im Ablauf): je Modul nur die Teile dieses Schritts (Module ohne sie blass) — nur, was im Schritt zu wählen oder zu legen ist
   (V-0345, Silas: *„Bei Quiz kann ich hier ja gar nicht auswählen“*): Schritt 1 zeigt keine Quizze mehr.
   Schritt 2 zählt je Modul **„1 von 2 gewählt · 1 noch wählen“** (oder „kommt noch“), je Teil „gewählt ✓“, „wählen“,
   „kommt noch“. Jeder Teil: Art, Form, Stand und die Zeile in der Farbe seiner Stufe. Ein Klick klappt die Karte auf:
@@ -364,10 +412,7 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   „Nächste Wahl: …“ an der Sache, die dran ist.
 - **Farben im Ablauf** (V-0336): Was dran ist, ist farbig; was im selben Schritt schon gewählt oder gelegt ist, aber
   zu einer anderen Sache gehört, **hellgrau** (ein Klick macht es zu der Sache, die dran ist); frühere Schritte
-  **dunkelgrau**. Module, deren Sachen im Schritt alle erledigt sind, klappen ein — grüner Haken „alles gewählt“ /
-  „alles gelegt“ (oder „nichts wählbar — kommt noch“) und „Wahl ändern“ / „Termine ändern“. Der Schrittknopf oben
-  zählt, was in der Reihe noch offen ist, sonst ✓ grün; ein roter „!“ heißt: etwas Kritisches (eine laufende
-  Anmeldung).
+  **dunkelgrau**. Wie Sachen und Module einklappen, sagt der Fortschritt (oben, V-0354).
 - **Kurz zurück** (V-0336, Silas: *„wenn man in einem weiteren Schritt ist und man klickt auf ein Event, das in einem
   Schritt vorher war, soll man temporär in den vorherigen Schritt zurückspringen … und es sollen alle Wahlen aus allen
   anderen Schritten dunkelgrau angezeigt werden“*): Ein Klick auf eine dunkelgraue gewählte Gruppe oder einen
@@ -382,7 +427,14 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   kräftiger zwischen 10 und 18 Uhr (Silas: *„alles zwischen 10 und 18 Uhr preferred“*), und der Block rastet in den
   freien Platz ein, in dem der Zeiger steht. Ein Klick legt ihn als Wochenblock (mit `alle`, wenn die Vorgabe es
   sagt); auf Präsenz wird er rot und abgelehnt. Braucht die Sache mehrere Blöcke (PROG1-Labs: 3 × 1:45), bleibt der
-  nächste hängen. Esc oder „Abbrechen“ lässt los. Am Telefon und Surface legt ein Tipp ab.
+  nächste hängen. Esc oder „Abbrechen“ lässt los. Am Telefon und Surface legt ein Tipp ab. **Block verschieben**
+  (V-0354, Silas: *„Wenn bei einem Modul ein Block gelegt ist und man klickt nochmal drauf, dann soll da nicht mehr
+  stehen ‚Block legen‘, sondern ‚Block verschieben‘, und … der Block / die Blöcke, die zum Format gehören, aufleuchten“*):
+  Liegt schon ein Block, heißt der Knopf so (daneben „Noch einen Block legen“; ist die Sache noch offen, umgekehrt); er
+  zeigt die Woche mit den Blöcken, sie leuchten drei Sekunden (`leuchten`) und lassen sich ziehen.
+- **Festlegen** (V-0354, Silas: *„soll nochmal aufgelistet werden, was eigentlich bekannt ist, aber nicht platziert
+  wurde, man soll es aber trotzdem abschließen können“*): Die Karte nennt jede Sache mit Gelb im Fortschritt („Gruppe
+  nicht gewählt“, „24 h nicht gelegt“ — ein Klick führt hin), das Graue als Liste, und „Trotzdem festlegen“.
 - **Das Raster nach Schichten** (V-0334, Silas: *„immer beim nächsten Schritt ist alles aus den vorherigen Schritten
   dunkelgrau … wirklich keine von den anderen Sachen soll eingetragen oder angezeigt werden“*): Schritt 1 zeigt nur
   die Grundlage. Ab Schritt 2 ist alles aus früheren Schritten **grau** (gefüllt, lesbar, ohne Farbe der Art); der
@@ -394,7 +446,9 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
 - **Jede Kachel** trägt rechts senkrecht ihr **Etikett** — *Präsenz* (Termine, Gruppen, Prüfungen), *Video*, *EVL*
   (kurze Kacheln nur den Anfangsbuchstaben) — und vorn in Zeile 2, **wie oft** sie noch kommt: in der Standardwoche alle
   Termine des Eintrags, in einer echten Woche die ab diesem Tag; „1×“ dunkel heißt einmalig.
-- **Die Woche:** die **Standardwoche** (was jede Vorlesungswoche wiederkehrt; im Kopf je Tag und für die Woche das
+- **Die Woche:** die **Standardwoche** (das Gerüst: was mindestens jede zweite Vorlesungswoche wiederkehrt — eine Reihe
+  seltener als das, BuK-VL 6×, EINFWI-Übung 5×, steht seit V-0354 nur als blasser, gepunkteter Umriss „unregelmäßig“
+  da (`standardwoche()` `unregel`, `regelmaessigAb()`), weil sie ihren Platz an ihren Tagen trotzdem sperrt; im Kopf je Tag und für die Woche das
   **Mittel der echten Vorlesungswochen** — „Ø 7,5 h“, c.t. als Doppelstunde — neben dem Soll der Modulbeschreibungen;
   bis V-0336 zählte sie Blöcke „alle n Wochen“ und Reihen, als lägen sie jede Woche; Reihen an ihrem typischen Platz
   mit „7×“ und „nächster 13.11.“; ein Wochenblock sagt „zählt 12 von 16“, wenn er nicht jede Woche zählt) oder eine
@@ -470,7 +524,7 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   ende?, titel, ort?, wichtig?, unsicher?}]`.
 - **Element** (`teile[]`): `{id, titel, art: praesenz|video|selbst|pruefung, posten?, topf?: 'pruefung', pruefung?,
   termine?, optionen? [{id, label, termine, quelle?, notiz?}], wahl?, zuteilung?, anmeldung? {von, bis, bis_zeit, wo},
-  erwartet? {anzahl, dauer_min?, ab_woche?, quelle?}, einheiten?, vorbereitung_auf?, zeitbindung?: 'unbekannt', quote?
+  erwartet? {anzahl, dauer_min?, ab_woche?, quelle?}, einheiten?, vorbereitung_auf?, unregelmaessig?: true|false (V-0354), zeitbindung?: 'unbekannt', quote?
   {anteil, pruefung, text?}, soll_h? (Anteil eines geteilten Selbststudium- oder Vorbereitungs-Postens), stichtag?,
   offen?, quelle_suchen?, unsicher?, hinweis?, annahme?, quelle?, ort?, online?, ct?, schritt?, kategorie?}`.
 - **Einheiten** (`einheiten`): `liste [{nr, ab, titel, woche, laenge_min, bis?, bis_zeit?, quelle, offen?, unsicher?}]`

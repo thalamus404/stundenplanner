@@ -337,6 +337,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .legende { display: inline-flex; align-items: center; gap: 6px; }
 .legende i { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
 .legende .lg-a { background: var(--m1-wahl); border: 1px solid var(--m1-rand); }
+.legende .lg-u { background: var(--m1-wahl); border: 1px dotted var(--m1-rand); opacity: .5; }
 .legende .lg-r { background: var(--m1-vor); border: 1px dashed var(--m1-rand); }
 .legende .lg-d { background: color-mix(in srgb, var(--m1-vor) 72%, var(--m1-hauch)); border: 1px solid var(--m1-rand); border-left-width: 3px; }
 .legende .lg-o { border: 1.5px dashed var(--m1-rand); }
@@ -781,7 +782,9 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .m-fertig { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--grau-8); }
 .m-fertig .ok { color: var(--gruen); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
 .m-fertig .ok .i { width: 15px; height: 15px; }
-.schritt .s-stand.fertig { background: color-mix(in srgb, var(--gruen) 16%, var(--grau-1)); color: var(--gruen); }
+/* V-0354: der volle grüne Haken erst bei 100 %; gestrichelt, wenn nur noch Unbekanntes fehlt (grau im Balken). */
+.schritt .s-stand.fertig { background: var(--gruen); color: var(--grau-1); }
+.schritt .s-stand.fertig-teil { background: transparent; color: var(--gruen); border: 1.5px dashed var(--gruen); }
 
 /* V-0337: die Zeitleiste des Semesters (Reiter Prüfungen) */
 .zeitleiste { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; border: 1px solid var(--grau-5); border-radius: 12px; background: var(--grau-1); margin-bottom: 14px; }
@@ -1026,3 +1029,45 @@ button.link { text-decoration: underline; text-underline-offset: 2px; color: inh
 .last-legende { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--grau-8); }
 .last-legende i { width: 14px; height: 10px; border-radius: 2px; }
 .offen-wann { color: var(--grau-8); font-weight: 400; white-space: nowrap; }
+
+/* ── Fortschritt und Unregelmäßiges (V-0354) ────────────────────────────────────────────────────
+   Silas, 12.10.: grün geplant · gelb bekannt, noch nicht geplant · grau noch nicht bekannt. Fertige und unbekannte
+   Sachen klappen ein (grüner bzw. grauer Haken); ein Modul ohne Offenes zeigt nur Name, Balken und „Blöcke ändern“. */
+.fbalken { display: flex; gap: 1px; height: 6px; border-radius: 3px; overflow: hidden; background: var(--grau-4); }
+.fbalken.gross { height: 8px; border-radius: 4px; }
+.fbalken > i { display: block; flex: 0 1 0; min-width: 3px; }
+.fbalken > i.gruen { background: var(--gruen); }
+.fbalken > i.gelb { background: var(--gelb); }
+.fbalken > i.grau { background: var(--grau-6); }
+.m-fort { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.m-fort .fbalken { flex: 1; }
+.m-proz { flex: none; min-width: 36px; text-align: right; font-size: 11px; font-weight: 700; color: var(--grau-8); }
+.m-proz.f-fertig { color: var(--gruen); }
+.modul.zu .m-fertig .m-fort { flex: 1; }
+.schritt-tun .st-zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.links-kopf .schritt-tun .st-proz { padding: 0; font-size: 12px; font-weight: 700; color: var(--grau-9); }
+.schritt-tun.f-fertig .st-proz { color: var(--gruen); }
+.schritt-tun .fbalken { margin: 5px 0 1px; }
+.f-haken { width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; }
+.f-haken .i { width: 11px; height: 11px; }
+.f-haken.gruen { background: var(--gruen); color: var(--grau-1); }
+.f-haken.grau { background: var(--grau-4); color: var(--grau-8); }
+.reihe li.zu-zeile .r-zeile { grid-template-columns: 16px minmax(0, 1fr) auto; color: var(--grau-9); }
+.reihe li.zu-zeile.f-fertig .r-stand { color: var(--gruen); font-weight: 600; }
+.reihe li.zu-zeile.f-unbekannt .r-stand { color: var(--grau-8); }
+.reihe .r-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 8px 2px 23px; }
+.r-satz.grau, .satz.grau { color: var(--grau-8); }
+.kachel.leuchten { z-index: 6; box-shadow: 0 0 0 2px var(--grau-10); animation: leuchten .8s ease-in-out 4; }
+@keyframes leuchten { 50% { box-shadow: 0 0 0 4px var(--blau), 0 0 16px 2px var(--blau); } }
+@media (prefers-reduced-motion: reduce) { .kachel.leuchten { animation: none; box-shadow: 0 0 0 3px var(--blau); } }
+.kachel.t-unregel { opacity: .5; border-style: dotted; }
+.pl-titel { margin: 12px 4px 0; font-size: 12px; color: var(--grau-9); }
+.u-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.u-zeile { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; min-height: 28px; font-size: 12px; }
+.u-zeile .u-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.u-zeile .u-stand { color: var(--grau-8); font-size: 11px; }
+.u-zeile.grau, .u-zeile.vorbei { color: var(--grau-8); }
+.u-vorbei { font-size: 11px; color: var(--grau-8); }
+.p-mehr > summary { cursor: pointer; padding: 2px 0; font-size: 12px; font-weight: 600; color: var(--grau-9); }
+.p-mehr[open] > summary { margin-bottom: 4px; }
+.p-bald { color: var(--blau-text); font-weight: 600; }
