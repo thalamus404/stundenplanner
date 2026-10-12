@@ -50,6 +50,7 @@ export function ics(ereignisse, { kalender = 'termine', jetzt = new Date() } = {
   ];
   for (const e of ereignisse) {
     if (!schichten.includes(e.schicht)) continue;
+    if (e.ausgefallen) continue; // fällt aus (TU geschlossen, abgesagt): nicht im Kalender (V-0349)
     const beschreibung = [];
     if (e.online) beschreibung.push(e.online);
     if (e.unsicher) beschreibung.push('Angabe unsicher — prüfen');
