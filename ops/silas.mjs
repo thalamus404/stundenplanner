@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // /silas von der Werkbank aus (V-0321, docs/SILAS.md, docs/BETRIEB.md „/silas“):
 //
-//   node ops/silas.mjs pruefen <stand.json>     rechnet einen Stand durch, ohne Netz (Summen, rote Teile)
+//   node ops/silas.mjs pruefen <stand.json>     rechnet einen Stand durch, ohne Netz (Töpfe je Modul, Offenes)
 //   node ops/silas.mjs holen [<datei>]          GET  /silas/api/stand  (ohne Datei: auf die Ausgabe)
 //   node ops/silas.mjs senden <stand.json>      PUT  /silas/api/stand  (auf dem aktuellen Stand des Servers)
 //   node ops/silas.mjs einrichten [--pruefen]   KV-Namensräume, Bindung SILAS und Geheimnis SILAS_SCHLUESSEL
@@ -57,11 +57,13 @@ async function api(weg, opts = {}) {
 function zusammenfassen(stand) {
   const maengel = M.pruefeAngebot(stand.angebot);
   if (maengel.length) { console.log('  ✗ Angebot:', maengel.join(' · ')); return false; }
-  const e = M.rechnen(stand.angebot, stand.plan || {});
+  // Das Kontingent-Modell (V-0349): je Modul die zwei Töpfe, dazu was offen ist.
+  const e = M.rechnen(stand.angebot, stand.plan || {}, { heute: new Date().toISOString().slice(0, 10) });
   for (const r of e.module) {
-    console.log(`  ${M.kurz(r.modul).padEnd(8)} ${M.stunden(r.gedeckt_min).padStart(8)} von ${M.stunden(r.soll_min)}${r.fehlt_min ? `, fehlen ${M.stunden(r.fehlt_min)}` : ''} · ${r.offen} rot`);
+    console.log(`  ${M.kurz(r.modul).padEnd(8)} Semester ${M.stunden(r.semester_min).padStart(8)} · Prüfungen ${M.stunden(r.pruefung_min).padStart(7)}${r.g5_min ? ` (davon ${M.stunden(r.g5_min)} nach G5)` : ''} · erledigt ${M.stunden(r.erledigt_min)}`);
   }
-  console.log(`  Semester ${M.stunden(e.summe.gedeckt_min)} von ${M.stunden(e.summe.soll_min)} · ${e.summe.offen} Bestandteile rot, ${e.vorkommen.length} Vorkommen`);
+  const z = e.summe.zaehler;
+  console.log(`  ${M.stunden(e.summe.soll_min)} = Semester ${M.stunden(e.summe.semester_min)} + Prüfungen ${M.stunden(e.summe.pruefung_min)} · ${z.kritisch} kritisch, ${z.dran} zu tun, ${z.achtung} prüfen · ${e.vorkommen.length} Vorkommen`);
   return true;
 }
 

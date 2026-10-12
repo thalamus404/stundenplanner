@@ -932,3 +932,97 @@ details.zeitraum > .kal { padding: 0 10px 10px; }
   .kachel.pruefung { background: var(--k-pruefung-f); color: var(--k-pruefung-t); border-color: var(--k-pruefung-r); }
   .t-sym[class*=" k-"], .mu-zeile[class*=" k-"] .mu-name { filter: none; }
 }
+
+/* ── Kontingent-Modell (V-0349) ─────────────────────────────────────────────────────────────────
+   Zwei Töpfe (Semester, Prüfungen), der Baum je Element als Chip, der Abgleich je Posten, ✓/✗ an Vergangenem,
+   Prüfungen mit Kontingent-Balken, Vorschlag und Ziehen im Kalender, die Last je Woche. */
+.balken.zwei { background: var(--k-pruefung-f); }
+.balken.zwei > i.sem { background: var(--k-praesenz-f); box-shadow: inset -1px 0 0 var(--grau-1); }
+.balken.zwei > i.erl { top: auto; height: 2px; background: var(--grau-10); }
+.modul .balken.zwei > i.sem { background: color-mix(in srgb, var(--rand) 45%, var(--grau-1)); }
+.t-form { display: flex; gap: 6px; align-items: baseline; }
+.t-zustand { flex: none; font-size: 11px; line-height: 15px; font-weight: 600; padding: 0 5px; border-radius: 4px; background: var(--grau-3); color: var(--grau-9); }
+.t-zustand.z-fest { background: var(--k-praesenz-f); color: var(--k-praesenz-t); }
+.t-zustand.z-fenster { background: var(--k-lernen-f); color: var(--k-lernen-t); }
+.t-zustand.z-info { background: var(--grau-3); color: var(--grau-8); box-shadow: inset 0 0 0 1px var(--grau-6); }
+.t-zustand.z-wahl { background: var(--blau-flaeche); color: var(--blau-text); }
+.t-zustand.z-rot { background: var(--rot-flaeche); color: var(--rot-text); }
+.t-zustand.z-pruef { background: var(--k-pruefung-f); color: var(--k-pruefung-t); }
+.m-postenliste { display: flex; flex-direction: column; gap: 6px; }
+.m-posten { display: flex; flex-direction: column; gap: 1px; }
+.mp-kopf { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--grau-8); text-transform: uppercase; letter-spacing: .03em; width: 100%; text-align: left; border-radius: 6px; padding: 1px 0; }
+.mp-kopf > span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-k { color: var(--grau-9); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.m-pruef .mp-kopf { color: var(--k-pruefung-t); padding: 4px 6px; background: color-mix(in srgb, var(--k-pruefung-f) 55%, transparent); }
+.m-pruef .mp-kopf .i { width: 12px; height: 12px; }
+.a-chip { font-size: 10.5px; line-height: 15px; font-weight: 700; padding: 0 5px; border-radius: 4px; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+.a-chip.a-passt { background: color-mix(in srgb, var(--gruen) 16%, var(--grau-1)); color: var(--gruen); }
+.a-chip.a-mehr { background: var(--gelb-flaeche); color: var(--gelb-text); }
+.a-chip.a-weniger { background: var(--rot-flaeche); color: var(--rot-text); }
+.a-chip.a-offen, .a-chip.a-ungeplant { background: var(--grau-3); color: var(--grau-8); }
+.baum p { margin: 0; }
+.baum .b-k { color: var(--grau-8); }
+.eh-ist { display: inline-flex; gap: 2px; }
+.eh-ist .knopf.klein { height: 22px; padding: 0 6px; }
+.knopf.an.rot { background: var(--rot); border-color: var(--rot); color: #fff; }
+
+/* Kacheln: Präsenz leicht rot umrandet, Wunsch gestrichelt, Ausfall durchgestrichen, Lebenslauf als Marke unten rechts. */
+.kachel.t-praesenz { outline: 2px solid color-mix(in srgb, var(--rot) 60%, transparent); outline-offset: 0; }
+.kachel.wunsch { border-style: dashed; opacity: .85; }
+.kachel.ausgefallen { opacity: .4; outline: none; }
+.kachel.ausgefallen b { text-decoration: line-through; }
+.kachel .k-ist { position: absolute; right: 16px; bottom: 2px; font-size: 11px; font-weight: 800; line-height: 14px; min-width: 14px; text-align: center; border-radius: 4px; opacity: 1; }
+.k-ist.i-ja { color: var(--gruen); }
+.k-ist.i-nein { color: var(--rot-text); }
+.k-ist.i-teil, .k-ist.i-verschoben { color: var(--gelb-text); }
+.k-ist.i-offen { color: var(--grau-1); background: var(--blau); }
+.kachel.ist-nein { opacity: .55; }
+.kachel.ist-verschoben { opacity: .4; }
+.legende i.k-ist { width: auto; height: 14px; padding: 0 3px; font-style: normal; font-weight: 800; font-size: 11px; line-height: 14px; }
+.k-etikett.e-pruefung { background: var(--k-pruefung-r); }
+.ist-wahl { justify-content: flex-start !important; }
+
+/* Prüfungen: Liste mit Kontingent-Balken (erledigt, geplant, Vorschlag, passt nicht), Detail, Vorschlag. */
+.pruef-liste { gap: 6px; }
+.pruef-reihe li { padding-bottom: 4px; }
+.balken.stapel { display: flex; height: 7px; }
+.balken.stapel > i { position: static; height: 100%; border-radius: 0; flex: none; }
+.balken.stapel > i.erl { background: var(--grau-10); }
+.balken.stapel > i.gepl { background: var(--k-pruefung-r); }
+.balken.stapel > i.vor { background: repeating-linear-gradient(135deg, var(--blau) 0 2px, var(--blau-flaeche) 2px 5px); }
+.balken.stapel > i.pn { background: var(--rot); }
+.p-status { color: var(--grau-9); font-weight: 600; }
+.p-status.s-bestanden { color: var(--gruen); }
+.p-status.s-nicht_bestanden, .p-status.s-ruecktritt_abgelehnt { color: var(--rot-text); }
+.pruef-detail { margin: 6px 6px 4px 23px; }
+.vorschlag { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--k-pruefung-f) 45%, var(--grau-1)); }
+.pruef-topf .erkl-tabelle tr.gewaehlt td { background: var(--blau-flaeche); }
+button.link { text-decoration: underline; text-underline-offset: 2px; color: inherit; }
+.kal-tag::after { content: ""; position: absolute; left: 0; right: 0; bottom: var(--fuell, 0%); height: calc(var(--vor, 0%) - var(--fuell, 0%)); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--blau) 22%, transparent) 0 2px, transparent 2px 6px); pointer-events: none; }
+.kal-tag.fenster { background: color-mix(in srgb, var(--blau) 6%, var(--grau-1)); }
+.kal-tag.vorschlag { border-color: var(--blau); }
+.kal-tag.feiertag .kal-datum { color: var(--rot-text); }
+.kal-tag > * { position: relative; z-index: 1; }
+.kal-vorschlag { font-size: 11px; font-weight: 700; text-align: left; border-radius: 4px; padding: 0 4px; color: var(--blau-text); box-shadow: inset 0 0 0 1px var(--blau); background: var(--grau-1); }
+.kal-zieh { position: absolute !important; inset: auto 4px 4px auto; font-size: 13px; font-weight: 800; color: var(--grau-1); background: var(--k-pruefung-r); border-radius: 6px; padding: 1px 6px; z-index: 3 !important; pointer-events: none; }
+.kal-block.erledigt { opacity: .7; }
+
+/* Abgleich: je Modul eine Tabelle, die Last je Woche als Säulen mit der Grenze als Linie. */
+.abgleich-modul { display: flex; flex-direction: column; gap: 6px; }
+.abgleich-modul h3 { font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.abgleich-modul .a-summe { font-size: 12px; color: var(--grau-8); font-weight: 400; margin-left: auto; }
+.last-saeulen { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; height: 160px; padding-top: 4px; border-bottom: 1px solid var(--grau-5); }
+.last-saeulen::after { content: ""; position: absolute; left: 0; right: 0; bottom: var(--grenze); border-top: 1.5px dashed var(--rot); pointer-events: none; }
+.last-saeule { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; height: 100%; min-width: 0; border-radius: 4px 4px 0 0; }
+.ls-stapel { flex: 1; display: flex; flex-direction: column-reverse; justify-content: flex-start; min-height: 0; }
+.ls-stapel > i { display: block; flex: none; }
+.ls-name { font-size: 9px; color: var(--grau-8); text-align: center; height: 12px; line-height: 12px; }
+.ls-t { background: var(--k-praesenz-r); }
+.ls-b { background: var(--k-lernen-r); }
+.ls-p { background: var(--k-pruefung-r); }
+.ls-o { background: repeating-linear-gradient(135deg, var(--grau-7) 0 2px, transparent 2px 5px); }
+.ls-v { background: repeating-linear-gradient(135deg, var(--blau) 0 2px, transparent 2px 5px); }
+.last-saeule.ueber .ls-name { color: var(--rot-text); font-weight: 700; }
+.last-legende { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--grau-8); }
+.last-legende i { width: 14px; height: 10px; border-radius: 2px; }
+.offen-wann { color: var(--grau-8); font-weight: 400; white-space: nowrap; }
