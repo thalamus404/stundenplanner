@@ -713,6 +713,32 @@ export function unregelmaessige(erg) {
   return aus.sort((a, b) => ((a.naechstes && a.naechstes.ab) || '9') < ((b.naechstes && b.naechstes.ab) || '9') ? -1 : 1);
 }
 
+/** Was an einem Element verpasst ist (V-0357, Silas, 12.10.: „in der Progress Bar von Statistik 1 soll genau der Anteil,
+ *  den ich nicht gemacht habe, als rot markiert dort auftauchen … wenn ich eine Präsenzvorlesung auf nicht gemacht geklickt
+ *  habe, soll die schwarz markiert sein, weil die kann man nicht einfach nachholen … bzw. ein dritter Button ‚ausgefallen‘,
+ *  und da muss man einen Grund hinschreiben“). Je Vorkommen mit Eintrag: art
+ *   - nachholen: ein Block oder Video ✗ (oder der fehlende Teil von „teilweise“) — die Zeit fehlt noch (rot), bis „nachgeholt“;
+ *   - verpasst:  ein Präsenztermin ✗ — vorbei, nicht nachzuholen (schwarz); den Stoff meldet „Nacharbeit“ (Testfall 16);
+ *   - ausgefallen: ein Termin, der nicht stattfand (gemeldet, mit Grund) — kein Verlust, nur zur Liste.
+ *  Ergebnis nach Datum: [{ v, art, min, nachgeholt, grund }]. */
+export function verpasst(erg, z) {
+  const ist = (erg.plan && erg.plan.ist) || {};
+  const aus = [];
+  for (const v of z.vk) {
+    if (v.quelle !== 'termin' && v.quelle !== 'block') continue;
+    const e = istEintrag(ist[v.id]);
+    const dauer = v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : v.zaehlt_min || 0;
+    if (v.ausgefallen === 'gemeldet') { aus.push({ v, art: 'ausgefallen', min: dauer, nachgeholt: false, grund: (e && e.grund) || null }); continue; }
+    if (!e) continue;
+    if (e.s === 'nein') aus.push({ v, art: v.quelle === 'termin' ? 'verpasst' : 'nachholen', min: dauer, nachgeholt: !!e.nachgeholt, grund: e.grund || null });
+    else if (e.s === 'teil' && v.quelle === 'block') {
+      const rest = Math.max(0, dauer - (v.erledigt_min || 0));
+      if (rest >= 15) aus.push({ v, art: 'nachholen', min: rest, nachgeholt: !!e.nachgeholt, teil: true, grund: null });
+    }
+  }
+  return aus.sort((a, b) => (a.v.datum < b.v.datum ? -1 : a.v.datum > b.v.datum ? 1 : a.v.start - b.v.start));
+}
+
 /** Der Fortschritt eines Elements (V-0354, Silas: „Grün = geplant, Grau = nicht geplant, weil nicht bekannt, Gelb = nicht
  *  geplant, obwohl bekannt“), in Minuten seines Kontingents: { k, gruen, gelb, grau, status } mit status fertig (alles
  *  grün), unbekannt (nichts gelb, aber grau — „alles, was ich jetzt wählen kann, ist gewählt, es kommt noch was“) oder offen.
@@ -721,6 +747,22 @@ export function unregelmaessige(erg) {
  *  der Rest gelb; ein wartendes Fenster grau. Unregelmäßiges je Bezugstermin, offene Termine grau. Prüfungsvorbereitung:
  *  ohne Prüfungstermin grau. */
 export function fortschritt(erg, z, uListe = null) {
+  const f = fortschrittRoh(erg, z, uListe);
+  // Verpasstes (V-0357): Was ✗ ist, steht nicht mehr im Plan — es kommt als „geplant“ zurück (der Balken bleibt so lang,
+  // wie er war, Silas: „die Gesamtbar soll sich nicht ändern, es soll nur das Rote dazukommen“), und daraus wird rot,
+  // was nachzuholen ist, und schwarz, was als Präsenz verpasst ist. Der Status bleibt (gelb/grau entscheiden ihn).
+  const vp = verpasst(erg, z);
+  const nach = vp.filter((x) => x.art === 'nachholen').reduce((s, x) => s + x.min, 0);
+  const offen = vp.filter((x) => x.art === 'nachholen' && !x.nachgeholt).reduce((s, x) => s + x.min, 0);
+  const schwarz = vp.filter((x) => x.art === 'verpasst').reduce((s, x) => s + x.min, 0);
+  const zurueck = Math.min(f.gelb, nach);
+  f.gruen += zurueck; f.gelb -= zurueck;
+  f.rot = Math.min(f.gruen, offen); f.gruen -= f.rot;
+  f.schwarz = Math.min(f.gruen, schwarz); f.gruen -= f.schwarz;
+  f.status = f.gelb > 0 ? 'offen' : f.grau > 0 ? 'unbekannt' : 'fertig';
+  return f;
+}
+function fortschrittRoh(erg, z, uListe) {
   const t = z.teil;
   const k = Math.max(0, z.kontingent_min || (z.P && z.P.K ? Math.round(z.P.K / Math.max(1, z.P.elemente.length)) : 0) || 60);
   const voll = (art) => ({ k, gruen: art === 'gruen' ? k : 0, gelb: art === 'gelb' ? k : 0, grau: art === 'grau' ? k : 0, status: art === 'gruen' ? 'fertig' : art === 'grau' ? 'unbekannt' : 'offen' });
@@ -762,9 +804,9 @@ export function fortschritt(erg, z, uListe = null) {
 export function fortschrittVon(erg, zs, uListe = null) {
   const u = uListe || (zs.some((z) => z.unregel) ? unregelmaessige(erg) : []);
   const je = zs.map((z) => ({ z, f: fortschritt(erg, z, u) }));
-  const s = { k: 0, gruen: 0, gelb: 0, grau: 0 };
-  for (const { f } of je) { s.k += f.k; s.gruen += f.gruen; s.gelb += f.gelb; s.grau += f.grau; }
-  s.anteil = s.k ? s.gruen / s.k : 1;
+  const s = { k: 0, gruen: 0, gelb: 0, grau: 0, rot: 0, schwarz: 0 };
+  for (const { f } of je) { s.k += f.k; s.gruen += f.gruen; s.gelb += f.gelb; s.grau += f.grau; s.rot += f.rot || 0; s.schwarz += f.schwarz || 0; }
+  s.anteil = s.k ? (s.gruen + s.rot + s.schwarz) / s.k : 1;
   s.status = s.gelb > 0 ? 'offen' : s.grau > 0 ? 'unbekannt' : 'fertig';
   s.je = je;
   return s;
@@ -921,7 +963,9 @@ export const REGEL_TEXTE = [
   { feld: 'katalog_wochen', titel: 'Eine wöchentliche Serie wird gegen höchstens so viele Termine geprüft', einheit: 'Termine', quelle: 'Multiplikator der Aufwandstabellen (15); die 16. Woche ist Luft' },
   { feld: 'woche_h', titel: 'Kapazität je Woche', einheit: 'h', quelle: 'Silas, 12.10. (G8)' },
   { feld: 'tag_h', titel: 'Kapazität je Tag', einheit: 'h', quelle: 'Silas, V-0340 und 12.10. (G8)' },
-  { feld: 'we_h', titel: 'Vorschlag: je Wochenende vor einer Prüfung höchstens', einheit: 'h', quelle: 'Silas, V-0340' },
+  { feld: 'we_h', titel: 'Vorschlag: das Wochenende vor einer Prüfung', einheit: 'h', quelle: 'Silas, V-0340 und 12.10. (V-0357)' },
+  { feld: 'we2_h', titel: 'Vorschlag: das Wochenende davor', einheit: 'h', quelle: 'Silas, 12.10. (V-0357)' },
+  { feld: 'we_rest_h', titel: 'Vorschlag: jedes Wochenende davor', einheit: 'h', quelle: 'Silas, 12.10. (V-0357)' },
   { feld: 'toleranz_mind_min', titel: 'Abgleich je Posten: passt bis 10 %, mindestens', einheit: 'min', quelle: 'Kontingent-Modell' },
   { feld: 'modul_meldung_min', titel: 'Abgleich je Modul: melden ab', einheit: 'min', quelle: 'Silas, 11.10.: ±2 h nicht melden' },
   { feld: 'video_puffer_min', titel: 'Puffer je Videowoche', einheit: 'min', quelle: 'Silas: „1:45 Video → 2 h einplanen“' },

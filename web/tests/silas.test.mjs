@@ -383,15 +383,16 @@ test('Freie Lücke in einem eigenen Fenster (Prüfungsvorbereitung in der Vorles
   assert.deepEqual(M.freieLuecke(e, '2030-10-15', [], ['07:00', '22:00']), [M.min('11:45'), M.min('22:00')]);
 });
 
-test('Vorschlag: die zwei Wochenenden vor der Prüfung je höchstens 10 h, dann rückwärts — nie über die Kapazität, nie an Feiertagen', () => {
+test('Vorschlag: die zwei Wochenenden vor der Prüfung je 10 h, dann 4 h je Wochenende — nie über die Kapazität, nie an Feiertagen', () => {
   // Klausur Mo 03.03.2031, 90 h Vorbereitung, vorlesungsfrei ab 16.02.: erst Sa/So 01./02.03. und 22./23.02. (je 10 h, 9 h
-  // je Tag), dann rückwärts jeder freie Tag mit 9 h.
+  // je Tag), dann je Wochenende 4 h rückwärts (V-0357).
   const e = M.rechnen(angebot(), {}, { heute: '2030-10-14' });
   const X = e.pruefungen.get('bsp-klausur');
   const tag = Object.fromEntries(X.vorschlag.map((v) => [v.datum, v.min / 60]));
   assert.equal(tag['2031-03-01'] + tag['2031-03-02'], 10);
   assert.equal(tag['2031-02-22'] + tag['2031-02-23'], 10);
   assert.ok(Object.values(tag).every((x) => x <= 9));
+  assert.equal(tag['2031-02-15'] + tag['2031-02-16'], 4, 'das dritte Wochenende davor: 4 h');
   assert.equal(X.vorschlag.reduce((s, v) => s + v.min, 0), 90 * 60);
   assert.equal(X.passt_nicht_min, 0);
   // In der Vorlesungszeit nur Sa/So; nie vor heute, nie an Feiertagen (24.–26.12., 31.12., 01.01.).

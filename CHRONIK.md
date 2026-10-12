@@ -12,6 +12,22 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 12.10.2026 — /silas: Zeitleiste unten, gemeinsamer Vorschlag, Verpasstes im Balken, Analytics (V-0357)
+
+- Unter „Prüfungen“ geht mit der Wahl einer Prüfung unten eine Zeitleiste auf: je Tag von heute bis zwei Tage nach dem
+  Termin eine Säule (9 h), Wochenenden weiß gerahmt, Lernaufwand x von y h; Tippen und Ziehen legen Lernzeit.
+- Der Vorschlag rechnet jetzt alle Prüfungen gemeinsam: je Prüfung 10 h ans Wochenende davor, 10 h ans davor, dann je
+  4 h, Periode für Periode für alle zugleich und in halben Stunden reihum — so teilen sich PROG1 und BuK (beide 17.02.)
+  die Wochenenden, und an einem Tag lernt man für mehrere. Vorher rechnete jede Prüfung für sich nach Datum, die
+  spätere bekam Reste.
+- Kalender: Prüfungen in Modulfarbe, die Form nach Art (● Klausur, ■ E-Test, ◆ Test); die gewählte springt in den Blick
+  und leuchtet; Fristen als i-Knopf statt als Zeilen.
+- Ist-Erfassung: ✗ wird im Modulbalken rot (nachzuholen) bzw. schwarz (Präsenz verpasst), der Balken bleibt gleich lang;
+  „Ansehen“ listet das Verpasste mit der Zeit zum Nachholen; Termine haben „ausgefallen“ mit Grund.
+- Analytics (Knopf unten links): Lernverhalten aus ✓/✗ je Woche, Art, Wochentag und Stunde, Verpasstes, Prüfungs-
+  vorbereitung und die Nutzung (je Tag Sitzungen, Änderungen, aktive Minuten — gezählt im Browser, gespeichert mit der
+  nächsten Änderung).
+
 ## 12.10.2026 — /silas: halbe Lernblöcke, Modul leuchtet, Prüfungen aufgeräumt, Vorschlag am Wochenende (V-0356)
 
 - Silas' zweite Rückmeldung beim Neuaufbau (Probeplan 2): Vor-/Nachbereitung und Quizze in halben Blöcken mit doppelter

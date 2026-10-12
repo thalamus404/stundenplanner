@@ -30,7 +30,9 @@ export const REGELN = {
   portfolio_tage: 1,     // § 63 Abs. 4 und 5: Portfolio — An- und Abmeldung bis einen Tag vor dem ersten Teil
   vorbehalt_tage: 14,    // § 63 Abs. 2: Vorbehalt bis zwei Wochen vor der Prüfung aufheben (Nachweis, Übungsschein)
   anmeldung_ab_tage: 14, // § 63 Abs. 4: Die Anmeldung beginnt in der Regel zwei Wochen nach Vorlesungsbeginn
-  we_h: 10,              // Silas, V-0340: die zwei Wochenenden vor einer Prüfung je höchstens 10 h
+  we_h: 10,              // Silas, V-0340/V-0357: Vorschlag — das Wochenende vor einer Prüfung 10 h …
+  we2_h: 10,             // … das davor noch einmal 10 h …
+  we_rest_h: 4,          // … und jedes Wochenende davor 4 h, bis das Kontingent gedeckt ist (V-0357)
   erwartet_min: 120,     // ein Termin, dessen Daten noch fehlen (Tutorium, Übung): eine Doppelstunde
   evl_block_min: 120,    // Silas, 11.10. (V-0335): „EVL-Block muss einfach zwei Stunden sein“ …
   evl_min_min: 90,       // … „mindestens anderthalb Stunden“

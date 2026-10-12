@@ -166,7 +166,9 @@ sich nicht legen.
    … oder ein X … und daneben drei Punkte: verschieben, Hälfte gemacht“*): Ein vergangenes Vorkommen ohne Eintrag ist
    `offen` (unbestätigt). `plan.ist[vorkommen-id]`: `'ja'` (✓ erledigt/besucht), `'nein'` (✗ — bei einem Termin wird
    daraus **Nacharbeit** im selben Posten bis zum nächsten Termin; `nachgeholt: true` hakt sie ab), `{s:'teil', min}`,
-   `'verschoben'` (der Block liegt jetzt als Datumsblock mit `aus` woanders) und `'ausgefallen'` (Termin).
+   `'verschoben'` (der Block liegt jetzt als Datumsblock mit `aus` woanders) und `'ausgefallen'` bzw. seit V-0357
+   `{s:'ausgefallen', grund}` (Termin, der nicht stattfand). Auch ein ✗-Block kann `nachgeholt: true` tragen: Dann ist er
+   im Modulbalken nicht mehr rot (`verpasst()`, §3).
    `erledigt_min` bucht nur ✓ und „teil“ ab; `plan_min` ist, was der Kalender als Plan trägt (vergangen ✗ nicht, eine
    gewünschte Gruppe nicht). Einheiten einer Quote (TECHGI-Quiz) bekommen `plan.ist['<element>#<nr>']`.
 
@@ -201,12 +203,20 @@ Je Prüfung (`erg.pruefungen`):
 Prüfungen, alle Blöcke (auch die, die noch nicht zählen, sie belegen die Zeit) — und der **Bedarf ohne Block**
 (Wochenwert, Einheiten der Woche, erwartete Gruppen), verteilt auf Mo–Fr. **Vorschlag** (`vorschlag()`, Silas, 12.10.:
 *„als Vorschlag vom System in Weihnachtspause und Januarwochenenden verteilen … an den zwei Wochenenden vor einer
-Prüfung … zehn Stunden, die aber dann vom Menschen verteilt werden“*): Prüfungen nach Datum (am selben Tag nach
-Uhrzeit); je Prüfung zuerst die zwei Wochenenden davor, je höchstens `we_h` (10 h) — auch danach füllt nichts sie
-weiter auf —, dann rückwärts vom Tag vor der Prüfung bis zum Fensteranfang: in der Vorlesungszeit nur Sa/So, sonst
-jeder Tag; nie an Feiertagen (24.–26.12., 31.12., 01.01.), nie vor heute; je Tag höchstens, was nach allem frei ist
-(9 h), je Woche ebenso (45 h); in halben Stunden. Was nicht passt, steht als `passt_nicht_min` da und wartet auf Silas'
-Entscheidung. Der Vorschlag legt nichts: „Vorschlag übernehmen“ macht daraus Blöcke (`lernStrecken()`: am Stück im
+Prüfung … zehn Stunden, die aber dann vom Menschen verteilt werden“*), seit V-0357 **für alle Prüfungen gemeinsam**
+(Silas: *„zehn Stunden sollen möglichst ans Wochenende davor und nochmal zehn Stunden ans Wochenende davor und dann der
+Rest auf vier Stunden pro Wochenende … eine Logik, die alle Vorschläge von allen Klausurterminen in einen Topf wirft …
+an einem Tag für mehrere Klausuren lernen können“*): Je Prüfung Perioden rückwärts — P1 vom Samstag vor der Prüfung bis
+zum Tag davor, dann je sieben Tage (Sa–Fr); in der Vorlesungszeit sind das genau Sa und So, in der vorlesungsfreien Zeit
+gehören die freien Wochentage dazu. Ziel je Periode `we_h` (10 h), `we2_h` (10 h), dann je `we_rest_h` (4 h), bis das
+Kontingent gedeckt ist; was dort schon liegt, zählt mit. Alle Prüfungen Periode für Periode (erst alle P1, dann alle P2
+…), in halben Stunden reihum (nach Datum der Prüfung): Die nahe Prüfung geht der fernen vor, zwei Prüfungen teilen sich
+ein Wochenende, und je Prüfung bekommt Sa/So vor den Wochentagen, dann der Tag mit dem wenigsten (bei Gleichstand der
+spätere: 2,5 h → Sa 1 h, So 1,5 h). Was eine Periode nicht fasst, will die davor zusätzlich. Nie an Feiertagen (24.–26.12.,
+31.12., 01.01.), nie vor heute, je Tag höchstens, was nach allem frei ist (9 h); die 45 h je Woche gelten hier nicht (G10,
+V-0356 — volle Wochen zeigt der Abgleich). Was bis zum Fensteranfang nicht passt, steht als `passt_nicht_min` da und
+wartet auf Silas' Entscheidung (bis V-0356 rechnete jede Prüfung für sich nach Datum; die spätere bekam Reste — PROG1
+am 17.02. 4 h hier, 4 h dort). Der Vorschlag legt nichts: „Vorschlag übernehmen“ macht daraus Blöcke (`lernStrecken()`: am Stück im
 Lernfenster 9–19 Uhr, sonst 7–22 Uhr, sonst in die größten Lücken geteilt).
 
 ### 2.8 Abgleich (nur prüfend)
@@ -315,6 +325,23 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   Der Prüfungs-Topf steht als eine Zeile, die zu „Prüfungen“ führt. Die Karte eines Elements zeigt **So wird gerechnet**:
   Posten und Topf, Zeitbindung, Alternativen, Info fehlt mit Stichtag, wie sein Kontingent entsteht, den Wochenwert als
   Rechnung, Lebenslauf und Abgleich; mit Zuteilung die Knöpfe „Angemeldet?“, „Zugeteilt: G4“, „Kein Platz bekommen“.
+- **Verpasstes im Modulbalken** (V-0357, `verpasst()`, Silas: *„in der Progress Bar soll genau der Anteil, den ich nicht
+  gemacht habe, als rot markiert auftauchen — die Gesamtbar soll sich nicht ändern … eine Präsenzvorlesung … schwarz,
+  weil die kann man nicht einfach nachholen … ein dritter Button ‚ausgefallen‘ mit Grund“*): Was ✗ ist (oder der Rest von
+  „teilweise“), kommt im Fortschritt als „geplant“ zurück und wird daraus rot (Blöcke, Videos: nachzuholen, bis
+  „Nachgeholt“) oder schwarz (Präsenz verpasst); der Balken bleibt gleich lang, der Status (gelb/grau) auch. „Ansehen“ am
+  Modul listet je Tag, was verpasst ist, mit der Zeit, die nachzuholen ist, und „Nachgeholt?“. Ein Termin hat in der
+  Ist-Karte zusätzlich **„… ausgefallen“** mit Pflichtfeld Grund (`{s: 'ausgefallen', grund}`): fand nicht statt, kein
+  Verlust, grau in der Liste.
+- **Analytics** (V-0357, `auswertung.mjs`, Silas: *„alles, was da an Daten erhoben wird, soll in einem weiteren Tab als
+  Analytics einzusehen sein … unten links ein kleiner Button … wie der Stundenplan tatsächlich genutzt wird, wie das
+  eigene Lernverhalten ist“*): Knopf unten links in der Leiste. Kacheln (bis heute fällig, erledigt, bestätigt, Präsenz,
+  nachzuholen, Prüfungsvorbereitung, Nutzung), dann je Woche, je Art, je Wochentag und Anfangsstunde die Verteilung der
+  Ist-Erfassung (grün ✓, hellgrün teilweise, rot ✗, schwarz Präsenz verpasst, blau verschoben, grau ausgefallen, hell ohne
+  ✓/✗), das Verpasste je Modul, die Prüfungsvorbereitung und die Nutzung der letzten vier Wochen. **Gezählt** wird je Tag
+  (`plan.nutzung[datum]`: sitzungen, aenderungen, aktiv_min, ansichten) erst im Browser (`LS.nutzung`) und mit der
+  nächsten Änderung gespeichert — Zählen allein schreibt nie auf den Server (sonst stieße ein zweites Gerät auf eine
+  fremde Version); Rückgängig lässt die Zählung stehen.
 - **Ist-Erfassung** (V-0349, G6): Vergangenes trägt unten rechts eine Marke — „?“ (blau: vorbei, noch offen), ✓, ✗, ½,
   →. Ein Klick öffnet die Karte: ✓ erledigt/besucht, ✗ nicht gemacht/verpasst, bei Terminen „fiel aus“, bei Blöcken
   „… teilweise“ (Minuten oder Hälfte) und „… verschieben“ (neuer Tag und Uhrzeit). Über dem Raster einer echten Woche
@@ -354,6 +381,21 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   Ist eine Prüfung nach einem Tipp, Ziehen oder „Vorschlag übernehmen“ fertig geplant (höchstens 30 min offen), geht die
   nächste offene nach Datum auf. Ein Tipp auf den **Samstag** vor der Prüfung legt die Hälfte, wenn der Sonntag noch frei
   ist (2,5 h → Sa 1 h, So 1,5 h).
+- **Zeitleiste unten** (V-0357, Silas: *„sobald man eins angeklickt hat, soll von unten so ein Chart aufploppen, eine
+  Zeitleiste von heute bis zwei Tage nach dem Test … rechts oben ‚Lernaufwand 0 von 18 h‘ … jeder einzelne Tag als Bar
+  … neun Stunden das Maximum … Wochenenden einen weißen Rahmen … da soll man Prüfungen eintragen können“*,
+  `untenZeichnen()`): Ist unter „Prüfungen“ eine Prüfung (oder Unregelmäßiges) gewählt, steht unten fest eine Leiste: je
+  Tag von heute bis zwei Tage nach dem Termin eine Säule (9 h = voll) — grau, was schon liegt, in Modulfarbe die Lernzeit
+  dieser Prüfung, blau schraffiert ihr Vorschlag; Wochenenden weiß gerahmt, heute rot, der Prüfungstag in Modulfarbe mit
+  ▲, darunter Monate und Montage. Ein Tipp legt Lernzeit wie im Kalender, Ziehen nach unten wählt die Stunden; ✕ oder
+  „Fertig“ schließt. Am Telefon scrollt sie seitlich, die Prüfung steht rechts im Blick.
+- **Farbschema der Prüfungen** (V-0357, Silas: *„ein Farbschema, inspiriert von dem Wochenfarbschema für die Module und
+  Kategorie, ob Test, Klausur, Online-Test“*): Die Farbe ist das Modul (wie der Streifen jeder Kachel in der Woche), die
+  Form die Art — ● Klausur, ■ E-Test, ◆ Online- oder schriftlicher Test —, gefüllt, was gilt, hohl der Rückfalltermin; in
+  der Zeitleiste oben, in der Liste und im Kalender gleich. **Gewählt springt die Ansicht zur Prüfung selbst**, ihr Tag
+  ist in Modulfarbe kräftig umrandet und leuchtet kurz; ein Bezugstermin des Unregelmäßigen (die Übung) nur dünn.
+  **Fristen** stehen nicht mehr als Zeilen in der Zelle, sondern als kleiner i-Knopf oben rechts (rot, wenn eine wichtige
+  dabei ist); Hover oder Tipp zeigt die Liste (`fristInfo()`).
 - **Prüfungen, darunter „Unregelmäßig — an Termine gebunden“** (V-0354, §2.10, Silas zu den Quicktests: *„falls schon
   bekannt, wann die stattfinden, dann sollte mein Zeiger sofort in die Woche springen, wo das ist … wenn es noch nicht
   bekannt ist, soll es … als Folgeentscheidung kommen“*): je Element (`unregelmaessige()`) „nächster 02.11. · 1 von 5

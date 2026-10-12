@@ -520,63 +520,82 @@ function last(erg) {
 export const tagLast = (erg, d) => (erg.last.tage.get(d) || { summe: 0 }).summe;
 export const wochenLast = (erg, d) => (erg.last.wochen.get(montagVon(d)) || { summe: 0 }).summe;
 
-// ── 10b · Vorschlag für die Prüfungsvorbereitung ─────────────────────────────────────────────────
-// Prüfungen nach Datum; je Prüfung zuerst die zwei Wochenenden davor (je höchstens 10 h), dann rückwärts vom Tag vor
-// der Prüfung: in der Vorlesungszeit nur Sa/So, sonst jeder Tag. Nie an Feiertagen, nie vor heute, nie über die freie
-// Kapazität (9 h je Tag, nach allem schon Geplanten). Was nicht passt, steht als „passt nicht“ da.
-// Die zwei Wochenenden (V-0356, Silas, 12.10.: „es soll immer beim Wochenende davor möglichst die Hälfte vom Pensum
-// geschafft werden … wenn es 2,5 h Vorbereitung sind, dann mache ich am ersten Tag eine Stunde, am zweiten 1,5 Stunden“):
-// gleichmäßig auf Sa und So (Sa die abgerundete Hälfte), was schon an ihnen liegt, eingerechnet — und ohne die Grenze
-// von 45 h je Woche, die gilt nur für den Rest (G10: die Prüfung geht vor; in den Vorlesungswochen ist sie sonst immer
-// schon voll, und der Vorschlag zerfiel in halbe Stunden über drei Wochenenden).
-
+// ── 10b · Vorschlag für die Prüfungsvorbereitung — alle Prüfungen gemeinsam (V-0357) ──────────────
+// Silas, 12.10. abends: „pro Prüfung … zehn Stunden sollen möglichst, wenn es geht, ans Wochenende davor, und nochmal zehn
+// Stunden ans Wochenende davor, und dann der Rest auf vier Stunden pro Wochenende, jedes Wochenende davor … eine Logik,
+// die einmal alle Vorschläge von allen Klausurterminen in einen Topf wirft … dass alle von denen ihre eigene Zeit zum
+// Lernen brauchen … an einem Tag für mehrere Klausuren lernen können.“ (Vorher rechnete jede Prüfung für sich, nach
+// Datum: Die frühere nahm sich die Wochenenden, die spätere bekam Reste — PROG1 am 17.02. 4 h hier, 4 h dort.)
+//  - Je Prüfung Perioden rückwärts: P1 = vom Samstag vor der Prüfung bis zum Tag davor, dann je sieben Tage (Sa–Fr).
+//    In der Vorlesungszeit sind das genau Sa und So; in der vorlesungsfreien Zeit gehören die freien Wochentage dazu.
+//  - Ziel je Periode: we_h (10 h), we2_h (10 h), dann je we_rest_h (4 h), bis das Kontingent gedeckt ist; was dort
+//    schon liegt, zählt mit.
+//  - Alle Prüfungen zusammen, Periode für Periode (erst alle P1, dann alle P2 …), in halben Stunden reihum: So teilen
+//    sich zwei Prüfungen ein Wochenende, die nahe Prüfung geht der fernen vor, und an einem Tag lernt man auch für zwei.
+//    Je Prüfung bekommt Sa/So vor den Wochentagen, dann der Tag mit dem wenigsten (bei Gleichstand der spätere):
+//    2,5 h → Sa 1 h, So 1,5 h; freie Wochentage erst, wenn das Wochenende voll ist.
+//  - Was eine Periode nicht fasst (9 h je Tag nach allem schon Geplanten), wandert in die Periode davor.
+//  - Nie an Feiertagen, nie vor heute, nie vor dem Fenster der Prüfung. 45 h je Woche gelten hier nicht (G10, V-0356) —
+//    volle Wochen zeigt der Abgleich.
 function vorschlag(erg) {
   const r = erg.regeln, sem = erg.sem, heute = erg.heute;
   const fei = feiertage(sem);
-  const vt = new Map(), vw = new Map(); // vorgeschlagene Minuten je Tag / je Woche
-  const freiTag = (d) => Math.max(0, r.tag_h * 60 - tagLast(erg, d) - (vt.get(d) || 0));
-  const freiWoche = (d) => Math.max(0, r.woche_h * 60 - wochenLast(erg, d) - (vw.get(montagVon(d)) || 0));
-  const legen = (d, m, wohin, ohneWoche = false) => {
-    let x = Math.min(m, freiTag(d), ohneWoche ? Infinity : freiWoche(d));
-    x = Math.floor(x / 30) * 30;
-    if (x <= 0) return 0;
-    vt.set(d, (vt.get(d) || 0) + x); vw.set(montagVon(d), (vw.get(montagVon(d)) || 0) + x);
-    wohin.set(d, (wohin.get(d) || 0) + x);
-    return x;
-  };
+  const vt = new Map(); // vorgeschlagene Minuten je Tag (alle Prüfungen)
+  const frei = (d) => Math.max(0, r.tag_h * 60 - tagLast(erg, d) - (vt.get(d) || 0));
   const erlaubt = (d) => !fei.has(d) && (wochentag(d) >= 5 || !istVorlesungstag(sem, d));
-  // Nach Datum, am selben Tag nach Uhrzeit (BuK 9 Uhr vor PROG1 14 Uhr am 17.02.).
+  // Nach Datum, am selben Tag nach Uhrzeit (BuK 9 Uhr vor PROG1 14 Uhr am 17.02.) — die Reihenfolge innerhalb einer Runde.
   const xs = [...erg.pruefungen.values()].filter((X) => X.termin && X.zaehlt && X.fenster.bis)
     .sort((a, b) => (a.termin.datum < b.termin.datum ? -1 : a.termin.datum > b.termin.datum ? 1 : String(a.termin.start || '').localeCompare(String(b.termin.start || ''))));
-  for (const X of [...erg.pruefungen.values()]) { X.vorschlag = []; X.passt_nicht_min = 0; }
-  for (const X of xs) {
-    let rest = X.offen_min;
-    const wohin = new Map();
+  for (const X of erg.pruefungen.values()) { X.vorschlag = []; X.passt_nicht_min = 0; }
+  const st = xs.map((X) => {
     const ab = heute && heute > X.fenster.ab ? heute : X.fenster.ab;
     const tagX = X.termin.datum;
-    const so = plusTage(tagX, -(wochentag(tagX) + 1));
-    // Die zwei Wochenenden davor tragen je höchstens 10 h — auch danach füllt der Rest sie nicht weiter auf.
-    const we = new Set();
-    const schon = (d) => X.bloecke.filter((v) => v.datum === d).reduce((s_, v) => s_ + (v.zaehlt_min || 0), 0);
-    for (let k = 0; k < 2; k++) {
-      const s = plusTage(so, -7 * k), sa = plusTage(s, -1);
-      we.add(sa); we.add(s);
-      const tage = [sa, s].filter((d) => d >= ab && d < tagX && !fei.has(d));
-      if (!tage.length || rest <= 0) continue;
-      const da = tage.reduce((x, d) => x + schon(d), 0);
-      const paket = Math.min(rest + da, r.we_h * 60); // was das Wochenende insgesamt tragen soll
-      let gelegt = 0;
-      if (tage.length === 2) {
-        const soll1 = Math.floor(paket / 2 / 30) * 30;
-        for (const [d, soll] of [[tage[0], soll1], [tage[1], paket - soll1]]) gelegt += legen(d, Math.max(0, Math.min(soll - schon(d), paket - da - gelegt)), wohin, true);
-      }
-      // Was ein Tag nicht nehmen konnte (9 h voll), nimmt der andere.
-      for (const d of tage) gelegt += legen(d, Math.max(0, paket - da - gelegt), wohin, true);
-      rest -= gelegt;
+    const zurueck = ((wochentag(tagX) - 5 + 7) % 7) || 7; // bis zum Samstag davor (eine Prüfung am Samstag: der vorige)
+    const perioden = [];
+    for (let von = plusTage(tagX, -zurueck), bis = plusTage(tagX, -1); bis >= ab; bis = plusTage(von, -1), von = plusTage(von, -7)) {
+      const tage = [];
+      for (let d = von; d <= bis; d = plusTage(d, 1)) if (d >= ab && erlaubt(d)) tage.push(d);
+      perioden.push(tage);
     }
-    for (let d = plusTage(tagX, -1); rest > 0 && d >= ab; d = plusTage(d, -1)) if (erlaubt(d) && !we.has(d)) rest -= legen(d, rest, wohin);
-    X.vorschlag = [...wohin].map(([datum, m]) => ({ datum, min: m })).sort((a, b) => (a.datum < b.datum ? -1 : 1));
-    X.passt_nicht_min = Math.max(0, rest);
+    const schon = new Map();
+    for (const v of X.bloecke || []) schon.set(v.datum, (schon.get(v.datum) || 0) + (v.zaehlt_min || 0));
+    return { X, perioden, schon, rest: X.offen_min, uebertrag: 0, wohin: new Map() };
+  });
+  const ziel = (i) => (i === 0 ? r.we_h : i === 1 ? r.we2_h : r.we_rest_h) * 60;
+  const runden = Math.max(0, ...st.map((s) => s.perioden.length));
+  for (let i = 0; i < runden; i++) {
+    const anfragen = [];
+    for (const s of st) {
+      if (i >= s.perioden.length) continue;
+      const tage = s.perioden[i];
+      const da = tage.reduce((x, d) => x + (s.schon.get(d) || 0), 0);
+      const will = Math.min(Math.max(0, s.rest), Math.max(0, ziel(i) + s.uebertrag - da));
+      if (will > 0) anfragen.push({ s, tage, will, got: 0, je: new Map() });
+      else s.uebertrag = 0;
+    }
+    for (let weiter = true; weiter;) {
+      weiter = false;
+      for (const q of anfragen) {
+        if (q.got >= q.will) continue;
+        const hat = (d) => (q.je.get(d) || 0) + (q.s.schon.get(d) || 0);
+        // Sa und So zuerst (Silas: „ans Wochenende davor“), freie Wochentage nur, wenn das Wochenende voll ist.
+        const we = (d) => (wochentag(d) >= 5 ? 0 : 1);
+        const kand = q.tage.filter((d) => frei(d) >= 30).sort((a, b) => we(a) - we(b) || hat(a) - hat(b) || (a < b ? 1 : -1));
+        if (!kand.length) continue;
+        const d = kand[0];
+        q.je.set(d, (q.je.get(d) || 0) + 30); vt.set(d, (vt.get(d) || 0) + 30);
+        q.got += 30; weiter = true;
+      }
+    }
+    for (const q of anfragen) {
+      for (const [d, m] of q.je) q.s.wohin.set(d, (q.s.wohin.get(d) || 0) + m);
+      q.s.rest -= q.got;
+      q.s.uebertrag = Math.max(0, q.will - q.got); // was diese Periode nicht fasste, will die davor zusätzlich
+    }
+  }
+  for (const s of st) {
+    s.X.vorschlag = [...s.wohin].map(([datum, min]) => ({ datum, min })).sort((a, b) => (a.datum < b.datum ? -1 : 1));
+    s.X.passt_nicht_min = Math.max(0, s.rest);
   }
   erg.vorschlag_tag = vt;
 }
