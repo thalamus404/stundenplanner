@@ -355,11 +355,11 @@ test('Prüfungsvorbereitung in der Vorlesungszeit: Wochenblock am Samstag bis zu
   assert.equal(M.wochentag(z.vk[0].datum), 5);
 });
 
-test('Fahrzeit: 40 min vor dem ersten und nach dem letzten Termin vor Ort, online zählt nicht', () => {
+test('Fahrzeit: 45 min vor dem ersten und nach dem letzten Termin vor Ort, online zählt nicht', () => {
   const m = M.min;
-  assert.equal(M.REGELN.pendeln_min, 40);
+  assert.equal(M.REGELN.pendeln_min, 45, 'Silas, 12.10.: 45 Minuten (V-0338: 40)');
   assert.deepEqual(M.fahrzeiten([{ start: m('10:15'), ende: m('11:45'), ort: 'H 104' }, { start: m('16:15'), ende: m('17:45') }]),
-    [[m('09:35'), m('10:15')], [m('17:45'), m('18:25')]]);
+    [[m('09:30'), m('10:15')], [m('17:45'), m('18:30')]]);
   assert.deepEqual(M.fahrzeiten([{ start: m('10:15'), ende: m('11:45'), ort: 'online (Zoom)' }]), [], 'nur online: keine Fahrt');
   assert.deepEqual(M.fahrzeiten([]), []);
 });
@@ -392,6 +392,12 @@ test('Mittagspause: 45 min im ersten freien Fenster 11:30–14:30, sonst um 12:3
   assert.deepEqual(M.mittagspause([[m('10:00'), m('12:00')]]), [m('12:00'), m('12:45')]);
   assert.deepEqual(M.mittagspause([[m('11:00'), m('15:00')]]), [m('12:30'), m('13:15')], 'kein Platz: trotzdem zeigen');
   assert.deepEqual(M.mittagspause([]), [m('11:30'), m('12:15')]);
+  // Nicht in der Fahrt zu einem Termin um 12:15 (V-0345): die Fahrzeit 11:30–12:15 ist belegt.
+  assert.deepEqual(M.mittagspause([[m('11:30'), m('12:15')], [m('12:15'), m('13:45')]]), [m('13:45'), m('14:30')]);
+  // Kein ganzes Fenster: in die längste Lücke (Fr: Fahrt 11:30, BuK 12:15–13:45, PROG1 ab 14:15 → 13:45).
+  assert.deepEqual(M.mittagspause([[m('11:30'), m('12:15')], [m('12:15'), m('13:45')], [m('14:15'), m('15:45')]]), [m('13:45'), m('14:30')]);
+  // Gezogen gilt sie, wo Silas sie hingelegt hat — auch über Belegtem.
+  assert.deepEqual(M.mittagspause([[m('12:00'), m('14:00')]], M.REGELN, m('13:00')), [m('13:00'), m('13:45')]);
 });
 
 test('Tageslast: Termine als Doppelstunde, Blöcke mit ihrer Dauer, Ausweichtermine nicht', () => {
@@ -782,4 +788,60 @@ test('Bezug offen: hat die eigene Lehrveranstaltung noch keine Termine (Übung o
   const g = M.rechnen(a, { wahl: { 'bsp-ue': 'g2' }, bloecke: [{ id: 'u', teil: 'bsp-ue-vn', tag: 'Mi', start: '10:00', ende: '11:30' }] }).teile.get('bsp-ue-vn');
   assert.equal(g.stoff_eigen, true);
   assert.match(g.vk[1].bezug.text, /^direkt nach Übung \(Mi 08:15\)/);
+});
+
+// ── V-0345 ──────────────────────────────────────────────────────────────────────────────────────
+
+test('Seltener als alle zwei Wochen: einzeln in echte Wochen; mit Einheiten nur an Tagen, an denen eine offen ist', () => {
+  const a = angebot();
+  a.module[0].teile.push({ id: 'bsp-lit', titel: 'Literatur', art: 'selbst', posten: 'vn', soll_h: 6 });
+  a.module[0].teile.push({ id: 'bsp-quiz', titel: 'Quiz', art: 'selbst', posten: 'vn', soll_h: 2,
+    einheiten: { liste: [{ nr: 1, ab: '2030-10-21', bis: '2030-10-23' }, { nr: 2, ab: '2030-11-04' }] } });
+  const e = M.rechnen(a, {});
+  const v = M.vorgabe(e, 'bsp-lit');
+  assert.equal(v.einzeln, true, '6 h: 2 h alle fünf Wochen wäre ein Wochenmuster seltener als alle zwei Wochen');
+  assert.equal(v.alle, 1);
+  assert.equal(v.wochen * v.dauer_min, v.summe_min);
+  assert.ok(Math.abs(v.summe_min - 6 * 60) <= 60);
+  assert.ok(!M.vorgabe(M.rechnen(angebot(), {}), 'bsp-vn').einzeln, 'jede Woche bleibt ein Wochenmuster');
+  // Ohne Einheiten: jeder Tag der Vorlesungszeit ab dem ersten Stoff (VL Di 15.10.), nicht in der Pause.
+  const lit = M.blockTagErlaubt(e, 'bsp-lit');
+  assert.equal(lit('2030-10-14'), false);
+  assert.equal(lit('2030-10-16'), true);
+  assert.equal(lit('2030-12-27'), false);
+  // Mit Einheiten: von der Freigabe bis zur Frist, ohne Frist bis zur nächsten Freigabe.
+  const q = M.blockTagErlaubt(e, 'bsp-quiz');
+  assert.deepEqual(['2030-10-20', '2030-10-21', '2030-10-23', '2030-10-24', '2030-11-04', '2030-11-20'].map(q), [false, true, true, false, true, true]);
+});
+
+test('Probepläne: stand?plan=n liegt getrennt vom echten Plan, ohne Sicherung; plaene listet sie', async () => {
+  const kv = new Map();
+  const env = { SILAS: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); }, list: async ({ prefix }) => ({ keys: [...kv.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }) }, SILAS_SCHLUESSEL: '' };
+  const k = 'a'.repeat(40);
+  env.SILAS_SCHLUESSEL = createHash('sha256').update(k).digest('hex');
+  const rufe = (weg, opts = {}) => silasApi(new Request(`https://x/silas/api/${weg}`, { ...opts, headers: { authorization: `Bearer ${k}` } }), env, new Date('2030-10-01T10:00:00Z'));
+  const stand = JSON.stringify({ basis: null, angebot: angebot(), plan: {} });
+  assert.equal((await rufe('stand?plan=2', { method: 'PUT', body: stand })).status, 200);
+  assert.equal((await rufe('stand')).status, 404, 'der echte Plan bleibt leer');
+  assert.equal((await rufe('stand?plan=2')).status, 200);
+  assert.ok(![...kv.keys()].some((x) => x.startsWith('verlauf:')), 'Probepläne haben keine Sicherung');
+  assert.equal((await rufe('stand?plan=0')).status, 400);
+  assert.equal((await rufe('stand?plan=10')).status, 400);
+  assert.deepEqual((await (await rufe('plaene')).json()).plaene.map((p) => p.nr), [2]);
+  assert.equal((await rufe('stand', { method: 'PUT', body: stand })).status, 200);
+  assert.ok([...kv.keys()].some((x) => x.startsWith('verlauf:')), 'der echte schon');
+});
+
+test('Kachel-Klassen haben keine eigenen Regeln: eine Klasse an .kachel ist nirgends allein ein Selektor (V-0345)', () => {
+  // „reihe“ war Kachel-Klasse UND die geführte Liste links (.reihe { margin: 8px 0 0 }): Die Kachel rutschte 10 min
+  // unter ihre Zeit, weg von der Fahrzeit. Eine Klasse, die an .kachel hängt, darf keine Regel ohne .kachel haben.
+  const css = readFileSync(new URL('../silas/silas.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const anKachel = new Set([...css.matchAll(/\.kachel((?:\.[a-z][\w-]*)+)/g)].flatMap((m) => m[1].split('.').filter(Boolean)));
+  const selektoren = [...css.matchAll(/(^|[},])\s*([^{}@]+?)\s*\{/g)].flatMap((m) => m[2].split(',').map((x) => x.trim()));
+  const allein = [];
+  for (const sel of selektoren) {
+    const m = /^\.([a-z][\w-]*)(?=[\s.:>\[]|$)/.exec(sel);
+    if (m && anKachel.has(m[1]) && !['kachel'].includes(m[1])) allein.push(sel);
+  }
+  assert.deepEqual(allein, []);
 });

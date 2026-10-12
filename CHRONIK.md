@@ -12,6 +12,17 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 12.10.2026 — /silas: Probepläne, Gruppenwahl mit Abwählen, Mittag je Tag, Fahrzeit 45 min, einzelne Blöcke (V-0345)
+
+- Silas ging den Planer von vorn durch. Neu: Probepläne unter /silas/1 … /9 (eigener Stand, der echte bleibt unberührt);
+  in Schritt 2 bleibt eine Wahl dran, die anderen Gruppen stehen blass daneben, ein zweiter Klick wählt ab; Schritt 1
+  zeigt keine Quizze mehr; die Reihe der Schritte 2–4 steht unter ihren Modulen.
+- Die „kleine Lücke“ zwischen Fahrzeit und Termin war ein Klassenkonflikt (`reihe` an Kachel und Liste) — umbenannt,
+  ein Test verhindert es künftig. Fahrzeit 45 min; die Mittagspause liegt nicht mehr in der Fahrt, nur in echten
+  Wochen und lässt sich je Tag ziehen.
+- Seltener als alle zwei Wochen gibt es kein Wochenmuster mehr: solche Blöcke legt man einzeln in echte Wochen, mit
+  bekannten Terminen nur an den offenen Tagen.
+
 ## 11.10.2026 — /silas: Lernblöcke erst ab dem Stoff, Bezug zum Stoff beim Legen (V-0342)
 
 - Silas prüfte seinen Plan vor dem ersten Unitag: Am Montag standen PROG1-Quicktests und EINFWI-Nachbereitung, obwohl
