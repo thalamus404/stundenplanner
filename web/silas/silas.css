@@ -1225,3 +1225,7 @@ body.mit-unten .bereich { padding-bottom: 190px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .zl-tag.we { border-color: rgb(255 255 255 / .75); border-width: 1.5px; } }
 :root[data-theme="dark"] .zl-tag.we { border-color: rgb(255 255 255 / .75); border-width: 1.5px; }
 .m-jetzt { display: flex; align-items: center; gap: 4px; width: 100%; text-align: left; font-size: 12px; padding: 2px 0; }
+/* Ist die Zeitleiste unten offen (fest, 190 px), bekommen die Spalten unten Platz, damit ihr Ende darüber scrollt — und der
+   Analytics-Knopf klebt nicht mehr unten fest, sonst läge er unter der Leiste (V-0361, Live-Check nach V-0357). */
+body.mit-unten .module, body.mit-unten .leiste { padding-bottom: 210px; }
+body.mit-unten .links-fuss { position: static; }
