@@ -620,6 +620,28 @@ export function vorgabe(erg, teilId) {
   if (beste.alle > 2 || z.einzeln) {
     const n = Math.max(1, Math.round(soll / beste.dauer_min));
     Object.assign(beste, { einzeln: true, anzahl: 1, alle: 1, bis: null, wochen: z.einzeln ? n : beste.wochen, summe_min: z.einzeln ? n * beste.dauer_min : beste.summe_min });
+    return beste;
+  }
+  // Vor- und Nachbereitung und Quizze in halben Blöcken (V-0356, Silas, 12.10.: „dass man eine Stunde als Vorbereitung,
+  // eine Stunde als Nachbereitung nach jedem Screencast eintragen kann … alles, was jetzt zwei Stunden ist, auf eine Stunde
+  // runtersetzt und dafür doppelte Anzahl. Und gleiches für ISIS-Quiz“; EINFWI 1,5 h → „45-Minuten-Blöcke“; BuK „zweimal
+  // 1,5 Stunden ist auch gut“): Ein einzelner Block je Takt wird halbiert — alle zwei Wochen wird jede Woche, jede Woche
+  // zweimal. Labs und Aufgaben (kategorie aufgaben) und was schon mehrere Blöcke hat, bleiben.
+  if (beste.anzahl === 1 && kategorie(z.teil) === 'lernen' && beste.dauer_min / 2 >= r.lern_min_min) {
+    // Auf Viertelstunden wie das Ziehen (1,5 h → 45 min); bei 1:45 h die Hälfte, die dem Kontingent näher kommt.
+    const roh = beste.dauer_min / 2;
+    const zwei = beste.alle % 2 === 0 ? 1 : 2;
+    const wochenNeu = beste.alle % 2 === 0 ? Math.ceil(vlWochen.length / (beste.alle / 2)) : beste.wochen;
+    const halb = [Math.floor(roh / 15) * 15, Math.ceil(roh / 15) * 15].filter((x) => x >= r.lern_min_min)
+      .sort((x, y) => Math.abs(zwei * x * wochenNeu - soll) - Math.abs(zwei * y * wochenNeu - soll) || y - x)[0] || r.lern_min_min;
+    if (beste.alle % 2 === 0) {
+      beste.alle /= 2;
+      const moeglich = Math.ceil(vlWochen.length / beste.alle);
+      beste.wochen = beste.bis ? Math.min(moeglich, beste.wochen * 2) : moeglich;
+      beste.bis = beste.wochen < moeglich ? vlWochen[(beste.wochen - 1) * beste.alle].bis : null;
+    } else beste.anzahl = 2;
+    beste.dauer_min = halb;
+    beste.summe_min = beste.anzahl * halb * beste.wochen;
   }
   return beste;
 }

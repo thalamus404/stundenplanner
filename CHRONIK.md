@@ -12,6 +12,21 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 12.10.2026 — /silas: halbe Lernblöcke, Modul leuchtet, Prüfungen aufgeräumt, Vorschlag am Wochenende (V-0356)
+
+- Silas' zweite Rückmeldung beim Neuaufbau (Probeplan 2): Vor-/Nachbereitung und Quizze in halben Blöcken mit doppelter
+  Anzahl (2 h → 2 × 1 h, EINFWI 1,5 h → 2 × 45 min, Quiz 1 h jede Woche, BuK 2 × 1,5 h bleibt); die Knöpfe einer Sache in
+  einer Zeile, der Vorgabe-Satz in den Details; ein Klick auf ein Modul lässt alles von ihm im Raster aufleuchten.
+- Nach dem Festlegen sprang der Balken von „alles erledigt“ auf 57 %, weil er die Prüfungsvorbereitung mitzählte — jetzt
+  zählt „Woche“ die Schritte 1–4, „Prüfungen“ den Rest. Der Prüfungsbalken war rot, obwohl alles geplant war (die Farbe
+  „geplant“ war die der Prüfung) — jetzt grün/gelb/grau wie überall.
+- Prüfungen: Termin, Stand und Punkte klein, alle Sätze in den Details, „Vorschlag ansehen“ zeigt nur seine Wochen und
+  lässt sie aufleuchten, nach fertigem Planen geht die nächste Prüfung auf. Der Vorschlag legt die zwei Wochenenden vor
+  einer Prüfung gleichmäßig auf Sa und So und ohne die 45-h-Wochengrenze (die in den Vorlesungswochen immer schon
+  überschritten ist): BuK E-Test 1 bekommt Sa 1 h und So 1,5 h statt halber Stunden über drei Wochenenden. Der
+  EINFWI-Test: 17,5 h passen, 5,5 h nicht (vorher 0 / 23 h).
+- Vorbereitung auf die Übungen: alle Übungstermine im Kalender, das Wochenende davor als Option.
+
 ## 12.10.2026 — /silas: Fortschritt je Schritt und Modul, Unregelmäßiges unter Prüfungen (V-0354)
 
 - Silas' Rückmeldung beim Neuaufbau seines Plans: oben links statt des erklärenden Satzes ein Fortschrittsbalken je
