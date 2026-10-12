@@ -35,7 +35,7 @@ export const hoechste = (flags) => flags.reduce((b, f) => (f.stufe && (b === 'ok
 /** Die Zustände des Baums als Wort (die Seite zeigt sie als Chip). */
 export const ZUSTAND = {
   fest: 'fest', info_fehlt: 'Info fehlt', wahl_offen: 'Wahl offen', zuteilung_offen: 'Zuteilung offen',
-  gewaehlt: 'gewählt', gescheitert: 'gescheitert', fenster: 'im Fenster', wartet: 'wartet',
+  gewaehlt: 'gewählt', gescheitert: 'gescheitert', frist_vorbei: 'Frist vorbei — angemeldet?', fenster: 'im Fenster', wartet: 'wartet',
 };
 /** Der Lebenslauf einer Prüfung (AllgStuPO § 63). */
 export const PRUEFSTATUS = [
@@ -281,12 +281,15 @@ function baum(erg, z, plan, modulStart) {
       const gew = opts.find((o) => o.id === wahl[t.id]) || null;
       const frist = t.anmeldung && istDatum(t.anmeldung.bis) ? t.anmeldung.bis : null;
       const vorbei = frist && heute && heute > frist;
-      if (!gew) { z.alternativen = vorbei && t.zuteilung && !angemeldet[t.id] ? 'gescheitert' : 'wahl_offen'; return; }
+      // Frist vorbei, aber nichts bestätigt (V-0357, Prüfung W01/W02): Vielleicht hat Silas sich in MOSES angemeldet und
+      // nur hier nicht geklickt — dann fragt die Seite (frist_vorbei, mit „Angemeldet“ und „Kein Platz“), statt sofort
+      // „gescheitert“ zu sagen und den Knopf zu verstecken. Gescheitert ist erst „Kein Platz“.
+      if (!gew) { z.alternativen = vorbei && t.zuteilung && !angemeldet[t.id] ? 'frist_vorbei' : 'wahl_offen'; return; }
       if (t.zuteilung) {
         if (zugeteilt[t.id] === gew.id) z.alternativen = 'gewaehlt';
         else if (zugeteilt[t.id] === 'keine') z.alternativen = 'gescheitert';
         else if (angemeldet[t.id]) z.alternativen = 'zuteilung_offen';
-        else z.alternativen = vorbei ? 'gescheitert' : 'wahl_offen';
+        else z.alternativen = vorbei ? 'frist_vorbei' : 'wahl_offen';
         return;
       }
       z.alternativen = 'gewaehlt';
@@ -375,11 +378,22 @@ function pruefungen(erg, angebot, plan) {
       X.zu_planen_min = Math.max(0, X.kontingent_min - X.termine_p_min);
       const bloecke = X.vorbereitung.flatMap((z) => z.vk.filter((v) => v.quelle === 'block'));
       X.bloecke = bloecke;
+      const ab = X.wiederholung ? (istDatum(st.note_am) ? st.note_am : plusTage(st.termin || (X.datiert[0] && X.datiert[0].datum) || stoffStart, 1)) : stoffStart;
+      X.fenster = { ab, bis: X.termin ? plusTage(X.termin.datum, -1) : null };
+      // Vor dem Fenster zählt keine Vorbereitung (V-0357, Prüfung W01/W02: ein Block am 13.10. zählte voll für den
+      // EINFWI-Test) — wie nach der Prüfung (nach_pruefung): Er steht da, zählt aber nicht.
+      for (const v of bloecke) {
+        if (v.datum >= ab || !(v.zaehlt_min > 0)) continue;
+        const z = erg.teile.get(v.teil);
+        z.plan_min -= v.plan_min || 0; z.erledigt_min -= v.erledigt_min || 0;
+        z.fehlt_min = Math.max(0, z.kontingent_min - z.plan_min); z.offen_min = Math.max(0, z.kontingent_min - z.erledigt_min); z.ist_min = z.plan_min;
+        v.zaehlt_min = 0; v.plan_min = 0; v.erledigt_min = 0; v.flags.push('vor_fenster');
+      }
+      const vor = bloecke.filter((v) => v.flags.includes('vor_fenster'));
+      if (vor.length) X.vorbereitung[0].flags.push({ art: 'vor_fenster', text: `${vor.length} Lernblock${vor.length > 1 ? 'e liegen' : ' liegt'} vor dem Fenster (ab ${datumTag(ab)}) und ${vor.length > 1 ? 'zählen' : 'zählt'} nicht` });
       X.erledigt_min = bloecke.reduce((s, v) => s + (v.erledigt_min || 0), 0);
       X.geplant_min = bloecke.filter((v) => !v.vergangen || v.ist === 'offen').reduce((s, v) => s + (v.ist === 'offen' || !v.vergangen ? v.zaehlt_min : 0), 0);
       X.offen_min = Math.max(0, X.zu_planen_min - X.erledigt_min - X.geplant_min);
-      const ab = X.wiederholung ? (istDatum(st.note_am) ? st.note_am : plusTage(st.termin || (X.datiert[0] && X.datiert[0].datum) || stoffStart, 1)) : stoffStart;
-      X.fenster = { ab, bis: X.termin ? plusTage(X.termin.datum, -1) : null };
       // Fenster vorbei, Vorbereitung nicht erledigt (Testfall 27): „verfehlt“ — nichts wird verschoben, du entscheidest.
       X.verfehlt_min = heute && X.fenster.bis && heute > X.fenster.bis ? Math.max(0, X.zu_planen_min - X.erledigt_min) : 0;
       X.fristen = fristen(erg, X, xs);
@@ -458,10 +472,25 @@ export function bedarfIn(erg, z, w) {
     if (z.wartet || z.einzeln || !z.fenster || !z.fenster.ab) return 0;
     if (w.bis < z.fenster.ab || w.von > z.fenster.bis) return 0;
     if (erg.heute && w.bis < erg.heute) return 0; // vergangene Wochen: nur, was dort liegt
+    // Beginnt der Stoff mitten in der Woche (PROG1 am Do 15.10.), ist nur der Rest der Woche dran (V-0357: W01 verlangte
+    // die ganze Wochenrate Labs, obwohl der Stoff erst Donnerstag beginnt).
+    if (z.fenster.ab > w.von) {
+      const werktage = [0, 1, 2, 3, 4].map((i) => plusTage(w.von, i)).filter((d) => d >= z.fenster.ab).length;
+      return Math.round(z.wochenwert_min * werktage / 5);
+    }
     return Math.round(z.wochenwert_min);
   }
   if (z.el === 'einheiten') {
-    if (z.teil.art === 'video' && z.gruppen) return z.gruppen.filter((g) => g.montag === w.id).reduce((s, g) => s + g.bedarf_min, 0);
+    // Was ein Block deckt, ist in der Woche dran, in der er liegt (V-0357, §3: „Videos zählen in der Woche, in der ein
+    // Block sie deckt“ — vorher in der Woche der Freigabe: BuK-Video 1 vom Fr 16.10. stand in W01 als offen, obwohl der
+    // Block am Mi 21.10. es deckt); was keiner deckt, in der Woche seiner Freigabe.
+    // Genauer: je Woche die Minuten, die ihre Blöcke decken, und in der Woche der Freigabe, was keiner deckt — so steht
+    // ein Video, das der Block der Folgewoche nachholt, nicht als offen da.
+    if (z.gruppen && z.gruppen.some((g) => g.bedarf_min)) {
+      return z.gruppen.filter((g) => g.bedarf_min).reduce((s, g) => s
+        + (g.deckung || []).filter((d) => d.datum >= w.von && d.datum <= w.bis).reduce((x, d) => x + d.min, 0)
+        + (montagVon(g.ab) === w.von ? Math.max(0, g.bedarf_min - g.belegt_min) : 0), 0);
+    }
     if (z.einheiten && z.einheiten.length) return z.einheiten.filter((e) => e.ab >= w.von && e.ab <= w.bis).reduce((s, e) => s + z.einheit_dauer(e), 0);
     const vl = erg.wochen.filter((x) => x.art === 'vorlesung');
     return Math.round(z.einheiten_min / Math.max(1, vl.length - 1)) * (w.nr > 1 ? 1 : 0);
@@ -488,8 +517,11 @@ function last(erg) {
     else if (v.quelle === 'block') {
       if (v.ist === 'verschoben' || v.ist === 'nein') continue;
       const z = v.teil ? erg.teile.get(v.teil) : null;
-      if (z && z.topf === 'pruefung') tag(v.datum).pbloecke += v.ende - v.start;
-      else tag(v.datum).bloecke += v.ende - v.start;
+      // Ohne die Zeit, die er auf einem Termin liegt — die zählt der Termin schon (V-0357: „Mo 19.10. 9,25 h über 9 h“
+      // war ein Lab-Block auf dem Kick-off, doppelt gezählt).
+      const dauer = Math.max(0, v.ende - v.start - (v.ueberlappt || 0));
+      if (z && z.topf === 'pruefung') tag(v.datum).pbloecke += dauer;
+      else tag(v.datum).bloecke += dauer;
     }
   }
   // Ungedeckter Bedarf je Vorlesungswoche, verteilt auf Mo–Fr.
@@ -520,63 +552,82 @@ function last(erg) {
 export const tagLast = (erg, d) => (erg.last.tage.get(d) || { summe: 0 }).summe;
 export const wochenLast = (erg, d) => (erg.last.wochen.get(montagVon(d)) || { summe: 0 }).summe;
 
-// ── 10b · Vorschlag für die Prüfungsvorbereitung ─────────────────────────────────────────────────
-// Prüfungen nach Datum; je Prüfung zuerst die zwei Wochenenden davor (je höchstens 10 h), dann rückwärts vom Tag vor
-// der Prüfung: in der Vorlesungszeit nur Sa/So, sonst jeder Tag. Nie an Feiertagen, nie vor heute, nie über die freie
-// Kapazität (9 h je Tag, nach allem schon Geplanten). Was nicht passt, steht als „passt nicht“ da.
-// Die zwei Wochenenden (V-0356, Silas, 12.10.: „es soll immer beim Wochenende davor möglichst die Hälfte vom Pensum
-// geschafft werden … wenn es 2,5 h Vorbereitung sind, dann mache ich am ersten Tag eine Stunde, am zweiten 1,5 Stunden“):
-// gleichmäßig auf Sa und So (Sa die abgerundete Hälfte), was schon an ihnen liegt, eingerechnet — und ohne die Grenze
-// von 45 h je Woche, die gilt nur für den Rest (G10: die Prüfung geht vor; in den Vorlesungswochen ist sie sonst immer
-// schon voll, und der Vorschlag zerfiel in halbe Stunden über drei Wochenenden).
-
+// ── 10b · Vorschlag für die Prüfungsvorbereitung — alle Prüfungen gemeinsam (V-0357) ──────────────
+// Silas, 12.10. abends: „pro Prüfung … zehn Stunden sollen möglichst, wenn es geht, ans Wochenende davor, und nochmal zehn
+// Stunden ans Wochenende davor, und dann der Rest auf vier Stunden pro Wochenende, jedes Wochenende davor … eine Logik,
+// die einmal alle Vorschläge von allen Klausurterminen in einen Topf wirft … dass alle von denen ihre eigene Zeit zum
+// Lernen brauchen … an einem Tag für mehrere Klausuren lernen können.“ (Vorher rechnete jede Prüfung für sich, nach
+// Datum: Die frühere nahm sich die Wochenenden, die spätere bekam Reste — PROG1 am 17.02. 4 h hier, 4 h dort.)
+//  - Je Prüfung Perioden rückwärts: P1 = vom Samstag vor der Prüfung bis zum Tag davor, dann je sieben Tage (Sa–Fr).
+//    In der Vorlesungszeit sind das genau Sa und So; in der vorlesungsfreien Zeit gehören die freien Wochentage dazu.
+//  - Ziel je Periode: we_h (10 h), we2_h (10 h), dann je we_rest_h (4 h), bis das Kontingent gedeckt ist; was dort
+//    schon liegt, zählt mit.
+//  - Alle Prüfungen zusammen, Periode für Periode (erst alle P1, dann alle P2 …), in halben Stunden reihum: So teilen
+//    sich zwei Prüfungen ein Wochenende, die nahe Prüfung geht der fernen vor, und an einem Tag lernt man auch für zwei.
+//    Je Prüfung bekommt Sa/So vor den Wochentagen, dann der Tag mit dem wenigsten (bei Gleichstand der spätere):
+//    2,5 h → Sa 1 h, So 1,5 h; freie Wochentage erst, wenn das Wochenende voll ist.
+//  - Was eine Periode nicht fasst (9 h je Tag nach allem schon Geplanten), wandert in die Periode davor.
+//  - Nie an Feiertagen, nie vor heute, nie vor dem Fenster der Prüfung. 45 h je Woche gelten hier nicht (G10, V-0356) —
+//    volle Wochen zeigt der Abgleich.
 function vorschlag(erg) {
   const r = erg.regeln, sem = erg.sem, heute = erg.heute;
   const fei = feiertage(sem);
-  const vt = new Map(), vw = new Map(); // vorgeschlagene Minuten je Tag / je Woche
-  const freiTag = (d) => Math.max(0, r.tag_h * 60 - tagLast(erg, d) - (vt.get(d) || 0));
-  const freiWoche = (d) => Math.max(0, r.woche_h * 60 - wochenLast(erg, d) - (vw.get(montagVon(d)) || 0));
-  const legen = (d, m, wohin, ohneWoche = false) => {
-    let x = Math.min(m, freiTag(d), ohneWoche ? Infinity : freiWoche(d));
-    x = Math.floor(x / 30) * 30;
-    if (x <= 0) return 0;
-    vt.set(d, (vt.get(d) || 0) + x); vw.set(montagVon(d), (vw.get(montagVon(d)) || 0) + x);
-    wohin.set(d, (wohin.get(d) || 0) + x);
-    return x;
-  };
+  const vt = new Map(); // vorgeschlagene Minuten je Tag (alle Prüfungen)
+  const frei = (d) => Math.max(0, r.tag_h * 60 - tagLast(erg, d) - (vt.get(d) || 0));
   const erlaubt = (d) => !fei.has(d) && (wochentag(d) >= 5 || !istVorlesungstag(sem, d));
-  // Nach Datum, am selben Tag nach Uhrzeit (BuK 9 Uhr vor PROG1 14 Uhr am 17.02.).
+  // Nach Datum, am selben Tag nach Uhrzeit (BuK 9 Uhr vor PROG1 14 Uhr am 17.02.) — die Reihenfolge innerhalb einer Runde.
   const xs = [...erg.pruefungen.values()].filter((X) => X.termin && X.zaehlt && X.fenster.bis)
     .sort((a, b) => (a.termin.datum < b.termin.datum ? -1 : a.termin.datum > b.termin.datum ? 1 : String(a.termin.start || '').localeCompare(String(b.termin.start || ''))));
-  for (const X of [...erg.pruefungen.values()]) { X.vorschlag = []; X.passt_nicht_min = 0; }
-  for (const X of xs) {
-    let rest = X.offen_min;
-    const wohin = new Map();
+  for (const X of erg.pruefungen.values()) { X.vorschlag = []; X.passt_nicht_min = 0; }
+  const st = xs.map((X) => {
     const ab = heute && heute > X.fenster.ab ? heute : X.fenster.ab;
     const tagX = X.termin.datum;
-    const so = plusTage(tagX, -(wochentag(tagX) + 1));
-    // Die zwei Wochenenden davor tragen je höchstens 10 h — auch danach füllt der Rest sie nicht weiter auf.
-    const we = new Set();
-    const schon = (d) => X.bloecke.filter((v) => v.datum === d).reduce((s_, v) => s_ + (v.zaehlt_min || 0), 0);
-    for (let k = 0; k < 2; k++) {
-      const s = plusTage(so, -7 * k), sa = plusTage(s, -1);
-      we.add(sa); we.add(s);
-      const tage = [sa, s].filter((d) => d >= ab && d < tagX && !fei.has(d));
-      if (!tage.length || rest <= 0) continue;
-      const da = tage.reduce((x, d) => x + schon(d), 0);
-      const paket = Math.min(rest + da, r.we_h * 60); // was das Wochenende insgesamt tragen soll
-      let gelegt = 0;
-      if (tage.length === 2) {
-        const soll1 = Math.floor(paket / 2 / 30) * 30;
-        for (const [d, soll] of [[tage[0], soll1], [tage[1], paket - soll1]]) gelegt += legen(d, Math.max(0, Math.min(soll - schon(d), paket - da - gelegt)), wohin, true);
-      }
-      // Was ein Tag nicht nehmen konnte (9 h voll), nimmt der andere.
-      for (const d of tage) gelegt += legen(d, Math.max(0, paket - da - gelegt), wohin, true);
-      rest -= gelegt;
+    const zurueck = ((wochentag(tagX) - 5 + 7) % 7) || 7; // bis zum Samstag davor (eine Prüfung am Samstag: der vorige)
+    const perioden = [];
+    for (let von = plusTage(tagX, -zurueck), bis = plusTage(tagX, -1); bis >= ab; bis = plusTage(von, -1), von = plusTage(von, -7)) {
+      const tage = [];
+      for (let d = von; d <= bis; d = plusTage(d, 1)) if (d >= ab && erlaubt(d)) tage.push(d);
+      perioden.push(tage);
     }
-    for (let d = plusTage(tagX, -1); rest > 0 && d >= ab; d = plusTage(d, -1)) if (erlaubt(d) && !we.has(d)) rest -= legen(d, rest, wohin);
-    X.vorschlag = [...wohin].map(([datum, m]) => ({ datum, min: m })).sort((a, b) => (a.datum < b.datum ? -1 : 1));
-    X.passt_nicht_min = Math.max(0, rest);
+    const schon = new Map();
+    for (const v of X.bloecke || []) schon.set(v.datum, (schon.get(v.datum) || 0) + (v.zaehlt_min || 0));
+    return { X, perioden, schon, rest: X.offen_min, uebertrag: 0, wohin: new Map() };
+  });
+  const ziel = (i) => (i === 0 ? r.we_h : i === 1 ? r.we2_h : r.we_rest_h) * 60;
+  const runden = Math.max(0, ...st.map((s) => s.perioden.length));
+  for (let i = 0; i < runden; i++) {
+    const anfragen = [];
+    for (const s of st) {
+      if (i >= s.perioden.length) continue;
+      const tage = s.perioden[i];
+      const da = tage.reduce((x, d) => x + (s.schon.get(d) || 0), 0);
+      const will = Math.min(Math.max(0, s.rest), Math.max(0, ziel(i) + s.uebertrag - da));
+      if (will > 0) anfragen.push({ s, tage, will, got: 0, je: new Map() });
+      else s.uebertrag = 0;
+    }
+    for (let weiter = true; weiter;) {
+      weiter = false;
+      for (const q of anfragen) {
+        if (q.got >= q.will) continue;
+        const hat = (d) => (q.je.get(d) || 0) + (q.s.schon.get(d) || 0);
+        // Sa und So zuerst (Silas: „ans Wochenende davor“), freie Wochentage nur, wenn das Wochenende voll ist.
+        const we = (d) => (wochentag(d) >= 5 ? 0 : 1);
+        const kand = q.tage.filter((d) => frei(d) >= 30).sort((a, b) => we(a) - we(b) || hat(a) - hat(b) || (a < b ? 1 : -1));
+        if (!kand.length) continue;
+        const d = kand[0];
+        q.je.set(d, (q.je.get(d) || 0) + 30); vt.set(d, (vt.get(d) || 0) + 30);
+        q.got += 30; weiter = true;
+      }
+    }
+    for (const q of anfragen) {
+      for (const [d, m] of q.je) q.s.wohin.set(d, (q.s.wohin.get(d) || 0) + m);
+      q.s.rest -= q.got;
+      q.s.uebertrag = Math.max(0, q.will - q.got); // was diese Periode nicht fasste, will die davor zusätzlich
+    }
+  }
+  for (const s of st) {
+    s.X.vorschlag = [...s.wohin].map(([datum, min]) => ({ datum, min })).sort((a, b) => (a.datum < b.datum ? -1 : 1));
+    s.X.passt_nicht_min = Math.max(0, s.rest);
   }
   erg.vorschlag_tag = vt;
 }
@@ -656,6 +707,10 @@ function meldungen(erg, angebot, plan) {
       f('wahl_offen', n != null && n <= 7 ? 'kritisch' : 'dran', text, { anmeldung: frist ? t.id : null, datum: frist });
     }
     if (z.alternativen === 'zuteilung_offen') f('zuteilung_offen', 'dran', 'Angemeldet — die Zuteilung steht noch aus. In MOSES nachsehen und bestätigen', { zuteilung: t.id });
+    if (z.alternativen === 'frist_vorbei') {
+      const a = t.anmeldung, frist = a && istDatum(a.bis) ? a.bis : null;
+      f('frist_vorbei', 'achtung', `Anmeldung${frist ? ` bis ${datumTag(frist)}` : ''} vorbei — warst du angemeldet? Dann „Angemeldet“ (und nach der Zuteilung „Zugeteilt“), sonst „Kein Platz“`, { anmeldung: t.id, zuteilung: t.id, datum: frist });
+    }
     if (z.alternativen === 'gescheitert') {
       const folge = t.folge || (/prog1|tutorial/i.test(`${t.id} ${t.titel}`) ? 'Ohne Tutorial kein Prog1WINF — ohne Prog1WINF keine Klausur. Beim Fachgebiet nach einem Platz fragen.' : 'Ohne Gruppe fehlt diese Präsenz: beim Fachgebiet nach einem Platz fragen, sonst geht die Zeit nach G5 in die Prüfungsvorbereitung.');
       f('gescheitert', 'kritisch', `Gescheitert: ${(plan.zugeteilt || {})[t.id] === 'keine' ? 'kein Platz zugeteilt' : 'nicht rechtzeitig angemeldet'}. ${folge}`);
@@ -681,8 +736,11 @@ function meldungen(erg, angebot, plan) {
     if (t.hinweis) f('hinweis', 'info', t.hinweis);
     // Die Rohmeldungen aus rechnen() (Konflikt, gesperrt, Bezug, leer, vor_stoff …) bekommen ihre Stufe hier; was zu tun
     // ist (verschieben, Überschneidung), steht auch im Offenen.
-    for (const x of z.flags) if (!x.stufe) {
-      x.stufe = rohStufe(x, z); x.modul = mid; x.teil = t.id;
+    // Rohmeldungen tragen noch kein Modul; eine, die ihre Stufe schon mitbringt (ungedeckt, gesperrt an einem Tag), kommt
+    // genauso ins Offene (V-0357: vorher nur die ohne Stufe).
+    for (const x of z.flags) if (!x.modul) {
+      if (!x.stufe) x.stufe = rohStufe(x, z);
+      x.modul = mid; x.teil = t.id;
       if (['kritisch', 'achtung', 'dran'].includes(x.stufe)) offen.push(x);
     }
   }
@@ -745,7 +803,7 @@ function meldungen(erg, angebot, plan) {
   if (erg.audit.tage.length) plf('tag_voll', 'achtung', `${erg.audit.tage.length === 1 ? 'Ein Tag' : `${erg.audit.tage.length} Tage`} über ${r.tag_h} h: ${liste(erg.audit.tage, (x) => `${datumTag(x.datum)} ${stunden(x.last_min)}`)}`, { tage: erg.audit.tage.map((x) => x.datum) });
   for (const x of erg.audit.pruefungstage) plf('zwei_pruefungen', 'achtung', `${datumTag(x.datum)}: ${x.pruefungen.length} Prüfungen an einem Tag (${x.pruefungen.map((X) => `${X.modul.kurz || X.modul.id} ${X.termin.start || ''}`.trim()).join(', ')})`, { datum: x.datum });
   for (const x of erg.audit.rueckfall) plf('rueckfall', 'info', `${datumTag(x.datum)}: die Rückfalltermine ${x.a.modul.kurz || x.a.modul.id} und ${x.b.modul.kurz || x.b.modul.id} überschneiden sich ${stunden(x.ueber_min)} — wichtig nur, wenn beide nötig werden`, { datum: x.datum });
-  for (const x of erg.planFlags) if (!x.stufe) { x.stufe = rohStufe(x, null); x.modul = null; offen.push(x); }
+  for (const x of erg.planFlags) if (x.modul === undefined) { if (!x.stufe) x.stufe = rohStufe(x, null); x.modul = null; offen.push(x); }
   erg.offen = offen.sort((a, b) => RANG[a.stufe] - RANG[b.stufe] || String(a.stichtag || a.datum || '9').localeCompare(String(b.stichtag || b.datum || '9')));
 }
 const titelX = (erg, pid) => { const X = erg.pruefungen.get(pid); return X ? `${X.modul.kurz || X.modul.id} ${X.p.titel}` : pid; };
@@ -755,7 +813,7 @@ function rohStufe(f, z) {
   switch (f.art) {
     case 'konflikt': return z && z.teil.art === 'praesenz' ? 'kritisch' : 'achtung';
     case 'gesperrt': return f.dauernd ? 'dran' : 'info';
-    case 'nach_pruefung': return 'achtung';
+    case 'nach_pruefung': case 'vor_fenster': return 'achtung';
     default: return 'info'; // leer, vor_stoff, bezug, zu_kurz, einheit_unsicher …
   }
 }
@@ -829,7 +887,8 @@ export function wochenBedarf(erg, wocheId = null, std = null) {
       else soll = w ? bedarfIn(erg, z, w) : Math.round(z.einheiten_min / Math.max(1, erg.wochen.filter((x) => x.art === 'vorlesung').length));
     }
     const offen = Math.max(0, soll - ist);
-    if (grund === 'ok' && offen >= 15) grund = 'planen';
+    // „Planen“ erst jenseits einer kleinen Toleranz (V-0357: „Labs 0,25 h“ jede Woche, obwohl der Abgleich „passt“ sagt).
+    if (grund === 'ok' && offen >= Math.max(30, Math.round(soll * 0.1))) grund = 'planen';
     aus.push({ z, soll_min: soll, ist_min: ist, offen_min: grund === 'ok' ? 0 : offen, grund });
   }
   return aus;

@@ -1090,3 +1090,138 @@ button.link { text-decoration: underline; text-underline-offset: 2px; color: inh
 .kal-tag.option { box-shadow: inset 0 0 0 2px var(--blau); border-style: dashed; }
 .kal-option { font-size: 10px; font-weight: 700; color: var(--blau-text); }
 .pruef-detail .vorschlag .r-knoepfe { flex-wrap: wrap; margin: 4px 0 0; }
+
+/* ── V-0357: Verpasstes, Zeitleiste unten, Kalender, Analytics ─────────────────────────────────── */
+.fbalken > i.rot { background: var(--rot); }
+.fbalken > i.schwarz { background: #000; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fbalken > i.schwarz { box-shadow: inset 0 0 0 1px var(--grau-8); } }
+:root[data-theme="dark"] .fbalken > i.schwarz { box-shadow: inset 0 0 0 1px var(--grau-8); }
+.verpasst { border-top: 1px solid var(--grau-4); padding-top: 6px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.vp-kopf { display: flex; justify-content: space-between; gap: 8px; }
+.vp-kopf span { color: var(--rot-text); font-weight: 600; }
+.verpasst ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.verpasst li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+.vp-marke { width: 8px; height: 8px; border-radius: 2px; background: var(--rot); }
+.vp-verpasst .vp-marke { background: #000; box-shadow: 0 0 0 1px var(--grau-6); }
+.vp-ausgefallen .vp-marke { background: var(--grau-6); }
+.vp-ausgefallen, .nachgeholt { color: var(--grau-8); }
+.nachgeholt .vp-marke { background: var(--gruen); }
+.vp-was { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-min { color: var(--grau-8); font-size: 11px; }
+/* Prüfungskalender: Prüfung in Modulfarbe, Form nach Art; die gewählte kräftig, Bezugstermine dünn; Fristen im i-Knopf */
+.kal-pruefung[class*=" m"] { background: var(--rand); color: #fff; }
+.kal-pruefung::before { content: "● "; }
+.kal-pruefung.a-etest::before { content: "■ "; }
+.kal-pruefung.a-test::before { content: "◆ "; }
+.kal-pruefung.ausweich { background: transparent; color: var(--tinte); box-shadow: inset 0 0 0 1px var(--rand); font-weight: 600; }
+.kal-pruefung.dieser { font-size: 12px; padding: 1px 5px; box-shadow: 0 0 0 2px var(--grau-1), 0 0 0 4px var(--rand); }
+.kal-tag.ziel[class*=" m"] { box-shadow: inset 0 0 0 3px var(--rand); background: color-mix(in srgb, var(--rand) 14%, var(--grau-1)); }
+.kal-tag.ziel.puls { animation: zielPuls .8s ease-in-out 3; }
+@keyframes zielPuls { 50% { box-shadow: inset 0 0 0 3px var(--rand), 0 0 0 4px var(--rand), 0 0 18px 4px var(--rand); } }
+@media (prefers-reduced-motion: reduce) { .kal-tag.ziel.puls { animation: none; } }
+.kal-tag.bezug[class*=" m"] { box-shadow: inset 0 0 0 1.5px var(--rand); }
+.kal-ziel[class*=" m"] { background: var(--flaeche); color: var(--tinte); box-shadow: inset 0 0 0 1px var(--rand); }
+.kal-datum { display: flex; align-items: center; gap: 4px; }
+.kal-info { margin-left: auto; position: relative; width: 15px; height: 15px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 700; font-style: italic; font-family: Georgia, serif; background: var(--gelb-flaeche); color: var(--gelb-text); cursor: help; flex: none; }
+.kal-info.wichtig { background: var(--rot-flaeche); color: var(--rot-text); }
+.kal-info-liste { display: none; position: absolute; top: 18px; right: -4px; z-index: 30; width: max-content; max-width: 240px; padding: 6px 8px; border-radius: 8px; background: var(--grau-10); color: var(--grau-1); font: 400 11px/1.35 inherit; font-style: normal; font-family: inherit; flex-direction: column; gap: 3px; box-shadow: 0 6px 18px rgb(0 0 0 / .25); text-align: left; }
+.kal-info:hover .kal-info-liste, .kal-info:focus .kal-info-liste, .kal-info:focus-within .kal-info-liste { display: flex; }
+.kal-info-liste .wichtig { font-weight: 700; }
+/* Ein Farbschema für Prüfungen (V-0357): die Farbe ist das Modul (wie die Streifen der Kacheln in der Woche), die Form die
+   Art — ● Klausur, ■ E-Test, ◆ Online-/schriftlicher Test; gefüllt, was gilt, hohl der Rückfalltermin. Die Legende grau. */
+.zl-marke[class*=" m"], .pruef-reihe .zl-marke { --mk: var(--rand); }
+.zl-legende .zl-marke { --mk: var(--grau-8); }
+/* Zeitleiste unten (V-0357): von heute bis zwei Tage nach der Prüfung, je Tag eine Säule (9 h = voll). */
+.unten { position: fixed; left: 16px; right: 16px; bottom: 12px; z-index: 40; border-radius: 14px; background: var(--grau-1); border: 1px solid var(--grau-5); box-shadow: 0 10px 30px rgb(0 0 0 / .18); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 6px; animation: hoch .25s ease-out; }
+.unten[hidden] { display: none; }
+@keyframes hoch { from { transform: translateY(24px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .unten { animation: none; } }
+body.mit-unten { padding-bottom: 190px; }
+body.mit-unten .bereich { padding-bottom: 190px; }
+.zl-kopf { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.zl-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: var(--grau-10); }
+.zl-legende-unten { display: inline-flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; color: var(--grau-8); font-size: 11px; }
+.zl-legende-unten i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.zl-aufwand { margin-left: auto; font-size: 13px; white-space: nowrap; }
+.zl-flaeche { overflow-x: auto; overflow-y: hidden; border-radius: 8px; background: var(--grau-4); padding: 6px 6px 2px; }
+.zl-saeulen, .zl-achse { display: grid; grid-template-columns: repeat(var(--n), minmax(5px, 1fr)); gap: 2px; min-width: calc(var(--n) * 7px); }
+.zl-saeulen { height: 96px; align-items: stretch; }
+.zl-tag { position: relative; padding: 0; border-radius: 3px; background: var(--grau-2); border: 1px solid transparent; cursor: pointer; min-width: 0; }
+.zl-tag.we { border: 1.5px solid #fff; }
+.zl-tag.heute { box-shadow: 0 0 0 1.5px var(--rot); }
+.zl-tag.nach { opacity: .45; cursor: default; }
+.zl-tag.feiertag { background: color-mix(in srgb, var(--rot) 10%, var(--grau-2)); }
+.zl-tag.ziel { background: var(--rand); border-color: var(--rand); }
+.zl-tag.uebervoll::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--rot); border-radius: 3px 3px 0 0; }
+.zl-tag:hover { outline: 2px solid var(--grau-9); outline-offset: 0; z-index: 1; }
+.zl-stapel { position: absolute; left: 0; right: 0; bottom: 0; top: 0; display: flex; flex-direction: column-reverse; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.zl-stapel > i, .zl-legende-unten i.zl-andere, .zl-legende-unten i.zl-eigen, .zl-legende-unten i.zl-vor { flex: none; display: block; }
+.zl-andere { background: var(--grau-6); }
+.zl-eigen { background: var(--rand); }
+.zl-vor { background: repeating-linear-gradient(135deg, var(--blau) 0 2px, var(--blau-flaeche) 2px 4px); }
+.zl-legende-unten i.zl-we { background: var(--grau-2); box-shadow: inset 0 0 0 1.5px #fff, 0 0 0 1px var(--grau-6); }
+.zl-tag.ziel .zl-stapel { opacity: .35; }
+.zl-tag .kal-zieh { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; z-index: 2; }
+.zl-achse { height: 14px; font-size: 9px; color: var(--grau-8); }
+.zl-achse span { white-space: nowrap; overflow: visible; }
+.zl-achse .zl-zielmark { color: var(--grau-10); font-weight: 700; }
+@media (max-width: 820px) { .unten { left: 8px; right: 8px; bottom: 8px; } .zl-legende-unten { display: none; } .zl-saeulen, .zl-achse { grid-template-columns: repeat(var(--n), 6px); } }
+/* Analytics (V-0357) */
+.links-fuss { position: sticky; bottom: 0; padding: 8px 0 2px; background: linear-gradient(to bottom, transparent, var(--grau-2) 40%); display: flex; }
+.an-kacheln { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.an-kachel { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--grau-1); border: 1px solid var(--grau-5); }
+.an-kachel b { font-size: 20px; }
+.an-titel { font-size: 11px; color: var(--grau-8); text-transform: uppercase; letter-spacing: .04em; }
+.an-satz { font-size: 12px; color: var(--grau-9); }
+.an-kachel.warn b { color: var(--rot-text); }
+.an-kachel.hinweis b { color: var(--gelb-text); }
+.an-teil { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.an-teil h3 { margin: 0; font-size: 14px; }
+.an-tabelle td, .an-tabelle th { white-space: nowrap; }
+.an-tabelle .an-breit { width: 50%; min-width: 120px; }
+.ia-balken { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--grau-4); gap: 1px; }
+.ia-balken i, .an-legende i { display: block; flex: 0 1 0; min-width: 2px; }
+.an-legende { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--grau-8); margin: 0; }
+.an-legende span { display: inline-flex; align-items: center; gap: 4px; }
+.an-legende i { width: 12px; height: 10px; border-radius: 2px; flex: none; }
+.ia-ja { background: var(--gruen); }
+.ia-teil { background: color-mix(in srgb, var(--gruen) 50%, var(--grau-1)); }
+.ia-nein { background: var(--rot); }
+.ia-verpasst { background: #000; }
+.ia-verschoben { background: var(--blau); }
+.ia-ausgefallen { background: var(--grau-6); }
+.ia-offen { background: var(--grau-3); box-shadow: inset 0 0 0 1px var(--grau-5); }
+.an-zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.an-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.an-liste li { display: grid; grid-template-columns: 10px minmax(0, 1.4fr) minmax(80px, 1fr) auto; gap: 8px; align-items: center; }
+.an-saeulen { display: grid; grid-template-columns: repeat(28, minmax(6px, 1fr)); gap: 3px; height: 90px; align-items: end; padding: 6px; border-radius: 8px; background: var(--grau-4); }
+.an-s { position: relative; height: 100%; display: flex; align-items: flex-end; border-radius: 3px; background: var(--grau-2); }
+.an-s.we { box-shadow: inset 0 0 0 1.5px #fff; }
+.an-s.heute { box-shadow: 0 0 0 1.5px var(--rot); }
+.an-s i { display: block; width: 100%; background: var(--blau); border-radius: 3px; }
+.an-punkt { position: absolute; top: 3px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--grau-10); }
+/* Datumskopf einer Kalenderzelle: Datum links, Stunden und i-Knopf rechts, ohne Umbruch (V-0357). */
+.kal-datum { white-space: nowrap; }
+.kal-datum small { margin-left: auto; white-space: nowrap; float: none; }
+.kal-datum small + .kal-info { margin-left: 0; }
+/* Die Wochenenden der Zeitleiste unten mit weißem Rahmen — auf einem dunkleren Grund, damit er sichtbar ist. */
+.zl-flaeche { background: var(--grau-6); }
+.zl-tag { border-color: transparent; }
+.zl-tag.we { border: 2px solid #fff; }
+.zl-legende-unten i.zl-we { background: var(--grau-2); box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px var(--grau-7); }
+/* Der i-Knopf sitzt oben rechts in der Ecke der Zelle — so drückt er schmale Zellen (Telefon) nicht über den Rand. */
+.kal-info { position: absolute; top: 3px; right: 3px; margin: 0; }
+.kal-datum small + .kal-info { margin: 0; }
+.kal-tag:has(.kal-info) .kal-datum small { margin-right: 16px; }
+.kal-info-liste { right: 0; max-width: 220px; }
+@media (max-width: 820px) {
+  .kal-datum { flex-wrap: wrap; white-space: normal; padding-right: 14px; }
+  .kal-datum small, .kal-tag:has(.kal-info) .kal-datum small { margin: 0; }
+  .zl-kopf { flex-wrap: wrap; padding-right: 34px; position: relative; gap: 4px 10px; }
+  .zl-kopf > .knopf.rund { position: absolute; top: -4px; right: -4px; }
+  .zl-aufwand { margin-left: 0; }
+}
+.zl-andere, .zl-legende-unten i.zl-andere { background: var(--grau-7); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .zl-tag.we { border-color: rgb(255 255 255 / .75); border-width: 1.5px; } }
+:root[data-theme="dark"] .zl-tag.we { border-color: rgb(255 255 255 / .75); border-width: 1.5px; }
+.m-jetzt { display: flex; align-items: center; gap: 4px; width: 100%; text-align: left; font-size: 12px; padding: 2px 0; }

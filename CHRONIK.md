@@ -12,6 +12,28 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 12.10.2026 — /silas: Zeitleiste unten, gemeinsamer Vorschlag, Verpasstes im Balken, Analytics (V-0357)
+
+- Unter „Prüfungen“ geht mit der Wahl einer Prüfung unten eine Zeitleiste auf: je Tag von heute bis zwei Tage nach dem
+  Termin eine Säule (9 h), Wochenenden weiß gerahmt, Lernaufwand x von y h; Tippen und Ziehen legen Lernzeit.
+- Der Vorschlag rechnet jetzt alle Prüfungen gemeinsam: je Prüfung 10 h ans Wochenende davor, 10 h ans davor, dann je
+  4 h, Periode für Periode für alle zugleich und in halben Stunden reihum — so teilen sich PROG1 und BuK (beide 17.02.)
+  die Wochenenden, und an einem Tag lernt man für mehrere. Vorher rechnete jede Prüfung für sich nach Datum, die
+  spätere bekam Reste.
+- Kalender: Prüfungen in Modulfarbe, die Form nach Art (● Klausur, ■ E-Test, ◆ Test); die gewählte springt in den Blick
+  und leuchtet; Fristen als i-Knopf statt als Zeilen.
+- Ist-Erfassung: ✗ wird im Modulbalken rot (nachzuholen) bzw. schwarz (Präsenz verpasst), der Balken bleibt gleich lang;
+  „Ansehen“ listet das Verpasste mit der Zeit zum Nachholen; Termine haben „ausgefallen“ mit Grund.
+- Analytics (Knopf unten links): Lernverhalten aus ✓/✗ je Woche, Art, Wochentag und Stunde, Verpasstes, Prüfungs-
+  vorbereitung und die Nutzung (je Tag Sitzungen, Änderungen, aktive Minuten — gezählt im Browser, gespeichert mit der
+  nächsten Änderung).
+- Prüfung der ersten zwei Wochen (Agent, beide Pläne): Blöcke decken Videos und Quizze jetzt in Minuten (Quiz nur im
+  Fenster, ein Rest deckt die nächste Woche), ✗ deckt nichts, Ungedecktes ist eine Meldung — das TECHGI-Quiz mit 2 h alle
+  zwei Wochen ließ 7 Quizze ohne Block, ohne dass es jemand merkte. Dazu: Last ohne Doppeltes, Vorbereitung vor dem
+  Fenster zählt nicht, „Diese Woche“ nach Abdeckung und anteilig, Kopf und Liste derselben Woche mit derselben Zahl,
+  Fahrzeit nach Raum statt Zoom-Link, Wochenblock auf dem Kick-off „dran“, „Frist vorbei — angemeldet?“ statt sofort
+  „gescheitert“, Portfolio-Fristen einmal.
+
 ## 12.10.2026 — /silas: halbe Lernblöcke, Modul leuchtet, Prüfungen aufgeräumt, Vorschlag am Wochenende (V-0356)
 
 - Silas' zweite Rückmeldung beim Neuaufbau (Probeplan 2): Vor-/Nachbereitung und Quizze in halben Blöcken mit doppelter

@@ -8,13 +8,14 @@
 // localStorage dieses Browsers; die Adresse #schluessel=… legt ihn einmal ab und verschwindet sofort.
 
 import * as M from './modell.mjs';
+import * as A from './auswertung.mjs';
 
 const API = '/silas/api';
 // Probepläne (V-0345, Silas: „verschiedene Stundenpläne … unter stundenplanner.de/silas/1, 2, 3 … nur fürs Testen“):
 // /silas/<n> liest und schreibt `stand?plan=<n>` und hat seinen eigenen Zwischenspeicher und seine eigene Ansicht — sonst
 // landete ein Probeplan beim nächsten Laden im echten. Der Schlüssel gilt für alle.
 const PLAN_NR = (/^\/silas\/([1-9])\/?$/.exec(location.pathname) || [])[1] || null;
-const LS = { schluessel: 'silas:v1:schluessel', stand: `silas:v1:stand${PLAN_NR ? `:${PLAN_NR}` : ''}`, ansicht: `silas:v1:ansicht${PLAN_NR ? `:${PLAN_NR}` : ''}` };
+const LS = { schluessel: 'silas:v1:schluessel', stand: `silas:v1:stand${PLAN_NR ? `:${PLAN_NR}` : ''}`, ansicht: `silas:v1:ansicht${PLAN_NR ? `:${PLAN_NR}` : ''}`, nutzung: `silas:v1:nutzung${PLAN_NR ? `:${PLAN_NR}` : ''}` };
 const RASTER_MIN = 15;          // Ziehen rastet auf Viertelstunden
 const SPEICHERN_NACH_MS = 900;
 const GROB = matchMedia('(pointer: coarse)');
@@ -105,7 +106,7 @@ function ansichtLaden() {
   if (Z.ansicht.freiWoche) { Z.ansicht.woche = Z.ansicht.freiWoche; Z.ansicht.modus = 'woche'; }
   delete Z.ansicht.freiWoche;
   if (!(Z.ansicht.schritt >= 1 && Z.ansicht.schritt <= 4)) Z.ansicht.schritt = 1;
-  if (!['plan', 'frei', 'pruefplan', 'offen', 'abgleich', 'erklaerung'].includes(Z.ansicht.bereich)) Z.ansicht.bereich = 'plan';
+  if (!['plan', 'frei', 'pruefplan', 'offen', 'abgleich', 'erklaerung', 'analyse'].includes(Z.ansicht.bereich)) Z.ansicht.bereich = 'plan';
   // V-0334: einmal neu bei Schritt 1 und der Standardwoche anfangen (Silas: „wenn man reinkommt, erstmal nur … die
   // Grundlage“).
   if (Z.ansicht.v !== 334) Object.assign(Z.ansicht, { v: 334, schritt: 1, bereich: 'plan', modus: 'standard' });
@@ -136,6 +137,8 @@ function aendern(fn) {
   Z.rueck.push(JSON.stringify({ angebot: Z.stand.angebot, plan: Z.stand.plan }));
   if (Z.rueck.length > 60) Z.rueck.shift();
   fn(Z.stand);
+  nutzungMerken('aenderungen');
+  nutzungUebernehmen();
   rechnen();
   zeichnen();
   sichernLokal();
@@ -144,9 +147,53 @@ function aendern(fn) {
 function rueckgaengig() {
   const alt = Z.rueck.pop();
   if (!alt) return;
+  const nutzung = Z.stand.plan.nutzung; // die Zählung ist kein Teil dessen, was rückgängig gemacht wird
   Object.assign(Z.stand, JSON.parse(alt));
+  if (nutzung) Z.stand.plan.nutzung = nutzung;
   rechnen(); zeichnen(); sichernLokal(); speichernBald();
 }
+
+// ── Nutzung (V-0357) ─────────────────────────────────────────────────────────────────────────────
+// Silas, 12.10.: „Es sollen sowieso Daten erhoben werden, wie der Stundenplan tatsächlich genutzt wird“. Je Tag zählt die
+// Seite Sitzungen, Änderungen, aktive Minuten (eine Minute mit Bedienung) und Ansichten — erst im Browser (LS.nutzung),
+// mit der nächsten Änderung in plan.nutzung: Zählen allein schreibt nie auf den Server, sonst stieße ein zweites Gerät
+// beim Speichern auf eine fremde Version (409). Was ein Gerät zählt und nie ändert, bleibt dort, bis es etwas ändert.
+
+function nutzungOffen() { try { return JSON.parse(ls.get(LS.nutzung) || '{}'); } catch { return {}; } }
+function nutzungMerken(art, wert = 1) {
+  const n = nutzungOffen();
+  const t = n[heute()] || (n[heute()] = {});
+  if (art === 'ansicht') { t.ansichten = t.ansichten || {}; t.ansichten[wert] = (t.ansichten[wert] || 0) + 1; } else t[art] = (t[art] || 0) + wert;
+  ls.set(LS.nutzung, JSON.stringify(n));
+}
+/** Das Gezählte in den Plan (wird mit der Änderung gespeichert). */
+function nutzungUebernehmen() {
+  const n = nutzungOffen();
+  if (!Object.keys(n).length || !Z.stand) return;
+  const p = Z.stand.plan.nutzung || (Z.stand.plan.nutzung = {});
+  for (const [d, x] of Object.entries(n)) {
+    const t = p[d] || (p[d] = {});
+    for (const [k, v] of Object.entries(x)) {
+      if (k === 'ansichten') { t.ansichten = t.ansichten || {}; for (const [a, c] of Object.entries(v)) t.ansichten[a] = (t.ansichten[a] || 0) + c; } else t[k] = (t[k] || 0) + v;
+    }
+  }
+  ls.weg(LS.nutzung);
+}
+/** Plan und noch nicht Übernommenes zusammen — für die Auswertung. */
+function nutzungAlle() {
+  const p = JSON.parse(JSON.stringify((Z.stand && Z.stand.plan.nutzung) || {}));
+  for (const [d, x] of Object.entries(nutzungOffen())) {
+    const t = p[d] || (p[d] = {});
+    for (const [k, v] of Object.entries(x)) {
+      if (k === 'ansichten') { t.ansichten = t.ansichten || {}; for (const [a, c] of Object.entries(v)) t.ansichten[a] = (t.ansichten[a] || 0) + c; } else t[k] = (t[k] || 0) + v;
+    }
+  }
+  return p;
+}
+// Aktive Minuten: Jede Minute, in der die Seite sichtbar war und bedient wurde, zählt eine.
+let bedient = false;
+for (const ev of ['pointerdown', 'keydown', 'wheel']) addEventListener(ev, () => { bedient = true; }, { passive: true });
+setInterval(() => { if (bedient && document.visibilityState === 'visible' && Z.stand) nutzungMerken('aktiv_min'); bedient = false; }, 60000);
 
 // ── Speicher ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -264,6 +311,7 @@ async function laden() {
   $('tor').hidden = true; $('seite').hidden = false;
   if (PLAN_NR) { document.querySelector('.kopf [data-act="kalender"]').hidden = true; document.querySelector('.marke-zusatz').textContent = `silas · Probeplan ${PLAN_NR}`; document.querySelector('.marke-zusatz').classList.add('probe'); }
   rechnen(); zeichnen(); syncZeigen(); bannerZeigen();
+  nutzungMerken('sitzungen');
   verdrahten();
   api('plaene').then(({ status, daten }) => { if (status === 200) { Z.plaene = daten.plaene; kopfZeichnen(); } }).catch(() => {});
 }
@@ -315,6 +363,7 @@ function zeichnen() {
   bedarfZeichnen();
   leisteZeichnen();
   fussZeichnen();
+  untenZeichnen();
   $('buehne').classList.toggle('ohne-leiste', !Z.ansicht.leiste);
 }
 
@@ -395,7 +444,8 @@ function zustand(z) {
       case 'info_fehlt': return { kl: 'z-info', text: `Info fehlt${bis(z.info)}`, titel: `Info fehlt: ${z.info.frage} — Stichtag ${datumMitTag(z.info.stichtag)}` };
       case 'wahl_offen': return { kl: 'z-wahl', text: gewaehltVon(t) ? 'Wunsch · anmelden' : 'Wahl offen', titel: 'Noch nicht gewählt oder noch nicht angemeldet' };
       case 'zuteilung_offen': return { kl: 'z-wahl', text: 'Zuteilung offen', titel: 'Angemeldet — die Zuteilung steht noch aus' };
-      case 'gescheitert': return { kl: 'z-rot', text: 'gescheitert', titel: 'Kein Platz oder nicht angemeldet' };
+      case 'gescheitert': return { kl: 'z-rot', text: 'gescheitert', titel: 'Kein Platz bekommen' };
+      case 'frist_vorbei': return { kl: 'z-wahl', text: 'Frist vorbei — angemeldet?', titel: 'Die Anmeldefrist ist vorbei, hier ist nichts bestätigt' };
       default: return { kl: '', text: '' };
     }
   }
@@ -423,6 +473,7 @@ function lageText(z) {
     wahl_offen: () => (gewaehltVon(z.teil) ? 'anmelden, dann „Angemeldet“' : 'Gruppe wählen'),
     zuteilung_offen: () => 'Zuteilung bestätigen',
     gescheitert: () => 'gescheitert — Folge ansehen',
+    frist_vorbei: () => 'angemeldet? bestätigen',
     info_fehlt: () => (f.stufe === 'achtung' ? 'Stichtag vorbei — nachfragen' : `Augen offen bis ${M.datumKurz(f.stichtag)}`),
     wartet: () => 'wartet',
     unbestaetigt: () => `${f.anzahl} ohne ✓/✗`,
@@ -460,12 +511,12 @@ const SCHRITT_TUN = {
 
 /** Summe über Elemente: { k, gruen, gelb, grau, anteil, status (fertig · unbekannt · offen), je: [{ z, f }] }. */
 function fortVon(zs) {
-  const s = { k: 0, gruen: 0, gelb: 0, grau: 0, je: [] };
+  const s = { k: 0, gruen: 0, gelb: 0, grau: 0, rot: 0, schwarz: 0, je: [] };
   for (const z of zs) {
     const f = Z.fort.get(z.teil.id);
-    s.je.push({ z, f }); s.k += f.k; s.gruen += f.gruen; s.gelb += f.gelb; s.grau += f.grau;
+    s.je.push({ z, f }); s.k += f.k; s.gruen += f.gruen; s.gelb += f.gelb; s.grau += f.grau; s.rot += f.rot || 0; s.schwarz += f.schwarz || 0;
   }
-  s.anteil = s.k ? s.gruen / s.k : 1;
+  s.anteil = s.k ? (s.gruen + s.rot + s.schwarz) / s.k : 1;
   s.status = s.gelb > 0 ? 'offen' : s.grau > 0 ? 'unbekannt' : 'fertig';
   return s;
 }
@@ -473,11 +524,13 @@ const schrittFort = (n) => fortVon([...Z.erg.teile.values()].filter((z) => M.sch
 // Abgerundet: 99,6 % ist noch nicht 100 % (grün und der volle Haken erst, wenn wirklich alles liegt).
 const prozent = (f) => `${f.status === 'fertig' ? 100 : Math.min(99, Math.floor(f.anteil * 100))} %`;
 
-/** Der Balken: grün geplant, gelb bekannt und noch offen, grau noch nicht bekannt. */
+/** Der Balken: grün geplant, rot nicht gemacht und nachzuholen, schwarz verpasste Präsenz (V-0357), gelb bekannt und noch
+ *  offen, grau noch nicht bekannt. */
 function fBalken(f, gross = false) {
   const b = h('div', { class: `fbalken${gross ? ' gross' : ''}`, role: 'img', 'aria-label': `${prozent(f)} geplant`,
-    title: `geplant ${M.stunden(f.gruen)} · bekannt, noch nicht geplant ${M.stunden(f.gelb)} · noch nicht bekannt ${M.stunden(f.grau)}` });
-  for (const [kl, w] of [['gruen', f.gruen], ['gelb', f.gelb], ['grau', f.grau]]) {
+    title: [`geplant ${M.stunden(f.gruen)}`, f.rot ? `nicht gemacht, nachzuholen ${M.stunden(f.rot)}` : null, f.schwarz ? `Präsenz verpasst ${M.stunden(f.schwarz)}` : null,
+      `bekannt, noch nicht geplant ${M.stunden(f.gelb)}`, `noch nicht bekannt ${M.stunden(f.grau)}`].filter(Boolean).join(' · ') });
+  for (const [kl, w] of [['gruen', f.gruen], ['rot', f.rot || 0], ['schwarz', f.schwarz || 0], ['gelb', f.gelb], ['grau', f.grau]]) {
     if (w <= 0) continue;
     const i = h('i', { class: kl }); i.style.flexGrow = String(w); b.append(i);
   }
@@ -643,8 +696,10 @@ function moduleZeichnen() {
   const gesperrt = Z.erg.planFlags.filter((f) => f.art === 'gesperrt');
   const planFl = (fertig() ? b === 'plan' : n === 4) && gesperrt.length
     ? h('section', { class: 'modul plan-flaggen' }, h('div', { class: 't-flaggen' }, ...gesperrt.map(flaggeEl))) : null;
-  if (fertig() && (b === 'frei' || b === 'pruefplan')) fuellen(box, kopf, pruefListe());
-  else fuellen(box, kopf, planFl, ...Z.erg.module.map(modulKarte));
+  // Unten links: Analytics (V-0357, Silas: „unten links an der Seite ein kleiner Button Analytics“).
+  const fuss = h('div', { class: 'links-fuss' }, h('button', { type: 'button', class: `knopf klein leise${b === 'analyse' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'analyse' }, sym('kalender'), 'Analytics'));
+  if (fertig() && (b === 'frei' || b === 'pruefplan')) fuellen(box, kopf, pruefListe(), fuss);
+  else fuellen(box, kopf, planFl, ...Z.erg.module.map(modulKarte), fuss);
   box.scrollTop = oben;
 }
 
@@ -690,8 +745,13 @@ function modulKarte(r) {
   if (!offenHier && !auf) {
     // Nur Graues (Gruppen kommen noch): nichts zu ändern, nur anzusehen.
     const wort = fertig() || n === 1 || !f.gruen ? 'Ansehen' : n === 2 ? 'Wahl ändern' : 'Blöcke ändern';
+    // Eingeklappt bleibt sichtbar, was jetzt zu tun ist (V-0357, Prüfung W01/W02: EINFWI zeigte „100 %“, die MOSES-Frist
+    // stand nirgends in der Karte) und, mit „Diese Woche“, die Woche.
+    const jetzt = zs.filter((z) => ['kritisch', 'dran'].includes(z.stufe)).map((z) => ({ z, l: lageText(z) })).filter((x) => x.l);
     return h('section', { class: `modul m${m.farbe || 1} zu${kritisch ? ' rot' : ''}${filter ? ' filter' : ''}`, 'data-modul': m.id },
       kopf('modul', 'Alles von diesem Modul im Raster aufleuchten lassen'),
+      ...jetzt.map(({ z, l }) => h('button', { type: 'button', class: `m-jetzt t-lage ${l.kl}`, 'data-act': fertig() ? 'teil' : 'jetzt', 'data-teil': z.teil.id, title: (z.flags.find((x) => x.stufe === z.stufe) || {}).text || null }, sym(l.s), `${z.teil.titel}: ${l.t}`)),
+      woche ? dieseWocheEl(zs) : null,
       h('div', { class: 'm-fertig' }, fZeile(f),
         h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'aufklappen', 'data-modul': m.id }, sym(wort === 'Ansehen' ? 'rechts' : 'stift'), wort)));
   }
@@ -714,6 +774,9 @@ function modulKarte(r) {
     liste = h('ol', { class: 'reihe' }, ...fSchritt.je.map(({ z, f: fz }) => (fz.status === 'offen'
       ? h('li', {}, teilZeile(z), Z.fokus === z.teil.id ? teilKarte(z) : null) : zuZeile(z, fz, 1))));
   }
+  // Verpasst (V-0357, Silas: „wenn ich auf Ansehen klicke, soll aufgelistet werden, welche Veranstaltungen an welchen Tagen
+  // ich geskippt habe, und dort muss auch der Gesamtzeitaufwand stehen, der nachgeholt werden müsste“).
+  const vp = fertig() ? verpasstEl(r) : null;
   // Was im Abgleich kritisch ist oder eine Entscheidung braucht — nur festgelegt (im Ablauf steht es unter „Offen“).
   const wichtig = fertig() ? r.flags.filter((x) => !x.pruefung && ['kritisch', 'achtung'].includes(x.stufe)) : [];
   const st = M.hoechste(wichtig);
@@ -724,8 +787,27 @@ function modulKarte(r) {
     woche ? dieseWocheEl(zs) : null,
     wichtig.length ? h('button', { type: 'button', class: `m-hinweis st-${st}`, 'data-act': 'bereich', 'data-bereich': 'offen', title: wichtig.map((x) => x.text).join('\n') }, sym(STUFE_SYM[st]),
       wichtig.length === 1 ? wichtig[0].text.slice(0, 80) + (wichtig[0].text.length > 80 ? ' …' : '') : `${wichtig.length} Punkte prüfen`) : null,
+    vp,
     fertig() && filter ? modulDetail(r) : null,
     liste);
+}
+
+/** Die Liste des Verpassten eines Moduls (V-0357): je Tag, was ✗ ist oder ausfiel, mit der Zeit, die nachzuholen ist, und
+ *  „Nachgeholt“; Präsenz ist schwarz (nicht nachzuholen), Ausgefallenes grau mit Grund. */
+function verpasstEl(r) {
+  const liste = r.teile.flatMap((z) => M.verpasst(Z.erg, z).map((x) => ({ ...x, z })))
+    .sort((a, b) => (a.v.datum < b.v.datum ? -1 : a.v.datum > b.v.datum ? 1 : a.v.start - b.v.start));
+  if (!liste.length) return null;
+  const offen = liste.filter((x) => x.art === 'nachholen' && !x.nachgeholt).reduce((s, x) => s + x.min, 0);
+  const schwarz = liste.filter((x) => x.art === 'verpasst').reduce((s, x) => s + x.min, 0);
+  return h('div', { class: 'verpasst' },
+    h('div', { class: 'vp-kopf' }, h('b', { text: 'Verpasst' }),
+      h('span', { text: [offen ? `nachzuholen ${M.stunden(offen)}` : 'nichts nachzuholen', schwarz ? `Präsenz verpasst ${M.stunden(schwarz)}` : null].filter(Boolean).join(' · ') })),
+    h('ul', {}, ...liste.map((x) => h('li', { class: `vp-${x.art}${x.nachgeholt ? ' nachgeholt' : ''}` },
+      h('i', { class: 'vp-marke' }),
+      h('span', { class: 'vp-was', title: x.grund || null, text: `${datumMitTag(x.v.datum)} · ${x.z.teil.titel}${x.teil ? ' (Rest)' : ''}${x.art === 'ausgefallen' ? ` — ausgefallen${x.grund ? `: ${x.grund}` : ''}` : ''}` }),
+      h('span', { class: 'vp-min', text: M.stunden(x.min) }),
+      x.art === 'nachholen' ? h('button', { type: 'button', class: `knopf klein${x.nachgeholt ? ' an' : ' leise'}`, 'data-act': 'nachgeholt', 'data-vk': x.v.id, text: x.nachgeholt ? 'Nachgeholt ✓' : 'Nachgeholt?' }) : h('span')))));
 }
 
 /** Das Ergebnis des Abgleichs eines Postens als kleiner Chip (passt, mehr, weniger, offen). */
@@ -739,7 +821,10 @@ function auditChip(P) {
 
 /** Eine Meldung als Zeile, in der Farbe ihrer Stufe — mit dem Knopf, der sie erledigt. */
 function flaggeEl(f) {
-  const knopf = f.art === 'wahl_offen' && f.anmeldung ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'angemeldet', 'data-id': f.anmeldung, text: 'Angemeldet ✓' })
+  const knopf = f.art === 'frist_vorbei' ? h('span', { class: 'flagge-knoepfe' },
+    h('button', { type: 'button', class: 'knopf klein', 'data-act': 'angemeldet', 'data-id': f.anmeldung, text: 'Angemeldet ✓' }),
+    h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'kein-platz', 'data-teil': f.zuteilung, text: 'Kein Platz' }))
+    : f.art === 'wahl_offen' && f.anmeldung ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'angemeldet', 'data-id': f.anmeldung, text: 'Angemeldet ✓' })
     : f.art === 'zuteilung_offen' ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'zugeteilt', 'data-teil': f.zuteilung, text: 'Zugeteilt ✓' })
     : f.art === 'nacharbeit' ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'nachgeholt', 'data-vk': f.vk, text: 'Nachgeholt ✓' })
     : null;
@@ -1072,9 +1157,13 @@ function planKopfZeichnen() {
       const art = w.art === 'vorlesung' ? `Vorlesungswoche ${w.nr}` : w.art === 'frei' ? 'Vorlesungsfrei' : 'Prüfungszeit';
       // Die Last der Woche (G8): was liegt — Termine, Blöcke, Prüfungen — und der Bedarf, den noch kein Block deckt.
       const l = Z.erg.last.wochen.get(w.id) || { termine: 0, bloecke: 0, pbloecke: 0, pruefung: 0, bedarf: 0, summe: 0 };
-      const ueber = l.summe > Z.erg.regeln.woche_h * 60;
+      // Im Plan, und was noch nicht im Plan ist — dieselbe Zahl wie die Liste unter dem Raster (V-0357).
+      const imPlan = l.termine + l.pruefung + l.bloecke + l.pbloecke;
+      const offen = nochNichtImPlan().reduce((s, x) => s + x.offen_min, 0);
+      const ueber = imPlan + offen > Z.erg.regeln.woche_h * 60;
       titel.append(h('b', { text: `${w.kurz} · ${M.datumKurz(w.von)}–${M.datumKurz(w.bis)}` }),
-        h('span', { class: ueber ? 'rot' : null, title: `Termine ${M.stunden(l.termine + l.pruefung)} · Blöcke ${M.stunden(l.bloecke + l.pbloecke)} · noch ohne Block ${M.stunden(l.bedarf)}`, text: `${art} · ${M.stunden(l.summe)} von ${Z.erg.regeln.woche_h} h${l.bedarf >= 30 ? ` (davon ${M.stunden(l.bedarf)} noch ohne Block)` : ''}` }));
+        h('span', { class: ueber ? 'rot' : null, title: `Termine ${M.stunden(l.termine + l.pruefung)} · Blöcke ${M.stunden(l.bloecke + l.pbloecke)}${offen ? ` · noch nicht im Plan ${M.stunden(offen)} (die Liste unter dem Raster)` : ''}`,
+          text: `${art} · ${M.stunden(imPlan)} im Plan${offen >= 15 ? ` + ${M.stunden(offen)} noch nicht = ${M.stunden(imPlan + offen)}` : ''} von ${Z.erg.regeln.woche_h} h` }));
     }
     if (b === 'pruefplan') {
       fuellen(titel, h('b', { text: std ? 'Vorlesungszeit · Prüfungsvorbereitung' : titel.firstChild.textContent }),
@@ -1097,6 +1186,9 @@ function planKopfZeichnen() {
     dazu(titel, rueck);
   } else if (b === 'abgleich') {
     titel.append(h('b', { text: 'Abgleich' }), h('span', { text: 'Die Aufwandstabellen gegen die Wirklichkeit — nur prüfend, es rechnet nichts um außer G5' }));
+    dazu(titel, rueck);
+  } else if (b === 'analyse') {
+    titel.append(h('b', { text: 'Analytics' }), h('span', { text: 'Wie dein Plan läuft (✓ und ✗) und wie du ihn nutzt — bis heute' }));
     dazu(titel, rueck);
   } else {
     titel.append(h('b', { text: 'So wird gerechnet' }), h('span', { text: 'Leistungspunkte, Aufwandstabellen und die Regeln dieses Planers' }));
@@ -1459,7 +1551,7 @@ function kachelTags(k) {
   // Unregelmäßiges (V-0354) liegt unter „Prüfungen“ (Schritt 5), ist aber Lernen oder Video, keine Prüfung.
   const zu = k.art === 'block' && k.teil ? Z.erg.teile.get(k.teil) : null;
   const etikett = k.art === 'block' ? (zu && zu.unregel ? (zu.teil.art === 'video' ? 'Video' : 'EVL') : M.ETIKETT[k.schritt]) : 'Präsenz';
-  const online = k.art !== 'block' && /online|zoom|webex/i.test(`${k.ort || ''} ${(k.v && k.v.online) || ''}`);
+  const online = k.art !== 'block' && !M.vorOrt({ ort: k.ort, online: k.v && k.v.online });
   const n = geo.std ? k.anzahl : k.v ? k.v.rest : k.rest;
   const gesamt = geo.std ? k.anzahl : k.v ? k.v.gesamt : null;
   const titel = n == null ? '' : gesamt === 1 ? 'einmalig — wiederholt sich nicht' : geo.std ? `${n}× im Semester` : `noch ${n}× bis Semesterende (dieser eingeschlossen)${gesamt ? `, insgesamt ${gesamt}×` : ''}`;
@@ -1526,6 +1618,9 @@ function kachelEl(k) {
       if (k.v.flags.includes('vor_stoff')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: vor dem ersten Stoff'; }
       if (k.v.flags.includes('nach_pruefung')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: nach der Prüfung'; }
       if (k.v.einheit && !kl.includes('gesperrt')) zeile2 = `${z.teil.art === 'video' ? 'Video' : 'Einheit'} ${k.v.einheit} · ${zeile2}`;
+      // Deckt der Block nur einen Teil (mehr war bis dahin nicht erschienen oder offen, V-0357): wie viel zählt.
+      const frei = k.v.ende - k.v.start - (k.v.ueberlappt || 0);
+      if (z && k.v.einheit && k.v.zaehlt_min > 0 && k.v.zaehlt_min < frei - 14 && !k.v.deckt_nicht) zeile2 = `zählt ${M.stunden(k.v.zaehlt_min)} · ${zeile2}`;
     }
     // Bezug zum Stoff (V-0342): weit weg → eine kleine Marke; der Satz steht im Tooltip.
     bezug = z && z.teil.art === 'selbst' ? bezugVon(k.vk || []) : null;
@@ -1608,6 +1703,16 @@ function fussZeichnen() {
 /** Unter dem Raster: was in dieser Woche (oder jede Woche) dran wäre, aber noch nicht im Plan ist (Silas, 11.10.:
  *  „diese Dinge finden angenommen in jeder Woche noch statt, sind aber noch nicht im Plan drin — dass man damit
  *  rechnen kann“). Grau: kommt noch; hellblau: du bist dran. */
+/** Was in der gezeigten Woche (oder jeder Woche) dran wäre, aber noch nicht im Plan ist — EINE Liste für die Zeile unter
+ *  dem Raster und den Kopf der Woche (V-0357, Prüfung W01/W02: der Kopf nannte „davon 8,25 h ohne Block“, die Liste
+ *  10 h). Im Ablauf nur der gezeigte Schritt, festgelegt alles außer Prüfungen und Unregelmäßigem. */
+function nochNichtImPlan() {
+  const passt = (z) => (fertig() ? M.schrittVon(z.teil) <= 4 : M.schrittVon(z.teil) === schritt());
+  // Auf Viertelstunden, wie die Liste sie zeigt — sonst ergäbe die Summe im Kopf etwas anderes als die Zeilen.
+  return [...(bedarf || new Map()).values()].map((b) => ({ ...b, offen_min: Math.round(b.offen_min / 15) * 15 }))
+    .filter((b) => b.grund !== 'ok' && b.offen_min >= 15 && passt(b.z));
+}
+
 function bedarfZeichnen() {
   const box = $('bedarf');
   if (!zeigtRaster() || (!fertig() && schritt() === 1)) { fuellen(box); return; }
@@ -1626,8 +1731,7 @@ function bedarfZeichnen() {
   }
   // Sonst: was diese Woche (Standardwoche: jede Woche) dran wäre, aber noch nicht im Plan ist — im Ablauf nur der
   // gezeigte Schritt, festgelegt alles außer den Prüfungen.
-  const passt = (z) => (fertig() ? M.schrittVon(z.teil) <= 4 : M.schrittVon(z.teil) === schritt());
-  const liste = [...bedarf.values()].filter((b) => b.grund !== 'ok' && b.offen_min >= 15 && passt(b.z))
+  const liste = nochNichtImPlan()
     .sort((a, b) => (['kommt', 'wartet'].includes(a.grund)) - (['kommt', 'wartet'].includes(b.grund)) || b.offen_min - a.offen_min);
   const wer = fertig() ? '' : `Schritt ${schritt()}: `;
   if (!liste.length) { fuellen(box, h('b', { text: rasterLage().std ? `${wer}Jede Woche ist alles im Plan.` : `${wer}Alles, was diese Woche dran ist, ist im Plan.` })); return; }
@@ -1650,7 +1754,7 @@ function bereichZeichnen() {
   const b = Z.ansicht.bereich;
   const box = $('bereich');
   const oben = box.scrollTop;
-  fuellen(box, ...(b === 'frei' ? freiBoard() : b === 'offen' ? offenAnsicht() : b === 'abgleich' ? abgleichAnsicht() : erklaerung()));
+  fuellen(box, ...(b === 'frei' ? freiBoard() : b === 'offen' ? offenAnsicht() : b === 'abgleich' ? abgleichAnsicht() : b === 'analyse' ? analyseAnsicht() : erklaerung()));
   if (b === 'frei') zeitleisteAnordnen();
   box.scrollTop = oben;
 }
@@ -1692,7 +1796,11 @@ function pruefungWaehlen(pid) {
   if (X && X.termin) {
     const von = X.vorschlag.length ? X.vorschlag[0].datum : M.plusTage(X.termin.datum, -21);
     for (const zr of zeitraeume()) if (zr.bis >= von && zr.von <= X.termin.datum) Z.zrAuf.add(zr.id);
-    ziel = X.vorschlag.length ? X.vorschlag[X.vorschlag.length - 1].datum : X.termin.datum;
+    // Die Ansicht springt zur Prüfung selbst, ihr Tag leuchtet kurz (V-0357, Silas: „wenn ich eine Klausur oder einen Test
+    // anklicke, soll die Ansicht hinspringen“).
+    ziel = X.termin.datum;
+    Z.zielPuls = Date.now() + 2600;
+    setTimeout(() => { if (Z.ansicht.bereich === 'frei') bereichZeichnen(); }, 2700);
   }
   zeichnen(); bannerZeigen();
   if (ziel) document.querySelector(`.kal-tag:not(.aus)[data-datum="${ziel}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -1987,7 +2095,7 @@ function zeitleisteEl() {
   marken.sort((a, b) => a.at - b.at);
   for (const k of marken) {
     const dieser = sel && sel === k.X;
-    const el = h('button', { type: 'button', class: `zl-marke a-${k.X.art}${k.gilt ? ' gilt' : ''}${!k.gilt ? ' ausweich' : ''}${dieser ? ' gewaehlt' : sel ? ' blass' : ''}`,
+    const el = h('button', { type: 'button', class: `zl-marke m${k.X.modul.farbe || 1} a-${k.X.art}${k.gilt ? ' gilt' : ''}${!k.gilt ? ' ausweich' : ''}${dieser ? ' gewaehlt' : sel ? ' blass' : ''}`,
       'data-act': 'pruefung-waehlen', 'data-pruefung': k.X.id,
       title: `${M.kurz(k.X.modul)} · ${k.X.p.titel}${k.x.label ? ` (${k.x.label})` : ''} — ${datumMitTag(k.x.datum)}${k.x.start ? ` ${k.x.start}` : ''}${k.x.ort ? ` · ${k.x.ort}` : ''}${k.gilt && k.X.annahme ? ' — Arbeitsannahme (Wahl offen)' : ''}` },
       h('i'), h('span', { class: 'zl-text' }, h('b', { text: `${M.kurz(k.X.modul)} ${kurzTitel(k.X.p)}` }), ` ${M.datumKurz(k.x.datum)}`));
@@ -2074,24 +2182,28 @@ function zeitraumKalender(p, X, U = null) {
       // Unregelmäßiges (V-0354): die Fenster seiner offenen Einheiten, Ziel ist ihr Termin.
       const imFenster = drin && X && X.fenster.bis && datum >= X.fenster.ab && datum <= X.fenster.bis;
       const option = drin && uOption.has(datum);
-      const ziel = drin && ((X && X.termin && datum === X.termin.datum) || (U && U.einheiten.some((e) => e.bekannt && e.ziel === datum)));
-      const zelle = h('div', { class: `kal-tag${drin ? '' : ' aus'}${datum === heute() ? ' heute' : ''}${d >= 5 ? ' we' : ''}${ziel ? ' ziel' : ''}${imFenster ? ' fenster' : ''}${option ? ' option' : ''}${vorX ? ' vorschlag' : ''}${last > voll ? ' uebervoll' : ''}${fei.has(datum) ? ' feiertag' : ''}`,
+      // Die gewählte Prüfung (V-0357, Silas: „der Test selber … soll anders farblich markiert sein und noch mehr hervorgehoben
+      // als die Übungstermine“): ihr Tag in der Farbe des Moduls, kräftig umrandet; der Termin, auf den Unregelmäßiges zielt
+      // (eine Übung), nur dünn.
+      const ziel = drin && X && X.termin && datum === X.termin.datum;
+      const bezug = drin && U && U.einheiten.some((e) => e.bekannt && e.ziel === datum);
+      const tagFarbe = ziel ? X.modul.farbe : bezug ? U.modul.farbe : null;
+      const zelle = h('div', { class: `kal-tag${drin ? '' : ' aus'}${datum === heute() ? ' heute' : ''}${d >= 5 ? ' we' : ''}${ziel ? ' ziel' : ''}${bezug ? ' bezug' : ''}${tagFarbe ? ` m${tagFarbe}` : ''}${ziel && Date.now() < (Z.zielPuls || 0) ? ' puls' : ''}${imFenster ? ' fenster' : ''}${option ? ' option' : ''}${vorX ? ' vorschlag' : ''}${last > voll ? ' uebervoll' : ''}${fei.has(datum) ? ' feiertag' : ''}`,
         'data-act': drin ? 'frei-tag' : null, 'data-datum': datum,
         title: drin ? `${datumMitTag(datum)}: ${M.stunden(last)} verplant von ${M.stunden(voll)}${vorAlle ? ` · Vorschlag ${M.stunden(vorAlle)}` : ''}${fei.has(datum) ? ' · Feiertag (kein Vorschlag)' : ''}${X ? ' — Tipp: Lernblock, Ziehen nach unten: Stunden wählen' : U ? ' — Tipp: Block legen oder herausnehmen' : ''}` : null },
-        h('span', { class: 'kal-datum' }, M.datumKurz(datum), drin && last ? h('small', { text: M.stunden(Math.round(last / 15) * 15) }) : null));
+        h('span', { class: 'kal-datum' }, M.datumKurz(datum), drin && last ? h('small', { text: M.stunden(Math.round(last / 15) * 15) }) : null, fristInfo(vk)));
       if (drin) {
         zelle.style.setProperty('--fuell', `${Math.min(100, (last / voll) * 100)}%`);
         zelle.style.setProperty('--vor', `${Math.min(100, ((last + vorAlle) / voll) * 100)}%`);
       }
+      // Prüfungen in der Farbe ihres Moduls, die Form nach Art (● Klausur, ■ E-Test, ◆ Online-/schriftlicher Test) — wie die
+      // Zeitleiste oben; ein Rückfalltermin hohl. Fristen stehen im i-Knopf neben dem Datum (fristInfo).
       for (const v of vk.filter((x) => x.quelle === 'pruefung')) {
         const m = modulVon(v.modul);
         const pr = (m.pruefungen || []).find((x) => x.id === v.pruefung);
-        zelle.append(h('span', { class: `kal-pruefung a-${pr ? M.pruefungsArt(pr) : 'klausur'}${v.wichtig ? '' : ' ausweich'}`, title: M.titelVon(v, Z.erg, Z.stand.angebot) },
+        const dieser = X && v.pruefung === X.id && v.wichtig;
+        zelle.append(h('span', { class: `kal-pruefung m${m.farbe || 1} a-${pr ? M.pruefungsArt(pr) : 'klausur'}${v.wichtig ? '' : ' ausweich'}${dieser ? ' dieser' : ''}`, title: M.titelVon(v, Z.erg, Z.stand.angebot) },
           `${M.kurz(m)} ${kurzTitel(pr || { titel: v.titel })}${v.start != null ? ` ${uhr(v.start)}` : ''}`));
-      }
-      for (const v of vk.filter((x) => x.quelle === 'frist' && (!X || x.modul === X.modul.id || x.wichtig))) {
-        const m = modulVon(v.modul);
-        zelle.append(h('span', { class: `kal-frist${v.wichtig ? ' wichtig' : ''}`, title: v.titel }, `${m ? M.kurz(m) : ''} Frist`));
       }
       for (const v of vk.filter((x) => x.quelle === 'block' && x.schritt === M.PRUEFUNGEN)) {
         const z = Z.erg.teile.get(v.teil);
@@ -2100,13 +2212,26 @@ function zeitraumKalender(p, X, U = null) {
           `${v.ist === 'ja' ? '✓ ' : ''}${M.kurz(z.modul)} ${M.stunden(v.ende - v.start)}`));
       }
       if (option && !(Z.stand.plan.bloecke || []).some((b) => b.teil === U.teil.id && b.datum === datum)) zelle.append(h('span', { class: 'kal-option', text: `+ ${M.stunden(U.dauer_min)}` }));
-      for (const e of U && drin ? U.einheiten.filter((x) => x.bekannt && x.ziel === datum) : []) zelle.append(h('span', { class: 'kal-ziel', title: einheitName(U, e) }, `${M.kurz(U.modul)} ${zielName(e)}`));
+      for (const e of U && drin ? U.einheiten.filter((x) => x.bekannt && x.ziel === datum) : []) zelle.append(h('span', { class: `kal-ziel m${U.modul.farbe || 1}`, title: einheitName(U, e) }, `${M.kurz(U.modul)} ${zielName(e)}`));
       if (vorX) zelle.append(h('button', { type: 'button', class: `kal-vorschlag${Date.now() < (Z.vorschlagPuls || 0) && ansehen ? ' puls' : ''}`, 'data-act': 'vorschlag-tag', 'data-datum': datum, 'data-pruefung': X.id, title: 'Diesen Vorschlag übernehmen' }, `+ ${M.stunden(vorX.min)}`));
       zeile.append(zelle);
     }
     kal.append(zeile);
   }
   return kal;
+}
+
+/** Die Fristen eines Tages als kleiner i-Knopf neben dem Datum (V-0357, Silas: „pro Kachel an die rechte Seite einfach so
+ *  einen kleinen I-Knopf, wenn man darüber hovert, sollen sich diese Fristen aufklappen, sodass die nicht so viel Platz
+ *  wegnehmen“): Hover oder Fokus (Tipp am Telefon) zeigt die Liste; rot, wenn eine wichtige dabei ist. */
+function fristInfo(vk) {
+  const fr = vk.filter((x) => x.quelle === 'frist');
+  if (!fr.length) return null;
+  return h('span', { class: `kal-info${fr.some((v) => v.wichtig) ? ' wichtig' : ''}`, tabindex: '0', role: 'button', 'aria-label': `${fr.length} ${fr.length > 1 ? 'Fristen' : 'Frist'}` }, 'i',
+    h('span', { class: 'kal-info-liste', role: 'tooltip' }, ...fr.map((v) => {
+      const m = modulVon(v.modul);
+      return h('span', { class: v.wichtig ? 'wichtig' : '' }, `${v.punkt != null ? `${uhr(v.punkt)} ` : ''}${m ? `${M.kurz(m)} · ` : ''}${v.titel}`);
+    })));
 }
 
 function freiBoard() {
@@ -2141,6 +2266,77 @@ function pruefTopfEl() {
       h('tbody', {}, ...xs.map(zeile),
         h('tr', { class: 'summe' }, h('td', { text: 'Prüfungs-Topf' }), h('td'), h('td', { text: summe((X) => X.kontingent_min) }), h('td', { text: summe((X) => X.erledigt_min + X.geplant_min) }), h('td', { text: summe(vorschlagSumme) }), h('td', { text: summe((X) => X.passt_nicht_min) })))),
     h('p', { class: 'satz', text: `* Arbeitsannahme: Die Wahl ist offen, es gilt der früheste Termin (G7).${pause ? ` In der ${pause.titel || 'Pause'} schlägt der Vorschlag ${M.stunden(inPause)} vor.` : ''} Vorgeschlagen wird nach allem, was schon liegt: In den Vorlesungswochen ist mit deinen Blöcken und den erwarteten Gruppen wenig frei.` }));
+}
+
+// ── Unten: die Zeitleiste bis zur gewählten Prüfung (V-0357) ─────────────────────────────────────
+// Silas, 12.10. abends: „sobald man eins angeklickt hat, soll von unten so ein Chart aufploppen, der eine Zeitleiste zeigt
+// von heute bis zwei Tage nach dem Test … rechts oben ‚Lernaufwand 0 von 18 h‘ … als Bar Chart jeder einzelne Tag …
+// ausgefüllt, je nachdem, wie viele Stunden da noch frei sind … neun Stunden das Maximum … Wochenenden einen weißen
+// Rahmen … und da soll man Prüfungen eintragen können … die Schnellansicht bzw. Minimap der großen Ansicht.“
+// Je Tag eine Säule: unten, was schon liegt (Termine, Blöcke, andere Prüfungen), darauf die Lernzeit dieser Prüfung (in der
+// Farbe ihres Moduls), schraffiert ihr Vorschlag; voll sind 9 h. Ein Tipp legt Lernzeit wie im Kalender (lerntagSetzen,
+// unregelTag), Ziehen nach unten wählt die Stunden (kalenderZiehen).
+
+function untenZeichnen() {
+  let el = $('unten');
+  if (!el) {
+    el = h('section', { id: 'unten', class: 'unten', 'aria-label': 'Zeitleiste bis zur Prüfung', hidden: true });
+    document.body.append(el);
+    el.addEventListener('pointerdown', (e) => { const s = e.target.closest('.zl-tag[data-act="frei-tag"]'); if (s && gewaehlteX()) kalenderZiehen(e, s); });
+  }
+  const im = fertig() && Z.ansicht.bereich === 'frei';
+  const X = im ? gewaehlteX() : null;
+  const U = im && !X ? gewaehltesU() : null;
+  if (!X && !U) { el.hidden = true; document.body.classList.remove('mit-unten'); return; }
+  const r = Z.erg.regeln, voll = r.tag_h * 60, fei = M.feiertage(Z.erg.sem);
+  const m = X ? X.modul : U.modul;
+  // Bis wann: die Prüfung (oder der letzte bekannte Termin des Unregelmäßigen) und zwei Tage danach.
+  const ende = X ? (X.termin ? X.termin.datum : X.fenster.bis || Z.erg.sem.vorlesung.bis)
+    : (U.einheiten.filter((e) => e.bekannt).map((e) => e.ziel || e.bis).sort().pop() || Z.erg.sem.vorlesung.bis);
+  const bis = M.plusTage(ende, 2);
+  const von = heute() < bis ? heute() : M.plusTage(bis, -14);
+  const teilIds = new Set(X ? X.vorbereitung.map((z) => z.teil.id) : [U.teil.id]);
+  const k = X ? X.zu_planen_min : U.kontingent_min;
+  const gelegt = X ? Math.min(k, X.erledigt_min + X.geplant_min) : Math.min(k, U.plan_min);
+  const vorschlag = new Map(X ? X.vorschlag.map((v) => [v.datum, v.min]) : []);
+  const zielTage = new Set(X ? (X.termin ? [X.termin.datum] : []) : U.einheiten.filter((e) => e.bekannt && e.ziel).map((e) => e.ziel));
+  const saeulen = h('div', { class: 'zl-saeulen' });
+  const achse = h('div', { class: 'zl-achse' });
+  const MON = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+  for (let d = von; d <= bis; d = M.plusTage(d, 1)) {
+    const last = M.tagesLast(Z.erg, d);
+    const eigen = Z.erg.vorkommen.filter((v) => v.datum === d && v.quelle === 'block' && teilIds.has(v.teil)).reduce((s, v) => s + (v.ende - v.start), 0);
+    const andere = Math.max(0, last - eigen);
+    const vor = vorschlag.get(d) || 0;
+    const wt = M.wochentag(d);
+    const nach = d > ende;
+    const pct = (x) => `${Math.min(100, (x / voll) * 100)}%`;
+    const fuell = (kl, x) => { const i = h('i', { class: kl }); i.style.height = pct(x); return i; };
+    const titel = `${datumMitTag(d)}: ${M.stunden(last)} verplant von ${M.stunden(voll)} · frei ${M.stunden(Math.max(0, voll - last))}${eigen ? ` · davon für diese ${X ? 'Prüfung' : 'Sache'} ${M.stunden(eigen)}` : ''}${vor ? ` · Vorschlag ${M.stunden(vor)}` : ''}${zielTage.has(d) ? ` · ${X ? 'Prüfung' : 'Termin'}` : ''}${fei.has(d) ? ' · Feiertag' : ''}`;
+    // Ein div, kein button: kalenderZiehen lässt Knöpfe in Ruhe (sie haben eigene Klicks), die Säule soll ziehen können.
+    saeulen.append(h('div', {
+      role: 'button', tabindex: '-1', class: `zl-tag${wt >= 5 ? ' we' : ''}${zielTage.has(d) ? ` ziel m${m.farbe || 1}` : ''}${d === heute() ? ' heute' : ''}${nach ? ' nach' : ''}${last > voll ? ' uebervoll' : ''}${fei.has(d) ? ' feiertag' : ''}`,
+      'data-act': nach ? null : 'frei-tag', 'data-datum': d, title: titel, 'aria-label': titel,
+    }, h('span', { class: 'zl-stapel' }, fuell('zl-andere', andere), fuell(`zl-eigen m${m.farbe || 1}`, eigen), vor ? fuell('zl-vor', vor) : null)));
+    // Beschriftung: der Monatsanfang und jeder Montag (Tag), die Prüfung.
+    const tag = Number(d.slice(8, 10));
+    achse.append(h('span', { class: `${wt === 0 || tag === 1 ? 'zl-mark' : ''}${zielTage.has(d) ? ' zl-zielmark' : ''}`, text: zielTage.has(d) ? (X ? '▲' : '△') : tag === 1 ? MON[Number(d.slice(5, 7)) - 1] : wt === 0 ? String(tag) : '' }));
+  }
+  const name = X ? `${M.kurz(m)} · ${kurzTitel(X.p)}${X.termin ? ` · ${datumMitTag(X.termin.datum)}` : ''}` : `${M.kurz(m)} · ${U.teil.titel}`;
+  fuellen(el,
+    h('div', { class: 'zl-kopf' },
+      h('span', { class: `zl-name m${m.farbe || 1}` }, h('span', { class: 'm-punkt' }), name),
+      h('span', { class: 'zl-legende-unten' }, h('i', { class: 'zl-andere' }), 'schon verplant', h('i', { class: `zl-eigen m${m.farbe || 1}` }), X ? 'diese Prüfung' : 'diese Sache', X ? h('i', { class: 'zl-vor' }) : null, X ? 'Vorschlag' : null, h('i', { class: 'zl-we' }), 'Wochenende'),
+      h('b', { class: 'zl-aufwand', text: `${X ? 'Lernaufwand' : 'Aufwand'} ${M.stunden(gelegt)} von ${M.stunden(k)}` }),
+      h('button', { type: 'button', class: 'knopf rund leise', 'data-act': 'setzen-aus', 'aria-label': 'Zeitleiste schließen', title: 'Schließen' }, sym('zu'))),
+    h('div', { class: 'zl-flaeche' }, saeulen, achse));
+  el.hidden = false;
+  document.body.classList.add('mit-unten');
+  saeulen.style.setProperty('--n', String(saeulen.childElementCount));
+  achse.style.setProperty('--n', String(saeulen.childElementCount));
+  // Ist die Leiste breiter als der Platz (Telefon), steht die Prüfung rechts im Blick.
+  const fl = el.querySelector('.zl-flaeche');
+  requestAnimationFrame(() => { fl.scrollLeft = fl.scrollWidth; });
 }
 
 /** Einen Tag antippen (V-0340): Liegt an dem Tag schon ein Lernblock dieser Prüfung, nimmt der Tipp ihn heraus; sonst legt
@@ -2378,6 +2574,75 @@ function offenAnsicht() {
   ];
 }
 
+// ── Analytics (V-0357) ───────────────────────────────────────────────────────────────────────────
+// Silas, 12.10.: „alles, was da an Daten erhoben wird, soll in einem weiteren Tab als Analytics einzusehen sein …
+// unten links an der Seite ein kleiner Button … wie der Stundenplan tatsächlich genutzt wird, wie das eigene
+// Lernverhalten ist.“ Die Zahlen rechnet auswertung.mjs; hier nur die Darstellung. Farben wie im Modulbalken: grün
+// erledigt, hellgrün teilweise, rot nicht gemacht, schwarz Präsenz verpasst, blau verschoben, grau ausgefallen, hell ohne ✓/✗.
+
+const IST_FARBE = { ja: 'ia-ja', teil: 'ia-teil', nein: 'ia-nein', verpasst: 'ia-verpasst', verschoben: 'ia-verschoben', ausgefallen: 'ia-ausgefallen', offen: 'ia-offen' };
+const quoteText = (q) => (q == null ? '—' : `${Math.round(q * 100)} %`);
+
+/** Ein Balken aus den Arten der Ist-Erfassung (Minuten), mit Titel je Teil. */
+function istBalken(x) {
+  const b = h('div', { class: 'ia-balken', title: A.IST_ARTEN.filter(([k]) => x[k]).map(([k, t]) => `${t} ${M.stunden(x[k])}`).join(' · ') || 'nichts' });
+  for (const [k] of A.IST_ARTEN) if (x[k] > 0) { const i = h('i', { class: IST_FARBE[k] }); i.style.flexGrow = String(x[k]); b.append(i); }
+  return b;
+}
+
+function analyseAnsicht() {
+  const a = A.auswertung(Z.erg, { ...Z.stand.plan, nutzung: nutzungAlle() }, heute());
+  const b = a.bilanz;
+  const kachel = (titel, wert, satz, kl = '') => h('div', { class: `an-kachel ${kl}` }, h('span', { class: 'an-titel', text: titel }), h('b', { text: wert }), satz ? h('span', { class: 'an-satz', text: satz }) : null);
+  const nachOffen = a.nachholen.reduce((s, x) => s + x.offen_min, 0);
+  const pk = a.pruefungen.reduce((s, x) => s + x.k, 0), pg = a.pruefungen.reduce((s, x) => s + x.gelegt, 0);
+  const n = a.nutzung;
+  const tabelle = (zeilen, erste) => h('table', { class: 'erkl-tabelle an-tabelle' },
+    h('thead', {}, h('tr', {}, h('th', { text: erste }), h('th', { text: 'fällig' }), h('th', { text: 'erledigt' }), h('th', { text: 'bestätigt' }), h('th', { class: 'an-breit', text: 'Verteilung' }))),
+    h('tbody', {}, ...zeilen.map((x) => h('tr', {}, h('td', { text: x.name }), h('td', { text: M.stunden(x.soll) }), h('td', { text: quoteText(x.erledigt) }), h('td', { text: quoteText(x.bestaetigt) }), h('td', { class: 'an-breit' }, istBalken(x))))));
+  const leer = !b.n;
+  const max = Math.max(60, ...n.reihe.map((x) => x.aktiv_min));
+  const nutzungChart = h('div', { class: 'an-saeulen', role: 'img', 'aria-label': 'Aktive Minuten je Tag, die letzten vier Wochen' },
+    ...n.reihe.map((x) => {
+      const s = h('span', { class: `an-s${M.wochentag(x.datum) >= 5 ? ' we' : ''}${x.datum === heute() ? ' heute' : ''}`, title: `${datumMitTag(x.datum)}: ${x.aktiv_min} min aktiv · ${x.sitzungen} ${x.sitzungen === 1 ? 'Sitzung' : 'Sitzungen'} · ${x.aenderungen} Änderungen` }, h('i'));
+      s.firstChild.style.height = `${Math.min(100, (x.aktiv_min / max) * 100)}%`;
+      if (x.aenderungen) s.append(h('b', { class: 'an-punkt' }));
+      return s;
+    }));
+  const legende = h('p', { class: 'an-legende' }, ...A.IST_ARTEN.map(([k, t]) => h('span', {}, h('i', { class: IST_FARBE[k] }), t)));
+  return [
+    h('div', { class: 'an-kacheln' },
+      kachel('Bis heute fällig', M.stunden(b.soll), `${b.n} Termine und Blöcke`),
+      kachel('Erledigt', quoteText(b.erledigt), `${M.stunden(b.ja + b.teil)} mit ✓ oder teilweise`, b.erledigt != null && b.erledigt < 0.7 ? 'warn' : ''),
+      kachel('Bestätigt', quoteText(b.bestaetigt), b.offen ? `${M.stunden(b.offen)} noch ohne ✓/✗` : 'alles hat ✓ oder ✗', b.offen ? 'hinweis' : ''),
+      kachel('Präsenz', `${a.praesenz.besucht} von ${a.praesenz.besucht + a.praesenz.verpasst}`, `besucht${a.praesenz.verpasst ? ` · ${a.praesenz.verpasst} verpasst` : ''}${a.praesenz.ausgefallen ? ` · ${a.praesenz.ausgefallen} ausgefallen` : ''}${a.praesenz.offen ? ` · ${a.praesenz.offen} ohne ✓/✗` : ''}`),
+      kachel('Nachzuholen', M.stunden(nachOffen), nachOffen ? 'nicht gemacht und noch nicht nachgeholt' : 'nichts', nachOffen ? 'warn' : ''),
+      kachel('Prüfungsvorbereitung', `${M.stunden(pg)} von ${M.stunden(pk)}`, 'gelegt'),
+      kachel('Nutzung', `${n.tage} ${n.tage === 1 ? 'Tag' : 'Tage'}`, `${n.sitzungen} ${n.sitzungen === 1 ? 'Sitzung' : 'Sitzungen'} · ${n.aenderungen} ${n.aenderungen === 1 ? 'Änderung' : 'Änderungen'} · ${M.stunden(n.aktiv_min)} aktiv${n.serie > 1 ? ` · ${n.serie} Tage am Stück` : ''}`)),
+    leer ? h('p', { class: 'satz', text: 'Noch ist nichts vorbei, was du abhaken könntest — die Auswertung wächst mit jedem ✓ und ✗ (Klick auf eine vergangene Kachel).' }) : null,
+    h('section', { class: 'an-teil' }, h('h3', { text: 'Je Woche' }), legende,
+      a.wochen.length ? tabelle(a.wochen.map((x) => ({ ...x, name: `${x.woche.kurz} · ${M.datumKurz(x.woche.von)}` })), 'Woche') : h('p', { class: 'satz grau', text: 'Noch keine vergangene Woche.' })),
+    h('section', { class: 'an-teil' }, h('h3', { text: 'Je Art' }), tabelle(a.arten.filter((x) => x.n).map((x) => ({ ...x, name: x.titel })), 'Art')),
+    h('section', { class: 'an-teil' }, h('h3', { text: 'Wann etwas liegen bleibt' }),
+      h('div', { class: 'an-zwei' },
+        tabelle(a.tage.filter((x) => x.n).map((x) => ({ ...x, name: x.tag })), 'Wochentag'),
+        tabelle(a.stunden.map((x) => ({ ...x, name: `${String(x.stunde).padStart(2, '0')} Uhr` })), 'Beginn'))),
+    a.nachholen.length ? h('section', { class: 'an-teil' }, h('h3', { text: 'Verpasst und nachzuholen' }),
+      h('ul', { class: 'an-liste' }, ...a.nachholen.map((x) => h('li', { class: `m${x.modul.farbe || 1}` }, h('span', { class: 'm-punkt' }),
+        h('span', { text: `${M.kurz(x.modul)}: ${x.liste.length} ${x.liste.length > 1 ? 'Einträge' : 'Eintrag'}` }),
+        h('span', { class: 'rot-text', text: x.offen_min ? `${M.stunden(x.offen_min)} nachzuholen` : '' }),
+        h('span', { text: x.verpasst_min ? `${M.stunden(x.verpasst_min)} Präsenz verpasst` : '' }))))) : null,
+    h('section', { class: 'an-teil' }, h('h3', { text: 'Prüfungsvorbereitung' }),
+      h('ul', { class: 'an-liste' }, ...a.pruefungen.map((x) => {
+        const f = pruefFort(x.X);
+        return h('li', { class: `m${x.X.modul.farbe || 1}` }, h('span', { class: 'm-punkt' }), h('span', { text: `${M.kurz(x.X.modul)} · ${kurzTitel(x.X.p)}${x.X.termin ? ` · ${M.datumKurz(x.X.termin.datum)}` : ''}` }),
+          fBalken(f), h('span', { text: `${M.stunden(x.gelegt)} / ${M.stunden(x.k)}${x.erledigt ? ` · ✓ ${M.stunden(x.erledigt)}` : ''}` }));
+      }))),
+    h('section', { class: 'an-teil' }, h('h3', { text: 'Nutzung — die letzten vier Wochen' }), nutzungChart,
+      h('p', { class: 'satz grau', text: `Säule: aktive Minuten (eine Minute mit Bedienung zählt) · Punkt: an dem Tag geändert${Object.keys(n.ansichten).length ? ` · Ansichten: ${Object.entries(n.ansichten).sort((x, y) => y[1] - x[1]).map(([k, c]) => `${{ plan: 'Woche', frei: 'Prüfungen', offen: 'Offen', abgleich: 'Abgleich', erklaerung: 'So wird gerechnet', analyse: 'Analytics', pruefplan: 'Prüfplan' }[k] || k} ${c}`).join(', ')}` : ''}. Gezählt wird im Browser und mit der nächsten Änderung gespeichert.` })),
+  ];
+}
+
 // ── So wird gerechnet ────────────────────────────────────────────────────────────────────────────
 
 function erklaerung() {
@@ -2404,7 +2669,7 @@ function erklaerung() {
       h('ol', { class: 'erkl-liste' },
         li('Posten', ' — zu welchem Kontingent gehört es? (Sprechstunden ohne Posten stehen nur im Kalender.)'),
         li('Zeitbindung', ' — ein Termin (Serie, Reihe, einmal), ein Fenster [ab, bis], in dem du es selbst legst, oder unbekannt.'),
-        li('Alternativen', ' — fest · Info fehlt (mit Frage und Stichtag) · Wahl offen · Zuteilung offen · gewählt · gescheitert.'),
+        li('Alternativen', ' — fest · Info fehlt (mit Frage und Stichtag) · Wahl offen · Zuteilung offen · Frist vorbei (angemeldet?) · gewählt · gescheitert.'),
         li('Lebenslauf', ' — besucht, verpasst (wird Nacharbeit), ausgefallen; ✓, ✗, teilweise, verschoben; bei Prüfungen der Stand nach § 63.')),
       p('Der Stichtag eines „Info fehlt“ ist der Tag, an dem die Antwort kommen sollte — meist die erste Vorlesung; Prüfungstermine 14 Tage nach Modulbeginn (§ 65 Abs. 3). Bis dahin ist es kein Fehler, danach heißt es nachfragen.')),
     absatz('Wochenwert und Vorschlag',
@@ -2668,8 +2933,17 @@ function istKarte(vkId, nahe) {
     h('p', { class: 'satz', text: `${datumMitTag(v.datum)} ${zeitspanne(v.start, v.ende)}${v.ausgefallen ? ' — fällt aus' : ''}. ${termin ? 'Warst du da?' : 'Hast du es gemacht?'} Abgebucht wird erst mit ✓.` }),
     v.ausgefallen === 'geschlossen' ? h('p', { class: 'satz', text: 'Die TU ist an diesem Tag geschlossen — der Termin fällt aus.' }) : h('div', { class: 'zeile ist-wahl' },
       knopf(termin ? '✓ besucht' : '✓ erledigt', 'ja', e && e.s === 'ja', `${termin ? 'Besucht' : 'Erledigt'}: ${M.stunden(termin ? dauer : v.zaehlt_min || dauer)} abgebucht.`),
-      knopf(termin ? '✗ verpasst' : '✗ nicht gemacht', 'nein', e && e.s === 'nein', termin ? 'Verpasst — die Zeit steht als Nacharbeit bis zum nächsten Termin unter „Offen“.' : 'Nicht gemacht — die Zeit bleibt offen und geht in die Wochenwerte der kommenden Wochen.'),
-      termin ? knopf('fiel aus', 'ausgefallen', e && e.s === 'ausgefallen', 'Als ausgefallen eingetragen.') : null),
+      knopf(termin ? '✗ verpasst' : '✗ nicht gemacht', 'nein', e && e.s === 'nein', termin ? 'Verpasst — schwarz im Balken des Moduls; den Stoff nacharbeiten steht unter „Offen“.' : 'Nicht gemacht — rot im Balken des Moduls, bis du es nachgeholt hast.'),
+      termin && e && e.s === 'ausgefallen' ? knopf(`ausgefallen${e.grund ? `: ${e.grund}` : ''}`, 'ausgefallen', true, '') : null),
+    // Ausgefallen (V-0357, Silas: „es muss noch einen dritten Button geben, ausgefallen, und da muss man dann einen Grund
+    // hinschreiben“): fand nicht statt — kein Verlust; der Grund steht in der Liste des Moduls und in der Auswertung.
+    termin && !v.ausgefallen && !(e && e.s === 'ausgefallen') ? (() => {
+      const f = h('form', { class: 'formular ausfall' },
+        h('label', {}, 'Ausgefallen — Grund', h('input', { name: 'grund', required: true, maxlength: '120', placeholder: 'z. B. Dozent krank, abgesagt' })),
+        h('div', { class: 'zeile' }, h('button', { class: 'knopf klein haupt', type: 'submit', text: 'Ausgefallen' })));
+      f.addEventListener('submit', (ev) => { ev.preventDefault(); const grund = String(new FormData(f).get('grund') || '').trim(); if (grund) setze({ s: 'ausgefallen', grund }, 'Als ausgefallen eingetragen.'); });
+      return h('details', { class: 'klappe' }, h('summary', { text: '… ausgefallen' }), f);
+    })() : null,
     !termin && !v.ausgefallen ? h('details', { class: 'klappe' }, h('summary', { text: '… teilweise' }), teilForm) : null,
     schiebForm ? h('details', { class: 'klappe' }, h('summary', { text: '… verschieben' }), schiebForm) : null,
     v.quelle === 'block' && v.block ? h('div', { class: 'zeile' }, h('button', { type: 'button', class: 'knopf klein leise', onclick: () => { karteSchliessen(false); blockKarte(v.block, nahe, v.datum); }, text: 'Block bearbeiten' })) : null,
@@ -3101,7 +3375,7 @@ function verdrahten() {
       case 'nachgeholt': aendern((s) => { const i = { ...(s.plan.ist || {}) }; const e = M.istEintrag(i[el.dataset.vk]) || { s: 'nein' }; i[el.dataset.vk] = { ...e, nachgeholt: !e.nachgeholt }; s.plan.ist = i; }); break;
       case 'pruefplan-woche': Z.ansicht.bereich = 'pruefplan'; Z.ansicht.modus = 'woche'; Z.ansicht.woche = el.dataset.woche; ansichtMerken(); zeichnen(); bannerZeigen(); break;
       case 'modus': if (Z.ansicht.bereich !== 'pruefplan') Z.ansicht.bereich = 'plan'; Z.ansicht.modus = el.dataset.modus; ansichtMerken(); zeichnen(); break;
-      case 'bereich': Z.ansicht.bereich = el.dataset.bereich; Z.fokus = null; Z.setzen = null; ansichtMerken(); zeichnen(); bannerZeigen(); $('bereich').scrollTop = 0; break;
+      case 'bereich': nutzungMerken('ansicht', el.dataset.bereich); Z.ansicht.bereich = el.dataset.bereich; Z.fokus = null; Z.setzen = null; ansichtMerken(); zeichnen(); bannerZeigen(); $('bereich').scrollTop = 0; break;
       case 'schritt': zumSchritt(Number(el.dataset.schritt), el.dataset.teil || null); break;
       case 'festlegen': festlegenKarte(el); break;
       case 'bearbeiten': if (el.dataset.schritt) bearbeiten(Number(el.dataset.schritt), teil || null); else bearbeitenKarte(el); break;
@@ -3444,7 +3718,10 @@ function ablegen(tag, y, rect) {
   bannerZeigen();
   const z = Z.erg.teile.get(teil);
   const bz = bezugVon(Z.erg.vorkommen.filter((v) => v.block === b.id));
-  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}${bz.weit ? ' — weit weg vom Stoff' : ''}.` : ''}${weiter ? ` Noch ${Z.legen.rest} ${Z.legen.rest > 1 ? 'Blöcke' : 'Block'} legen.` : ''}`);
+  // Trifft ein Wochenblock an einzelnen Tagen einen Termin, der nicht in der Standardwoche steht (EINFWI-Kick-off), sagt
+  // es die Meldung sofort (V-0357) — gesperrtDurch() kennt nur das Gerüst.
+  const sf = sperrFlagge(b.id);
+  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}${bz.weit ? ' — weit weg vom Stoff' : ''}.` : ''}${sf ? ` Achtung: ${sf.text}.` : ''}${weiter ? ` Noch ${Z.legen.rest} ${Z.legen.rest > 1 ? 'Blöcke' : 'Block'} legen.` : ''}`);
 }
 
 /** Die Mittagspause eines Tages am Schild ziehen (V-0345): auf Viertelstunden, innerhalb des Rasters; beim Loslassen steht
