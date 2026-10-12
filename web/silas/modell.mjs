@@ -16,7 +16,7 @@
 import {
   REGELN, TAGE, min, hhmm, plusTage, wochentag, montagVon, tageZwischen, istDatum, datumKurz, aufRaster, stunden,
   istFrei, istGeschlossen, wochen, muster, termineAus, zaehltMin, nurOnline, einheiten, videoBlockMin, pruefungsTermin,
-  freieFenster, isoZeit,
+  freieFenster, isoZeit, vorOrt,
 } from './grund.mjs';
 import { kontingentRechnen, istEintrag, wochenBedarf as bedarfJeWoche, STUFEN, toleranz } from './kontingent.mjs';
 
@@ -328,17 +328,53 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         });
         // Abgaben ohne Dauer (Prog1WINF-Aufgaben, Blätter): ein Fenster statt einer Menge.
         const fenster = !video && !gruppen.some((g) => g.bedarf_min);
+        // Zuordnung in Minuten (V-0357, Prüfung W01/W02): Ein Block deckt der Reihe nach die früheste freigegebene Woche, die
+        // noch Zeit braucht, und mit seinem Rest die nächste — ein Video lässt sich nachholen, eine Abgabe (Quiz) nur in
+        // ihrem Fenster (vorher deckte der 2-h-Block alle zwei Wochen ein Quiz nach dessen Frist, und der Rest verfiel). Was
+        // der Block nicht deckt, zählt nicht. ✗ und verschoben decken nichts, „teilweise“ nur seine Minuten — darum liest
+        // die Zuordnung plan.ist selbst (lebenslauf() rechnet erst danach): Sonst blieb ein ✗-Video „gedeckt“, und der
+        // Nachholblock zählte als „Block ohne Video“.
         for (const v of bloecke) {
-          const g = fenster
-            ? gruppen.find((x) => x.ab <= v.datum && v.datum <= x.bis)
-            : gruppen.find((x) => x.ab <= v.datum && (x.bedarf_min == null ? !x.bloecke.length : x.belegt_min < x.bedarf_min));
-          if (!g) { v.zaehlt_min = 0; v.flags.push('leer'); continue; }
-          g.bloecke.push(v.id);
-          g.belegt_min += Math.max(0, v.ende - v.start - (v.ueberlappt || 0));
-          v.einheit = g.einheiten.map((e) => e.nr).join(' + ');
-          for (const e of g.einheiten) if (!e.block) e.block = v.id;
+          const e_ = istEintrag(ist[v.id]);
+          if (e_ && (e_.s === 'nein' || e_.s === 'verschoben')) { v.deckt_nicht = true; continue; }
+          let rest = Math.max(0, v.ende - v.start - (v.ueberlappt || 0));
+          if (e_ && e_.s === 'teil') rest = Math.min(rest, Math.max(0, Math.round(e_.min || 0)));
+          if (fenster) {
+            const g = gruppen.find((x) => x.ab <= v.datum && v.datum <= x.bis);
+            if (!g) { v.zaehlt_min = 0; v.flags.push('leer'); continue; }
+            g.bloecke.push(v.id); g.belegt_min += rest; g.gedeckt_am = g.gedeckt_am || v.datum; (g.deckung = g.deckung || []).push({ datum: v.datum, min: rest });
+            v.einheit = g.einheiten.map((e) => e.nr).join(' + ');
+            for (const e of g.einheiten) if (!e.block) e.block = v.id;
+            continue;
+          }
+          let gedeckt = 0;
+          const nrn = [];
+          while (rest > 0) {
+            const g = gruppen.find((x) => x.ab <= v.datum && (video || v.datum <= x.bis) && (x.bedarf_min == null ? !x.bloecke.length : x.belegt_min < x.bedarf_min));
+            if (!g) break;
+            const nimm = g.bedarf_min == null ? rest : Math.min(rest, g.bedarf_min - g.belegt_min);
+            g.belegt_min += nimm; g.gedeckt_am = g.gedeckt_am || v.datum; (g.deckung = g.deckung || []).push({ datum: v.datum, min: nimm });
+            if (!g.bloecke.includes(v.id)) g.bloecke.push(v.id);
+            rest -= nimm; gedeckt += nimm;
+            nrn.push(...g.einheiten.map((e) => e.nr));
+            for (const e of g.einheiten) if (!e.block) e.block = v.id;
+          }
+          if (!gedeckt) { v.zaehlt_min = 0; v.flags.push('leer'); continue; }
+          v.zaehlt_min = Math.min(v.zaehlt_min, gedeckt);
+          v.einheit = nrn.join(' + ');
         }
         z.gruppen = gruppen;
+        // Was kein Block deckt (V-0357): STAT1-Videos 31–34 bekamen nie einen Block, weil die Vorgabe das Mittel je Woche
+        // ist und der Rückstand wuchs — ohne Meldung, der Fortschritt sagte „fertig“. Jetzt eine Meldung (dran, wenn das
+        // Erste davon in drei Wochen ansteht), und fortschritt() misst Abdeckung statt Minuten je Woche.
+        const ungedeckt = gruppen.filter((g) => g.bedarf_min && g.belegt_min < g.bedarf_min - 15 && (!heute || (video ? true : g.bis >= heute)));
+        if (ungedeckt.length && bloecke.length) {
+          const fehlt = ungedeckt.reduce((s, g) => s + g.bedarf_min - g.belegt_min, 0);
+          const nrn = ungedeckt.flatMap((g) => g.einheiten.map((e) => e.nr));
+          const erst = ungedeckt[0].ab;
+          flagge(z, 'ungedeckt', `${video ? 'Videos' : 'Einheiten'} ${nrn.length > 3 ? `${nrn.slice(0, 3).join(', ')} … (${nrn.length})` : nrn.join(', ')} ohne Block — ${stunden(fehlt)} fehlen (zuerst ab ${datumKurz(erst)})${video ? '; ein Block muss länger werden oder ein Nachholblock her' : ''}`,
+            { stufe: heute && tageZwischen(heute, erst) <= 21 ? 'dran' : 'kommt', datum: erst });
+        }
         const frei = bloecke.filter((v) => v.flags.includes('leer'));
         if (frei.length) flagge(z, 'leer', `${frei.length} ${frei.length > 1 ? 'Blöcke' : 'Block'} ohne ${video ? 'Video' : 'Einheit'} (zuerst ${datumKurz(frei[0].datum)}) — die Zeit zählt nicht`);
         const kurz_ = gruppen.filter((g) => g.bedarf_min && g.belegt_min > 0 && g.belegt_min < g.bedarf_min);
@@ -386,7 +422,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         flagge(z, 'vor_stoff', `${vor.length} ${vor.length > 1 ? 'Blöcke liegen' : 'Block liegt'} vor dem ersten Stoff (${wer}) — davor gibt es nichts vor- oder nachzubereiten, die Zeit zählt nicht`);
       }
     }
-    const ereignisse_ = stoff.flatMap((x) => x.vk.filter((v) => (v.quelle === 'termin' && !v.ausgefallen) || (v.quelle === 'block' && x.teil.art === 'video' && v.zaehlt_min > 0))
+    const ereignisse_ = stoff.flatMap((x) => x.vk.filter((v) => (v.quelle === 'termin' && !v.ausgefallen) || (v.quelle === 'block' && x.teil.art === 'video' && v.zaehlt_min > 0 && !v.deckt_nicht))
       .map((v) => ({ v, x, a: absMin(v.datum, v.start), e: absMin(v.datum, v.ende) })));
     const name = (o) => `${o.x.teil.titel} (${TAGE[wochentag(o.v.datum)]} ${hhmm(o.v.start)})`;
     const weit = [];
@@ -437,8 +473,12 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
       const namen = [...new Set(vs.flatMap((v) => v.mit.map((x) => vkNach.get(x)).filter((o) => o && o.quelle !== 'block').map(nameVon)))].join(', ');
       const wann = b.datum ? `am ${datumKurz(b.datum)}` : `${b.tag} ${b.start}–${b.ende}`;
       const dauernd = vs.length >= 3 || vs.length === alle;
+      // Ein einzelner Tag, der bald kommt (der Wochenblock auf dem EINFWI-Kick-off), ist eine Aufgabe dieser Woche, kein
+      // Hinweis (V-0357): dran, wenn er in den nächsten 14 Tagen liegt.
+      const bald = vs.find((v) => !heute || v.datum >= heute);
+      const stufe = dauernd ? 'dran' : bald && heute && tageZwischen(heute, bald.datum) <= 14 ? 'dran' : 'info';
       aus.push({
-        art: 'gesperrt', dauernd, block: id,
+        art: 'gesperrt', dauernd, block: id, stufe, datum: bald ? bald.datum : null,
         text: dauernd ? `Block ${wann} liegt ${alle > 1 ? `an ${vs.length} Tagen ` : ''}auf ${namen} — dort ist gesperrt, verschieben`
           : `Block ${wann} fällt am ${vs.map((v) => datumKurz(v.datum)).join(', ')} teilweise weg (${namen})`,
       });
@@ -473,12 +513,18 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   for (const v of vorkommen) if (v.teil && (v.quelle === 'block' || v.quelle === 'frist') && teile.get(v.teil)?.unregel) v.schritt = PRUEFUNGEN;
 
   // Die Fristen der Prüfungen (Verweise: An- und Abmeldung, Vorbehalt) stehen auch im Kalender.
+  const schonFrist = new Set();
   for (const X of erg.pruefungen.values()) {
     if (!X.zaehlt) continue;
     for (const f of X.fristen) {
       if (f.art === 'anmeldung_ab' && f.regel) continue; // „in der Regel zwei Wochen nach Beginn“ ist kein Datum für den Kalender
       const id = `${X.id}-${f.art}`;
       if (vorkommen.some((v) => v.id === id)) continue;
+      // Ein Portfolio hat EINE Anmeldung für alle Teile (§2.6) — im Kalender einmal je Modul, Art und Tag (V-0357: BuK
+      // stand dreimal „Anmeldung öffnet“ am selben Tag).
+      const k = `${X.modul.id}|${f.art}|${f.datum}`;
+      if (X.portfolio && schonFrist.has(k)) continue;
+      schonFrist.add(k);
       vorkommen.push({
         id, quelle: 'frist', schicht: 'C', schritt: PRUEFUNGEN, modul: X.modul.id, pruefung: X.id, datum: f.datum, ganztag: true,
         punkt: f.zeit ? min(f.zeit) : undefined, titel: `${X.p.titel}: ${f.text}`, wichtig: !['abmeldung', 'anmeldung_ab'].includes(f.art),
@@ -724,13 +770,16 @@ export function unregelmaessige(erg) {
 export function verpasst(erg, z) {
   const ist = (erg.plan && erg.plan.ist) || {};
   const aus = [];
+  // Ein Video oder Quiz holt der nächste Block von selbst nach (die Zuordnung, rechnen() 6): Ist alles, was bis zum Tag
+  // des ✗ erschienen war, inzwischen gedeckt, ist es nachgeholt — ohne Klick.
+  const gedecktBis = (d) => !!z.gruppen && z.gruppen.filter((g) => g.bedarf_min && g.ab <= d).every((g) => g.belegt_min >= g.bedarf_min - 15);
   for (const v of z.vk) {
     if (v.quelle !== 'termin' && v.quelle !== 'block') continue;
     const e = istEintrag(ist[v.id]);
     const dauer = v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : v.zaehlt_min || 0;
     if (v.ausgefallen === 'gemeldet') { aus.push({ v, art: 'ausgefallen', min: dauer, nachgeholt: false, grund: (e && e.grund) || null }); continue; }
     if (!e) continue;
-    if (e.s === 'nein') aus.push({ v, art: v.quelle === 'termin' ? 'verpasst' : 'nachholen', min: dauer, nachgeholt: !!e.nachgeholt, grund: e.grund || null });
+    if (e.s === 'nein') aus.push({ v, art: v.quelle === 'termin' ? 'verpasst' : 'nachholen', min: dauer, nachgeholt: !!e.nachgeholt || (v.quelle === 'block' && z.el === 'einheiten' && gedecktBis(v.datum)), grund: e.grund || null });
     else if (e.s === 'teil' && v.quelle === 'block') {
       const rest = Math.max(0, dauer - (v.erledigt_min || 0));
       if (rest >= 15) aus.push({ v, art: 'nachholen', min: rest, nachgeholt: !!e.nachgeholt, teil: true, grund: null });
@@ -775,7 +824,7 @@ function fortschrittRoh(erg, z, uListe) {
     if (z.alternativen === 'info_fehlt') return voll('grau');
     if (z.alternativen === 'fest' || z.alternativen === 'gewaehlt' || z.alternativen === 'zuteilung_offen') return voll('gruen');
     const gew = (t.optionen || []).some((o) => o.id === (erg.plan.wahl || {})[t.id]);
-    return voll(gew && z.alternativen !== 'gescheitert' ? 'gruen' : 'gelb');
+    return voll(gew && z.alternativen !== 'gescheitert' && z.alternativen !== 'frist_vorbei' ? 'gruen' : 'gelb');
   }
   if (t.art === 'pruefung') {
     const X = erg.pruefungen.get(t.pruefung);
@@ -791,6 +840,12 @@ function fortschrittRoh(erg, z, uListe) {
     return teils((gruen / soll) * k, (grau / soll) * k);
   }
   if (z.wartet) return voll('grau');
+  // Videos und Quizze mit Dauer: fertig, wenn ihre Einheiten gedeckt sind — nicht, wenn die Blöcke im Mittel lang genug
+  // sind (V-0357: STAT1-Videos 31–34 hatten nie einen Block, und der Balken war grün).
+  if (z.el === 'einheiten' && z.gruppen && z.gruppen.some((g) => g.bedarf_min)) {
+    const ungedeckt = z.gruppen.reduce((s, g) => s + (g.bedarf_min ? Math.max(0, g.bedarf_min - g.belegt_min) : 0), 0);
+    return teils(ungedeckt <= toleranz(k, erg.regeln) ? k : k - ungedeckt);
+  }
   // Fertig auch, wenn die Wochenblöcke so lang sind, wie die Vorgabe will (je Woche gemittelt) — ein Teil davon zählt
   // vielleicht nicht (vor dem ersten Stoff, auf einem Termin), aber mehr zu legen gibt es nicht.
   const vg = vorgabe(erg, t.id);
@@ -815,9 +870,9 @@ export function fortschrittVon(erg, zs, uListe = null) {
 /** Die Fahrzeit eines Tages (V-0338): vor dem frühesten und nach dem spätesten Termin vor Ort — Online-Termine zählen
  *  nicht. termine: [{start, ende, ort?, online?}] eines Tages. Ergebnis: [[start, ende] davor, [start, ende] danach]. */
 export function fahrzeiten(termine, regeln = REGELN) {
-  const vorOrt = termine.filter((t) => !/online|zoom|webex/i.test(`${t.ort || ''} ${t.online || ''}`));
-  if (!vorOrt.length) return [];
-  const a = Math.min(...vorOrt.map((t) => t.start)), b = Math.max(...vorOrt.map((t) => t.ende));
+  const da = termine.filter(vorOrt);
+  if (!da.length) return [];
+  const a = Math.min(...da.map((t) => t.start)), b = Math.max(...da.map((t) => t.ende));
   return [[a - regeln.pendeln_min, a], [b, b + regeln.pendeln_min]];
 }
 
@@ -840,7 +895,8 @@ export function tagesLast(erg, datum) {
     if (v.datum !== datum || v.ganztag || v.start == null || v.ende == null || v.ausgefallen) continue;
     if (v.quelle === 'pruefung' && !v.wichtig) continue;
     if (v.quelle === 'block' && (v.ist === 'verschoben' || v.ist === 'nein')) continue;
-    summe += v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : v.ende - v.start;
+    // Ein Block auf einem Termin zählt nur mit dem Teil, der frei ist (V-0357, wie last()).
+    summe += v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : Math.max(0, v.ende - v.start - (v.quelle === 'block' ? v.ueberlappt || 0 : 0));
   }
   return summe;
 }
@@ -858,7 +914,7 @@ export function woche(erg, wocheId) {
     if (v.quelle === 'pruefung' && !v.wichtig) continue;
     if (v.quelle === 'block' && (v.ist === 'verschoben' || v.ist === 'nein')) continue;
     const d = wochentag(v.datum < w.von ? w.von : v.datum);
-    const dauer = v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : v.ende - v.start;
+    const dauer = v.quelle === 'termin' ? zaehltMin(v.start, v.ende, v.ct) : Math.max(0, v.ende - v.start - (v.quelle === 'block' ? v.ueberlappt || 0 : 0));
     proTag[d] += dauer;
     belegt += dauer;
     ects += v.zaehlt_min;

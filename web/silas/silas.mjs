@@ -444,7 +444,8 @@ function zustand(z) {
       case 'info_fehlt': return { kl: 'z-info', text: `Info fehlt${bis(z.info)}`, titel: `Info fehlt: ${z.info.frage} — Stichtag ${datumMitTag(z.info.stichtag)}` };
       case 'wahl_offen': return { kl: 'z-wahl', text: gewaehltVon(t) ? 'Wunsch · anmelden' : 'Wahl offen', titel: 'Noch nicht gewählt oder noch nicht angemeldet' };
       case 'zuteilung_offen': return { kl: 'z-wahl', text: 'Zuteilung offen', titel: 'Angemeldet — die Zuteilung steht noch aus' };
-      case 'gescheitert': return { kl: 'z-rot', text: 'gescheitert', titel: 'Kein Platz oder nicht angemeldet' };
+      case 'gescheitert': return { kl: 'z-rot', text: 'gescheitert', titel: 'Kein Platz bekommen' };
+      case 'frist_vorbei': return { kl: 'z-wahl', text: 'Frist vorbei — angemeldet?', titel: 'Die Anmeldefrist ist vorbei, hier ist nichts bestätigt' };
       default: return { kl: '', text: '' };
     }
   }
@@ -472,6 +473,7 @@ function lageText(z) {
     wahl_offen: () => (gewaehltVon(z.teil) ? 'anmelden, dann „Angemeldet“' : 'Gruppe wählen'),
     zuteilung_offen: () => 'Zuteilung bestätigen',
     gescheitert: () => 'gescheitert — Folge ansehen',
+    frist_vorbei: () => 'angemeldet? bestätigen',
     info_fehlt: () => (f.stufe === 'achtung' ? 'Stichtag vorbei — nachfragen' : `Augen offen bis ${M.datumKurz(f.stichtag)}`),
     wartet: () => 'wartet',
     unbestaetigt: () => `${f.anzahl} ohne ✓/✗`,
@@ -743,8 +745,13 @@ function modulKarte(r) {
   if (!offenHier && !auf) {
     // Nur Graues (Gruppen kommen noch): nichts zu ändern, nur anzusehen.
     const wort = fertig() || n === 1 || !f.gruen ? 'Ansehen' : n === 2 ? 'Wahl ändern' : 'Blöcke ändern';
+    // Eingeklappt bleibt sichtbar, was jetzt zu tun ist (V-0357, Prüfung W01/W02: EINFWI zeigte „100 %“, die MOSES-Frist
+    // stand nirgends in der Karte) und, mit „Diese Woche“, die Woche.
+    const jetzt = zs.filter((z) => ['kritisch', 'dran'].includes(z.stufe)).map((z) => ({ z, l: lageText(z) })).filter((x) => x.l);
     return h('section', { class: `modul m${m.farbe || 1} zu${kritisch ? ' rot' : ''}${filter ? ' filter' : ''}`, 'data-modul': m.id },
       kopf('modul', 'Alles von diesem Modul im Raster aufleuchten lassen'),
+      ...jetzt.map(({ z, l }) => h('button', { type: 'button', class: `m-jetzt t-lage ${l.kl}`, 'data-act': fertig() ? 'teil' : 'jetzt', 'data-teil': z.teil.id, title: (z.flags.find((x) => x.stufe === z.stufe) || {}).text || null }, sym(l.s), `${z.teil.titel}: ${l.t}`)),
+      woche ? dieseWocheEl(zs) : null,
       h('div', { class: 'm-fertig' }, fZeile(f),
         h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'aufklappen', 'data-modul': m.id }, sym(wort === 'Ansehen' ? 'rechts' : 'stift'), wort)));
   }
@@ -814,7 +821,10 @@ function auditChip(P) {
 
 /** Eine Meldung als Zeile, in der Farbe ihrer Stufe — mit dem Knopf, der sie erledigt. */
 function flaggeEl(f) {
-  const knopf = f.art === 'wahl_offen' && f.anmeldung ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'angemeldet', 'data-id': f.anmeldung, text: 'Angemeldet ✓' })
+  const knopf = f.art === 'frist_vorbei' ? h('span', { class: 'flagge-knoepfe' },
+    h('button', { type: 'button', class: 'knopf klein', 'data-act': 'angemeldet', 'data-id': f.anmeldung, text: 'Angemeldet ✓' }),
+    h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'kein-platz', 'data-teil': f.zuteilung, text: 'Kein Platz' }))
+    : f.art === 'wahl_offen' && f.anmeldung ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'angemeldet', 'data-id': f.anmeldung, text: 'Angemeldet ✓' })
     : f.art === 'zuteilung_offen' ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'zugeteilt', 'data-teil': f.zuteilung, text: 'Zugeteilt ✓' })
     : f.art === 'nacharbeit' ? h('button', { type: 'button', class: 'knopf klein', 'data-act': 'nachgeholt', 'data-vk': f.vk, text: 'Nachgeholt ✓' })
     : null;
@@ -1147,9 +1157,13 @@ function planKopfZeichnen() {
       const art = w.art === 'vorlesung' ? `Vorlesungswoche ${w.nr}` : w.art === 'frei' ? 'Vorlesungsfrei' : 'Prüfungszeit';
       // Die Last der Woche (G8): was liegt — Termine, Blöcke, Prüfungen — und der Bedarf, den noch kein Block deckt.
       const l = Z.erg.last.wochen.get(w.id) || { termine: 0, bloecke: 0, pbloecke: 0, pruefung: 0, bedarf: 0, summe: 0 };
-      const ueber = l.summe > Z.erg.regeln.woche_h * 60;
+      // Im Plan, und was noch nicht im Plan ist — dieselbe Zahl wie die Liste unter dem Raster (V-0357).
+      const imPlan = l.termine + l.pruefung + l.bloecke + l.pbloecke;
+      const offen = nochNichtImPlan().reduce((s, x) => s + x.offen_min, 0);
+      const ueber = imPlan + offen > Z.erg.regeln.woche_h * 60;
       titel.append(h('b', { text: `${w.kurz} · ${M.datumKurz(w.von)}–${M.datumKurz(w.bis)}` }),
-        h('span', { class: ueber ? 'rot' : null, title: `Termine ${M.stunden(l.termine + l.pruefung)} · Blöcke ${M.stunden(l.bloecke + l.pbloecke)} · noch ohne Block ${M.stunden(l.bedarf)}`, text: `${art} · ${M.stunden(l.summe)} von ${Z.erg.regeln.woche_h} h${l.bedarf >= 30 ? ` (davon ${M.stunden(l.bedarf)} noch ohne Block)` : ''}` }));
+        h('span', { class: ueber ? 'rot' : null, title: `Termine ${M.stunden(l.termine + l.pruefung)} · Blöcke ${M.stunden(l.bloecke + l.pbloecke)}${offen ? ` · noch nicht im Plan ${M.stunden(offen)} (die Liste unter dem Raster)` : ''}`,
+          text: `${art} · ${M.stunden(imPlan)} im Plan${offen >= 15 ? ` + ${M.stunden(offen)} noch nicht = ${M.stunden(imPlan + offen)}` : ''} von ${Z.erg.regeln.woche_h} h` }));
     }
     if (b === 'pruefplan') {
       fuellen(titel, h('b', { text: std ? 'Vorlesungszeit · Prüfungsvorbereitung' : titel.firstChild.textContent }),
@@ -1537,7 +1551,7 @@ function kachelTags(k) {
   // Unregelmäßiges (V-0354) liegt unter „Prüfungen“ (Schritt 5), ist aber Lernen oder Video, keine Prüfung.
   const zu = k.art === 'block' && k.teil ? Z.erg.teile.get(k.teil) : null;
   const etikett = k.art === 'block' ? (zu && zu.unregel ? (zu.teil.art === 'video' ? 'Video' : 'EVL') : M.ETIKETT[k.schritt]) : 'Präsenz';
-  const online = k.art !== 'block' && /online|zoom|webex/i.test(`${k.ort || ''} ${(k.v && k.v.online) || ''}`);
+  const online = k.art !== 'block' && !M.vorOrt({ ort: k.ort, online: k.v && k.v.online });
   const n = geo.std ? k.anzahl : k.v ? k.v.rest : k.rest;
   const gesamt = geo.std ? k.anzahl : k.v ? k.v.gesamt : null;
   const titel = n == null ? '' : gesamt === 1 ? 'einmalig — wiederholt sich nicht' : geo.std ? `${n}× im Semester` : `noch ${n}× bis Semesterende (dieser eingeschlossen)${gesamt ? `, insgesamt ${gesamt}×` : ''}`;
@@ -1604,6 +1618,9 @@ function kachelEl(k) {
       if (k.v.flags.includes('vor_stoff')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: vor dem ersten Stoff'; }
       if (k.v.flags.includes('nach_pruefung')) { kl.push('zaehlt-nicht'); zeile2 = 'zählt nicht: nach der Prüfung'; }
       if (k.v.einheit && !kl.includes('gesperrt')) zeile2 = `${z.teil.art === 'video' ? 'Video' : 'Einheit'} ${k.v.einheit} · ${zeile2}`;
+      // Deckt der Block nur einen Teil (mehr war bis dahin nicht erschienen oder offen, V-0357): wie viel zählt.
+      const frei = k.v.ende - k.v.start - (k.v.ueberlappt || 0);
+      if (z && k.v.einheit && k.v.zaehlt_min > 0 && k.v.zaehlt_min < frei - 14 && !k.v.deckt_nicht) zeile2 = `zählt ${M.stunden(k.v.zaehlt_min)} · ${zeile2}`;
     }
     // Bezug zum Stoff (V-0342): weit weg → eine kleine Marke; der Satz steht im Tooltip.
     bezug = z && z.teil.art === 'selbst' ? bezugVon(k.vk || []) : null;
@@ -1686,6 +1703,16 @@ function fussZeichnen() {
 /** Unter dem Raster: was in dieser Woche (oder jede Woche) dran wäre, aber noch nicht im Plan ist (Silas, 11.10.:
  *  „diese Dinge finden angenommen in jeder Woche noch statt, sind aber noch nicht im Plan drin — dass man damit
  *  rechnen kann“). Grau: kommt noch; hellblau: du bist dran. */
+/** Was in der gezeigten Woche (oder jeder Woche) dran wäre, aber noch nicht im Plan ist — EINE Liste für die Zeile unter
+ *  dem Raster und den Kopf der Woche (V-0357, Prüfung W01/W02: der Kopf nannte „davon 8,25 h ohne Block“, die Liste
+ *  10 h). Im Ablauf nur der gezeigte Schritt, festgelegt alles außer Prüfungen und Unregelmäßigem. */
+function nochNichtImPlan() {
+  const passt = (z) => (fertig() ? M.schrittVon(z.teil) <= 4 : M.schrittVon(z.teil) === schritt());
+  // Auf Viertelstunden, wie die Liste sie zeigt — sonst ergäbe die Summe im Kopf etwas anderes als die Zeilen.
+  return [...(bedarf || new Map()).values()].map((b) => ({ ...b, offen_min: Math.round(b.offen_min / 15) * 15 }))
+    .filter((b) => b.grund !== 'ok' && b.offen_min >= 15 && passt(b.z));
+}
+
 function bedarfZeichnen() {
   const box = $('bedarf');
   if (!zeigtRaster() || (!fertig() && schritt() === 1)) { fuellen(box); return; }
@@ -1704,8 +1731,7 @@ function bedarfZeichnen() {
   }
   // Sonst: was diese Woche (Standardwoche: jede Woche) dran wäre, aber noch nicht im Plan ist — im Ablauf nur der
   // gezeigte Schritt, festgelegt alles außer den Prüfungen.
-  const passt = (z) => (fertig() ? M.schrittVon(z.teil) <= 4 : M.schrittVon(z.teil) === schritt());
-  const liste = [...bedarf.values()].filter((b) => b.grund !== 'ok' && b.offen_min >= 15 && passt(b.z))
+  const liste = nochNichtImPlan()
     .sort((a, b) => (['kommt', 'wartet'].includes(a.grund)) - (['kommt', 'wartet'].includes(b.grund)) || b.offen_min - a.offen_min);
   const wer = fertig() ? '' : `Schritt ${schritt()}: `;
   if (!liste.length) { fuellen(box, h('b', { text: rasterLage().std ? `${wer}Jede Woche ist alles im Plan.` : `${wer}Alles, was diese Woche dran ist, ist im Plan.` })); return; }
@@ -2643,7 +2669,7 @@ function erklaerung() {
       h('ol', { class: 'erkl-liste' },
         li('Posten', ' — zu welchem Kontingent gehört es? (Sprechstunden ohne Posten stehen nur im Kalender.)'),
         li('Zeitbindung', ' — ein Termin (Serie, Reihe, einmal), ein Fenster [ab, bis], in dem du es selbst legst, oder unbekannt.'),
-        li('Alternativen', ' — fest · Info fehlt (mit Frage und Stichtag) · Wahl offen · Zuteilung offen · gewählt · gescheitert.'),
+        li('Alternativen', ' — fest · Info fehlt (mit Frage und Stichtag) · Wahl offen · Zuteilung offen · Frist vorbei (angemeldet?) · gewählt · gescheitert.'),
         li('Lebenslauf', ' — besucht, verpasst (wird Nacharbeit), ausgefallen; ✓, ✗, teilweise, verschoben; bei Prüfungen der Stand nach § 63.')),
       p('Der Stichtag eines „Info fehlt“ ist der Tag, an dem die Antwort kommen sollte — meist die erste Vorlesung; Prüfungstermine 14 Tage nach Modulbeginn (§ 65 Abs. 3). Bis dahin ist es kein Fehler, danach heißt es nachfragen.')),
     absatz('Wochenwert und Vorschlag',
@@ -3692,7 +3718,10 @@ function ablegen(tag, y, rect) {
   bannerZeigen();
   const z = Z.erg.teile.get(teil);
   const bz = bezugVon(Z.erg.vorkommen.filter((v) => v.block === b.id));
-  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}${bz.weit ? ' — weit weg vom Stoff' : ''}.` : ''}${weiter ? ` Noch ${Z.legen.rest} ${Z.legen.rest > 1 ? 'Blöcke' : 'Block'} legen.` : ''}`);
+  // Trifft ein Wochenblock an einzelnen Tagen einen Termin, der nicht in der Standardwoche steht (EINFWI-Kick-off), sagt
+  // es die Meldung sofort (V-0357) — gesperrtDurch() kennt nur das Gerüst.
+  const sf = sperrFlagge(b.id);
+  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}${bz.weit ? ' — weit weg vom Stoff' : ''}.` : ''}${sf ? ` Achtung: ${sf.text}.` : ''}${weiter ? ` Noch ${Z.legen.rest} ${Z.legen.rest > 1 ? 'Blöcke' : 'Block'} legen.` : ''}`);
 }
 
 /** Die Mittagspause eines Tages am Schild ziehen (V-0345): auf Viertelstunden, innerhalb des Rasters; beim Loslassen steht

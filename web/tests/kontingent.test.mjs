@@ -601,3 +601,32 @@ test('V-0357: Auswertung — Bilanz, Präsenz, Nachholen und Nutzung aus plan.is
   assert.equal(a.nutzung.reihe.length, 28);
   assert.ok(a.wochen.length >= 2, 'je vergangene Woche eine Zeile');
 });
+
+test('V-0357 (Prüfung W01/W02): ein Quiz nur in seinem Fenster — 2 h alle zwei Wochen lassen jedes zweite ohne Block, das ist eine Meldung', () => {
+  const plan = { bloecke: [{ id: 'q', teil: 'sys-quiz', tag: 'Di', start: '10:00', ende: '12:00', alle: 2 }] };
+  const e = rechne(plan);
+  const z = e.teile.get('sys-quiz');
+  const ungedeckt = z.gruppen.filter((g) => g.belegt_min < g.bedarf_min);
+  assert.ok(ungedeckt.length >= 6, 'jedes zweite Quiz ohne Block');
+  assert.ok(z.vk.filter((v) => v.zaehlt_min > 0).every((v) => v.zaehlt_min === 60), 'ein Block zählt nur das eine Quiz in seinem Fenster');
+  assert.ok(z.flags.some((f) => f.art === 'ungedeckt'));
+  assert.equal(M.fortschritt(e, z).status, 'offen');
+  // Jede Woche 1 h (die neue Vorgabe) deckt alle.
+  const jede = rechne({ bloecke: [{ id: 'q', teil: 'sys-quiz', tag: 'Di', start: '10:00', ende: '11:00' }] }).teile.get('sys-quiz');
+  assert.ok(!jede.flags.some((f) => f.art === 'ungedeckt'));
+});
+
+test('V-0357 (Prüfung W01/W02): Vorbereitung vor dem Fenster zählt nicht; Last ohne Doppeltes; vor Ort entscheidet der Raum', () => {
+  const e = rechne({ bloecke: [{ id: 'p', teil: 'sys-pv', datum: '2030-10-14', start: '09:00', ende: '11:00' }] });
+  const X = e.pruefungen.get('sys-k');
+  const v = e.vorkommen.find((x) => x.block === 'p');
+  assert.ok(v.datum < X.fenster.ab && v.flags.includes('vor_fenster') && v.zaehlt_min === 0);
+  assert.equal(X.geplant_min, 0);
+  // Ein Block auf dem POR-Kick-off (Mo 21.10. 10:15–11:45) zählt in der Last nur mit dem freien Teil.
+  const l = rechne({ bloecke: [{ id: 'b', teil: 'ana-vn', datum: '2030-10-21', start: '10:00', ende: '12:00' }] });
+  const kick = 120, frei = 120 - 90;
+  assert.equal(M.tagesLast(l, '2030-10-21'), kick + frei);
+  assert.equal(M.vorOrt({ ort: 'A 151', online: 'https://zoom.us/…' }), true, 'Raum mit Zoom-Link ist vor Ort (Stream)');
+  assert.equal(M.vorOrt({ ort: 'online (Zoom)' }), false);
+  assert.equal(M.vorOrt({ online: 'Zoom' }), false);
+});

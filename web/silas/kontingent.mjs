@@ -35,7 +35,7 @@ export const hoechste = (flags) => flags.reduce((b, f) => (f.stufe && (b === 'ok
 /** Die Zustände des Baums als Wort (die Seite zeigt sie als Chip). */
 export const ZUSTAND = {
   fest: 'fest', info_fehlt: 'Info fehlt', wahl_offen: 'Wahl offen', zuteilung_offen: 'Zuteilung offen',
-  gewaehlt: 'gewählt', gescheitert: 'gescheitert', fenster: 'im Fenster', wartet: 'wartet',
+  gewaehlt: 'gewählt', gescheitert: 'gescheitert', frist_vorbei: 'Frist vorbei — angemeldet?', fenster: 'im Fenster', wartet: 'wartet',
 };
 /** Der Lebenslauf einer Prüfung (AllgStuPO § 63). */
 export const PRUEFSTATUS = [
@@ -281,12 +281,15 @@ function baum(erg, z, plan, modulStart) {
       const gew = opts.find((o) => o.id === wahl[t.id]) || null;
       const frist = t.anmeldung && istDatum(t.anmeldung.bis) ? t.anmeldung.bis : null;
       const vorbei = frist && heute && heute > frist;
-      if (!gew) { z.alternativen = vorbei && t.zuteilung && !angemeldet[t.id] ? 'gescheitert' : 'wahl_offen'; return; }
+      // Frist vorbei, aber nichts bestätigt (V-0357, Prüfung W01/W02): Vielleicht hat Silas sich in MOSES angemeldet und
+      // nur hier nicht geklickt — dann fragt die Seite (frist_vorbei, mit „Angemeldet“ und „Kein Platz“), statt sofort
+      // „gescheitert“ zu sagen und den Knopf zu verstecken. Gescheitert ist erst „Kein Platz“.
+      if (!gew) { z.alternativen = vorbei && t.zuteilung && !angemeldet[t.id] ? 'frist_vorbei' : 'wahl_offen'; return; }
       if (t.zuteilung) {
         if (zugeteilt[t.id] === gew.id) z.alternativen = 'gewaehlt';
         else if (zugeteilt[t.id] === 'keine') z.alternativen = 'gescheitert';
         else if (angemeldet[t.id]) z.alternativen = 'zuteilung_offen';
-        else z.alternativen = vorbei ? 'gescheitert' : 'wahl_offen';
+        else z.alternativen = vorbei ? 'frist_vorbei' : 'wahl_offen';
         return;
       }
       z.alternativen = 'gewaehlt';
@@ -375,11 +378,22 @@ function pruefungen(erg, angebot, plan) {
       X.zu_planen_min = Math.max(0, X.kontingent_min - X.termine_p_min);
       const bloecke = X.vorbereitung.flatMap((z) => z.vk.filter((v) => v.quelle === 'block'));
       X.bloecke = bloecke;
+      const ab = X.wiederholung ? (istDatum(st.note_am) ? st.note_am : plusTage(st.termin || (X.datiert[0] && X.datiert[0].datum) || stoffStart, 1)) : stoffStart;
+      X.fenster = { ab, bis: X.termin ? plusTage(X.termin.datum, -1) : null };
+      // Vor dem Fenster zählt keine Vorbereitung (V-0357, Prüfung W01/W02: ein Block am 13.10. zählte voll für den
+      // EINFWI-Test) — wie nach der Prüfung (nach_pruefung): Er steht da, zählt aber nicht.
+      for (const v of bloecke) {
+        if (v.datum >= ab || !(v.zaehlt_min > 0)) continue;
+        const z = erg.teile.get(v.teil);
+        z.plan_min -= v.plan_min || 0; z.erledigt_min -= v.erledigt_min || 0;
+        z.fehlt_min = Math.max(0, z.kontingent_min - z.plan_min); z.offen_min = Math.max(0, z.kontingent_min - z.erledigt_min); z.ist_min = z.plan_min;
+        v.zaehlt_min = 0; v.plan_min = 0; v.erledigt_min = 0; v.flags.push('vor_fenster');
+      }
+      const vor = bloecke.filter((v) => v.flags.includes('vor_fenster'));
+      if (vor.length) X.vorbereitung[0].flags.push({ art: 'vor_fenster', text: `${vor.length} Lernblock${vor.length > 1 ? 'e liegen' : ' liegt'} vor dem Fenster (ab ${datumTag(ab)}) und ${vor.length > 1 ? 'zählen' : 'zählt'} nicht` });
       X.erledigt_min = bloecke.reduce((s, v) => s + (v.erledigt_min || 0), 0);
       X.geplant_min = bloecke.filter((v) => !v.vergangen || v.ist === 'offen').reduce((s, v) => s + (v.ist === 'offen' || !v.vergangen ? v.zaehlt_min : 0), 0);
       X.offen_min = Math.max(0, X.zu_planen_min - X.erledigt_min - X.geplant_min);
-      const ab = X.wiederholung ? (istDatum(st.note_am) ? st.note_am : plusTage(st.termin || (X.datiert[0] && X.datiert[0].datum) || stoffStart, 1)) : stoffStart;
-      X.fenster = { ab, bis: X.termin ? plusTage(X.termin.datum, -1) : null };
       // Fenster vorbei, Vorbereitung nicht erledigt (Testfall 27): „verfehlt“ — nichts wird verschoben, du entscheidest.
       X.verfehlt_min = heute && X.fenster.bis && heute > X.fenster.bis ? Math.max(0, X.zu_planen_min - X.erledigt_min) : 0;
       X.fristen = fristen(erg, X, xs);
@@ -458,10 +472,25 @@ export function bedarfIn(erg, z, w) {
     if (z.wartet || z.einzeln || !z.fenster || !z.fenster.ab) return 0;
     if (w.bis < z.fenster.ab || w.von > z.fenster.bis) return 0;
     if (erg.heute && w.bis < erg.heute) return 0; // vergangene Wochen: nur, was dort liegt
+    // Beginnt der Stoff mitten in der Woche (PROG1 am Do 15.10.), ist nur der Rest der Woche dran (V-0357: W01 verlangte
+    // die ganze Wochenrate Labs, obwohl der Stoff erst Donnerstag beginnt).
+    if (z.fenster.ab > w.von) {
+      const werktage = [0, 1, 2, 3, 4].map((i) => plusTage(w.von, i)).filter((d) => d >= z.fenster.ab).length;
+      return Math.round(z.wochenwert_min * werktage / 5);
+    }
     return Math.round(z.wochenwert_min);
   }
   if (z.el === 'einheiten') {
-    if (z.teil.art === 'video' && z.gruppen) return z.gruppen.filter((g) => g.montag === w.id).reduce((s, g) => s + g.bedarf_min, 0);
+    // Was ein Block deckt, ist in der Woche dran, in der er liegt (V-0357, §3: „Videos zählen in der Woche, in der ein
+    // Block sie deckt“ — vorher in der Woche der Freigabe: BuK-Video 1 vom Fr 16.10. stand in W01 als offen, obwohl der
+    // Block am Mi 21.10. es deckt); was keiner deckt, in der Woche seiner Freigabe.
+    // Genauer: je Woche die Minuten, die ihre Blöcke decken, und in der Woche der Freigabe, was keiner deckt — so steht
+    // ein Video, das der Block der Folgewoche nachholt, nicht als offen da.
+    if (z.gruppen && z.gruppen.some((g) => g.bedarf_min)) {
+      return z.gruppen.filter((g) => g.bedarf_min).reduce((s, g) => s
+        + (g.deckung || []).filter((d) => d.datum >= w.von && d.datum <= w.bis).reduce((x, d) => x + d.min, 0)
+        + (montagVon(g.ab) === w.von ? Math.max(0, g.bedarf_min - g.belegt_min) : 0), 0);
+    }
     if (z.einheiten && z.einheiten.length) return z.einheiten.filter((e) => e.ab >= w.von && e.ab <= w.bis).reduce((s, e) => s + z.einheit_dauer(e), 0);
     const vl = erg.wochen.filter((x) => x.art === 'vorlesung');
     return Math.round(z.einheiten_min / Math.max(1, vl.length - 1)) * (w.nr > 1 ? 1 : 0);
@@ -488,8 +517,11 @@ function last(erg) {
     else if (v.quelle === 'block') {
       if (v.ist === 'verschoben' || v.ist === 'nein') continue;
       const z = v.teil ? erg.teile.get(v.teil) : null;
-      if (z && z.topf === 'pruefung') tag(v.datum).pbloecke += v.ende - v.start;
-      else tag(v.datum).bloecke += v.ende - v.start;
+      // Ohne die Zeit, die er auf einem Termin liegt — die zählt der Termin schon (V-0357: „Mo 19.10. 9,25 h über 9 h“
+      // war ein Lab-Block auf dem Kick-off, doppelt gezählt).
+      const dauer = Math.max(0, v.ende - v.start - (v.ueberlappt || 0));
+      if (z && z.topf === 'pruefung') tag(v.datum).pbloecke += dauer;
+      else tag(v.datum).bloecke += dauer;
     }
   }
   // Ungedeckter Bedarf je Vorlesungswoche, verteilt auf Mo–Fr.
@@ -675,6 +707,10 @@ function meldungen(erg, angebot, plan) {
       f('wahl_offen', n != null && n <= 7 ? 'kritisch' : 'dran', text, { anmeldung: frist ? t.id : null, datum: frist });
     }
     if (z.alternativen === 'zuteilung_offen') f('zuteilung_offen', 'dran', 'Angemeldet — die Zuteilung steht noch aus. In MOSES nachsehen und bestätigen', { zuteilung: t.id });
+    if (z.alternativen === 'frist_vorbei') {
+      const a = t.anmeldung, frist = a && istDatum(a.bis) ? a.bis : null;
+      f('frist_vorbei', 'achtung', `Anmeldung${frist ? ` bis ${datumTag(frist)}` : ''} vorbei — warst du angemeldet? Dann „Angemeldet“ (und nach der Zuteilung „Zugeteilt“), sonst „Kein Platz“`, { anmeldung: t.id, zuteilung: t.id, datum: frist });
+    }
     if (z.alternativen === 'gescheitert') {
       const folge = t.folge || (/prog1|tutorial/i.test(`${t.id} ${t.titel}`) ? 'Ohne Tutorial kein Prog1WINF — ohne Prog1WINF keine Klausur. Beim Fachgebiet nach einem Platz fragen.' : 'Ohne Gruppe fehlt diese Präsenz: beim Fachgebiet nach einem Platz fragen, sonst geht die Zeit nach G5 in die Prüfungsvorbereitung.');
       f('gescheitert', 'kritisch', `Gescheitert: ${(plan.zugeteilt || {})[t.id] === 'keine' ? 'kein Platz zugeteilt' : 'nicht rechtzeitig angemeldet'}. ${folge}`);
@@ -700,8 +736,11 @@ function meldungen(erg, angebot, plan) {
     if (t.hinweis) f('hinweis', 'info', t.hinweis);
     // Die Rohmeldungen aus rechnen() (Konflikt, gesperrt, Bezug, leer, vor_stoff …) bekommen ihre Stufe hier; was zu tun
     // ist (verschieben, Überschneidung), steht auch im Offenen.
-    for (const x of z.flags) if (!x.stufe) {
-      x.stufe = rohStufe(x, z); x.modul = mid; x.teil = t.id;
+    // Rohmeldungen tragen noch kein Modul; eine, die ihre Stufe schon mitbringt (ungedeckt, gesperrt an einem Tag), kommt
+    // genauso ins Offene (V-0357: vorher nur die ohne Stufe).
+    for (const x of z.flags) if (!x.modul) {
+      if (!x.stufe) x.stufe = rohStufe(x, z);
+      x.modul = mid; x.teil = t.id;
       if (['kritisch', 'achtung', 'dran'].includes(x.stufe)) offen.push(x);
     }
   }
@@ -764,7 +803,7 @@ function meldungen(erg, angebot, plan) {
   if (erg.audit.tage.length) plf('tag_voll', 'achtung', `${erg.audit.tage.length === 1 ? 'Ein Tag' : `${erg.audit.tage.length} Tage`} über ${r.tag_h} h: ${liste(erg.audit.tage, (x) => `${datumTag(x.datum)} ${stunden(x.last_min)}`)}`, { tage: erg.audit.tage.map((x) => x.datum) });
   for (const x of erg.audit.pruefungstage) plf('zwei_pruefungen', 'achtung', `${datumTag(x.datum)}: ${x.pruefungen.length} Prüfungen an einem Tag (${x.pruefungen.map((X) => `${X.modul.kurz || X.modul.id} ${X.termin.start || ''}`.trim()).join(', ')})`, { datum: x.datum });
   for (const x of erg.audit.rueckfall) plf('rueckfall', 'info', `${datumTag(x.datum)}: die Rückfalltermine ${x.a.modul.kurz || x.a.modul.id} und ${x.b.modul.kurz || x.b.modul.id} überschneiden sich ${stunden(x.ueber_min)} — wichtig nur, wenn beide nötig werden`, { datum: x.datum });
-  for (const x of erg.planFlags) if (!x.stufe) { x.stufe = rohStufe(x, null); x.modul = null; offen.push(x); }
+  for (const x of erg.planFlags) if (x.modul === undefined) { if (!x.stufe) x.stufe = rohStufe(x, null); x.modul = null; offen.push(x); }
   erg.offen = offen.sort((a, b) => RANG[a.stufe] - RANG[b.stufe] || String(a.stichtag || a.datum || '9').localeCompare(String(b.stichtag || b.datum || '9')));
 }
 const titelX = (erg, pid) => { const X = erg.pruefungen.get(pid); return X ? `${X.modul.kurz || X.modul.id} ${X.p.titel}` : pid; };
@@ -774,7 +813,7 @@ function rohStufe(f, z) {
   switch (f.art) {
     case 'konflikt': return z && z.teil.art === 'praesenz' ? 'kritisch' : 'achtung';
     case 'gesperrt': return f.dauernd ? 'dran' : 'info';
-    case 'nach_pruefung': return 'achtung';
+    case 'nach_pruefung': case 'vor_fenster': return 'achtung';
     default: return 'info'; // leer, vor_stoff, bezug, zu_kurz, einheit_unsicher …
   }
 }
@@ -848,7 +887,8 @@ export function wochenBedarf(erg, wocheId = null, std = null) {
       else soll = w ? bedarfIn(erg, z, w) : Math.round(z.einheiten_min / Math.max(1, erg.wochen.filter((x) => x.art === 'vorlesung').length));
     }
     const offen = Math.max(0, soll - ist);
-    if (grund === 'ok' && offen >= 15) grund = 'planen';
+    // „Planen“ erst jenseits einer kleinen Toleranz (V-0357: „Labs 0,25 h“ jede Woche, obwohl der Abgleich „passt“ sagt).
+    if (grund === 'ok' && offen >= Math.max(30, Math.round(soll * 0.1))) grund = 'planen';
     aus.push({ z, soll_min: soll, ist_min: ist, offen_min: grund === 'ok' ? 0 : offen, grund });
   }
   return aus;

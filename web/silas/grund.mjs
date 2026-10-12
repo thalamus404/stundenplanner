@@ -189,6 +189,10 @@ export function zaehltMin(start, ende, ct = true) {
 
 /** Online ohne Ort vor Ort (Zoom, ISIS): kein Weg, und eine Schließung der Gebäude trifft ihn nicht. */
 export const nurOnline = (ort) => /^\s*(online|zoom|webex|isis)/i.test(String(ort || ''));
+/** Ob ein Termin vor Ort ist (V-0357): Der Ort entscheidet — ein Zoom-Link neben einem Raum ist ein Stream (PROG1 in
+ *  A 151 galt wegen des Links als online, die Fahrzeit fehlte). Ohne Ort entscheidet, ob es einen Link gibt. Eine
+ *  Funktion für Fahrzeit, Schließung und Etikett. */
+export const vorOrt = (t) => (t.ort ? !nurOnline(t.ort) : !t.online);
 
 // ── Einheiten ────────────────────────────────────────────────────────────────────────────────────
 

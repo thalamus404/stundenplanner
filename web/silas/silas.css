@@ -1221,3 +1221,7 @@ body.mit-unten .bereich { padding-bottom: 190px; }
   .zl-kopf > .knopf.rund { position: absolute; top: -4px; right: -4px; }
   .zl-aufwand { margin-left: 0; }
 }
+.zl-andere, .zl-legende-unten i.zl-andere { background: var(--grau-7); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .zl-tag.we { border-color: rgb(255 255 255 / .75); border-width: 1.5px; } }
+:root[data-theme="dark"] .zl-tag.we { border-color: rgb(255 255 255 / .75); border-width: 1.5px; }
+.m-jetzt { display: flex; align-items: center; gap: 4px; width: 100%; text-align: left; font-size: 12px; padding: 2px 0; }

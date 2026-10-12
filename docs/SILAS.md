@@ -172,6 +172,27 @@ sich nicht legen.
    `erledigt_min` bucht nur ✓ und „teil“ ab; `plan_min` ist, was der Kalender als Plan trägt (vergangen ✗ nicht, eine
    gewünschte Gruppe nicht). Einheiten einer Quote (TECHGI-Quiz) bekommen `plan.ist['<element>#<nr>']`.
 
+**Prüfung der ersten zwei Wochen (V-0357)** — ein Agent hat W01/W02 beider Pläne Tag für Tag nachgerechnet; daraus,
+jeweils als Regel statt als Einzelfall:
+- **Zuordnung in Minuten** (`rechnen()` 6): Ein Block deckt die früheste freigegebene Woche, die noch Zeit braucht, und mit
+  seinem Rest die nächste; ein Video lässt sich nachholen, eine Abgabe (Quiz) nur in ihrem Fenster. Was er nicht deckt,
+  zählt nicht (die Kachel sagt „zählt 1 h“). Die Zuordnung liest `plan.ist` selbst: ✗ und verschoben decken nichts, der
+  nächste Block holt nach — und ein so nachgeholtes ✗ gilt ohne Klick als nachgeholt (`verpasst()`).
+- **Ungedecktes** (`ungedeckt`): Videos oder Einheiten, die kein Block deckt, sind eine Meldung (dran, wenn sie in drei
+  Wochen anstehen), und der Fortschritt misst bei Videos und Quizzen die Abdeckung, nicht die Minuten je Woche — das
+  TECHGI-Quiz mit 2 h alle zwei Wochen deckt jedes zweite Quiz nicht (7 h), STAT1-Video 34 in Probeplan 2 nicht (1 h).
+- **Last ohne Doppeltes:** Ein Block auf einem Termin zählt in `last()`, `tagesLast()` und `woche()` nur mit dem freien Teil.
+- **Vor dem Fenster** einer Prüfung zählt keine Vorbereitung (`vor_fenster`, wie `nach_pruefung`).
+- **Diese Woche:** Videos und Quizze sind in der Woche dran, in der ihr Block sie deckt (nur Ungedecktes in der Woche der
+  Freigabe); beginnt der Stoff mitten in der Woche, ist nur der Rest der Woche dran; „planen“ erst ab 30 min bzw. 10 %.
+  Kopf und Liste der Woche nennen dieselbe Zahl („35 h im Plan + 8 h noch nicht = 43 h von 45 h“, `nochNichtImPlan()`).
+- **Vor Ort** entscheidet der Raum (`vorOrt()`): ein Zoom-Link neben A 151 ist ein Stream, die Fahrzeit gilt.
+- **Ein Wochenblock, der an einem Tag einen Termin trifft** (EINFWI-Kick-off), ist in den nächsten 14 Tagen „dran“, nicht
+  nur ein Hinweis; beim Legen sagt es die Meldung sofort.
+- **Frist vorbei, nichts bestätigt** (`frist_vorbei`): fragen mit „Angemeldet ✓“ und „Kein Platz“ — „gescheitert“ ist erst
+  „Kein Platz“. Ein eingeklapptes Modul zeigt, was kritisch oder dran ist, und mit „Diese Woche“ die Woche.
+- **Portfolio-Fristen** stehen im Kalender einmal je Modul, Art und Tag.
+
 ### 2.6 Prüfungen
 
 Je Prüfung (`erg.pruefungen`):
