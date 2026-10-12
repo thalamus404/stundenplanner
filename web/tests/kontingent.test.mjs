@@ -538,3 +538,95 @@ test('V-0356: Vorschlag — das Wochenende vor der Prüfung gleichmäßig auf Sa
   const mit = M.rechnen(a, { wahl: { 'por-ue': 'por-g1' }, bloecke: [...voll, { id: 's', teil: 'por-pv-t', datum: '2030-12-14', start: '09:00', ende: '10:00' }] }, { heute });
   assert.deepEqual(mit.pruefungen.get('por-t').vorschlag, [{ datum: '2030-12-15', min: 90 }]);
 });
+
+// ── V-0357: gemeinsamer Vorschlag ────────────────────────────────────────────────────────────────
+
+test('V-0357: Vorschlag für alle Prüfungen zusammen — 10 h, 10 h, dann 4 h je Wochenende; zwei Prüfungen teilen sich einen Tag', () => {
+  const e = rechne({ wahl: { 'por-ue': 'por-g1' } });
+  const am = (pid, ...tage) => tage.reduce((s, d) => s + ((e.pruefungen.get(pid).vorschlag.find((v) => v.datum === d) || { min: 0 }).min), 0);
+  // SYS-Klausur Mi 26.02.2031: das Wochenende davor 10 h, das davor 10 h, jedes davor 4 h (Sa 2 h, So 2 h).
+  assert.equal(am('sys-k', '2031-02-22', '2031-02-23'), 600);
+  assert.equal(am('sys-k', '2031-02-15', '2031-02-16'), 600);
+  assert.equal(am('sys-k', '2031-02-08', '2031-02-09'), 240);
+  assert.equal(am('sys-k', '2031-02-08'), 120);
+  // POR-Klausur Do 06.03.: ihr zweites Wochenende ist das erste der SYS-Klausur — die nahe Prüfung geht vor (5 + 5 h),
+  // POR bekommt dort, was frei bleibt (je 4 h bis 9 h), den Rest an den freien Wochentagen derselben Periode.
+  assert.equal(am('por-k', '2031-03-01', '2031-03-02'), 600);
+  assert.equal(am('por-k', '2031-02-22'), 240);
+  assert.equal(am('por-k', '2031-02-22', '2031-02-23', '2031-02-24', '2031-02-25', '2031-02-26', '2031-02-27', '2031-02-28'), 600);
+  assert.equal(e.vorschlag_tag.get('2031-02-22'), 540, 'an einem Tag für zwei Prüfungen, höchstens 9 h');
+  for (const [, m] of e.vorschlag_tag) assert.ok(m <= 540);
+  for (const X of e.pruefungen.values()) if (X.termin && X.zaehlt) assert.equal(X.passt_nicht_min, 0, X.id);
+});
+
+test('V-0357: Verpasstes — ✗ am Block rot bis „nachgeholt“, ✗ an Präsenz schwarz, ausgefallen mit Grund ohne Verlust; der Balken bleibt gleich lang', () => {
+  const tag = '2030-10-29';
+  const plan = { bloecke: [{ id: 'b', teil: 'ana-vn', tag: 'Mo', start: '10:00', ende: '12:00' }] };
+  const ohne = rechne(plan, { heute: tag });
+  const f0 = M.fortschritt(ohne, ohne.teile.get('ana-vn'));
+  const blk = ohne.vorkommen.find((v) => v.block === 'b' && v.datum === '2030-10-28');
+  const iv = ohne.vorkommen.find((v) => v.quelle === 'termin' && v.teil === 'ana-iv' && v.datum === '2030-10-18');
+  plan.ist = { [blk.id]: 'nein', [iv.id]: 'nein' };
+  const e = rechne(plan, { heute: tag });
+  const f = M.fortschritt(e, e.teile.get('ana-vn'));
+  assert.equal(f.k, f0.k);
+  assert.equal(f.rot, 120, 'der verpasste Block ist rot');
+  assert.equal(f.gruen + f.rot + f.schwarz + f.gelb + f.grau, f.k, 'die Gesamtbar ändert sich nicht');
+  assert.equal(f.status, f0.status);
+  assert.equal(M.fortschritt(e, e.teile.get('ana-iv')).schwarz, 120, 'verpasste Präsenz ist schwarz');
+  plan.ist[blk.id] = { s: 'nein', nachgeholt: true };
+  assert.equal(M.fortschritt(rechne(plan, { heute: tag }), rechne(plan, { heute: tag }).teile.get('ana-vn')).rot, 0, 'nachgeholt: nicht mehr rot');
+  plan.ist[iv.id] = { s: 'ausgefallen', grund: 'Dozent krank' };
+  const e3 = rechne(plan, { heute: tag });
+  assert.deepEqual(M.verpasst(e3, e3.teile.get('ana-iv')).map((x) => [x.art, x.grund]), [['ausgefallen', 'Dozent krank']]);
+  assert.equal(M.fortschritt(e3, e3.teile.get('ana-iv')).schwarz, 0);
+});
+
+test('V-0357: Auswertung — Bilanz, Präsenz, Nachholen und Nutzung aus plan.ist und plan.nutzung', async () => {
+  const A = await import('../silas/auswertung.mjs');
+  const tag = '2030-10-29';
+  const plan = { bloecke: [{ id: 'b', teil: 'ana-vn', tag: 'Mo', start: '10:00', ende: '12:00' }] };
+  const e0 = rechne(plan, { heute: tag });
+  const blk = e0.vorkommen.find((v) => v.block === 'b' && v.datum === '2030-10-28');
+  const iv = e0.vorkommen.find((v) => v.quelle === 'termin' && v.teil === 'ana-iv' && v.datum === '2030-10-18');
+  const iv2 = e0.vorkommen.find((v) => v.quelle === 'termin' && v.teil === 'ana-iv' && v.datum === '2030-10-25');
+  plan.ist = { [blk.id]: 'nein', [iv.id]: 'nein', [iv2.id]: 'ja' };
+  plan.nutzung = { '2030-10-28': { sitzungen: 2, aenderungen: 3, aktiv_min: 15, ansichten: { frei: 1 } }, '2030-10-29': { sitzungen: 1 } };
+  const e = rechne(plan, { heute: tag });
+  const a = A.auswertung(e, plan, tag);
+  assert.deepEqual([a.praesenz.besucht, a.praesenz.verpasst], [1, 1]);
+  assert.ok(a.bilanz.nein >= 120 && a.bilanz.verpasst >= 120 && a.bilanz.ja >= 120);
+  assert.equal(a.nachholen.find((x) => x.modul.id === 'ANA').offen_min, 120);
+  assert.deepEqual([a.nutzung.sitzungen, a.nutzung.aenderungen, a.nutzung.aktiv_min, a.nutzung.tage, a.nutzung.serie], [3, 3, 15, 2, 2]);
+  assert.equal(a.nutzung.reihe.length, 28);
+  assert.ok(a.wochen.length >= 2, 'je vergangene Woche eine Zeile');
+});
+
+test('V-0357 (Prüfung W01/W02): ein Quiz nur in seinem Fenster — 2 h alle zwei Wochen lassen jedes zweite ohne Block, das ist eine Meldung', () => {
+  const plan = { bloecke: [{ id: 'q', teil: 'sys-quiz', tag: 'Di', start: '10:00', ende: '12:00', alle: 2 }] };
+  const e = rechne(plan);
+  const z = e.teile.get('sys-quiz');
+  const ungedeckt = z.gruppen.filter((g) => g.belegt_min < g.bedarf_min);
+  assert.ok(ungedeckt.length >= 6, 'jedes zweite Quiz ohne Block');
+  assert.ok(z.vk.filter((v) => v.zaehlt_min > 0).every((v) => v.zaehlt_min === 60), 'ein Block zählt nur das eine Quiz in seinem Fenster');
+  assert.ok(z.flags.some((f) => f.art === 'ungedeckt'));
+  assert.equal(M.fortschritt(e, z).status, 'offen');
+  // Jede Woche 1 h (die neue Vorgabe) deckt alle.
+  const jede = rechne({ bloecke: [{ id: 'q', teil: 'sys-quiz', tag: 'Di', start: '10:00', ende: '11:00' }] }).teile.get('sys-quiz');
+  assert.ok(!jede.flags.some((f) => f.art === 'ungedeckt'));
+});
+
+test('V-0357 (Prüfung W01/W02): Vorbereitung vor dem Fenster zählt nicht; Last ohne Doppeltes; vor Ort entscheidet der Raum', () => {
+  const e = rechne({ bloecke: [{ id: 'p', teil: 'sys-pv', datum: '2030-10-14', start: '09:00', ende: '11:00' }] });
+  const X = e.pruefungen.get('sys-k');
+  const v = e.vorkommen.find((x) => x.block === 'p');
+  assert.ok(v.datum < X.fenster.ab && v.flags.includes('vor_fenster') && v.zaehlt_min === 0);
+  assert.equal(X.geplant_min, 0);
+  // Ein Block auf dem POR-Kick-off (Mo 21.10. 10:15–11:45) zählt in der Last nur mit dem freien Teil.
+  const l = rechne({ bloecke: [{ id: 'b', teil: 'ana-vn', datum: '2030-10-21', start: '10:00', ende: '12:00' }] });
+  const kick = 120, frei = 120 - 90;
+  assert.equal(M.tagesLast(l, '2030-10-21'), kick + frei);
+  assert.equal(M.vorOrt({ ort: 'A 151', online: 'https://zoom.us/…' }), true, 'Raum mit Zoom-Link ist vor Ort (Stream)');
+  assert.equal(M.vorOrt({ ort: 'online (Zoom)' }), false);
+  assert.equal(M.vorOrt({ online: 'Zoom' }), false);
+});

@@ -383,15 +383,16 @@ test('Freie Lücke in einem eigenen Fenster (Prüfungsvorbereitung in der Vorles
   assert.deepEqual(M.freieLuecke(e, '2030-10-15', [], ['07:00', '22:00']), [M.min('11:45'), M.min('22:00')]);
 });
 
-test('Vorschlag: die zwei Wochenenden vor der Prüfung je höchstens 10 h, dann rückwärts — nie über die Kapazität, nie an Feiertagen', () => {
+test('Vorschlag: die zwei Wochenenden vor der Prüfung je 10 h, dann 4 h je Wochenende — nie über die Kapazität, nie an Feiertagen', () => {
   // Klausur Mo 03.03.2031, 90 h Vorbereitung, vorlesungsfrei ab 16.02.: erst Sa/So 01./02.03. und 22./23.02. (je 10 h, 9 h
-  // je Tag), dann rückwärts jeder freie Tag mit 9 h.
+  // je Tag), dann je Wochenende 4 h rückwärts (V-0357).
   const e = M.rechnen(angebot(), {}, { heute: '2030-10-14' });
   const X = e.pruefungen.get('bsp-klausur');
   const tag = Object.fromEntries(X.vorschlag.map((v) => [v.datum, v.min / 60]));
   assert.equal(tag['2031-03-01'] + tag['2031-03-02'], 10);
   assert.equal(tag['2031-02-22'] + tag['2031-02-23'], 10);
   assert.ok(Object.values(tag).every((x) => x <= 9));
+  assert.equal(tag['2031-02-15'] + tag['2031-02-16'], 4, 'das dritte Wochenende davor: 4 h');
   assert.equal(X.vorschlag.reduce((s, v) => s + v.min, 0), 90 * 60);
   assert.equal(X.passt_nicht_min, 0);
   // In der Vorlesungszeit nur Sa/So; nie vor heute, nie an Feiertagen (24.–26.12., 31.12., 01.01.).
@@ -477,7 +478,14 @@ test('Videos: Länge je Video, eine Woche braucht die Summe plus Puffer; ein Blo
   const z = M.rechnen(a, plan).teile.get('bsp-video');
   assert.deepEqual(z.gruppen.map((g) => g.bedarf_min), [120, 60]);
   assert.equal(z.kontingent_min, 180, 'Kontingent der Videos = Summe der Wochen');
-  assert.deepEqual(z.vk.filter((v) => v.zaehlt_min > 0).map((v) => v.datum), ['2030-10-21', '2030-10-28', '2030-11-04']);
+  // In Minuten (V-0357): 21.10. deckt 1,5 von 2 h der Woche 2, 28.10. den Rest (0,5 h) und Woche 3 (1 h) — danach ist
+  // nichts mehr zu schauen, der Block am 04.11. zählt nicht.
+  assert.deepEqual(z.vk.filter((v) => v.zaehlt_min > 0).map((v) => [v.datum, v.zaehlt_min]), [['2030-10-21', 90], ['2030-10-28', 90]]);
+  assert.ok(z.vk.find((v) => v.datum === '2030-11-04').flags.includes('leer'));
+  // Ein ✗ deckt nichts (V-0357): Dann holt der nächste Block nach, und der am 04.11. zählt wieder.
+  const blk = M.rechnen(a, plan).vorkommen.find((v) => v.block === 'v' && v.datum === '2030-10-21');
+  const mitX = M.rechnen(a, { ...plan, ist: { [blk.id]: 'nein' } }).teile.get('bsp-video');
+  assert.deepEqual(mitX.vk.filter((v) => v.zaehlt_min > 0 && !v.deckt_nicht).map((v) => v.datum), ['2030-10-28', '2030-11-04']);
   assert.ok(!z.flags.some((f) => f.art === 'laenge'));
   a.module[0].teile[1].einheiten.liste[2].laenge_min = null;
   const ohne = M.rechnen(a, plan).teile.get('bsp-video');
@@ -612,7 +620,7 @@ test('Stufen: „Info fehlt“ ist bis zum Stichtag grau (Augen offen), danach o
   assert.equal(M.rechnen(a, {}, { heute: '2030-10-15' }).teile.get('bsp-ue').info.stichtag, '2030-10-17');
 });
 
-test('Gruppe mit Zuteilung: Wunsch → angemeldet → Zuteilung offen → zugeteilt; ohne Anmeldung nach der Frist gescheitert', () => {
+test('Gruppe mit Zuteilung: Wunsch → angemeldet → Zuteilung offen → zugeteilt; nach der Frist ohne Bestätigung nachfragen, kein Platz gescheitert', () => {
   const a = angebot();
   a.module[0].teile[3].zuteilung = true;
   a.module[0].teile[3].anmeldung = { von: '2030-10-01', bis: '2030-10-20', wo: 'MOSES' };
@@ -627,7 +635,10 @@ test('Gruppe mit Zuteilung: Wunsch → angemeldet → Zuteilung offen → zugete
   const zu = z({ wahl: { 'bsp-ue': 'g1' }, angemeldet: { 'bsp-ue': true }, zugeteilt: { 'bsp-ue': 'g1' } });
   assert.equal(zu.alternativen, 'gewaehlt');
   assert.equal(zu.plan_min, 3 * 120);
-  assert.equal(z({ wahl: { 'bsp-ue': 'g1' } }, '2030-10-21').alternativen, 'gescheitert', 'nach der Frist ohne Anmeldung');
+  // Nach der Frist ohne Bestätigung fragt die Seite (V-0357), statt „gescheitert“ zu sagen — mit beiden Knöpfen.
+  const vorbei = z({ wahl: { 'bsp-ue': 'g1' } }, '2030-10-21');
+  assert.equal(vorbei.alternativen, 'frist_vorbei', 'nach der Frist ohne Anmeldung: nachfragen');
+  assert.ok(vorbei.flags.some((f) => f.art === 'frist_vorbei' && f.stufe === 'achtung' && f.anmeldung === 'bsp-ue'));
   assert.equal(z({ wahl: { 'bsp-ue': 'g1' }, angemeldet: { 'bsp-ue': true }, zugeteilt: { 'bsp-ue': 'keine' } }).alternativen, 'gescheitert', 'kein Platz');
   // Ein Rückfalltermin einer Prüfung auf der VL ist kein Konflikt.
   a.module[0].pruefungen[0].termine.push({ datum: '2030-10-15', start: '10:00', ende: '11:00', wichtig: false });
