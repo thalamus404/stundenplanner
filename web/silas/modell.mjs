@@ -18,7 +18,7 @@ import {
   istFrei, istGeschlossen, wochen, muster, termineAus, zaehltMin, nurOnline, einheiten, videoBlockMin, pruefungsTermin,
   freieFenster, isoZeit,
 } from './grund.mjs';
-import { kontingentRechnen, istEintrag, wochenBedarf as bedarfJeWoche, STUFEN } from './kontingent.mjs';
+import { kontingentRechnen, istEintrag, wochenBedarf as bedarfJeWoche, STUFEN, toleranz } from './kontingent.mjs';
 
 export * from './grund.mjs';
 export * from './kontingent.mjs';
@@ -364,7 +364,8 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   //      `bezug` am Vorkommen, wie nah er am Stoff liegt: direkt, nah, fern oder ohne.
   const absMin = (datum, m) => tageZwischen(sem.vorlesung.von, datum) * 1440 + m;
   for (const z of teile.values()) {
-    if (z.teil.art !== 'selbst' || z.topf === 'pruefung') continue;
+    // „Vorbereitung auf …“ bezieht sich auf ihren Termin, nicht auf den Stoff davor (V-0354) — kein Bezug, kein „weit vom Stoff“.
+    if (z.teil.art !== 'selbst' || z.topf === 'pruefung' || z.teil.vorbereitung_auf) continue;
     const { teile: stoff, eigen } = stoffTeile(teile, z);
     z.stoff_teile = stoff.map((x) => x.teil.id);
     z.stoff_eigen = eigen;
@@ -455,6 +456,22 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   const erg = { sem, regeln, wochen: wo, vorkommen, teile, konflikte, planFlags, heute, plan };
   kontingentRechnen(erg, angebot, plan, optionen);
 
+  // 7b · Unregelmäßiges (V-0354, Silas, 12.10.: „Alle Blöcke, die in einer echten Woche gelegt werden sollen, sollen nicht
+  //      in der ursprünglichen Planung auftauchen. Diese kommen mit zu den irregulären Terminen … auf die Prüfungen-Seite
+  //      (Literatur und Praxis, Vorbereitung auf die Übungen, Quicktests)“): Was seltener als jede zweite Woche einen Block
+  //      braucht (vorgabe() einzeln) oder sich auf einzelne Termine bezieht (vorbereitung_auf), gehört nicht in die Schritte
+  //      1–4, sondern unter „Prüfungen“ (Schritt 5) — gekoppelt an seine Bezugstermine (unregelmaessige()). Der Topf bleibt,
+  //      wie die Aufwandstabelle ihn sagt (Semester). `unregelmaessig: false|true` im Angebot entscheidet von Hand.
+  //      Das Element bekommt eine Kopie seines Teils mit schritt: 5 — das Angebot selbst bleibt unberührt (es wird gespeichert).
+  for (const z of teile.values()) {
+    if (z.topf === 'pruefung' || !['selbst', 'video'].includes(z.teil.art) || z.teil.unregelmaessig === false) continue;
+    const vg = vorgabe(erg, z.teil.id);
+    if (!z.teil.vorbereitung_auf && !z.teil.unregelmaessig && !(vg && vg.einzeln)) continue;
+    z.unregel = true;
+    z.teil = { ...z.teil, schritt: PRUEFUNGEN };
+  }
+  for (const v of vorkommen) if (v.teil && (v.quelle === 'block' || v.quelle === 'frist') && teile.get(v.teil)?.unregel) v.schritt = PRUEFUNGEN;
+
   // Die Fristen der Prüfungen (Verweise: An- und Abmeldung, Vorbehalt) stehen auch im Kalender.
   for (const X of erg.pruefungen.values()) {
     if (!X.zaehlt) continue;
@@ -510,9 +527,10 @@ export function schritte(erg) {
  *  und hebt es in `zurueckgesetzt` auf (Silas' Daten werden nie gelöscht; wiederherstellen() holt es zurück). Was
  *  Silas über das Angebot weiß, seine Ist-Erfassung und alles zu den Prüfungen bleibt; ein festgelegter Plan ist danach
  *  wieder in Arbeit. */
-export function zuruecksetzen(plan, angebot, ab = 2, { am = null } = {}) {
+export function zuruecksetzen(plan, angebot, ab = 2, { am = null, erg = null } = {}) {
   const neu = JSON.parse(JSON.stringify(plan || {}));
-  const teil = new Map(teileVon(angebot).map((x) => [x.teil.id, x.teil]));
+  // Der Schritt eines Teils aus der Rechnung: Unregelmäßiges (7b) gehört zu den Prüfungen und bleibt wie sie liegen.
+  const teil = new Map([...(erg || rechnen(angebot, plan || {})).teile.values()].map((z) => [z.teil.id, z.teil]));
   const weg = (b) => { const s = schrittVonBlock(b.teil ? teil.get(b.teil) : null); return s >= ab && s <= 4; };
   const fort = { am, ab, wahl: ab <= 2 ? neu.wahl || {} : {}, bloecke: (neu.bloecke || []).filter(weg) };
   if (ab <= 2) delete neu.wahl;
@@ -620,6 +638,116 @@ export function blockTagErlaubt(erg, teilId) {
   return (d) => d >= ab && d <= sem.vorlesung.bis && !istFrei(sem, d);
 }
 
+/** Ab wie vielen Terminen eine Reihe regelmäßig ist: mindestens jede zweite Vorlesungswoche (V-0354, wie bei den Blöcken
+ *  V-0345). Bei 16 Vorlesungswochen 8. */
+export const regelmaessigAb = (erg) => Math.ceil(erg.wochen.filter((w) => w.art === 'vorlesung').length / 2);
+
+/** Unregelmäßiges unter „Prüfungen“ (V-0354, Silas: „Alles, was Vorbereitung zu Prüfung, Quiz, Test, Online-Test etc. ist,
+ *  kommt zum Prüfungs-Tab und wird an ein Prüfungsdatum gekoppelt. Ist das schon bekannt, kann man Lerneinheiten schon
+ *  planen; wenn das nicht bekannt ist, soll das als offen dastehen“). Je Element (z.unregel, rechnen() 7b) seine
+ *  Bezugstermine als Einheiten mit Fenster ab–bis und Ziel (der Termin, auf den es sich bezieht):
+ *   - Einheiten mit Daten (Quicktests mit Öffnen/Schließen, „Vorbereitung auf …“ je Übung): bekannt;
+ *   - Einheiten ohne Daten (`einheiten.anzahl`, die Zeiten fehlen noch): offen (bekannt: false) — eine Folgeentscheidung;
+ *   - ein einmaliger Posten ohne Termin (BuK-Literatur): ein Fenster über die Vorlesungszeit.
+ *  Die Blöcke gehen der Reihe nach in das früheste Fenster, das ihren Tag enthält und noch Zeit braucht. */
+export function unregelmaessige(erg) {
+  const aus = [];
+  const sem = erg.sem;
+  for (const z of erg.teile.values()) {
+    if (!z.unregel) continue;
+    const t = z.teil;
+    const vg = vorgabe(erg, t.id);
+    const dauer = (t.einheiten && Number.isFinite(t.einheiten.dauer_min) && t.einheiten.dauer_min) || (vg && vg.dauer_min) || erg.regeln.evl_block_min;
+    let einh;
+    if (z.einheiten && z.einheiten.length) {
+      const l = [...z.einheiten].sort((a, b) => (a.ab < b.ab ? -1 : 1));
+      einh = l.map((e, i) => ({
+        nr: e.nr, titel: e.titel, ab: e.ab, bis: e.bis || (l[i + 1] ? plusTage(l[i + 1].ab, -1) : sem.vorlesung.bis),
+        ziel: e.bis || null, auf: e.auf || null, bekannt: true, soll_min: dauer, unsicher: e.unsicher || null,
+      }));
+    } else if (t.einheiten && t.einheiten.anzahl > 0) {
+      einh = Array.from({ length: t.einheiten.anzahl }, (_, i) => ({ nr: i + 1, titel: null, ab: null, bis: null, ziel: null, bekannt: false, soll_min: dauer }));
+    } else {
+      const ab = (z.fenster && z.fenster.ab) || z.stoff_ab || sem.vorlesung.von;
+      einh = [{ nr: 1, titel: null, ab, bis: (z.fenster && z.fenster.bis) || sem.vorlesung.bis, ziel: null, bekannt: !z.wartet, frei: true, soll_min: z.kontingent_min }];
+    }
+    for (const e of einh) { e.plan_min = 0; e.erledigt_min = 0; e.bloecke = []; }
+    const bloecke = z.vk.filter((v) => v.quelle === 'block').sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : a.start - b.start));
+    for (const v of bloecke) {
+      const passt = einh.filter((e) => e.bekannt && e.ab <= v.datum && v.datum <= e.bis);
+      const e = passt.find((x) => x.plan_min < x.soll_min) || passt[passt.length - 1];
+      if (!e) continue;
+      e.plan_min += v.plan_min ?? v.zaehlt_min; e.erledigt_min += v.erledigt_min || 0; e.bloecke.push(v);
+    }
+    for (const e of einh) e.fertig = e.bekannt && e.plan_min >= e.soll_min - toleranz(e.soll_min, { ...erg.regeln, toleranz_mind_min: 0 });
+    const bekannt = einh.filter((e) => e.bekannt);
+    aus.push({
+      id: `u:${t.id}`, z, modul: z.modul, teil: t, einheiten: einh, dauer_min: dauer, einmalig: einh.length === 1 && !!einh[0].frei,
+      bekannt: bekannt.length, fertig: bekannt.filter((e) => e.fertig).length, kontingent_min: z.kontingent_min,
+      plan_min: z.plan_min, erledigt_min: z.erledigt_min, info: z.info || null,
+      naechstes: bekannt.find((e) => !e.fertig && (!erg.heute || e.bis >= erg.heute)) || null,
+    });
+  }
+  return aus.sort((a, b) => ((a.naechstes && a.naechstes.ab) || '9') < ((b.naechstes && b.naechstes.ab) || '9') ? -1 : 1);
+}
+
+/** Der Fortschritt eines Elements (V-0354, Silas: „Grün = geplant, Grau = nicht geplant, weil nicht bekannt, Gelb = nicht
+ *  geplant, obwohl bekannt“), in Minuten seines Kontingents: { k, gruen, gelb, grau, status } mit status fertig (alles
+ *  grün), unbekannt (nichts gelb, aber grau — „alles, was ich jetzt wählen kann, ist gewählt, es kommt noch was“) oder offen.
+ *  Präsenz: fest oder gewählt (auch als Wunsch vor der Zuteilung) ist grün, Gruppen ohne Termine grau, eine offene Wahl
+ *  gelb. Selbststudium und Videos: gelegt grün — innerhalb der Toleranz oder mit allen Wochenblöcken der Vorgabe ganz —,
+ *  der Rest gelb; ein wartendes Fenster grau. Unregelmäßiges je Bezugstermin, offene Termine grau. Prüfungsvorbereitung:
+ *  ohne Prüfungstermin grau. */
+export function fortschritt(erg, z, uListe = null) {
+  const t = z.teil;
+  const k = Math.max(0, z.kontingent_min || (z.P && z.P.K ? Math.round(z.P.K / Math.max(1, z.P.elemente.length)) : 0) || 60);
+  const voll = (art) => ({ k, gruen: art === 'gruen' ? k : 0, gelb: art === 'gelb' ? k : 0, grau: art === 'grau' ? k : 0, status: art === 'gruen' ? 'fertig' : art === 'grau' ? 'unbekannt' : 'offen' });
+  const teils = (gruen, grau = 0) => {
+    const g = Math.max(0, Math.min(k, Math.round(gruen))), gr = Math.max(0, Math.min(k - g, Math.round(grau)));
+    const gelb = k - g - gr;
+    return { k, gruen: g, gelb, grau: gr, status: gelb > 0 ? 'offen' : gr > 0 ? 'unbekannt' : 'fertig' };
+  };
+  if (t.art === 'praesenz') {
+    if (z.alternativen === 'info_fehlt') return voll('grau');
+    if (z.alternativen === 'fest' || z.alternativen === 'gewaehlt' || z.alternativen === 'zuteilung_offen') return voll('gruen');
+    const gew = (t.optionen || []).some((o) => o.id === (erg.plan.wahl || {})[t.id]);
+    return voll(gew && z.alternativen !== 'gescheitert' ? 'gruen' : 'gelb');
+  }
+  if (t.art === 'pruefung') {
+    const X = erg.pruefungen.get(t.pruefung);
+    if (!X || !X.termin) return voll('grau');
+    return teils(z.plan_min >= k - toleranz(k, erg.regeln) ? k : z.plan_min);
+  }
+  if (z.unregel) {
+    const U = (uListe || unregelmaessige(erg)).find((x) => x.z === z);
+    if (!U) return voll('grau');
+    const soll = U.einheiten.reduce((s, e) => s + e.soll_min, 0) || 1;
+    const gruen = U.einheiten.reduce((s, e) => s + (e.fertig ? e.soll_min : Math.min(e.soll_min, e.plan_min)), 0);
+    const grau = U.einheiten.filter((e) => !e.bekannt).reduce((s, e) => s + e.soll_min, 0);
+    return teils((gruen / soll) * k, (grau / soll) * k);
+  }
+  if (z.wartet) return voll('grau');
+  // Fertig auch, wenn die Wochenblöcke so lang sind, wie die Vorgabe will (je Woche gemittelt) — ein Teil davon zählt
+  // vielleicht nicht (vor dem ersten Stoff, auf einem Termin), aber mehr zu legen gibt es nicht.
+  const vg = vorgabe(erg, t.id);
+  const proWoche = (erg.plan.bloecke || []).filter((b) => b.teil === t.id && !b.datum).reduce((s, b) => s + (min(b.ende) - min(b.start)) / Math.max(1, b.alle || 1), 0);
+  const fertig = z.fehlt_min <= toleranz(k, erg.regeln) || (vg && !vg.einzeln && proWoche >= (vg.anzahl * vg.dauer_min) / vg.alle - erg.regeln.raster_min);
+  return teils(fertig ? k : z.plan_min);
+}
+
+/** Der Fortschritt einer Menge von Elementen (ein Modul in einem Schritt, ein Schritt, ein ganzes Modul): Summe der
+ *  Minuten, Anteil grün, und die Elemente je Status. */
+export function fortschrittVon(erg, zs, uListe = null) {
+  const u = uListe || (zs.some((z) => z.unregel) ? unregelmaessige(erg) : []);
+  const je = zs.map((z) => ({ z, f: fortschritt(erg, z, u) }));
+  const s = { k: 0, gruen: 0, gelb: 0, grau: 0 };
+  for (const { f } of je) { s.k += f.k; s.gruen += f.gruen; s.gelb += f.gelb; s.grau += f.grau; }
+  s.anteil = s.k ? s.gruen / s.k : 1;
+  s.status = s.gelb > 0 ? 'offen' : s.grau > 0 ? 'unbekannt' : 'fertig';
+  s.je = je;
+  return s;
+}
+
 /** Die Fahrzeit eines Tages (V-0338): vor dem frühesten und nach dem spätesten Termin vor Ort — Online-Termine zählen
  *  nicht. termine: [{start, ende, ort?, online?}] eines Tages. Ergebnis: [[start, ende] davor, [start, ende] danach]. */
 export function fahrzeiten(termine, regeln = REGELN) {
@@ -716,13 +844,17 @@ export function standardwoche(angebot, plan, erg) {
       const vk = z.vk.filter((v) => !v.ausgefallen && (mu.typ === 'serie'
         ? wochentag(v.datum) === TAGE.indexOf(mu.tag) && v.start === min(mu.start)
         : (mu.daten || []).some((x) => x.datum === v.datum)));
-      // Ein, zwei Einzeltermine (der Kick-off) sind kein Wochenmuster: Sie stehen rechts und in der echten Woche.
+      // Ein, zwei Einzeltermine (der Kick-off) sind kein Wochenmuster: Sie stehen rechts und in der echten Woche. Eine
+      // Reihe seltener als jede zweite Vorlesungswoche (BuK-VL 6×, EINFWI-Übung 5×) gehört nicht zum Gerüst (V-0354,
+      // Silas: „In der Woche-Ansicht entsteht das Grundgerüst mit allen Terminen, die mindestens alle 2 Wochen regulär
+      // stattfinden“) — sie steht als Umriss da (unregel), weil sie den Platz an ihren Tagen trotzdem sperrt.
       if (!vk.length || (mu.typ === 'reihe' && vk.length < 3)) continue;
+      const unregel = mu.typ === 'reihe' && vk.length < regelmaessigAb(erg);
       const platz = mu.typ === 'serie' ? { tag: TAGE.indexOf(mu.tag), start: min(mu.start), ende: min(mu.ende) } : typischerPlatz(vk);
       kacheln.push({
         art: 'termin', schicht: istWahl(t) ? 'B' : 'A', teil: t.id, modul: m.id, option: quelle === t ? null : quelle.id,
         ...platz, ort: mu.ort || quelle.ort || t.ort || null, reihe: mu.typ === 'reihe', anzahl: vk.length, vk,
-        unsicher: !!t.unsicher, annahme: vk.some((v) => v.annahme),
+        unsicher: !!t.unsicher, annahme: vk.some((v) => v.annahme), unregel,
       });
     }
   }

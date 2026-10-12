@@ -403,3 +403,105 @@ test('Rückfalltermine, die sich überschneiden (32), sind ein Hinweis', () => {
   assert.deepEqual(e.audit.rueckfall.map((x) => [x.datum, x.ueber_min]), [['2031-04-09', 60]]);
   assert.ok(e.planFlags.some((f) => f.art === 'rueckfall' && f.stufe === 'info'));
 });
+
+// ── V-0354: Unregelmäßiges unter „Prüfungen“, Fortschritt, Gerüst der Standardwoche ─────────────
+// Silas, 12.10.: „Alle Blöcke, die in einer echten Woche gelegt werden sollen, sollen nicht in der ursprünglichen Planung
+// auftauchen … (Literatur und Praxis, Vorbereitung auf die Übungen, Quicktests)“ und „Grün = geplant, Grau = nicht geplant,
+// weil nicht bekannt, Gelb = nicht geplant, obwohl bekannt“.
+
+/** Das Beispiel mit einem einmaligen Posten (Literatur, 5 h) und Quicktests ohne Zeiten — 180 h bleiben. */
+function mitUnregel() {
+  const a = angebot();
+  const sys = a.module.find((m) => m.id === 'SYS');
+  sys.posten.push({ id: 'lit', lv: null, titel: 'Literatur', mult: 1, h: 5 });
+  sys.posten.find((p) => p.id === 'klausur').h = 55;
+  sys.teile.push({ id: 'sys-lit', titel: 'Literatur', art: 'selbst', posten: 'lit' });
+  sys.teile.push({ id: 'sys-qt', titel: 'Quicktests', art: 'selbst', posten: 'vl-vn', einheiten: { anzahl: 4, dauer_min: 30 } });
+  return a;
+}
+
+test('V-0354: Was in echten Wochen gelegt wird, gehört unter „Prüfungen“ (Schritt 5) — der Topf bleibt Semester', () => {
+  const a = mitUnregel();
+  const vorher = JSON.stringify(a);
+  const e = M.rechnen(a, { wahl: { 'por-ue': 'por-g1' } }, { heute });
+  for (const id of ['por-ue-vb', 'sys-lit', 'sys-qt']) {
+    const z = e.teile.get(id);
+    assert.ok(z.unregel, id);
+    assert.equal(M.schrittVon(z.teil), M.PRUEFUNGEN, id);
+    assert.equal(z.topf, 'semester', id);
+  }
+  for (const id of ['ana-vn', 'sys-vl-vn', 'sys-quiz', 'por-vn', 'ana-sc']) assert.ok(!e.teile.get(id).unregel, `${id} bleibt in der Woche`);
+  assert.equal(JSON.stringify(a), vorher, 'das Angebot bleibt unberührt (es wird gespeichert)');
+  // Von Hand: unregelmaessig: false hält ein Element in der Woche.
+  a.module.find((m) => m.id === 'SYS').teile.find((t) => t.id === 'sys-lit').unregelmaessig = false;
+  assert.ok(!M.rechnen(a, {}, { heute }).teile.get('sys-lit').unregel);
+});
+
+test('V-0354: Blöcke des Unregelmäßigen stehen in Schritt 5 — Zurücksetzen lässt sie liegen', () => {
+  const a = mitUnregel();
+  const plan = { wahl: { 'por-ue': 'por-g1' }, bloecke: [
+    { id: 'u1', teil: 'por-ue-vb', datum: '2030-11-02', start: '10:00', ende: '12:00' },
+    { id: 'w1', teil: 'ana-vn', tag: 'Mo', start: '10:00', ende: '12:00' },
+  ] };
+  const e = M.rechnen(a, plan, { heute });
+  assert.ok(e.vorkommen.filter((v) => v.block === 'u1').every((v) => v.schritt === M.PRUEFUNGEN));
+  assert.deepEqual(M.zuruecksetzen(plan, a, 2).bloecke.map((b) => b.id), ['u1']);
+});
+
+test('V-0354: Unregelmäßiges hängt an Bezugsterminen — bekannt (Übungen), offen (Quicktests ohne Zeiten) oder ein Fenster', () => {
+  const plan = { wahl: { 'por-ue': 'por-g1' }, bloecke: [
+    { id: 'u1', teil: 'por-ue-vb', datum: '2030-11-02', start: '10:00', ende: '12:00' }, // vor Übung 1 (04.11.)
+    { id: 'u2', teil: 'por-ue-vb', datum: '2030-11-20', start: '10:00', ende: '11:00' }, // vor Übung 2, nur 1 h
+  ] };
+  const e = M.rechnen(mitUnregel(), plan, { heute });
+  const U = M.unregelmaessige(e);
+  const vb = U.find((x) => x.teil.id === 'por-ue-vb');
+  assert.deepEqual(vb.einheiten.map((x) => x.ziel), ['2030-11-04', '2030-12-02', '2031-01-13', '2031-01-27', '2031-02-10']);
+  assert.deepEqual(vb.einheiten.map((x) => x.plan_min), [120, 60, 0, 0, 0]);
+  assert.deepEqual(vb.einheiten.map((x) => x.fertig), [true, false, false, false, false]);
+  assert.equal(vb.naechstes.nr, 2, 'als Nächstes: die Übung am 02.12.');
+  const qt = U.find((x) => x.teil.id === 'sys-qt');
+  assert.equal(qt.bekannt, 0, 'ohne Zeiten: offen, eine Folgeentscheidung');
+  assert.equal(qt.einheiten.length, 4);
+  const lit = U.find((x) => x.teil.id === 'sys-lit');
+  assert.ok(lit.einmalig);
+  assert.equal(lit.einheiten[0].soll_min, 300);
+  assert.equal(lit.einheiten[0].bis, '2031-02-15', 'frei bis zum Ende der Vorlesungszeit');
+  // Der Fortschritt dazu: Quicktests ganz grau, die Übungsvorbereitung 3 von 10 h grün, der Rest gelb.
+  assert.equal(M.fortschritt(e, qt.z, U).status, 'unbekannt');
+  const f = M.fortschritt(e, vb.z, U);
+  assert.deepEqual([f.gruen, f.gelb, f.grau], [180, 420, 0]);
+});
+
+test('V-0354: Fortschritt — grün geplant, gelb bekannt und offen, grau noch nicht bekannt', () => {
+  const e = rechne({ bloecke: [{ id: 'b1', teil: 'ana-vn', tag: 'Mo', start: '10:00', ende: '11:00' }] });
+  const f = (id) => M.fortschritt(e, e.teile.get(id));
+  assert.equal(f('ana-iv').status, 'fertig', 'feste Serie');
+  assert.equal(f('ana-tut').status, 'unbekannt', 'Wahl ohne Gruppen');
+  assert.equal(f('sys-ue').status, 'offen', 'Gruppe wählbar, aber nicht gewählt');
+  assert.equal(f('sys-ue-vn').status, 'unbekannt', 'wartet auf die Übung');
+  assert.equal(f('ana-pv').status, 'unbekannt', 'Klausur ohne Termin');
+  const vn = f('ana-vn');
+  assert.equal(vn.status, 'offen');
+  assert.ok(vn.gruen > 0 && vn.gelb > 0 && vn.grau === 0);
+  assert.equal(vn.gruen + vn.gelb, vn.k);
+  const schritt2 = (x) => M.fortschrittVon(x, [...x.teile.values()].filter((z) => M.schrittVon(z.teil) === 2));
+  assert.equal(schritt2(e).status, 'offen');
+  // Alles Wählbare gewählt (auch als Wunsch vor der Zuteilung) — das Tutorium ohne Gruppen bleibt grau: „unbekannt“, der
+  // Schrittknopf zeigt den gestrichelten Haken, nicht 100 %.
+  const s = schritt2(rechne({ wahl: { 'sys-ue': 'sys-g1', 'por-ue': 'por-g1' } }));
+  assert.equal(s.status, 'unbekannt');
+  assert.equal(s.gelb, 0);
+  assert.ok(s.anteil < 1);
+});
+
+test('V-0354: Gerüst der Standardwoche — eine Reihe seltener als jede zweite Woche ist unregelmäßig, Serien nicht', () => {
+  const plan = { wahl: { 'por-ue': 'por-g1' } };
+  const e = rechne(plan);
+  const std = M.standardwoche(angebot(), plan, e).filter((k) => k.art === 'termin');
+  const ue = std.find((k) => k.teil === 'por-ue');
+  assert.ok(ue.unregel, '5 Übungen in 16 Wochen');
+  assert.equal(ue.anzahl, 5);
+  assert.ok(std.filter((k) => k.teil !== 'por-ue').every((k) => !k.unregel));
+  assert.ok(M.regelmaessigAb(e) >= 8);
+});
