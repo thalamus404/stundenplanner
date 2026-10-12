@@ -80,14 +80,19 @@ test('Zeitzone: Sommerzeit endet am letzten Oktobersonntag, beginnt am letzten M
 
 // ── Die Rechnung ─────────────────────────────────────────────────────────────────────────────────
 
-test('Soll: das Modul sind LP × 30 h, die Teile teilen sich die Posten', () => {
+test('Kontingent: das Modul sind LP × 30 h; je Posten gehen Termine und Einheiten vor, der Rest ist Selbststudium (G1, G4)', () => {
   const e = M.rechnen(angebot(), {});
   const r = e.module[0];
   assert.equal(r.soll_min, 6 * 30 * 60);
-  assert.equal(r.posten_min, r.soll_min);
-  assert.equal(e.teile.get('bsp-video').soll_min, 600);
-  assert.equal(e.teile.get('bsp-vn').soll_min, 30 * 60 - 600); // der Rest des Postens
-  assert.equal(r.teile.reduce((s, z) => s + z.soll_min, 0), r.soll_min);
+  assert.equal(r.tabelle_min, r.soll_min);
+  // Zwei Videos à 105 min in zwei Wochen: je Woche 105 + 15 min → 2 h, zusammen 4 h; der Rest des Postens (30 h) ist
+  // Nachbereitung (26 h) — die soll_h am Video zählt nicht mehr, gemessen wird.
+  assert.equal(e.teile.get('bsp-video').kontingent_min, 240);
+  assert.equal(e.teile.get('bsp-vn').kontingent_min, 30 * 60 - 240);
+  // Zwei Töpfe (G2): die Prüfungsvorbereitung (90 h) ist Prüfungs-Topf; die Übung ohne Wahl ist offen, also kein G5.
+  assert.equal(r.pruefung_min, 90 * 60);
+  assert.equal(r.semester_min + r.pruefung_min, r.soll_min);
+  assert.equal(e.summe.semester_min + e.summe.pruefung_min, e.summe.soll_min);
 });
 
 test('Präsenz: jeder Termin zählt seine Doppelstunde', () => {
@@ -97,15 +102,26 @@ test('Präsenz: jeder Termin zählt seine Doppelstunde', () => {
   assert.equal(z.status, 'ok');
 });
 
-test('Wahl: ohne Gruppen fehlt eine Angabe, ohne Wahl fehlt die Wahl, gewählt zählt die Gruppe', () => {
+test('Wahl: ohne Wahl „Wahl offen“, gewählt zählt die Gruppe, ohne Gruppen „Info fehlt“ — und zu wenige Termine gehen nach G5', () => {
   const a = angebot();
-  assert.ok(M.rechnen(a, {}).teile.get('bsp-ue').flags.some((f) => f.art === 'wahl_offen' && f.stufe === 'dran'));
-  const g1 = M.rechnen(a, { wahl: { 'bsp-ue': 'g1' } }).teile.get('bsp-ue');
+  const ohne = M.rechnen(a, {}).teile.get('bsp-ue');
+  assert.equal(ohne.alternativen, 'wahl_offen');
+  assert.ok(ohne.flags.some((f) => f.art === 'wahl_offen' && f.stufe === 'dran'));
+  const e = M.rechnen(a, { wahl: { 'bsp-ue': 'g1' } });
+  const g1 = e.teile.get('bsp-ue');
+  assert.equal(g1.alternativen, 'gewaehlt');
   assert.equal(g1.ist_min, 3 * 120);
-  assert.ok(g1.strukturell, 'nur drei Termine: strukturelle Lücke');
+  // Nur drei Termine (6 h) statt 30 h: 24 h finden nicht statt und gehen in die Vorbereitung der Klausur (G5).
+  const P = e.posten.find((x) => x.id === 'BSP/ue');
+  assert.equal(P.audit.ergebnis, 'weniger');
+  assert.equal(P.g5_min, 24 * 60);
+  assert.equal(e.pruefungen.get('bsp-klausur').kontingent_min, (90 + 24) * 60);
+  assert.equal(e.module[0].pruefung_min, (90 + 24) * 60);
   a.module[0].teile[3].optionen = [];
   a.module[0].teile[3].wahl = true;
-  assert.ok(M.rechnen(a, {}).teile.get('bsp-ue').flags.some((f) => f.art === 'termine_offen' && f.stufe === 'kommt'));
+  const leer = M.rechnen(a, {}).teile.get('bsp-ue');
+  assert.equal(leer.alternativen, 'info_fehlt');
+  assert.ok(leer.flags.some((f) => f.art === 'info_fehlt' && f.stufe === 'kommt'));
 });
 
 test('Wochenblock: zählt in Vorlesungswochen, in der Pause nur mit pause: true', () => {
@@ -172,49 +188,45 @@ test('Prüfungsvorbereitung zählt nur vor der Prüfung', () => {
   assert.ok(z.flags.some((f) => f.art === 'nach_pruefung'));
 });
 
-test('Umwidmung verschiebt Soll innerhalb des Moduls, die Summe bleibt', () => {
-  const plan = { wahl: { 'bsp-ue': 'g1' }, umwidmungen: [{ id: 'u', von: 'bsp-ue', nach: 'bsp-pv', h: 24 }] };
-  const e = M.rechnen(angebot(), plan);
-  assert.equal(e.teile.get('bsp-ue').soll_min, 6 * 60);
-  assert.equal(e.teile.get('bsp-pv').soll_min, (90 + 24) * 60);
-  assert.equal(e.teile.get('bsp-ue').fehlt_min, 0);
-  assert.equal(e.module[0].teile.reduce((s, z) => s + z.soll_min, 0), 180 * 60);
-});
 
-test('Ohne Prüfungstermin fehlt eine Angabe, und eine falsche Aufwandstabelle fällt auf', () => {
+test('Ohne Prüfungstermin „Info fehlt“ mit Stichtag 14 Tage nach Modulbeginn, und eine falsche Aufwandstabelle fällt auf', () => {
   const a = angebot();
   a.module[0].pruefungen[0].termine = [];
   a.module[0].posten[3].h = 80;
   const e = M.rechnen(a, {});
-  assert.ok(e.teile.get('bsp-pv').flags.some((f) => f.art === 'datum_offen' && f.stufe === 'kommt'));
+  const X = e.pruefungen.get('bsp-klausur');
+  assert.equal(X.alternativen, 'info_fehlt');
+  assert.equal(X.info.stichtag, '2030-10-29', 'erste VL Di 15.10. + 14 Tage (§ 65 Abs. 3)');
+  assert.ok(e.module[0].flags.some((f) => f.art === 'pruefung_info' && f.stufe === 'kommt'));
+  assert.equal(M.rechnen(a, {}, { heute: '2030-10-30' }).module[0].flags.find((f) => f.art === 'pruefung_info').stufe, 'achtung', 'nach dem Stichtag: nachfragen');
   assert.ok(e.module[0].flags.some((f) => f.art === 'posten_summe'));
 });
 
 // ── Die vier Schritte (V-0333) ───────────────────────────────────────────────────────────────────
 
-test('Schritte: feste Präsenz 1, Gruppen 2, Videos 3, Selbststudium 4, Prüfungsvorbereitung 5 — Blöcke folgen ihrem Teil', () => {
+test('Schritte: feste Präsenz 1, Gruppen 2, Videos 3, Selbststudium 4, Prüfungs-Topf 5 — Blöcke folgen ihrem Teil', () => {
   const a = angebot();
   const t = Object.fromEntries(a.module[0].teile.map((x) => [x.id, M.schrittVon(x)]));
   assert.deepEqual(t, { 'bsp-vl': 1, 'bsp-video': 3, 'bsp-vn': 4, 'bsp-ue': 2, 'bsp-pv': M.PRUEFUNGEN });
-  // Präsenz ohne Termine und ohne Gruppen (die Gruppen kommen noch) gehört zu den Gruppen.
   assert.equal(M.schrittVon({ id: 'x', art: 'praesenz' }), 2);
+  assert.equal(M.schrittVon({ id: 'x', art: 'praesenz', topf: 'pruefung', termine: { typ: 'reihe', daten: [] } }), M.PRUEFUNGEN, 'Fragestunde, Probeklausur: Prüfungs-Topf');
   assert.equal(M.schrittVonBlock(null), 4);
   const e = M.rechnen(a, { wahl: { 'bsp-ue': 'g2' }, bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '11:00' }] });
   const s = M.schritte(e);
   assert.deepEqual(s.map((x) => x.titel), ['Grundlage', 'Gruppen', 'Videos', 'EVL', 'Prüfungen']);
-  assert.equal(s.reduce((n, x) => n + x.soll_min, 0), 180 * 60, 'jeder Teil in genau einem Schritt');
+  assert.equal(s.reduce((n, x) => n + x.teile.length, 0), a.module[0].teile.length, 'jeder Teil in genau einem Schritt');
   assert.ok(e.vorkommen.filter((v) => v.quelle === 'termin' && v.teil === 'bsp-ue').every((v) => v.schritt === 2 && v.hart));
   assert.ok(e.vorkommen.filter((v) => v.block === 'v').every((v) => v.schritt === 3));
-  assert.ok(e.vorkommen.filter((v) => v.quelle === 'frist').every((v) => v.schritt === 1 && !v.hart));
-  // Prüfungen sind nicht im Ablauf (V-0334): die Klausur, ihre Anmeldung und ihre Vorbereitung gehören zu Schritt 5.
+  assert.ok(e.vorkommen.filter((v) => v.quelle === 'frist' && !v.pruefung).every((v) => v.schritt === 1 && !v.hart));
+  // Prüfungen, ihre Fristen (Verweise nach § 63) und ihre Vorbereitung gehören zu Schritt 5.
   assert.ok(e.vorkommen.filter((v) => v.quelle === 'pruefung').every((v) => v.schritt === M.PRUEFUNGEN && v.hart));
-  assert.equal(M.schrittVonBlock(a.module[0].teile.find((x) => x.id === 'bsp-pv')), M.PRUEFUNGEN);
-  // Anmeldungen: die einer Gruppe gehört zu Schritt 2, die einer Prüfung zu den Prüfungen.
+  assert.deepEqual(e.vorkommen.filter((v) => v.quelle === 'frist' && v.pruefung).map((v) => [v.id, v.datum, v.schritt]),
+    [['bsp-klausur-anmeldung', '2031-02-24', M.PRUEFUNGEN], ['bsp-klausur-abmeldung', '2031-02-28', M.PRUEFUNGEN]]);
+  // Die Anmeldung einer Gruppe gehört zu Schritt 2.
   const b = angebot();
   b.module[0].teile[3].anmeldung = { von: '2030-10-14', bis: '2030-10-16', wo: 'MOSES' };
-  b.module[0].pruefungen[0].anmeldung = { von: '2030-11-01', bis: '2030-11-20', wo: 'MOSES' };
-  const fr = M.rechnen(b, {}).vorkommen.filter((v) => v.quelle === 'frist' && /anmeldung/.test(v.id));
-  assert.deepEqual(fr.map((v) => [v.id, v.schritt]), [['bsp-ue-anmeldung-von', 2], ['bsp-ue-anmeldung-bis', 2], ['bsp-klausur-anmeldung-von', M.PRUEFUNGEN], ['bsp-klausur-anmeldung-bis', M.PRUEFUNGEN]]);
+  const fr = M.rechnen(b, {}).vorkommen.filter((v) => v.quelle === 'frist' && v.teil === 'bsp-ue');
+  assert.deepEqual(fr.map((v) => [v.id, v.schritt]), [['bsp-ue-anmeldung-von', 2], ['bsp-ue-anmeldung-bis', 2]]);
   assert.equal(s[3].offen, s[3].zaehler.kritisch + s[3].zaehler.dran);
 });
 
@@ -222,7 +234,7 @@ test('Zurücksetzen: ab 2 fallen Gruppen und alle Blöcke heraus, ab 3 nur Blöc
   const a = angebot();
   const plan = {
     wahl: { 'bsp-ue': 'g1' }, pruefungstermin: { 'bsp-klausur': '2031-03-03' }, angemeldet: { 'bsp-klausur': true },
-    bestaetigt: { 'soll:bsp-video': true }, umwidmungen: [{ id: 'u', von: 'bsp-ue', nach: 'bsp-pv', h: 2 }],
+    bestaetigt: { 'video:bsp-video': true }, ist: { 'b@2030-10-14': 'ja' },
     festgelegt: '2030-10-20T10:00:00.000Z',
     bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '11:00' }, { id: 'n', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }, { id: 'p', teil: null, tag: 'Fr', start: '08:00', ende: '08:30' },
       { id: 'l', teil: 'bsp-pv', datum: '2031-02-20', start: '09:00', ende: '15:00' }],
@@ -246,7 +258,7 @@ test('Zurücksetzen: ab 2 fallen Gruppen und alle Blöcke heraus, ab 3 nur Blöc
   assert.deepEqual(M.wiederherstellen({ ...r2, wahl: { 'bsp-ue': 'g2' } }).wahl, { 'bsp-ue': 'g2' });
   assert.deepEqual(r2.angemeldet, plan.angemeldet, 'was Silas weiß, bleibt');
   assert.deepEqual(r2.bestaetigt, plan.bestaetigt);
-  assert.deepEqual(r2.umwidmungen, plan.umwidmungen);
+  assert.deepEqual(r2.ist, plan.ist, 'die Ist-Erfassung bleibt');
   const r3 = M.zuruecksetzen(plan, a, 3);
   assert.deepEqual(r3.wahl, plan.wahl);
   assert.deepEqual(r3.bloecke.map((b) => b.id), ['l']);
@@ -299,27 +311,25 @@ test('Seite: kein inneres const/let mit dem Namen eines Helfers der obersten Ebe
   assert.deepEqual([...new Set(innen)], [], `verdeckt: ${innen.join(', ')}`);
 });
 
-test('Vorgabe je Woche: Video so lang wie Soll ÷ Videowochen, höchstens der Videobedarf; EVL 1,5–2 h, k je Woche oder alle n Wochen', () => {
+test('Vorgabe je Woche: Video so lang wie seine Einheiten ÷ Videowochen; EVL 1,5–2 h, k je Woche oder alle n Wochen', () => {
   const e = M.rechnen(angebot(), {});
   const v = M.vorgabe(e, 'bsp-video');
-  // Zwei Videos à 105 min ab W02 (je Woche 2 h mit Puffer = 4 h Bedarf) — das Soll 10 h ist mehr als die Videos
-  // brauchen; die Vorgabe deckt den Bedarf in den 15 Wochen ab der ersten Freigabe: 4 h ÷ 15 → 30 min.
+  // Zwei Videos ab W02 brauchen 4 h; verteilt auf die 15 Wochen ab der ersten Freigabe: 30 min je Woche.
   assert.deepEqual([v.anzahl, v.alle, v.wochen, v.dauer_min], [1, 1, 15, 30]);
   assert.equal(v.video_min, 240);
-  // 20 h Nachbereitung in 16 Vorlesungswochen: am nächsten liegt 1,5 h jede Woche, eine Woche vor Schluss endend
-  // (15 × 1,5 h = 22,5 h); 2 h alle zwei Wochen (16 h) läge weiter weg.
+  // 26 h Nachbereitung (30 − 4 h Videos) in 16 Vorlesungswochen: 1:45 h jede Woche, 15 Wochen (26,25 h).
   const n = M.vorgabe(e, 'bsp-vn');
-  assert.deepEqual([n.dauer_min, n.anzahl, n.alle, n.wochen, n.summe_min], [90, 1, 1, 15, 15 * 90]);
+  assert.deepEqual([n.dauer_min, n.anzahl, n.alle, n.wochen, n.summe_min], [105, 1, 1, 15, 15 * 105]);
   const vl = e.wochen.filter((w) => w.art === 'vorlesung');
   assert.equal(n.bis, vl[14].bis, 'endet mit der 15. Vorlesungswoche');
-  // 30 h: 2 h jede Woche, 15 Wochen — genau das Soll (V-0336: vorher 16 × 2 h = 32 h).
-  const a = angebot(); a.module[0].teile[1].soll_h = 0; // die Videos geben ihren Anteil ab: Nachbereitung 30 h
+  // Ohne Videos ist die ganze Nachbereitung 30 h: 2 h jede Woche, 15 Wochen.
+  const a = angebot(); a.module[0].teile.splice(1, 1);
   const n30 = M.vorgabe(M.rechnen(a, {}), 'bsp-vn');
   assert.deepEqual([n30.dauer_min, n30.anzahl, n30.alle, n30.wochen, n30.summe_min], [120, 1, 1, 15, 30 * 60]);
   const mitBis = M.rechnen(a, { bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00', bis: n30.bis }] });
-  assert.equal(mitBis.teile.get('bsp-vn').ist_min, 30 * 60, 'der gelegte Block trägt genau das Soll');
+  assert.equal(mitBis.teile.get('bsp-vn').ist_min, 30 * 60, 'der gelegte Block trägt genau das Kontingent');
   assert.equal(M.vorgabe(e, 'bsp-vl'), null, 'Präsenz hat keine Vorgabe');
-  assert.equal(M.vorgabe(e, 'bsp-pv'), null, 'die Prüfungsvorbereitung kommt nach dem Festlegen');
+  assert.equal(M.vorgabe(e, 'bsp-pv'), null, 'den Prüfungs-Topf planst du unter „Prüfungen“');
 });
 
 test('Wochenblock alle n Wochen: liegt in jeder n-ten Vorlesungswoche, versatz verschiebt', () => {
@@ -371,20 +381,27 @@ test('Freie Lücke in einem eigenen Fenster (Prüfungsvorbereitung in der Vorles
   assert.deepEqual(M.freieLuecke(e, '2030-10-15', [], ['07:00', '22:00']), [M.min('11:45'), M.min('22:00')]);
 });
 
-test('Wochenend-Pakete: die zwei Wochenenden vor der Prüfung je 10 h, der Rest wird nach vorne gerechnet', () => {
-  // Klausur Mo 03.03.2031, Vorbereitung 90 h: Wochenende davor Fr 28.02.–So 02.03., zwei davor 21.–23.02., Rest 70 h.
-  const plan = { bloecke: [
-    { id: 'a', teil: 'bsp-pv', datum: '2031-03-01', start: '09:00', ende: '15:00' },
-    { id: 'b', teil: 'bsp-pv', datum: '2031-02-22', start: '10:00', ende: '14:00' },
-    { id: 'c', teil: 'bsp-pv', datum: '2031-02-10', start: '10:00', ende: '12:00' },
-  ] };
-  const pk = M.pruefungsPakete(M.rechnen(angebot(), plan), 'bsp-pv');
-  assert.deepEqual(pk.map((x) => [x.id, x.von || null, x.bis, x.soll_min / 60, x.ist_min / 60]),
-    [['we1', '2031-02-28', '2031-03-02', 10, 6], ['we2', '2031-02-21', '2031-02-23', 10, 4], ['rest', null, '2031-02-20', 70, 2]]);
-  // Eine kleine Prüfung (2,5 h) hat nur das eine Wochenende.
-  const a = angebot(); a.module[0].posten[3].h = 2.5;
-  const klein = M.pruefungsPakete(M.rechnen(a, {}), 'bsp-pv');
-  assert.deepEqual(klein.map((x) => [x.id, x.soll_min]), [['we1', 150]]);
+test('Vorschlag: die zwei Wochenenden vor der Prüfung je höchstens 10 h, dann rückwärts — nie über die Kapazität, nie an Feiertagen', () => {
+  // Klausur Mo 03.03.2031, 90 h Vorbereitung, vorlesungsfrei ab 16.02.: erst Sa/So 01./02.03. und 22./23.02. (je 10 h, 9 h
+  // je Tag), dann rückwärts jeder freie Tag mit 9 h.
+  const e = M.rechnen(angebot(), {}, { heute: '2030-10-14' });
+  const X = e.pruefungen.get('bsp-klausur');
+  const tag = Object.fromEntries(X.vorschlag.map((v) => [v.datum, v.min / 60]));
+  assert.equal(tag['2031-03-01'] + tag['2031-03-02'], 10);
+  assert.equal(tag['2031-02-22'] + tag['2031-02-23'], 10);
+  assert.ok(Object.values(tag).every((x) => x <= 9));
+  assert.equal(X.vorschlag.reduce((s, v) => s + v.min, 0), 90 * 60);
+  assert.equal(X.passt_nicht_min, 0);
+  // In der Vorlesungszeit nur Sa/So; nie vor heute, nie an Feiertagen (24.–26.12., 31.12., 01.01.).
+  assert.ok(X.vorschlag.every((v) => v.datum >= '2030-10-14'));
+  assert.ok(X.vorschlag.filter((v) => v.datum <= '2031-02-15' && !M.istFrei(SEM, v.datum)).every((v) => M.wochentag(v.datum) >= 5));
+  assert.ok(!X.vorschlag.some((v) => ['2030-12-24', '2030-12-25', '2030-12-26', '2030-12-31', '2031-01-01'].includes(v.datum)));
+  // Was schon liegt, verbraucht das Kontingent und die Kapazität: 6 h am 01.03. → dort schlägt er nur noch 3 h vor.
+  const mit = M.rechnen(angebot(), { bloecke: [{ id: 'a', teil: 'bsp-pv', datum: '2031-03-01', start: '09:00', ende: '15:00' }] }, { heute: '2030-10-14' });
+  const Y = mit.pruefungen.get('bsp-klausur');
+  assert.equal(Y.geplant_min, 360);
+  assert.equal((Y.vorschlag.find((v) => v.datum === '2031-03-01') || { min: 0 }).min, 180);
+  assert.equal(Y.vorschlag.reduce((s, v) => s + v.min, 0), 84 * 60);
 });
 
 test('Mittagspause: 45 min im ersten freien Fenster 11:30–14:30, sonst um 12:30', () => {
@@ -405,7 +422,9 @@ test('Tageslast: Termine als Doppelstunde, Blöcke mit ihrer Dauer, Ausweichterm
   assert.equal(M.tagesLast(e, '2030-10-15'), 120 + 120);
 });
 
-test('Keine Vorschläge mehr: der Lernplan-Vorschlag ist aus Modell und Seite entfernt', () => {
+test('Keine Vorschläge für die Woche: der Lernplan-Vorschlag bleibt entfernt (V-0333) — nur die Prüfungsvorbereitung hat einen (V-0349)', () => {
+  // Silas, 11.10.: „Es sollen nicht so wie jetzt Vorschläge zu den ganzen Sachen kommen.“ Am 12.10. wollte er für die
+  // Prüfungsvorbereitung ausdrücklich einen: „als Vorschlag vom System in Weihnachtspause und Januarwochenenden verteilen“.
   assert.equal(M.lernplanVorschlag, undefined);
   const seite = readFileSync(new URL('../silas/silas.mjs', import.meta.url), 'utf8');
   assert.ok(!/lernplanVorschlag|Lernplan vorschlagen|data-act': 'lernplan'/.test(seite));
@@ -454,11 +473,13 @@ test('Videos: Länge je Video, eine Woche braucht die Summe plus Puffer; ein Blo
   const plan = { bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '09:00', ende: '10:30' }] }; // 1,5 h je Woche
   const z = M.rechnen(a, plan).teile.get('bsp-video');
   assert.deepEqual(z.gruppen.map((g) => g.bedarf_min), [120, 60]);
-  // 21.10. 1,5 h < 2 h → die Woche bleibt offen, der Block am 28.10. füllt sie auf; der 04.11. deckt Woche 3.
+  assert.equal(z.kontingent_min, 180, 'Kontingent der Videos = Summe der Wochen');
   assert.deepEqual(z.vk.filter((v) => v.zaehlt_min > 0).map((v) => v.datum), ['2030-10-21', '2030-10-28', '2030-11-04']);
-  assert.ok(!z.flags.some((f) => f.art === 'laenge_offen'));
+  assert.ok(!z.flags.some((f) => f.art === 'laenge'));
   a.module[0].teile[1].einheiten.liste[2].laenge_min = null;
-  assert.ok(M.rechnen(a, plan).teile.get('bsp-video').flags.some((f) => f.art === 'laenge_offen' && /1 von 3/.test(f.text)));
+  const ohne = M.rechnen(a, plan).teile.get('bsp-video');
+  assert.ok(ohne.flags.some((f) => f.art === 'laenge' && f.stufe === 'kommt' && /1 Videolängen kommen noch/.test(f.text)));
+  assert.ok(M.rechnen(a, plan, { heute: '2030-10-29' }).teile.get('bsp-video').flags.some((f) => f.art === 'laenge' && f.stufe === 'dran'), 'erschienen: Länge eintragen');
 });
 
 test('Abgaben ohne Dauer: ein Fenster — jeder Block zählt, solange eine Einheit offen ist', () => {
@@ -472,48 +493,67 @@ test('Abgaben ohne Dauer: ein Fenster — jeder Block zählt, solange eine Einhe
   assert.ok(e.vorkommen.some((v) => v.quelle === 'frist' && v.datum === '2030-11-01' && /fällig/.test(v.titel)));
 });
 
-test('Einheiten ohne Datum: jeder Block zählt, die Lücke ist rot', () => {
+test('Einheiten ohne Datum: jeder Block zählt, das Fenster ist „Info fehlt“ (Augen offen)', () => {
   const a = angebot();
   a.module[0].teile[2].einheiten = { anzahl: 12 };
   const z = M.rechnen(a, { bloecke: [{ id: 'l', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }] }).teile.get('bsp-vn');
   assert.equal(z.ist_min, 16 * 120);
-  assert.ok(z.flags.some((f) => f.art === 'freigabe_offen' && f.stufe === 'kommt'));
+  assert.ok(z.flags.some((f) => f.art === 'info_fehlt' && f.stufe === 'kommt'));
 });
 
-test('Anmeldungen werden Fristen — an Prüfungen, einzelnen Prüfungsterminen und Gruppen', () => {
+test('Fristen: ISIS geht vor, sonst § 63 als Verweis — Anmeldung, Abmeldung; an Gruppen die Anmeldung', () => {
   const a = angebot();
   a.module[0].pruefungen[0].anmeldung = { von: '2030-10-19', von_zeit: '18:00', bis: '2030-11-30', bis_zeit: '23:59', wo: 'MTS (über MOSES)' };
   a.module[0].teile[3].anmeldung = { bis: '2030-10-16', wo: 'MOSES' };
-  const f = M.rechnen(a, {}).vorkommen.filter((v) => v.quelle === 'frist');
-  const bis = f.find((v) => v.id === 'bsp-klausur-anmeldung-bis');
+  const e = M.rechnen(a, {});
+  const f = e.vorkommen.filter((v) => v.quelle === 'frist');
+  const bis = f.find((v) => v.id === 'bsp-klausur-anmeldung');
+  assert.equal(bis.datum, '2030-11-30');
   assert.equal(bis.punkt, M.min('23:59'));
   assert.ok(bis.wichtig);
   assert.match(bis.titel, /Anmeldung endet \(MTS\)$/);
+  assert.ok(f.some((v) => v.id === 'bsp-klausur-anmeldung_ab' && v.datum === '2030-10-19'));
   assert.ok(f.some((v) => v.id === 'bsp-ue-anmeldung-bis' && v.teil === 'bsp-ue'));
+  // Ohne ISIS-Frist: Anmeldung bis eine Woche, Abmeldung bis drei Tage vor der Klausur (Mo 03.03.).
+  const r = M.rechnen(angebot(), {}).pruefungen.get('bsp-klausur').fristen;
+  assert.deepEqual(r.filter((x) => !x.regel).map((x) => [x.art, x.datum]), [['anmeldung', '2031-02-24'], ['abmeldung', '2031-02-28']]);
 });
 
-test('Prüfungswahl: der gewählte Termin bindet die Vorbereitung, bei echter Wahl verschwindet der andere', () => {
+test('Prüfungswahl: offen gilt der früheste Termin (G7), gewählt der gewählte — der andere bleibt als Rückfall stehen', () => {
   const a = angebot();
-  a.module[0].pruefungen[0].wahl = true;
-  a.module[0].pruefungen[0].termine.push({ datum: '2031-03-10', start: '10:00', ende: '11:30', wichtig: false });
+  a.module[0].pruefungen[0].termine.push({ datum: '2031-03-10', start: '10:00', ende: '11:30' });
   const ohne = M.rechnen(a, {});
+  const X = ohne.pruefungen.get('bsp-klausur');
+  assert.equal(X.alternativen, 'wahl_offen');
+  assert.equal(X.annahme, true);
   assert.ok(ohne.module[0].flags.some((f) => f.art === 'pruefung_wahl'));
   assert.equal(ohne.teile.get('bsp-pv').pruefungstermin.datum, '2031-03-03');
   const mit = M.rechnen(a, { pruefungstermin: { 'bsp-klausur': '2031-03-10' } });
+  assert.equal(mit.pruefungen.get('bsp-klausur').alternativen, 'gewaehlt');
   assert.equal(mit.teile.get('bsp-pv').pruefungstermin.datum, '2031-03-10');
-  assert.deepEqual(mit.vorkommen.filter((v) => v.quelle === 'pruefung').map((v) => v.datum), ['2031-03-10']);
+  assert.deepEqual(mit.vorkommen.filter((v) => v.quelle === 'pruefung').map((v) => [v.datum, v.wichtig]), [['2031-03-03', false], ['2031-03-10', true]]);
+  // Die Fristen wandern mit (Verweise): Anmeldung bis 03.03., Abmeldung bis 07.03.
+  assert.deepEqual(mit.pruefungen.get('bsp-klausur').fristen.filter((x) => !x.regel).map((x) => x.datum), ['2031-03-03', '2031-03-07']);
 });
 
-test('Prüfungen überschneiden sich: am Modul, orange sobald Termine bekannt sind', () => {
+test('Abgleich: zwei Prüfungen an einem Tag melden sich (Achtung)', () => {
   const a = angebot();
-  a.module[0].pruefungen.push({ id: 'bsp-b', titel: 'Zweite', termine: [{ datum: '2031-03-03', start: '11:00', ende: '12:00' }] });
-  assert.ok(M.rechnen(a, {}).module[0].flags.some((f) => f.art === 'pruefung_konflikt' && f.stufe === 'achtung'));
+  a.module[0].pruefungen.push({ id: 'bsp-b', titel: 'Zweite', termine: [{ datum: '2031-03-03', start: '13:00', ende: '14:00' }] });
+  const e = M.rechnen(a, {});
+  assert.deepEqual(e.audit.pruefungstage.map((x) => [x.datum, x.pruefungen.length]), [['2031-03-03', 2]]);
+  assert.ok(e.planFlags.some((f) => f.art === 'zwei_pruefungen' && f.stufe === 'achtung'));
 });
 
-test('Bilanz: eingeplant − zu viel = gedeckt', () => {
-  const e = M.rechnen(angebot(), { wahl: { 'bsp-ue': 'g2' }, bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '08:00', ende: '12:00' }] });
-  assert.equal(e.summe.ist_min - e.summe.ueber_min, e.summe.gedeckt_min);
-  assert.ok(e.summe.ueber_min > 0);
+test('Bilanz: LP × 30 h = Semester-Topf + Prüfungs-Topf; erledigt zählt erst mit ✓ (G6)', () => {
+  const plan = { wahl: { 'bsp-ue': 'g2' }, bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '08:00', ende: '10:00' }] };
+  const e = M.rechnen(angebot(), plan, { heute: '2030-10-25' });
+  assert.equal(e.summe.semester_min + e.summe.pruefung_min, e.summe.soll_min);
+  assert.equal(e.summe.erledigt_min, 0, 'nichts abgehakt');
+  const vk = e.vorkommen.filter((v) => v.vergangen);
+  assert.ok(vk.length > 0 && vk.every((v) => v.ist === 'offen'));
+  const ist = Object.fromEntries(vk.map((v) => [v.id, 'ja']));
+  const f = M.rechnen(angebot(), { ...plan, ist }, { heute: '2030-10-25' });
+  assert.equal(f.summe.erledigt_min, vk.reduce((s, v) => s + v.zaehlt_min, 0));
 });
 
 test('Phasen: Vorlesungszeit, Pause, vorlesungsfreie Zeit', () => {
@@ -524,88 +564,86 @@ test('Phasen: Vorlesungszeit, Pause, vorlesungsfreie Zeit', () => {
   assert.equal(M.phaseVon(SEM, '2031-03-01').id, 'frei');
 });
 
-test('Annahmen an einem Ort: Regeln, Aufteilungen, Videolängen; eine bestätigte Annahme ist nicht mehr gelb', () => {
+test('Annahmen an einem Ort: Regeln, Texte, Videolängen, erwartete Termine', () => {
   const a = angebot();
-  a.module[0].teile[1].annahme = '10 h für Videos, weil …';
+  a.module[0].teile[1].annahme = 'zwei Videos angenommen';
+  a.module[0].teile[1].einheiten.laenge_min = null;
+  a.module[0].teile[3].optionen = []; a.module[0].teile[3].wahl = true; a.module[0].teile[3].erwartet = { anzahl: 12 };
   const e = M.rechnen(a, {});
   const liste = M.annahmen(a, e);
   assert.ok(liste.some((x) => x.id === 'regel:lp_h' && x.fest));
-  assert.ok(liste.some((x) => x.id === 'soll:bsp-video' && x.feld === 'soll_h' && x.wert === 10));
-  assert.ok(e.teile.get('bsp-video').flags.some((f) => f.art === 'annahme'));
-  assert.ok(!M.rechnen(a, { bestaetigt: { 'soll:bsp-video': true } }).teile.get('bsp-video').flags.some((f) => f.art === 'annahme'));
+  assert.ok(liste.some((x) => x.id === 'regel:woche_h' && x.wert === 45));
+  assert.ok(liste.some((x) => x.id === 'text:bsp-video'));
+  assert.ok(liste.some((x) => x.id === 'video:bsp-video' && x.feld === 'annahme_min'));
+  assert.ok(liste.some((x) => x.id === 'erwartet:bsp-ue' && x.wert === 12));
   assert.ok(M.luecken(e).every((f, i, l) => i === 0 || M.STUFEN.indexOf(l[i - 1].stufe) <= M.STUFEN.indexOf(f.stufe)));
 });
 
-test('Serie mit Angaben je Tag und Posten, den die Teile nicht ganz tragen', () => {
+test('Serie mit Angaben je Tag', () => {
   const a = angebot();
   a.module[0].teile[0].termine.tage = { '2030-10-22': { titel: 'Übung statt VL' } };
-  a.module[0].teile[2].soll_h = 10; // Video 10 + Nachbereitung 10 = 20 von 30 h
   const e = M.rechnen(a, {});
   assert.equal(e.teile.get('bsp-vl').vk.find((v) => v.datum === '2030-10-22').titel, 'Übung statt VL');
-  assert.ok(e.module[0].flags.some((f) => f.art === 'posten_teile'));
 });
 
 // ── V-0332: Stufen nach Datum, Phase und Stand der Prüfung; Wochenbedarf ───────────────────────
 
-test('Stufen: Prüfungsthemen grau ohne Termin, orange mit Termin, rot sobald die Anmeldung läuft; Raum fehlt bleibt orange', () => {
+test('Stufen: Prüfungsanmeldung „du bist dran“, solange sie läuft, in der letzten Woche kritisch, vorbei kritisch; angemeldet nichts', () => {
   const a = angebot();
-  const p = a.module[0].pruefungen[0];
-  p.offen = 'Bestehensgrenze kommt in der 1. VL';
-  p.termine[0].offen = 'Raum steht noch nicht fest';
-  p.anmeldung = { von: '2030-11-01', bis: '2030-11-30', wo: 'MOSES' };
-  const stufe = (heute, art) => M.rechnen(a, {}, { heute }).module[0].flags.filter((f) => f.art === art).map((f) => f.stufe);
-  assert.deepEqual(stufe('2030-10-20', 'pruefung_offen'), ['achtung', 'achtung']); // Termin bekannt
-  assert.deepEqual(stufe('2030-11-05', 'pruefung_offen'), ['kritisch', 'achtung']); // Anmeldung läuft, Raum bleibt orange
-  assert.deepEqual(stufe('2030-10-20', 'anmelden'), ['info']);
-  assert.deepEqual(stufe('2030-11-05', 'anmelden'), ['kritisch']);
-  assert.deepEqual(M.rechnen(a, { angemeldet: { 'bsp-klausur': true } }, { heute: '2030-11-05' }).module[0].flags.filter((f) => f.art === 'anmelden'), []);
-  p.termine = [];
-  delete p.anmeldung;
-  assert.deepEqual(stufe('2030-10-20', 'pruefung_offen'), ['kommt']); // kein Termin: grau
+  a.module[0].pruefungen[0].anmeldung = { von: '2030-11-01', bis: '2030-11-30', wo: 'MOSES' };
+  const stufe = (heute, plan = {}) => M.rechnen(a, plan, { heute }).module[0].flags.filter((f) => f.art === 'anmeldung').map((f) => f.stufe);
+  assert.deepEqual(stufe('2030-10-20'), ['info']);
+  assert.deepEqual(stufe('2030-11-05'), ['dran']);
+  assert.deepEqual(stufe('2030-11-25'), ['kritisch']);
+  assert.deepEqual(stufe('2030-12-02'), ['kritisch'], 'vorbei: angemeldet? Dann Stand setzen');
+  assert.deepEqual(stufe('2030-11-25', { pruefung: { 'bsp-klausur': { status: 'angemeldet' } } }), []);
 });
 
-test('Stufen: Prüfungsvorbereitung erst ab der vorlesungsfreien Zeit kritisch, vorher „später“', () => {
+
+test('Stufen: „Info fehlt“ ist bis zum Stichtag grau (Augen offen), danach orange (nachfragen) — kein Fehler', () => {
   const a = angebot();
-  const st = (heute) => M.rechnen(a, {}, { heute }).teile.get('bsp-pv').flags.find((f) => f.art === 'ungeplant').stufe;
-  assert.equal(st('2030-12-01'), 'spaeter');
-  assert.equal(st('2031-02-16'), 'kritisch');
-  a.module[0].pruefungen[0].termine[0].datum = '2030-12-15'; // Prüfung in der Vorlesungszeit: drei Wochen vorher
-  assert.equal(st('2030-11-20'), 'spaeter');
-  assert.equal(st('2030-11-25'), 'kritisch');
+  a.module[0].teile[3].optionen = []; a.module[0].teile[3].wahl = true; a.module[0].teile[3].stichtag = '2030-10-17';
+  const st = (heute) => M.rechnen(a, {}, { heute }).teile.get('bsp-ue').flags.find((f) => f.art === 'info_fehlt').stufe;
+  assert.equal(st('2030-10-15'), 'kommt');
+  assert.equal(st('2030-10-18'), 'achtung');
+  assert.equal(M.rechnen(a, {}, { heute: '2030-10-15' }).teile.get('bsp-ue').info.stichtag, '2030-10-17');
 });
 
-test('Stufen: selbst zu Planendes ist „du bist dran“, ausstehende Termine „kommt noch“, ±2 h werden nicht gemeldet', () => {
+test('Gruppe mit Zuteilung: Wunsch → angemeldet → Zuteilung offen → zugeteilt; ohne Anmeldung nach der Frist gescheitert', () => {
   const a = angebot();
-  a.module[0].teile[3].optionen = []; a.module[0].teile[3].wahl = true;
-  const e = M.rechnen(a, { bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '10:15' }] }, { heute: '2030-10-20' });
-  assert.equal(e.teile.get('bsp-ue').stufe, 'kommt');
-  assert.ok(!e.teile.get('bsp-vn').flags.some((f) => f.art === 'luecke'), '20 h Soll, 16 × 1:15 = 20 h');
-  const e2 = M.rechnen(a, {}, { heute: '2030-10-20' });
-  assert.equal(e2.teile.get('bsp-vn').flags.find((f) => f.art === 'ungeplant').stufe, 'dran');
-});
-
-test('Gruppenanmeldung: „du bist dran“, in der letzten Woche kritisch; Ausweichtermine verdrängen nichts', () => {
-  const a = angebot();
+  a.module[0].teile[3].zuteilung = true;
   a.module[0].teile[3].anmeldung = { von: '2030-10-01', bis: '2030-10-20', wo: 'MOSES' };
-  const st = (heute) => M.rechnen(a, {}, { heute }).teile.get('bsp-ue').flags.find((f) => f.art === 'anmelden').stufe;
-  assert.equal(st('2030-10-05'), 'dran');
-  assert.equal(st('2030-10-15'), 'kritisch');
+  const z = (plan, heute = '2030-10-10') => M.rechnen(a, plan, { heute }).teile.get('bsp-ue');
+  assert.equal(z({}).alternativen, 'wahl_offen');
+  assert.equal(z({}, '2030-10-15').flags.find((f) => f.art === 'wahl_offen').stufe, 'kritisch', 'letzte Woche der Anmeldung');
+  const wunsch = z({ wahl: { 'bsp-ue': 'g1' } });
+  assert.equal(wunsch.alternativen, 'wahl_offen');
+  assert.equal(wunsch.plan_min, 0, 'ein Wunsch ist nicht verplant');
+  assert.ok(wunsch.vk.every((v) => v.annahme && v.hart), 'steht als Arbeitsannahme da und sperrt');
+  assert.equal(z({ wahl: { 'bsp-ue': 'g1' }, angemeldet: { 'bsp-ue': true } }).alternativen, 'zuteilung_offen');
+  const zu = z({ wahl: { 'bsp-ue': 'g1' }, angemeldet: { 'bsp-ue': true }, zugeteilt: { 'bsp-ue': 'g1' } });
+  assert.equal(zu.alternativen, 'gewaehlt');
+  assert.equal(zu.plan_min, 3 * 120);
+  assert.equal(z({ wahl: { 'bsp-ue': 'g1' } }, '2030-10-21').alternativen, 'gescheitert', 'nach der Frist ohne Anmeldung');
+  assert.equal(z({ wahl: { 'bsp-ue': 'g1' }, angemeldet: { 'bsp-ue': true }, zugeteilt: { 'bsp-ue': 'keine' } }).alternativen, 'gescheitert', 'kein Platz');
+  // Ein Rückfalltermin einer Prüfung auf der VL ist kein Konflikt.
   a.module[0].pruefungen[0].termine.push({ datum: '2030-10-15', start: '10:00', ende: '11:00', wichtig: false });
-  const e = M.rechnen(a, {});
-  assert.ok(!e.teile.get('bsp-vl').flags.some((f) => f.art === 'konflikt'), 'Zweittermin auf der VL ist kein Konflikt');
+  assert.ok(!M.rechnen(a, {}).teile.get('bsp-vl').flags.some((f) => f.art === 'konflikt'));
 });
 
 test('Wochenbedarf: was dran wäre, was eingeplant ist, was fehlt — und warum', () => {
   const a = angebot();
-  a.module[0].teile[3].optionen = []; a.module[0].teile[3].wahl = true;
+  a.module[0].teile[3].optionen = []; a.module[0].teile[3].wahl = true; a.module[0].teile[3].erwartet = { anzahl: 14 };
   const plan = { bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '10:00' }] };
   const e = M.rechnen(a, plan);
   const std = Object.fromEntries(M.wochenBedarf(a, plan, e).map((b) => [b.z.teil.id, b]));
   assert.equal(std['bsp-vl'].grund, 'ok');
   assert.equal(std['bsp-ue'].grund, 'kommt');
-  assert.equal(std['bsp-ue'].offen_min, Math.round((30 * 60) / 16)); // der Posten auf 16 Vorlesungswochen
+  assert.equal(std['bsp-ue'].soll_min, 120, 'eine erwartete Doppelstunde je Woche');
   assert.equal(std['bsp-vn'].grund, 'planen');
-  assert.ok(!('bsp-pv' in std), 'Prüfungsvorbereitung gehört in die vorlesungsfreie Zeit');
+  assert.equal(std['bsp-vn'].soll_min, Math.round(e.teile.get('bsp-vn').wochenwert_min), 'die Standardwoche will den Wochenwert');
+  assert.equal(std['bsp-vn'].ist_min, 60);
+  assert.ok(!('bsp-pv' in std), 'der Prüfungs-Topf steht unter „Prüfungen“');
   const w = Object.fromEntries(M.wochenBedarf(a, plan, e, '2030-10-21').map((b) => [b.z.teil.id, b]));
   assert.equal(w['bsp-video'].soll_min, M.videoBlockMin(105)); // Video 1 erscheint in dieser Woche
   assert.equal(w['bsp-vl'].ist_min, 120);

@@ -12,6 +12,22 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 12.10.2026 — /silas rechnet nach dem Kontingent-Modell (V-0349)
+
+- Silas fand die Rechnung unverständlich (120/120/162/90/140 h bei je 6 LP; BuK „138 von 140“ trotz Überschuss) und ließ
+  das Modell abseits des Tools neu aufstellen (Fassung 4, mit seinen Entscheidungen und drei Prüfungen durch einen
+  zweiten Agenten). Der Planer rechnet jetzt danach: jeder Posten der Aufwandstabelle ein Kontingent, Termine zuerst,
+  verteilt wird nur Selbststudium (Wochenwert = (Kontingent − erledigt) ÷ Wochen im Fenster), zwei Töpfe (Semester,
+  Prüfungen; 900 h = 595,5 + 304,5 h). Zu wenige Präsenztermine gehen nach G5 in die Prüfungsvorbereitung (EINFWI-Übung
+  20 h, STAT1 12,5 h, BuK-Tutorium 4 h) — die Umwidmung von Hand ist entfernt.
+- Der Baum je Veranstaltung mit „Info fehlt“ samt Stichtag (kein Fehler, „Augen offen“), Zuteilung (Wunsch zählt nicht
+  als verplant), die TU-Schließung 18.12.–04.01., ✓/✗/… für Vergangenes. Prüfungen mit Stand nach § 63, Fristen als
+  Verweise, Punkten, Quote, Wiederholung — und ein Vorschlag (zwei Wochenenden à 10 h, dann rückwärts, Grenzen 45 h/9 h,
+  keine Feiertage) samt Ziehen im Prüfungskalender. Der Abgleich ist eine eigene Ansicht, das Offene eine Liste mit
+  Stichtagen. Präsenz rot umrandet, Quizze als Lernen, Klausur-Fragestunde und Probeklausuren unter Prüfungen.
+- Befund mit Silas' echten Blöcken: In den Vorlesungswochen ist kein Platz für den EINFWI-Test (40 h); das und das
+  PROG1-Mehr (30 h) stehen als Entscheidung offen (docs/SILAS.md §8).
+
 ## 12.10.2026 — /silas: Probepläne, Gruppenwahl mit Abwählen, Mittag je Tag, Fahrzeit 45 min, einzelne Blöcke (V-0345)
 
 - Silas ging den Planer von vorn durch. Neu: Probepläne unter /silas/1 … /9 (eigener Stand, der echte bleibt unberührt);
