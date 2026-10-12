@@ -1071,3 +1071,22 @@ button.link { text-decoration: underline; text-underline-offset: 2px; color: inh
 .p-mehr > summary { cursor: pointer; padding: 2px 0; font-size: 12px; font-weight: 600; color: var(--grau-9); }
 .p-mehr[open] > summary { margin-bottom: 4px; }
 .p-bald { color: var(--blau-text); font-weight: 600; }
+
+/* ── V-0356: Modul leuchtet, Vorgabe in den Details ─────────────────────────────────────────── */
+.kachel.m-hell { z-index: 5; box-shadow: 0 0 0 2px var(--blau); }
+.kachel.lage-frueher.m-hell, .kachel.lage-erledigt.m-hell { box-shadow: 0 0 0 2px var(--blau); opacity: 1; }
+.t-karte .t-vorgabe { margin: 0; font-size: 12px; color: var(--grau-9); line-height: 1.4; }
+.reihe .r-knoepfe { flex-wrap: nowrap; align-items: center; }
+.reihe .r-knoepfe .knopf { white-space: nowrap; }
+.reihe .r-knoepfe .knopf.rund { width: 28px; padding: 0; justify-content: center; }
+.kal-ziel { font-size: 10px; font-weight: 700; border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--blau-flaeche); color: var(--blau-text); box-shadow: inset 0 0 0 1px var(--blau); }
+.kal-vorschlag.puls { animation: leuchten .8s ease-in-out 3; }
+@media (prefers-reduced-motion: reduce) { .kal-vorschlag.puls { animation: none; box-shadow: 0 0 0 2px var(--blau); } }
+.p-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.p-zeile .p-k { color: var(--grau-8); font-size: 11px; min-width: 42px; }
+.p-zeile select.klein, .p-zeile input.klein { height: 26px; font-size: 12px; padding: 0 4px; border-radius: 6px; border: 1px solid var(--grau-5); background: var(--grau-1); color: var(--grau-10); }
+.p-zeile input.klein { width: 56px; }
+.p-vor { color: var(--blau-text); }
+.kal-tag.option { box-shadow: inset 0 0 0 2px var(--blau); border-style: dashed; }
+.kal-option { font-size: 10px; font-weight: 700; color: var(--blau-text); }
+.pruef-detail .vorschlag .r-knoepfe { flex-wrap: wrap; margin: 4px 0 0; }

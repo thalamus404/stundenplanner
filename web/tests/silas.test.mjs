@@ -311,21 +311,23 @@ test('Seite: kein inneres const/let mit dem Namen eines Helfers der obersten Ebe
   assert.deepEqual([...new Set(innen)], [], `verdeckt: ${innen.join(', ')}`);
 });
 
-test('Vorgabe je Woche: Video so lang wie seine Einheiten ÷ Videowochen; EVL 1,5–2 h, k je Woche oder alle n Wochen', () => {
+test('Vorgabe je Woche: Video so lang wie seine Einheiten ÷ Videowochen; EVL 1,5–2 h, k je Woche oder alle n Wochen — Vor-/Nachbereitung halbiert (V-0356)', () => {
   const e = M.rechnen(angebot(), {});
   const v = M.vorgabe(e, 'bsp-video');
   // Zwei Videos ab W02 brauchen 4 h; verteilt auf die 15 Wochen ab der ersten Freigabe: 30 min je Woche.
   assert.deepEqual([v.anzahl, v.alle, v.wochen, v.dauer_min], [1, 1, 15, 30]);
   assert.equal(v.video_min, 240);
-  // 26 h Nachbereitung (30 − 4 h Videos) in 16 Vorlesungswochen: 1:45 h jede Woche, 15 Wochen (26,25 h).
+  // 26 h Nachbereitung (30 − 4 h Videos) in 16 Vorlesungswochen: 1:45 h jede Woche, 15 Wochen (26,25 h) — als Vor- und
+  // Nachbereitung halbiert (V-0356): zweimal 45 min (22,5 h liegt näher an 26 h als zweimal 1 h = 30 h).
   const n = M.vorgabe(e, 'bsp-vn');
-  assert.deepEqual([n.dauer_min, n.anzahl, n.alle, n.wochen, n.summe_min], [105, 1, 1, 15, 15 * 105]);
+  assert.deepEqual([n.dauer_min, n.anzahl, n.alle, n.wochen, n.summe_min], [45, 2, 1, 15, 15 * 90]);
   const vl = e.wochen.filter((w) => w.art === 'vorlesung');
   assert.equal(n.bis, vl[14].bis, 'endet mit der 15. Vorlesungswoche');
-  // Ohne Videos ist die ganze Nachbereitung 30 h: 2 h jede Woche, 15 Wochen.
+  // Ohne Videos ist die ganze Nachbereitung 30 h: 2 h jede Woche, 15 Wochen — halbiert: zweimal 1 h (Silas: „eine Stunde als
+  // Vorbereitung, eine Stunde als Nachbereitung“).
   const a = angebot(); a.module[0].teile.splice(1, 1);
   const n30 = M.vorgabe(M.rechnen(a, {}), 'bsp-vn');
-  assert.deepEqual([n30.dauer_min, n30.anzahl, n30.alle, n30.wochen, n30.summe_min], [120, 1, 1, 15, 30 * 60]);
+  assert.deepEqual([n30.dauer_min, n30.anzahl, n30.alle, n30.wochen, n30.summe_min], [60, 2, 1, 15, 30 * 60]);
   const mitBis = M.rechnen(a, { bloecke: [{ id: 'b', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00', bis: n30.bis }] });
   assert.equal(mitBis.teile.get('bsp-vn').ist_min, 30 * 60, 'der gelegte Block trägt genau das Kontingent');
   assert.equal(M.vorgabe(e, 'bsp-vl'), null, 'Präsenz hat keine Vorgabe');
@@ -396,11 +398,12 @@ test('Vorschlag: die zwei Wochenenden vor der Prüfung je höchstens 10 h, dann 
   assert.ok(X.vorschlag.every((v) => v.datum >= '2030-10-14'));
   assert.ok(X.vorschlag.filter((v) => v.datum <= '2031-02-15' && !M.istFrei(SEM, v.datum)).every((v) => M.wochentag(v.datum) >= 5));
   assert.ok(!X.vorschlag.some((v) => ['2030-12-24', '2030-12-25', '2030-12-26', '2030-12-31', '2031-01-01'].includes(v.datum)));
-  // Was schon liegt, verbraucht das Kontingent und die Kapazität: 6 h am 01.03. → dort schlägt er nur noch 3 h vor.
+  // Was schon liegt, zählt zum Wochenende (V-0356): 6 h am Sa 01.03. → Sa nichts mehr, So 02.03. 4 h (10 h je Wochenende).
   const mit = M.rechnen(angebot(), { bloecke: [{ id: 'a', teil: 'bsp-pv', datum: '2031-03-01', start: '09:00', ende: '15:00' }] }, { heute: '2030-10-14' });
   const Y = mit.pruefungen.get('bsp-klausur');
   assert.equal(Y.geplant_min, 360);
-  assert.equal((Y.vorschlag.find((v) => v.datum === '2031-03-01') || { min: 0 }).min, 180);
+  assert.equal((Y.vorschlag.find((v) => v.datum === '2031-03-01') || { min: 0 }).min, 0);
+  assert.equal((Y.vorschlag.find((v) => v.datum === '2031-03-02') || { min: 0 }).min, 240);
   assert.equal(Y.vorschlag.reduce((s, v) => s + v.min, 0), 84 * 60);
 });
 

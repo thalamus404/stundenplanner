@@ -505,3 +505,36 @@ test('V-0354: Gerüst der Standardwoche — eine Reihe seltener als jede zweite 
   assert.ok(std.filter((k) => k.teil !== 'por-ue').every((k) => !k.unregel));
   assert.ok(M.regelmaessigAb(e) >= 8);
 });
+
+// ── V-0356: halbe Lernblöcke, Vorschlag am Wochenende vor der Prüfung ──────────────────────────
+
+test('V-0356: Vor-/Nachbereitung und Quizze in halben Blöcken — doppelte Anzahl; Labs und Aufgaben bleiben', () => {
+  const e = rechne({ wahl: { 'por-ue': 'por-g1' } });
+  const q = M.vorgabe(e, 'sys-quiz');
+  assert.deepEqual([q.dauer_min, q.anzahl, q.alle], [60, 1, 1], '15 Quizze à 1 h: statt 2 h alle zwei Wochen 1 h jede Woche');
+  const vn = M.vorgabe(e, 'ana-vn');
+  assert.deepEqual([vn.dauer_min, vn.anzahl, vn.alle], [60, 2, 1], '30 h: statt 2 h jede Woche zweimal 1 h');
+  // Ein Lab (kategorie aufgaben) wird nicht geteilt.
+  const a = angebot();
+  a.module[0].teile.find((t) => t.id === 'ana-vn').titel = 'Labs und Aufgaben';
+  const lab = M.vorgabe(M.rechnen(a, {}, { heute }), 'ana-vn');
+  assert.deepEqual([lab.dauer_min, lab.anzahl], [120, 1]);
+});
+
+test('V-0356: Vorschlag — das Wochenende vor der Prüfung gleichmäßig auf Sa und So, auch wenn die Woche schon 45 h hat', () => {
+  // Der Online-Test (Mo 16.12.2030) mit 2,5 h Vorbereitung; die Woche davor ist Mo–Fr mit 9 h Blöcken voll (über 45 h).
+  const a = angebot();
+  const por = a.module.find((m) => m.id === 'POR');
+  por.posten.find((p) => p.id === 'pv-t').h = 2.5;
+  por.posten.find((p) => p.id === 'pv-k').h = 87.5;
+  const voll = ['2030-12-09', '2030-12-10', '2030-12-11', '2030-12-12', '2030-12-13'].map((datum, i) => ({ id: `v${i}`, teil: 'ana-vn', datum, start: '08:00', ende: '17:00' }));
+  const e = M.rechnen(a, { wahl: { 'por-ue': 'por-g1' }, bloecke: voll }, { heute });
+  assert.ok(M.wochenLast(e, '2030-12-09') > 45 * 60, 'die Woche ist über 45 h');
+  const X = e.pruefungen.get('por-t');
+  const tag = Object.fromEntries(X.vorschlag.map((v) => [v.datum, v.min]));
+  assert.deepEqual([tag['2030-12-14'], tag['2030-12-15']], [60, 90], 'Sa 1 h, So 1,5 h (Silas: „am ersten Tag eine Stunde, am zweiten 1,5 Stunden“)');
+  assert.equal(X.passt_nicht_min, 0);
+  // Liegt am Samstag schon 1 h, schlägt er nur noch den Sonntag vor.
+  const mit = M.rechnen(a, { wahl: { 'por-ue': 'por-g1' }, bloecke: [...voll, { id: 's', teil: 'por-pv-t', datum: '2030-12-14', start: '09:00', ende: '10:00' }] }, { heute });
+  assert.deepEqual(mit.pruefungen.get('por-t').vorschlag, [{ datum: '2030-12-15', min: 90 }]);
+});
