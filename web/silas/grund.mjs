@@ -34,6 +34,7 @@ export const REGELN = {
   erwartet_min: 120,     // ein Termin, dessen Daten noch fehlen (Tutorium, Übung): eine Doppelstunde
   evl_block_min: 120,    // Silas, 11.10. (V-0335): „EVL-Block muss einfach zwei Stunden sein“ …
   evl_min_min: 90,       // … „mindestens anderthalb Stunden“
+  lern_min_min: 45,      // V-0356: Vor-/Nachbereitung und Quizze in halben Blöcken (2 h → 2 × 1 h, 1,5 h → 2 × 45 min)
   evl_fenster: ['10:00', '18:00'], // freie Plätze dazwischen sind bevorzugt („alles zwischen 10 und 18 Uhr preferred“)
   tag_fenster: ['08:00', '20:00'], // wo freie Plätze überhaupt gesucht werden
   pruef_fenster: ['07:00', '22:00'], // Prüfungsvorbereitung: auch früh und abends (V-0337)

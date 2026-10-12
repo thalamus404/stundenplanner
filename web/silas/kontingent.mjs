@@ -523,7 +523,12 @@ export const wochenLast = (erg, d) => (erg.last.wochen.get(montagVon(d)) || { su
 // ── 10b · Vorschlag für die Prüfungsvorbereitung ─────────────────────────────────────────────────
 // Prüfungen nach Datum; je Prüfung zuerst die zwei Wochenenden davor (je höchstens 10 h), dann rückwärts vom Tag vor
 // der Prüfung: in der Vorlesungszeit nur Sa/So, sonst jeder Tag. Nie an Feiertagen, nie vor heute, nie über die freie
-// Kapazität (9 h je Tag, 45 h je Woche, nach allem schon Geplanten). Was nicht passt, steht als „passt nicht“ da.
+// Kapazität (9 h je Tag, nach allem schon Geplanten). Was nicht passt, steht als „passt nicht“ da.
+// Die zwei Wochenenden (V-0356, Silas, 12.10.: „es soll immer beim Wochenende davor möglichst die Hälfte vom Pensum
+// geschafft werden … wenn es 2,5 h Vorbereitung sind, dann mache ich am ersten Tag eine Stunde, am zweiten 1,5 Stunden“):
+// gleichmäßig auf Sa und So (Sa die abgerundete Hälfte), was schon an ihnen liegt, eingerechnet — und ohne die Grenze
+// von 45 h je Woche, die gilt nur für den Rest (G10: die Prüfung geht vor; in den Vorlesungswochen ist sie sonst immer
+// schon voll, und der Vorschlag zerfiel in halbe Stunden über drei Wochenenden).
 
 function vorschlag(erg) {
   const r = erg.regeln, sem = erg.sem, heute = erg.heute;
@@ -531,8 +536,8 @@ function vorschlag(erg) {
   const vt = new Map(), vw = new Map(); // vorgeschlagene Minuten je Tag / je Woche
   const freiTag = (d) => Math.max(0, r.tag_h * 60 - tagLast(erg, d) - (vt.get(d) || 0));
   const freiWoche = (d) => Math.max(0, r.woche_h * 60 - wochenLast(erg, d) - (vw.get(montagVon(d)) || 0));
-  const legen = (d, m, wohin) => {
-    let x = Math.min(m, freiTag(d), freiWoche(d));
+  const legen = (d, m, wohin, ohneWoche = false) => {
+    let x = Math.min(m, freiTag(d), ohneWoche ? Infinity : freiWoche(d));
     x = Math.floor(x / 30) * 30;
     if (x <= 0) return 0;
     vt.set(d, (vt.get(d) || 0) + x); vw.set(montagVon(d), (vw.get(montagVon(d)) || 0) + x);
@@ -552,15 +557,22 @@ function vorschlag(erg) {
     const so = plusTage(tagX, -(wochentag(tagX) + 1));
     // Die zwei Wochenenden davor tragen je höchstens 10 h — auch danach füllt der Rest sie nicht weiter auf.
     const we = new Set();
+    const schon = (d) => X.bloecke.filter((v) => v.datum === d).reduce((s_, v) => s_ + (v.zaehlt_min || 0), 0);
     for (let k = 0; k < 2; k++) {
       const s = plusTage(so, -7 * k), sa = plusTage(s, -1);
-      let paket = 0;
-      for (const d of [sa, s]) {
-        we.add(d);
-        if (d < ab || d >= tagX || fei.has(d) || rest <= 0 || paket >= r.we_h * 60) continue;
-        const g = legen(d, Math.min(rest, r.we_h * 60 - paket), wohin);
-        rest -= g; paket += g;
+      we.add(sa); we.add(s);
+      const tage = [sa, s].filter((d) => d >= ab && d < tagX && !fei.has(d));
+      if (!tage.length || rest <= 0) continue;
+      const da = tage.reduce((x, d) => x + schon(d), 0);
+      const paket = Math.min(rest + da, r.we_h * 60); // was das Wochenende insgesamt tragen soll
+      let gelegt = 0;
+      if (tage.length === 2) {
+        const soll1 = Math.floor(paket / 2 / 30) * 30;
+        for (const [d, soll] of [[tage[0], soll1], [tage[1], paket - soll1]]) gelegt += legen(d, Math.max(0, Math.min(soll - schon(d), paket - da - gelegt)), wohin, true);
       }
+      // Was ein Tag nicht nehmen konnte (9 h voll), nimmt der andere.
+      for (const d of tage) gelegt += legen(d, Math.max(0, paket - da - gelegt), wohin, true);
+      rest -= gelegt;
     }
     for (let d = plusTage(tagX, -1); rest > 0 && d >= ab; d = plusTage(d, -1)) if (erlaubt(d) && !we.has(d)) rest -= legen(d, rest, wohin);
     X.vorschlag = [...wohin].map(([datum, m]) => ({ datum, min: m })).sort((a, b) => (a.datum < b.datum ? -1 : 1));
