@@ -197,7 +197,7 @@ im Angebot mit `schritt` überschreibbar), jedes Vorkommen trägt ihn (`schritt`
 
 | Schritt | Was | Teile | Silas tut |
 |---|---|---|---|
-| 1 Grundlage | feste Präsenztermine, Quizze und ihre Fristen, Einzeltermine | Präsenz mit eigenen Terminen | nichts wählen — prüfen, fehlende Uhrzeit/Raum eintragen |
+| 1 Grundlage | feste Präsenztermine und Einzeltermine (seit V-0345 ohne Quizze — sie stehen in Schritt 4) | Präsenz mit eigenen Terminen | nichts wählen — prüfen, fehlende Uhrzeit/Raum eintragen |
 | 2 Gruppen | Tutorien und Übungen mit Gruppen, ihre Anmeldungen | Präsenz mit `optionen` oder ohne Termine (die Gruppen kommen noch) | Gruppe wählen oder eintragen |
 | 3 Videos | Screencasts, Lehrvideos | `video` | Blöcke legen |
 | 4 EVL | eigenverantwortliches Lernen: Vor-/Nachbereitung, Labs, Quizze bearbeiten | `selbst` | Blöcke legen |
@@ -230,6 +230,14 @@ Ein Block beginnt, wo es etwas für ihn gibt (V-0342, Silas: *„wieso ist das d
 weil das noch nicht da anfängt“*): `ab` der Vorgabe ist die erste Freigabe (Videos, Quizze) bzw. der erste Stoff des
 Moduls (§2.5 6a); der gelegte Block trägt es, davor liegt er gar nicht erst. Die Wochen der Vorgabe zählen ab dort.
 Ein älterer Block, der davor beginnt, bietet in seiner Karte „Erst ab …“ an.
+**Einzeln statt Wochenmuster** (V-0345, Silas: *„alles, was weniger häufig als jede zweite Woche stattfindet, das soll
+man dann manuell in die echten Wochen reinlegen, wo es tatsächlich gebraucht wird … wenn genaue Termine bekannt sind,
+nur auf die Termine innerhalb der Woche“*): Käme die Vorgabe auf seltener als alle zwei Wochen (`alle` > 2, etwa die
+PROG1-Quicktests oder BuK-Literatur), ist sie `einzeln`: so viele Blöcke dieser Länge (`wochen`), je einer als
+Datumsblock in einer echten Woche. „Block legen“ springt dafür aus der Standardwoche in die laufende Woche;
+`blockTagErlaubt()` sagt, an welchen Tagen er liegen darf — mit Einheiten, solange eine offen ist (Freigabe bis Frist,
+ohne Frist bis zur nächsten Freigabe), sonst jeder Tag der Vorlesungszeit ab dem ersten Stoff. Die anderen Tage sind
+grau („nichts offen“, „noch kein Stoff“) und lehnen ab. Unter dem Raster hat so ein Teil keinen Wochenbedarf.
 
 **Beim Stoff legen** (V-0342): Hängt ein Lernblock am Zeiger, sind die freien Plätze direkt nach einem Termin oder
 Videoblock seines Stoffs — und direkt vor einer Präsenz — gerahmt und beschriftet („direkt nach STAT1 · IV ·
@@ -310,16 +318,25 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   nach vorn geholte Sache, die gewählte Prüfung); nur wenn nichts gewählt ist, erklärt er, wie man legt.
 - **Fahrzeit** (V-0338, Silas: *„beim ersten Präsenztermin eines Tages 40 Minuten Fahrzeit davor … und bei dem letzten
   auch nochmal … nicht freigehalten, sondern visuell, mit einer grauen Strichellinie“*): `fahrzeiten()` — vor dem
-  frühesten und nach dem spätesten Termin vor Ort (Online zählt nicht), `pendeln_min` 40; grau gestrichelt (2 px) und
-  seit V-0340 ÜBER den Kacheln, durchsichtig — die Fahrt nach Hause lag sonst unter dem nächsten Block. Sie sperrt
-  nichts.
+  frühesten und nach dem spätesten Termin vor Ort (Online zählt nicht), `pendeln_min` 45 (V-0345, Silas: *„45 Minuten
+  vor dem ersten Präsenzmodul … und 45 Minuten nach dem letzten“*); grau gestrichelt (2 px) und seit V-0340 ÜBER den
+  Kacheln, durchsichtig — die Fahrt nach Hause lag sonst unter dem nächsten Block. Sie sperrt nichts, auch in der
+  Standardwoche. **Lücke zwischen Fahrzeit und Termin** (V-0345, Silas: *„manchmal ist die Fahrzeit direkt dran
+  gekoppelt und manchmal ist da eine kleine Lücke“*): Kacheln einer Terminreihe (EINFWI-Übung, BuK-VL) trugen die
+  Klasse `reihe`, die auch die geführte Liste links hat (`margin-top: 8px`) — sie rutschten 10 min unter ihre Zeit.
+  Jetzt `t-reihe`; ein Test hält jede Kachel-Klasse frei von Regeln ohne `.kachel`.
 - **Mittagspause** (V-0340, Silas: *„einen Slot von 45 Minuten für Mittagspause … der hat keine logische Konsequenz,
   da kann man drüber planen … dass man im Hinterkopf behält, dass man auch noch essen möchte“*): `mittagspause()` — Mo–Fr
-  45 min im ersten freien Fenster 11:30–14:30, sonst um 12:30; bernstein gepunktet über den Kacheln.
+  45 min im ersten freien Fenster 11:30–14:30, nicht in der Fahrzeit (V-0345); ohne ganzes Fenster in der längsten
+  Lücke, ohne jede Lücke um 12:30; bernstein gepunktet über den Kacheln. Seit V-0345 (Silas: *„leicht verschieben, auch
+  wenn man gerade nicht den Stundenplan selbst bearbeitet … pro Woche einzeln … in der Standardwoche gar nicht“*) nur in
+  echten Wochen, und am Schild „Mittag“ lässt sie sich je Tag ziehen — auch festgelegt; sie steht dann in
+  `plan.mittag[datum]` (durchgezogen), ein Doppelklick aufs Schild macht sie wieder automatisch.
 - **Minimap** (V-0340): unter „Woche“ nur die Vorlesungszeit bis zur letzten Vorlesungswoche, unter „Prüfungen“ das
   ganze Semester.
 - **Links, was der Schritt will** (im Ablauf): oben ein Satz, was hier zu tun ist, und der Weg weiter; darunter je
-  Modul nur die Teile dieses Schritts (Module ohne sie blass). Schritt 1 zeigt dazu die Quizze mit ihren Fristen.
+  Modul nur die Teile dieses Schritts (Module ohne sie blass) — nur, was im Schritt zu wählen oder zu legen ist
+  (V-0345, Silas: *„Bei Quiz kann ich hier ja gar nicht auswählen“*): Schritt 1 zeigt keine Quizze mehr.
   Schritt 2 zählt je Modul **„1 von 2 gewählt · 1 noch wählen“** (oder „kommt noch“), je Teil „gewählt ✓“, „wählen“,
   „kommt noch“. Jeder Teil: Art, Form, Stand und die Zeile in der Farbe seiner Stufe. Ein Klick klappt die Karte auf:
   alle Meldungen, Soll und Ist, Woher, die Gruppen als Knöpfe, die Vorgabe, umwidmen, fehlende Angaben eintragen.
@@ -327,10 +344,16 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
   Zusammenfassung, welche alle da gewählt werden und wie viele jeweils vorhanden sind … du wählst halt genau gerade
   eine einzige Sache“*): Oben links steht in Schritt 2–4 die **Reihe** des Schritts in der Reihenfolge der Module — in
   2 jede Wahl mit „4 Gruppen“, „0 vorhanden“ oder „✓ G4“, in 3 und 4 jeder Bestandteil mit seiner Vorgabe je Woche
-  oder „✓ 24 h“. **Dran** (hellblau) ist, was Silas dort anklickt, sonst die erste offene Sache; nach jeder Wahl, nach
-  jedem letzten Block rückt sie weiter. Ein Klick auf ein Modul macht seine erste offene Sache zu der, die dran ist.
-  In Schritt 2 stehen im Raster nur die Gruppen dieser einen Wahl; ist sie schon gewählt, alle ihre Gruppen, die
-  gewählte weiß umrandet.
+  oder „✓ 24 h“. Seit V-0345 steht die Reihe **unter ihren Modulen** (Silas: *„die EVL-Sachen sollen unter jedem Modul
+  abgelegt werden und nicht oben unter EVL allgemein“*); oben bleibt der Satz des Schritts mit „Weiter“ bzw.
+  „Festlegen“. **Dran** (hellblau) ist, was Silas dort anklickt, sonst die erste offene Sache; nach jedem letzten Block
+  rückt sie weiter, „Details“ klappt die Karte des Bestandteils darunter auf. Ein Klick auf ein Modul macht seine erste
+  offene Sache zu der, die dran ist. In Schritt 2 stehen im Raster nur die Gruppen dieser einen Wahl. **Nach einer Wahl
+  bleibt sie dran** (V-0345, Silas: *„man soll ja ein bisschen auch hin und her schieben können … wenn ich erneut auf
+  die gewählte Sache klicke, möchte ich wieder alle Wahloptionen angezeigt bekommen“*): die gewählte Gruppe in Farbe,
+  weiß umrandet, die anderen blass und grauer (`alternative`, ein anderer Ton als das Grau früherer Schritte) und
+  weiter wählbar; ein Klick auf die gewählte wählt ab, dann stehen alle wieder in Farbe da. Weiter geht es mit
+  „Nächste Wahl: …“ an der Sache, die dran ist.
 - **Farben im Ablauf** (V-0336): Was dran ist, ist farbig; was im selben Schritt schon gewählt oder gelegt ist, aber
   zu einer anderen Sache gehört, **hellgrau** (ein Klick macht es zu der Sache, die dran ist); frühere Schritte
   **dunkelgrau**. Module, deren Sachen im Schritt alle erledigt sind, klappen ein — grüner Haken „alles gewählt“ /
@@ -406,7 +429,7 @@ sie ändert oder bestätigt (`plan.bestaetigt[id]`). `luecken()` sammelt alle Fl
 | `video_puffer_min`, `raster_min` | 15, 30 | Silas: 1:45 → 2 h |
 | `lerntag_h`, `lernfenster` | 6, 09–19 | Faustregel aus dem Semesterplan |
 | `toleranz_min` | 120 | Silas, V-0332: Abweichungen bis ±2 h nicht melden |
-| `pendeln_min` | 40 | Silas, V-0338: 40 min Fahrzeit vor dem ersten und nach dem letzten Termin vor Ort (nur gezeigt) |
+| `pendeln_min` | 45 | Silas, V-0345 (V-0338: 40): Fahrzeit vor dem ersten und nach dem letzten Termin vor Ort (nur gezeigt) |
 | `evl_block_min`, `evl_min_min` | 120, 90 | Silas, V-0335: „EVL-Block muss einfach zwei Stunden sein … mindestens anderthalb“ |
 | `evl_fenster`, `tag_fenster` | 10–18, 08–20 | bevorzugte und überhaupt gesuchte freie Plätze (Silas: „zwischen 10 und 18 Uhr preferred“) |
 | `pruef_fenster` | 07–22 | Prüfungsvorbereitung in der Vorlesungszeit: auch früh und abends (V-0337) |
@@ -431,6 +454,7 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
 - **`plan`** — was Silas entschieden hat: `wahl {teil: option}`, `pruefungstermin {pruefung: datum}`, `bloecke [{id,
   teil|null, tag | datum, start, ende, ab?, bis?, pause?, alle?, versatz?, titel?}]`, `umwidmungen [{id, von, nach, h}]`,
   `bestaetigt {annahme-id: true}`, `angemeldet {pruefung- oder teil-id: true}`, `festgelegt` (Zeitpunkt, §2.8a),
+  `mittag {datum: "HH:MM"}` (gezogene Mittagspausen, §3),
   `zurueckgesetzt {am, ab, wahl, bloecke}` (was Zurücksetzen beiseitegelegt hat). (Ein `lernplan: true` an alten Blöcken
   aus dem entfernten Vorschlag wird nicht mehr gelesen.) Ein Teil kann mit `schritt: 1–4` in einen anderen Schritt
   gestellt werden (§2.8a).
@@ -468,6 +492,14 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   wählt „neuesten laden“ oder „meinen behalten“. Je Stunde eine Sicherung (60 Tage, `GET /silas/api/verlauf`).
   Ungespeichertes bleibt im Browser und wird nachgereicht.
 - Die Vorschau-Auslieferungen schreiben in einen eigenen Namensraum (`stundenplanner-silas-vorschau`).
+- **Probepläne** (V-0345, Silas: *„verschiedene Stundenpläne abspeichern … unter stundenplanner.de/silas/1, 2, 3 … um
+  eben jetzt einfach nur fürs Testen von dem Tool zu sehen, wo es noch nicht klappt“*): `/silas/1` … `/silas/9` ist
+  dieselbe Seite (`web/_redirects`, 200), die den Plan aus der Adresse liest (`PLAN_NR`) und `stand?plan=<n>` liest
+  und schreibt (KV `stand:<n>`, dieselbe Sperre, keine Sicherung). Zwischenspeicher und Ansicht im Browser sind je Plan
+  getrennt (`silas:v1:stand:<n>`), sonst landete ein Probeplan beim nächsten Laden im echten. Ein leerer Probeplan
+  bietet „Leer beginnen“ (die Module des echten, ohne Wahl und Blöcke) oder „Kopie meines Plans“ (ohne `festgelegt`).
+  Oben links wählt man den Plan; das Schild heißt „silas · Probeplan n“, das Kalender-Abo fehlt dort. Ereignisse und
+  Kalender kommen immer aus dem echten Plan. `GET /silas/api/plaene` listet die angelegten.
 
 ## 8. Offen
 
