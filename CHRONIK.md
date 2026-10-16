@@ -12,6 +12,19 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 16.10.2026 — /silas: Prüfungen ohne Umbuchung, EINFWI nach Punkten, Surface-Ansicht (SP-0411)
+
+- Silas ließ die Prüfungskontingente nachrechnen (*„sagt mir jetzt nur mein Bauchgefühl“*): Die Grundzahlen stammen aus
+  den Modulbeschreibungen, aber G5 schob Präsenz, die nicht stattfindet, in die Klausurvorbereitung (EINFWI +20 h aus 5
+  statt 15 Übungen, STAT1 +14,5 h), und der EINFWI-Online-Test bekam 40 h für 20 Punkte — achtmal so viel je Punkt wie
+  die BuK-E-Tests. Silas nahm beide Vorschläge an: Reste bleiben **Puffer** im Semester (G5 neu), die 90 h EINFWI werden
+  **nach Punkten** geteilt (Test 18 h, Klausur 72 h). 900 h = 632 h Semester (38,5 h Puffer) + 268 h Prüfungen.
+- Damit nichts still zu viel liegt: eine Meldung, wenn für eine Prüfung mehr gelegt ist als ihr Kontingent (die
+  40 h Testvorbereitung standen nach der Senkung ohne Hinweis da).
+- Am Surface Pro 11 (1440 × 830 im größten Fenster): Legende auf jeder Breite zugeklappt und gemerkt, Festgelegt in einer
+  Zeile mit den Werkzeugen, die Semester-Leiste klappt auf eine beschriftete Schiene, Analytics deckt bis zur Kante. Das
+  Raster hat 40 statt 33 px je Stunde, mit eingeklappter Leiste 190 px je Tag (docs/SILAS.md §3).
+
 ## 16.10.2026 — /silas am Telefon: jeder Schritt auf einen Schirm (V-0391)
 
 - Silas: *„die app bitte einmal für jeden schritt auch für mobile optimieren“*. Gemessen bei 390 × 844: Das Raster war
