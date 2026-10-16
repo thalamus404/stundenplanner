@@ -161,7 +161,7 @@ einem Klon oder Arbeitsbaum (der Schlüssel kommt aus `<hauptklon>/betrieb/.env`
 
 | Befehl | Was |
 |---|---|
-| `node ops/silas.mjs pruefen <stand.json>` | rechnet einen Stand durch, ohne Netz: je Modul die zwei Töpfe (Semester, Prüfungen), G5, erledigt, und wie viel kritisch, zu tun, zu prüfen ist (V-0349) |
+| `node ops/silas.mjs pruefen <stand.json>` | rechnet einen Stand durch, ohne Netz: je Modul die zwei Töpfe (Semester, Prüfungen), den Puffer nach G5, erledigt, und wie viel kritisch, zu tun, zu prüfen ist (V-0349) |
 | `node ops/silas.mjs holen [<datei>]` | den Stand vom Server holen (Sicherung, Bearbeiten) |
 | `node ops/silas.mjs senden <stand.json>` | einen Stand hochladen, auf der aktuellen Version des Servers |
 | `node ops/silas.mjs einrichten [--pruefen]` | KV-Namensräume anlegen, Bindung `SILAS` und Geheimnis `SILAS_SCHLUESSEL` in Produktion und Vorschau setzen, den Schlüssel in `betrieb/.env` anlegen. Wiederholbar. Braucht einen Zugang, der KV anlegen darf (der Deploy-Token darf es nicht): `CF_AUTH_EMAIL` + `CF_AUTH_KEY` (Global Key aus Silas' Vault) nur in der Umgebung dieses Aufrufs. Wirksam ab der nächsten Auslieferung |

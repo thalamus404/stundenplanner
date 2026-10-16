@@ -390,7 +390,7 @@ function kopfZeichnen() {
   // Die Bilanz (V-0349, Kontingent-Modell G1/G2): Die Leistungspunkte sind fest (5 × 180 h); sie teilen sich in den
   // Semester-Topf („Woche“) und den Prüfungs-Topf („Prüfungen“). Abgebucht wird erst, was ✓ hat (G6).
   const su = Z.erg.summe;
-  const balken = h('div', { class: 'balken zwei', title: `Semester ${M.stunden(su.semester_min)} · Prüfungen ${M.stunden(su.pruefung_min)} · erledigt ${M.stunden(su.erledigt_min)}` }, h('i', { class: 'sem' }), h('i', { class: 'erl' }));
+  const balken = h('div', { class: 'balken zwei', title: `Semester ${M.stunden(su.semester_min)}${su.puffer_min ? `, davon ${M.stunden(su.puffer_min)} Puffer` : ''} · Prüfungen ${M.stunden(su.pruefung_min)} · erledigt ${M.stunden(su.erledigt_min)}` }, h('i', { class: 'sem' }), h('i', { class: 'erl' }));
   balken.children[0].style.width = `${(su.semester_min / su.soll_min) * 100}%`;
   balken.children[1].style.width = `${Math.min(100, (su.erledigt_min / su.soll_min) * 100)}%`;
   const zl = su.zaehler;
@@ -758,7 +758,7 @@ function hauptreiterEl() {
 /** Die zwei Töpfe eines Moduls als Zeile (Kontingent-Modell, G1/G2): Semester + Prüfungen = LP × 30 h. */
 function toepfeEl(r) {
   return h('p', { class: 'm-zahl' },
-    h('span', { text: `Semester ${M.stunden(r.semester_min)} · Prüfungen ${M.stunden(r.pruefung_min)}` }),
+    h('span', { text: `Semester ${M.stunden(r.semester_min)}${r.puffer_min ? ` (${M.stunden(r.puffer_min)} Puffer)` : ''} · Prüfungen ${M.stunden(r.pruefung_min)}` }),
     h('span', { text: r.erledigt_min ? `${M.stunden(r.erledigt_min)} ✓` : '' }));
 }
 
@@ -867,7 +867,7 @@ function auditChip(P) {
   if (!P.audit) return null;
   const a = P.audit, d = M.stunden(Math.abs(a.diff_min));
   const text = { passt: a.diff_min ? `passt (${a.diff_min > 0 ? '+' : '−'}${d})` : 'passt', mehr: `+${d}`, weniger: `−${d}`, offen: 'offen', ungeplant: 'ungeplant' }[a.ergebnis];
-  const titel = { passt: `Abweichung innerhalb der Toleranz (${M.stunden(a.tol_min)})`, mehr: `${d} mehr als die Aufwandstabelle — Entscheidung offen`, weniger: P.g5_min ? `${d} finden nicht statt → Prüfungsvorbereitung (G5)` : `${d} weniger geplant als das Kontingent`, offen: 'Offen, bis Termine oder Videolängen bekannt sind', ungeplant: 'Noch keine Blöcke' }[a.ergebnis];
+  const titel = { passt: `Abweichung innerhalb der Toleranz (${M.stunden(a.tol_min)})`, mehr: `${d} mehr als die Aufwandstabelle — Entscheidung offen`, weniger: P.puffer_min ? `${d} finden nicht statt → Puffer (G5)` : `${d} weniger geplant als das Kontingent`, offen: 'Offen, bis Termine oder Videolängen bekannt sind', ungeplant: 'Noch keine Blöcke' }[a.ergebnis];
   return h('span', { class: `a-chip a-${a.ergebnis}`, title: titel, text });
 }
 
@@ -901,7 +901,7 @@ function kontingentTabelle(r) {
       h('td', { text: P.titel }), h('td', { text: `${P.posten.mult} × ${String(P.posten.h).replace('.', ',')} h = ${M.stunden(P.K)}` }),
       h('td', { text: P.topf === 'pruefung' ? 'Prüfungen' : 'Semester' }),
       h('td', { text: (P.topf === 'pruefung' ? r.teile.filter((z) => z.teil.posten === P.posten.id) : P.elemente).map((z) => `${z.teil.titel} ${M.stunden(z.kontingent_min)}`).join(', ') || '—' }),
-      h('td', {}, auditChip(P) || (P.topf === 'pruefung' ? 'unter Prüfungen' : ''), P.g5_min ? ` → ${M.stunden(P.g5_min)} in die Vorbereitung` : ''))),
+      h('td', {}, auditChip(P) || (P.topf === 'pruefung' ? 'unter Prüfungen' : ''), P.puffer_min ? ` → ${M.stunden(P.puffer_min)} Puffer` : ''))),
     h('tr', { class: 'summe' }, h('td', { text: 'Summe' }), h('td', { text: `${M.stunden(r.tabelle_min)}` }), h('td', { text: `Semester ${M.stunden(r.semester_min)} · Prüfungen ${M.stunden(r.pruefung_min)}` }), h('td'), h('td'))));
 }
 
@@ -1036,7 +1036,7 @@ function baumEl(z) {
     const unb = z.vk.filter((v) => v.ist === 'offen').length;
     zeile('Lebenslauf', `im Plan ${M.stunden(z.plan_min)} · erledigt ${M.stunden(z.erledigt_min)} (✓)${unb ? ` · ${unb} vorbei ohne ✓/✗` : ''}`);
   }
-  if (P && P.audit) zeile('Abgleich', h('span', {}, auditChip(P), ` ${P.art === 'praesenz' ? `Termine und Videos ${M.stunden(P.audit.basis_min)}` : `geplant ${M.stunden(P.audit.basis_min)}`} gegen ${M.stunden(P.K)} (Toleranz ${M.stunden(P.audit.tol_min)})${P.g5_min ? ` — ${M.stunden(P.g5_min)} gehen in die Vorbereitung (G5)` : ''}`));
+  if (P && P.audit) zeile('Abgleich', h('span', {}, auditChip(P), ` ${P.art === 'praesenz' ? `Termine und Videos ${M.stunden(P.audit.basis_min)}` : `geplant ${M.stunden(P.audit.basis_min)}`} gegen ${M.stunden(P.K)} (Toleranz ${M.stunden(P.audit.tol_min)})${P.puffer_min ? ` — ${M.stunden(P.puffer_min)} bleiben als Puffer (G5)` : ''}`));
   if (t.annahme) box.append(h('p', { class: 'gelb', text: `Annahme: ${t.annahme}` }));
   if (t.quelle) box.append(h('p', { class: 'quelle', text: `Quelle: ${t.quelle}` }));
   const opt = gewaehltVon(t);
@@ -1241,7 +1241,7 @@ function planKopfZeichnen() {
     titel.append(h('b', { text: 'Offen' }), h('span', { text: 'Was zu tun ist, was zu entscheiden ist, und wo die Augen offen bleiben — mit Stichtag' }));
     dazu(titel, rueck);
   } else if (b === 'abgleich') {
-    titel.append(h('b', { text: 'Abgleich' }), h('span', { text: 'Die Aufwandstabellen gegen die Wirklichkeit — nur prüfend, es rechnet nichts um außer G5' }));
+    titel.append(h('b', { text: 'Abgleich' }), h('span', { text: 'Die Aufwandstabellen gegen die Wirklichkeit — nur prüfend, es rechnet nichts um' }));
     dazu(titel, rueck);
   } else if (b === 'analyse') {
     titel.append(h('b', { text: 'Analytics' }), h('span', { text: 'Wie dein Plan läuft (✓ und ✗) und wie du ihn nutzt — bis heute' }));
@@ -2544,7 +2544,7 @@ function wirklichText(P) {
 
 function abgleichAnsicht() {
   const a = Z.erg.audit, r = Z.erg.regeln;
-  const aus = [h('p', { class: 'satz', text: `Die Aufwandstabellen sind Schätzungen der Lehrstühle (KMK 2004: „angenommen“). Hier steht, was die Wirklichkeit daraus macht. Präsenz-Posten werden gegen ihre Termine und Videos geprüft (eine wöchentliche Serie gegen höchstens ${r.katalog_wochen} Termine), Selbststudium gegen deinen Plan. „passt“ heißt: höchstens 10 % daneben, mindestens ${M.stunden(r.toleranz_mind_min)}. Was bei Präsenz darunter liegt, geht in die Prüfungsvorbereitung (G5); alles andere ist nur ein Befund.` })];
+  const aus = [h('p', { class: 'satz', text: `Die Aufwandstabellen sind Schätzungen der Lehrstühle (KMK 2004: „angenommen“). Hier steht, was die Wirklichkeit daraus macht. Präsenz-Posten werden gegen ihre Termine und Videos geprüft (eine wöchentliche Serie gegen höchstens ${r.katalog_wochen} Termine), Selbststudium gegen deinen Plan. „passt“ heißt: höchstens 10 % daneben, mindestens ${M.stunden(r.toleranz_mind_min)}. Was bei Präsenz darunter liegt, bleibt als Puffer im Semester (G5); alles andere ist nur ein Befund.` })];
   for (const x of a.module) {
     const res = Z.erg.module.find((y) => y.modul === x.modul);
     const m = x.modul;
@@ -2555,7 +2555,7 @@ function abgleichAnsicht() {
         h('tbody', {}, ...x.posten.map((P) => h('tr', {},
           h('td', { text: P.titel }), h('td', { text: M.stunden(P.K) }), h('td', { text: wirklichText(P) }),
           h('td', {}, auditChip(P) || (P.topf === 'pruefung' ? 'Prüfungs-Topf' : '')),
-          h('td', { text: P.g5_min ? `${M.stunden(P.g5_min)} → ${(Z.erg.pruefungen.get(P.g5_nach) || { p: { titel: 'Prüfung' } }).p.titel} (G5)` : P.audit && P.audit.ergebnis === 'mehr' && P.art === 'praesenz' ? 'Entscheidung offen' : P.audit && P.audit.ergebnis === 'offen' ? 'wartet auf Termine oder Videolängen' : '' }))))),
+          h('td', { text: P.puffer_min ? `${M.stunden(P.puffer_min)} Puffer (G5)` : P.audit && P.audit.ergebnis === 'mehr' && P.art === 'praesenz' ? 'Entscheidung offen' : P.audit && P.audit.ergebnis === 'offen' ? 'wartet auf Termine oder Videolängen' : '' }))))),
       h('p', { class: `satz${x.meldung ? ' rot-text' : ''}`, text: `Innerhalb der Toleranz: mehr ${M.stunden(x.mehr_min)}, weniger ${M.stunden(x.weniger_min)} — getrennt gezählt, nichts wird verrechnet${x.meldung ? `; über ${M.stunden(r.modul_meldung_min)}, bitte ansehen` : ''}.` })));
   }
   // Last je Woche: Säulen aus Terminen, Blöcken, Prüfungslernen und dem Bedarf ohne Block; die Linie ist die Grenze.
@@ -2602,7 +2602,7 @@ function offenAnsicht() {
     if (f.art === 'unbestaetigt' && z) { const v = z.vk.find((x) => x.ist === 'offen'); if (v) knoepfe.push(h('button', { type: 'button', class: 'knopf klein', 'data-act': 'zur-woche', 'data-woche': M.montagVon(v.datum), text: 'Woche ansehen' })); }
     if (f.art === 'info_fehlt' && z && z.teil.offen) knoepfe.push(h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'erledigt', 'data-teil': z.teil.id, 'data-feld': 'offen', text: 'Erledigt' }));
     if (f.art === 'gesperrt') knoepfe.push(h('button', { type: 'button', class: 'knopf klein', 'data-act': 'schritt', 'data-schritt': String(z ? M.schrittVon(z.teil) : 4), text: 'Verschieben' }));
-    if (['woche_voll', 'tag_voll', 'zwei_pruefungen', 'rueckfall', 'entscheidung', 'modul_mehr', 'modul_weniger', 'g5'].includes(f.art)) knoepfe.push(h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'bereich', 'data-bereich': 'abgleich', text: 'Abgleich' }));
+    if (['woche_voll', 'tag_voll', 'zwei_pruefungen', 'rueckfall', 'entscheidung', 'modul_mehr', 'modul_weniger', 'puffer'].includes(f.art)) knoepfe.push(h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'bereich', 'data-bereich': 'abgleich', text: 'Abgleich' }));
     if (X && fertig()) knoepfe.push(h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'zu-pruefung', 'data-pruefung': X.id, text: 'Prüfung' }));
     else if (z) knoepfe.push(h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'zum-teil', 'data-teil': z.teil.id, text: 'Ansehen' }));
     const wann = f.stichtag; // Fristen nennen ihr Datum schon im Satz
@@ -2637,7 +2637,7 @@ function offenAnsicht() {
     gruppe('Prüfen und entscheiden', 'Stichtag vorbei (nachfragen), Abweichungen von den Tabellen, Entscheidungen, die offen sind, zu volle Tage und Wochen.', nach('achtung'), 'st-achtung'),
     gruppe('Augen offen', 'Was der Lehrstuhl noch liefert — mit dem Stichtag, an dem die Antwort kommen sollte. Bis dahin rechnet der Planer mit Annahmen.', kommt, 'st-kommt'),
     annahmen,
-    gruppe('Hinweise', 'Zum Wissen: Hinweise aus ISIS, Bezug zum Stoff, Blöcke ohne Inhalt, Reste nach G5.', nach('info', 'spaeter'), 'st-info', true),
+    gruppe('Hinweise', 'Zum Wissen: Hinweise aus ISIS, Bezug zum Stoff, Blöcke ohne Inhalt, Puffer nach G5.', nach('info', 'spaeter'), 'st-info', true),
   ];
 }
 
@@ -2727,7 +2727,7 @@ function erklaerung() {
         li('Kontingent je Posten', ': Jeder Posten der Aufwandstabelle ist ein Kontingent. Die Elemente (Vorlesung, Videos, Quizze, Nachbereitung …) zählen zu einem Posten.'),
         li('Topf nach Zweck', ': Was einer Prüfung dient (Vorbereitung, Lernzielkontrollen, Probeklausur, Fragestunde), ist Prüfungs-Topf und wird unter „Prüfungen“ geplant; alles andere unter „Woche“.'),
         li('Termine zuerst', ': Was ISIS an Terminen nennt, gilt. Verteilt wird nur Selbststudium — und zwar, was nach Terminen und Einheiten übrig ist.'),
-        li('Reste umbuchen (G5)', ': Liegt ein Präsenz-Posten mehr als 10 % unter seinem Kontingent (die EINFWI-Übung findet 5× statt, nicht 15×), geht der Rest in die Vorbereitung der Hauptprüfung des Moduls. Kleinere Reste bleiben und stehen im Abgleich.'),
+        li('Reste als Puffer (G5)', ': Liegt ein Präsenz-Posten mehr als 10 % unter seinem Kontingent (die EINFWI-Übung findet 5× statt, nicht 15×), bleibt der Rest als Puffer im Semester — er wird nicht verplant und macht keine Prüfung größer. Kleinere Reste stehen im Abgleich.'),
         li('Unbestätigt ist nicht erledigt', ': Vergangenes bekommt ✓ oder ✗ (Klick auf die Kachel, oder „✓“ für die ganze Woche). Erst ✓ bucht ab.'),
         li('Verweise statt Daten', ': Was an einer offenen Wahl hängt (Fristen, Fenster), rechnet mit dem frühesten Termin — wählst du einen anderen, wandert alles mit.'),
         li('Kapazität', `: ${Z.erg.regeln.woche_h} h je Woche, ${Z.erg.regeln.tag_h} h je Tag, alles eingerechnet (deine Grenze).`),

@@ -6,8 +6,9 @@
 //      in den Prüfungs-Topf und wird unter „Prüfungen“ geplant; alles andere in den Semester-Topf („Woche“).
 //  G3  Woche nach Fenster: Jedes Element liegt, wo sein Termin oder Fenster liegt — die Woche zeigt alles.
 //  G4  Termine zuerst: Was ISIS an Terminen nennt, ist die erste Wahrheit. Verteilt wird nur Selbststudium.
-//  G5  Liegt ein Präsenz-Posten jenseits der Toleranz unter seinem Kontingent, geht der Rest in die Vorbereitung der
-//      Hauptprüfung des Moduls („aus der Übung“). Reste innerhalb der Toleranz bleiben und zählen im Modul-Abgleich.
+//  G5  Liegt ein Präsenz-Posten jenseits der Toleranz unter seinem Kontingent, bleibt der Rest als Puffer im Semester-Topf
+//      (SP-0411; bis dahin ging er in die Vorbereitung der Hauptprüfung). Reste innerhalb der Toleranz zählen im
+//      Modul-Abgleich.
 //  G6  Unbestätigt ist nicht erledigt: Vergangenes bekommt ✓ oder ✗ (plan.ist); abgebucht wird erst nach ✓.
 //  G7  Verweise statt Daten: Was an einer offenen Wahl hängt, rechnet mit dem frühesten Termin als Arbeitsannahme.
 //  G8  Kapazität 45 h je Woche, 9 h je Tag, alles eingerechnet (Silas' Grenze).
@@ -49,7 +50,6 @@ export const PRUEFSTATUS = [
   ['nicht_bestanden', 'nicht bestanden'],
 ];
 export const PRUEFSTATUS_TEXT = Object.fromEntries(PRUEFSTATUS);
-const LV_WORT = { IV: 'aus der IV', VL: 'aus der Vorlesung', UE: 'aus der Übung', TUT: 'aus dem Tutorium' };
 
 /** Toleranz eines Postens (Audit): 10 %, mindestens 1 h. */
 export const toleranz = (k, r) => Math.max(r.toleranz_mind_min, Math.round(k * r.toleranz_anteil));
@@ -189,7 +189,7 @@ function posten(erg, angebot, plan) {
       const K = Math.round(p.mult * p.h * 60);
       const P = {
         id: `${m.id}/${p.id}`, modul: m, posten: p, titel: p.titel, lv: p.lv || null, K,
-        art: postenArt(m, p, zs), elemente: els, g5_min: 0,
+        art: postenArt(m, p, zs), elemente: els, puffer_min: 0,
       };
       P.topf = P.art === 'pruefung' ? 'pruefung' : 'semester';
       for (const z of els) z.P = P;
@@ -215,8 +215,10 @@ function posten(erg, angebot, plan) {
         if (P.art === 'praesenz' && (P.geschaetzt || P.ohne_termine)) ergebnis = 'offen';
         if (P.art === 'selbst' && ergebnis === 'weniger' && P.plan_min === 0) ergebnis = 'ungeplant';
         P.audit = { basis_min: basis, diff_min: diff, tol_min: tol, ergebnis };
-        // G5: Präsenz jenseits der Toleranz darunter → der Rest geht in die Prüfungsvorbereitung (Ziel: pruefungen()).
-        if (P.art === 'praesenz' && ergebnis === 'weniger') P.g5_min = K - basis;
+        // G5: Präsenz jenseits der Toleranz darunter → der Rest bleibt als Puffer im Semester-Topf. Silas, 16.10. (SP-0411):
+        // Bis dahin ging er in die Vorbereitung der Hauptprüfung — die EINFWI-Klausur wuchs um 20 h, weil die Übung nur 5×
+        // stattfindet, und ein ausfallender STAT1-Freitag machte die Klausur größer. Was nicht stattfindet, ist kein Lernstoff.
+        if (P.art === 'praesenz' && ergebnis === 'weniger') P.puffer_min = K - basis;
       }
       erg.posten.push(P);
     }
@@ -350,20 +352,18 @@ function pruefungen(erg, angebot, plan) {
         const K = po ? Math.round(po.mult * po.h * 60) : 0;
         const teilen = zs.filter((x) => x.el === 'vorbereitung' && x.teil.posten === z.teil.posten);
         z.kontingent_min = z.teil.soll_h != null ? Math.round(z.teil.soll_h * 60) : Math.round(K / Math.max(1, teilen.length));
-        X.herkunft.push({ art: 'posten', text: po ? `${po.titel}${teilen.length > 1 ? ` (Anteil)` : ''}` : z.teil.titel, min: z.kontingent_min });
+        // soll_h, das vom Posten abweicht (EINFWI: 90 h nach Punkten, SP-0411), sagt es: „… (40 h laut Tabelle, nach Punkten)“.
+        const abweichend = teilen.length === 1 && z.teil.soll_h != null && z.kontingent_min !== K;
+        const zusatz = teilen.length > 1 ? ' (Anteil)' : abweichend ? ` (${stunden(K)} laut Tabelle${z.teil.soll_grund ? `, ${z.teil.soll_grund}` : ''})` : '';
+        X.herkunft.push({ art: 'posten', text: po ? `${po.titel}${zusatz}` : z.teil.titel, min: z.kontingent_min });
       }
       X.termine_p_min = pt_.reduce((s, z) => s + z.termine_min, 0);
       xs.push(X);
       erg.pruefungen.set(p.id, X);
     }
-    // Die Hauptprüfung des Moduls bekommt die Reste nach G5: die mit dem spätesten geltenden Termin, sonst die letzte.
+    // Die Hauptprüfung des Moduls: die mit dem spätesten geltenden Termin, sonst die letzte.
     const mitTermin = xs.filter((x) => x.termin);
     const haupt = mitTermin.length ? mitTermin.sort((a, b) => (a.termin.datum < b.termin.datum ? 1 : -1))[0] : xs[xs.length - 1];
-    for (const P of erg.posten.filter((q) => q.modul === m && q.g5_min > 0)) {
-      if (!haupt) continue;
-      P.g5_nach = haupt.id;
-      haupt.herkunft.push({ art: 'g5', text: LV_WORT[P.lv] || `aus ${P.titel}`, min: P.g5_min, posten: P.id });
-    }
     for (const X of xs) {
       const st = status[X.id] || {};
       X.haupt = X === haupt;
@@ -414,7 +414,7 @@ function pruefungen(erg, angebot, plan) {
       X.zaehlt = !['abgemeldet', 'bestanden'].includes(X.status) && !(X.status === 'nicht_bestanden' && !X.wiederholung);
     }
   }
-  // Die Vorbereitungs-Elemente tragen jetzt ihren Anteil (ohne G5 — der steht an der Prüfung).
+  // Die Vorbereitungs-Elemente tragen jetzt ihren Anteil.
   for (const z of erg.teile.values()) {
     if (z.el !== 'vorbereitung') continue;
     z.soll_min = z.kontingent_min;
@@ -749,7 +749,7 @@ function meldungen(erg, angebot, plan) {
     if (!P.audit) continue;
     const mid = P.modul.id;
     if (P.audit.ergebnis === 'mehr' && P.art === 'praesenz') neu(am(mid), { art: 'entscheidung', stufe: 'achtung', modul: mid, posten: P.id, text: `${P.titel}: ${stunden(P.audit.diff_min)} mehr als die Aufwandstabelle — Entscheidung offen (Mehr behalten oder gegen ein anderes Kontingent buchen)` });
-    if (P.g5_min > 0) neu(am(mid), { art: 'g5', stufe: 'info', modul: mid, posten: P.id, text: `${P.titel}: ${stunden(P.g5_min)} finden nicht statt — sie gehen ${P.g5_nach ? `in die Vorbereitung auf ${titelX(erg, P.g5_nach)}` : 'in die Prüfungsvorbereitung'} (G5, vorläufig)` });
+    if (P.puffer_min > 0) neu(am(mid), { art: 'puffer', stufe: 'info', modul: mid, posten: P.id, text: `${P.titel}: ${stunden(P.puffer_min)} finden nicht statt — sie bleiben als Puffer im Semester (G5)` });
   }
   for (const x of erg.audit.module) {
     if (x.mehr_min > r.modul_meldung_min) neu(am(x.modul.id), { art: 'modul_mehr', stufe: 'achtung', modul: x.modul.id, text: `Innerhalb der Toleranz zusammen ${stunden(x.mehr_min)} mehr als die Aufwandstabellen` });
@@ -788,6 +788,10 @@ function meldungen(erg, angebot, plan) {
     }
     if (X.passt_nicht_min >= 30) f('passt_nicht', 'achtung', `${X.p.titel}: ${stunden(X.passt_nicht_min)} der Vorbereitung passen nicht mehr bis zum ${datumKurz(X.termin.datum)} — Entscheidung offen`, { passt_nicht: X.passt_nicht_min });
     if (X.verfehlt_min >= 30 && !['bestanden', 'nicht_bestanden'].includes(X.status)) f('verfehlt', 'achtung', `${X.p.titel}: ${stunden(X.verfehlt_min)} der Vorbereitung sind nicht erledigt (✓) — sie verfallen oder du buchst sie um: du entscheidest`);
+    // Mehr gelegt als das Kontingent (SP-0411): Als die EINFWI-Testvorbereitung von 40 h auf 18 h sank, lagen 40 h
+    // Blöcke da, und nichts sagte es. Ab der Toleranz des Postens (10 %, mindestens 1 h) eine Meldung.
+    const ueber = X.erledigt_min + X.geplant_min - X.zu_planen_min;
+    if (X.zaehlt && ueber > toleranz(X.zu_planen_min, r)) f('zu_viel', 'achtung', `${X.p.titel}: ${stunden(ueber)} mehr Lernzeit gelegt als das Kontingent (${stunden(X.zu_planen_min)}) — Blöcke kürzen oder einer anderen Prüfung geben`, { ueber_min: ueber });
     if (X.wiederholung) f('wiederholung', 'info', `${X.p.titel}: Wiederholung am ${datumTag(X.termin.datum)} — eigenes Kontingent ${stunden(X.kontingent_min)}, außerhalb der 180 h`);
   }
   for (const q of erg.quoten) {
@@ -806,7 +810,6 @@ function meldungen(erg, angebot, plan) {
   for (const x of erg.planFlags) if (x.modul === undefined) { if (!x.stufe) x.stufe = rohStufe(x, null); x.modul = null; offen.push(x); }
   erg.offen = offen.sort((a, b) => RANG[a.stufe] - RANG[b.stufe] || String(a.stichtag || a.datum || '9').localeCompare(String(b.stichtag || b.datum || '9')));
 }
-const titelX = (erg, pid) => { const X = erg.pruefungen.get(pid); return X ? `${X.modul.kurz || X.modul.id} ${X.p.titel}` : pid; };
 
 /** Die Stufe einer Rohmeldung aus rechnen() (Überschneidung, Sperre, Bezug, Block ohne Inhalt). */
 function rohStufe(f, z) {
@@ -829,11 +832,11 @@ function summen(erg, angebot) {
     const gesamt = m.lp * r.lp_h * 60;
     const tabelle = ps.reduce((s, P) => s + P.K, 0);
     const pruefung = ps.filter((P) => P.topf === 'pruefung').reduce((s, P) => s + P.K, 0);
-    const g5 = ps.reduce((s, P) => s + P.g5_min, 0);
+    const puffer = ps.reduce((s, P) => s + P.puffer_min, 0);
     const res = {
       modul: m, teile: zs, posten: ps, pruefungen: xs, flags: erg.modulFlags.get(m.id) || [],
       soll_min: gesamt, tabelle_min: tabelle,
-      semester_min: tabelle - pruefung - g5, pruefung_min: pruefung + g5, g5_min: g5,
+      semester_min: tabelle - pruefung, pruefung_min: pruefung, puffer_min: puffer,
       erledigt_min: zs.reduce((s, z) => s + z.erledigt_min, 0),
       plan_min: zs.reduce((s, z) => s + z.plan_min, 0),
     };
@@ -848,6 +851,7 @@ function summen(erg, angebot) {
     soll_min: erg.module.reduce((a, x) => a + x.soll_min, 0),
     semester_min: erg.module.reduce((a, x) => a + x.semester_min, 0),
     pruefung_min: erg.module.reduce((a, x) => a + x.pruefung_min, 0),
+    puffer_min: erg.module.reduce((a, x) => a + x.puffer_min, 0),
     erledigt_min: erg.module.reduce((a, x) => a + x.erledigt_min, 0),
     plan_min: erg.module.reduce((a, x) => a + x.plan_min, 0),
   };

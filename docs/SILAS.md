@@ -56,7 +56,7 @@ dasselbe.
 | G2 | **Topf nach Zweck.** Was einer Prüfung dient — Prüfungsvorbereitung, Lernzielkontrollen, Probeklausur, Klausur-Fragestunde, die Prüfung selbst —, gehört in den **Prüfungs-Topf** und wird unter „Prüfungen“ geplant; alles andere in den **Semester-Topf** („Woche“). |
 | G3 | **Woche nach Fenster.** Jedes Element liegt, wo sein Termin oder Fenster liegt; die Woche zeigt auch Prüfungslernen. Topf und Woche werden nie vermischt. |
 | G4 | **Termine zuerst.** Was ISIS an Terminen nennt, gilt. Verteilt wird nur Selbststudium: was nach Terminen und Einheiten übrig ist. |
-| G5 | **Rest umbuchen.** Liegt ein Präsenz-Posten jenseits der Toleranz unter seinem Kontingent, geht der Rest in die Vorbereitung der Hauptprüfung des Moduls („aus der Übung“). Reste innerhalb der Toleranz bleiben und zählen im Modul-Abgleich. |
+| G5 | **Rest als Puffer** (SP-0411). Liegt ein Präsenz-Posten jenseits der Toleranz unter seinem Kontingent, bleibt der Rest als **Puffer** im Semester-Topf: Er wird nicht verplant und macht keine Prüfung größer. Reste innerhalb der Toleranz zählen im Modul-Abgleich. Bis SP-0411 ging der Rest in die Vorbereitung der Hauptprüfung („aus der Übung“) — Silas, 16.10., nach einer Nachrechnung: die EINFWI-Klausur wuchs so um 20 h, weil die Übung nur 5× stattfindet, und ein STAT1-Freitag weniger machte die Klausur 2 h größer. Was nicht stattfindet, ist kein Lernstoff. |
 | G6 | **Unbestätigt ist nicht erledigt.** Vergangenes bekommt ✓ oder ✗ (`plan.ist`); abgebucht wird erst nach ✓. |
 | G7 | **Verweise statt Daten.** Was an einer offenen Wahl hängt (Fenster, Fristen), rechnet mit dem frühesten Termin als Arbeitsannahme und wandert mit, wenn gewählt ist. |
 | G8 | **Kapazität:** 45 h je Woche, 9 h je Tag, alles eingerechnet (Silas' Grenze). |
@@ -89,12 +89,13 @@ Für jeden Posten (`erg.posten`): sein Kontingent K = mult × h. Seine Elemente 
 | `termin` | die Stunden seiner Termine (ohne Ausfälle); gewünschte Gruppe ohne Zuteilung als `annahme_min`; ohne Termine `erwartet` (Anzahl × 2 h, Annahme) | STAT1-IV: 15 Freitage = 30 h |
 | `einheiten` | die Dauer seiner Einheiten: Videos je Woche Länge + Puffer aufs Raster, sonst `einheiten.dauer_min` × Anzahl | STAT1-Screencasts 23,5 h; TECHGI-Quiz 15 × 1 h; PROG1-Quicktests 12 × 0,5 h |
 | `rest` | was vom Posten übrig ist (bei mehreren nach `soll_h`, sonst gleich) — das Selbststudium, das auf die Wochen verteilt wird | PROG1-VL-Nachbereitung 19,5 − 6 = 13,5 h |
-| `vorbereitung` | Prüfungs-Topf, Fenster bis zur Prüfung; ein Posten für mehrere Prüfungen wird geteilt (`soll_h`, sonst gleich) | BuK-Lernzielkontrollen 5 h = 2,5 h je E-Test |
+| `vorbereitung` | Prüfungs-Topf, Fenster bis zur Prüfung; ein Posten für mehrere Prüfungen wird geteilt (`soll_h`, sonst gleich). `soll_h` darf auch einen einzelnen Posten überschreiben, wenn Silas die Tabelle anders aufteilt; die Herkunft sagt es („50 h laut Tabelle, nach Punkten“, Grund in `soll_grund`) | BuK-Lernzielkontrollen 5 h = 2,5 h je E-Test; EINFWI (Silas, 16.10., SP-0411): die 90 h nach Punkten, Test 18 h (statt 40 h), Klausur 72 h (statt 50 h) — 40 h für 20 Punkte waren achtmal so viel je Punkt wie bei den BuK-E-Tests |
 | `pruefungstermin` | Termin im Prüfungs-Topf; zählt zum Kontingent seiner Prüfung | EINFWI-Fragestunde, BuK-Probeklausuren |
 
-**Die zwei Töpfe je Modul:** Prüfungs-Topf = die Prüfungs-Posten + die Reste nach G5; Semester-Topf = der Rest der
-180 h. Silas' Semester (12.10.): 900 h = 595,5 h Semester + 304,5 h Prüfungen (268 h aus den Tabellen, dazu STAT1 6,5 h
-aus der IV und 6 h aus dem Tutorium, EINFWI 20 h aus der Übung, BuK 4 h aus dem Tutorium).
+**Die zwei Töpfe je Modul:** Prüfungs-Topf = die Prüfungs-Posten der Tabelle; Semester-Topf = der Rest der 180 h, darin
+der Puffer nach G5. Silas' Semester (16.10., SP-0411): 900 h = 632 h Semester (davon 38,5 h Puffer: STAT1 8,5 h aus der
+IV und 6 h aus dem Tutorium, EINFWI 20 h aus der Übung, BuK 4 h aus dem Tutorium) + 268 h Prüfungen. Bis SP-0411 standen
+die 38,5 h im Prüfungs-Topf (306,5 h).
 
 **„Vorbereitung auf …“** (unregelmäßige Termine): Ein Element mit `vorbereitung_auf: <element>` hat je Termin dieses
 Elements eine Einheit, Fenster vom vorigen Termin bis zu diesem — die Daten kommen aus der gewählten oder gewünschten
@@ -210,8 +211,8 @@ Je Prüfung (`erg.pruefungen`):
   bis eine Woche vor einer schriftlichen Prüfung, Abmeldung bis drei Tage vorher; Portfolio: An- und Abmeldung bis
   einen Tag vor dem ersten Teil; mit Zulassung (Übungsschein, Prog1WINF) der Vorbehalt bis zwei Wochen vorher. Sie
   stehen im Kalender (Schicht C, Schritt 5).
-- **Kontingent:** die Vorbereitungs-Posten (+ G5 bei der Hauptprüfung: der mit dem spätesten Termin), mit Herkunft
-  („Prüfungsvorbereitung (Klausur) 50 h + aus der Übung 20 h“). Termine im Prüfungs-Topf, die der Prüfung dienen
+- **Kontingent:** die Vorbereitungs-Posten, mit Herkunft („Prüfungsvorbereitung (Klausur) (50 h laut Tabelle, nach
+  Punkten) 72 h“); die Hauptprüfung ist die mit dem spätesten Termin. Termine im Prüfungs-Topf, die der Prüfung dienen
   (Fragestunde, Probeklausuren), sind Teil davon; **zu planen** ist der Rest. Erledigt (✓) und geplant (künftige und
   unbestätigte Blöcke) zählen dagegen.
 - **Punkte** (Portfolio): `punkte` je Teil, `plan.pruefung[pid].punkte` erreicht; `portfolio_rest` sagt, wie viele die
@@ -248,7 +249,7 @@ Silas: das Audit als eigene Schicht, nicht als Logik. `audit()`:
 - **Je Posten:** Präsenz gegen seine Struktur (Termine — eine wöchentliche Serie gegen höchstens `katalog_wochen` = 15,
   die 16. Woche ist Luft —, Videos, erwartete Gruppen), Selbststudium gegen den Plan. `passt` (Abweichung bis 10 %,
   mindestens 1 h), `mehr` (Präsenz: Entscheidung offen — PROG1 hat zwei Termine je Woche: 30 h mehr), `weniger` (Präsenz:
-  G5), `offen` (Videolängen oder Termine fehlen), `ungeplant` (Selbststudium ohne Blöcke).
+  Puffer nach G5), `offen` (Videolängen oder Termine fehlen), `ungeplant` (Selbststudium ohne Blöcke).
 - **Je Modul:** „mehr“ und „weniger“ getrennt über die Reste innerhalb der Toleranz; ab `modul_meldung_min` (2 h)
   meldet das Modul. Nichts wird verrechnet.
 - **Last:** Wochen über 45 h und Tage über 9 h — gezählt, was wirklich liegt. **Zwei Prüfungen an einem Tag**,
@@ -570,8 +571,8 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
 - **Im Kopf der Woche** steht ihre Last: „Vorlesungswoche 5 · 47,5 h von 45 h (davon 6 h noch ohne Block)“ — rot über 45 h.
 - **Links: Ganzes Semester | Diese Woche** (ab Schritt 3 und festgelegt). Die Woche ist die im Raster gezeigte.
 - **Ohne Uhrzeit:** Ein Termin mit Datum, aber ohne Uhrzeit steht über dem Raster; ein Klick trägt Uhrzeit und Ort nach.
-- **Abgleich** (V-0349, §2.8): je Modul eine Tabelle Posten · Tabelle · Wirklichkeit · Ergebnis · Folge („6,5 h →
-  Klausur (G5)“, „Entscheidung offen“), darunter mehr/weniger innerhalb der Toleranz; die **Last je Woche** als Säulen
+- **Abgleich** (V-0349, §2.8): je Modul eine Tabelle Posten · Tabelle · Wirklichkeit · Ergebnis · Folge („8,5 h
+  Puffer (G5)“, „Entscheidung offen“), darunter mehr/weniger innerhalb der Toleranz; die **Last je Woche** als Säulen
   (Termine, Blöcke, Prüfungslernen, Bedarf ohne Block, Vorschlag) mit der Grenze 45 h als Linie, ein Klick zeigt die
   Woche; Tage über 9 h; Prüfungen an einem Tag, Rückfall-Überschneidungen, Quoten.
 - **Offen** (V-0349, §2.9): „Jetzt“ (kritisch und dran, mit „Angemeldet ✓“, „Zugeteilt ✓“, „Nachgeholt ✓“, „Woche

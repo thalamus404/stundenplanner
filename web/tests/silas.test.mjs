@@ -102,7 +102,7 @@ test('Präsenz: jeder Termin zählt seine Doppelstunde', () => {
   assert.equal(z.status, 'ok');
 });
 
-test('Wahl: ohne Wahl „Wahl offen“, gewählt zählt die Gruppe, ohne Gruppen „Info fehlt“ — und zu wenige Termine gehen nach G5', () => {
+test('Wahl: ohne Wahl „Wahl offen“, gewählt zählt die Gruppe, ohne Gruppen „Info fehlt“ — und zu wenige Termine bleiben Puffer (G5)', () => {
   const a = angebot();
   const ohne = M.rechnen(a, {}).teile.get('bsp-ue');
   assert.equal(ohne.alternativen, 'wahl_offen');
@@ -111,12 +111,13 @@ test('Wahl: ohne Wahl „Wahl offen“, gewählt zählt die Gruppe, ohne Gruppen
   const g1 = e.teile.get('bsp-ue');
   assert.equal(g1.alternativen, 'gewaehlt');
   assert.equal(g1.ist_min, 3 * 120);
-  // Nur drei Termine (6 h) statt 30 h: 24 h finden nicht statt und gehen in die Vorbereitung der Klausur (G5).
+  // Nur drei Termine (6 h) statt 30 h: 24 h finden nicht statt und bleiben als Puffer im Semester (G5, SP-0411).
   const P = e.posten.find((x) => x.id === 'BSP/ue');
   assert.equal(P.audit.ergebnis, 'weniger');
-  assert.equal(P.g5_min, 24 * 60);
-  assert.equal(e.pruefungen.get('bsp-klausur').kontingent_min, (90 + 24) * 60);
-  assert.equal(e.module[0].pruefung_min, (90 + 24) * 60);
+  assert.equal(P.puffer_min, 24 * 60);
+  assert.equal(e.pruefungen.get('bsp-klausur').kontingent_min, 90 * 60);
+  assert.equal(e.module[0].pruefung_min, 90 * 60);
+  assert.equal(e.module[0].puffer_min, 24 * 60);
   a.module[0].teile[3].optionen = [];
   a.module[0].teile[3].wahl = true;
   const leer = M.rechnen(a, {}).teile.get('bsp-ue');
