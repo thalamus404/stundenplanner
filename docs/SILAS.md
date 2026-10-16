@@ -23,6 +23,7 @@ Timeline ist die Lesesicht, geplant wird hier.
 | `functions/silas/api/[[pfad]].js` | der private Speicher (Cloudflare Pages Function mit KV) |
 | `ops/silas.mjs` | prüfen, holen, senden, einrichten — von der Werkbank |
 | `web/tests/silas.test.mjs`, `web/tests/kontingent.test.mjs` | Modell, Kalender, Speicher; das Kontingent-Modell je Regel (mit erfundenen Daten) |
+| `ops/sicht_silas.py` | die Seite am Telefon messen (V-0391): 390 × 844 und 360 × 740, hell und dunkel, jeder Schritt, festgelegt, Offen, Abgleich — mit erfundenem Stand, braucht Playwright |
 
 Alles rein: kein DOM, kein Netz, keine Uhr außer der übergebenen (`heute`, `jetzt_min`) — Seite und Server rechnen
 dasselbe.
@@ -583,8 +584,34 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   je Modul eine Summenzeile, darunter jeder Bestandteil, regelmäßig wie unregelmäßig, dazu Prüfungen und Fristen;
   Termine kräftig, eigene Blöcke heller, Freigaben als Punkt. Der links gewählte Bestandteil leuchtet, die anderen
   treten zurück; im Ablauf sind Zeilen anderer Schritte und die Prüfungen blass. Darunter die Chronik des Unregelmäßigen.
-- **Am Telefon** liegt alles untereinander, das Raster scrollt seitlich; ein Tipp legt den hängenden Block ab
-  (auch er nicht auf Präsenz). Die Schritte zeigen nur den gezeigten mit Namen, die anderen mit Nummer und Stand.
+- **Am Telefon** (unter 820 px, `SCHMAL` in silas.mjs und dieselbe Grenze in silas.css; V-0391, Silas, 16.10.: *„die
+  app bitte einmal für jeden schritt auch für mobile optimieren“*) liegt alles untereinander: Kopf, die Schritte, die
+  Werkzeugzeile, **was dran ist** (`#dran`), das Raster, darunter „Noch zu wählen“ bzw. was nicht im Plan ist, die
+  Legende, die Module, die Semester-Übersicht. Gemessen vorher bei 390 × 844: Das Raster war 640 px breit (man sah Mo,
+  Di und halb Mi und schob seitlich), die Seite 9 000 px lang (6 900 davon die Übersicht), und was dran war, stand unter
+  Raster und Legende — wer „Block legen“ tippte, scrollte zum Raster zurück. Jetzt:
+  - **Die Woche passt in die Breite** (Zeitspalte 28 px, je Tag rund 68 px): Tageskopf „Mo 12.10.“ mit der Last
+    darunter, Kacheln umbrechen (Titel zwei, zweite Zeile drei Zeilen), nur der Beginn statt „12:15–13:45“, Gruppen ohne
+    Tag und Uhrzeit im Namen („Tutor A, X 101“) und ohne „wählen“, die Marke kurz („⚠ 2×“). Das Etikett ist ein schmaler
+    Streifen in seiner Farbe, die Fahrzeit ohne Schild. Höhe `clamp(560px, 100svh − 150px, 720px)`.
+  - **Über dem Raster `#dran`** (`dranZeichnen()`): der Schritt mit Fortschritt; die Sache, die dran ist, mit Stand
+    („10 Gruppen“, „✓ Mo 8–10“, „1 h je Woche“), einem Satz, was zu tun ist („Tippe eine Gruppe im Plan an“, „Tippe auf
+    einen grünen Platz“), ihren Knöpfen (Block legen/verschieben, Details) und „Nächste: …“; ist nichts mehr offen,
+    „Weiter“ bzw. „Festlegen“. Beim Legen ersetzt es das Banner. Links fehlen deshalb am Telefon der Kasten des Schritts
+    und die Hauptreiter (im Ablauf gibt es nur die Woche; festgelegt stehen sie oben über allem).
+  - **Zur Sache springen** (`amTelefonHin()`): Wird unten in der Liste oder unter dem Raster etwas zu der Sache, die
+    dran ist („Block legen“, „Gruppen zeigen“, eine Sache antippen), rückt die Seite zu `#dran`; „Details“ in `#dran`
+    führt zur Karte in der Liste.
+  - **Zugeklappt:** die Legende („Legende zeigen“) und die Semester-Übersicht („Zeigen“, gemerkt als
+    `ansicht.leisteHandy`). Werkzeugzeile in einer Zeile (Zurücksetzen und Rückgängig nur als Symbol), Umschalter und
+    Wochenwahl je über die volle Breite, ohne die Überschrift „Standardwoche“ (der Umschalter sagt es), Bilanz ohne
+    „erledigt zählt erst mit ✓“, der Plan ohne Studiengang, festgelegt „Festgelegt am … [Bearbeiten]“ in einer Zeile.
+  - **Karten** (✓/✗, Block bearbeiten, Lerntag) kommen als Blatt von unten über die volle Breite, mit Schleier.
+  - Am Rechner ändert sich nichts (865 und 1440 px pixelgleich gegen V-0361). Ein Tipp legt den hängenden Block ab
+    (auch er nicht auf Präsenz). Die Schritte zeigen nur den gezeigten mit Namen, die anderen mit Nummer und Stand.
+  - **Messen:** `python3 ops/sicht_silas.py` — 32 Ansichten; Befund, wenn die Seite oder das Raster seitlich
+    übersteht, `#dran` nicht direkt über dem Raster steht, die Übersicht aufgeklappt ist oder ein Schritt über 4 000 px
+    lang wird. Gegen den Stand vor V-0391 meldet sie 52 Befunde.
 
 ## 4. Stellschrauben (`REGELN` in `grund.mjs`, im Angebot unter `regeln` überschreibbar)
 
