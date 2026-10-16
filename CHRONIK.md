@@ -12,6 +12,16 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 16.10.2026 — /silas am Telefon: jeder Schritt auf einen Schirm (V-0391)
+
+- Silas: *„die app bitte einmal für jeden schritt auch für mobile optimieren“*. Gemessen bei 390 × 844: Das Raster war
+  640 px breit und seitlich zu schieben (Mo, Di, halb Mi), die Seite 9 000 px lang (6 900 davon die
+  Semester-Übersicht), und was dran war, stand unter Raster und Legende.
+- Jetzt passt die Woche in die Breite, über dem Raster steht, was dran ist, mit seinen Knöpfen (Gruppe wählen, Block
+  legen, Weiter), Legende und Übersicht sind zugeklappt, Karten kommen als Blatt von unten. Ein Schritt ist rund
+  2 000 px lang. Am Rechner bleibt alles, wie es war (docs/SILAS.md §3 „Am Telefon“).
+- Damit es so bleibt: `ops/sicht_silas.py` misst die Seite am Telefon mit erfundenem Stand (32 Ansichten).
+
 ## 12.10.2026 — /silas: Zeitleiste unten, gemeinsamer Vorschlag, Verpasstes im Balken, Analytics (V-0357)
 
 - Unter „Prüfungen“ geht mit der Wahl einer Prüfung unten eine Zeitleiste auf: je Tag von heute bis zwei Tage nach dem
