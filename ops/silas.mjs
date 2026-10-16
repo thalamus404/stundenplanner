@@ -60,7 +60,7 @@ function zusammenfassen(stand) {
   // Das Kontingent-Modell (V-0349): je Modul die zwei Töpfe, dazu was offen ist.
   const e = M.rechnen(stand.angebot, stand.plan || {}, { heute: new Date().toISOString().slice(0, 10) });
   for (const r of e.module) {
-    console.log(`  ${M.kurz(r.modul).padEnd(8)} Semester ${M.stunden(r.semester_min).padStart(8)} · Prüfungen ${M.stunden(r.pruefung_min).padStart(7)}${r.g5_min ? ` (davon ${M.stunden(r.g5_min)} nach G5)` : ''} · erledigt ${M.stunden(r.erledigt_min)}`);
+    console.log(`  ${M.kurz(r.modul).padEnd(8)} Semester ${M.stunden(r.semester_min).padStart(8)}${r.puffer_min ? ` (davon ${M.stunden(r.puffer_min)} Puffer)` : ''} · Prüfungen ${M.stunden(r.pruefung_min).padStart(7)} · erledigt ${M.stunden(r.erledigt_min)}`);
   }
   const z = e.summe.zaehler;
   console.log(`  ${M.stunden(e.summe.soll_min)} = Semester ${M.stunden(e.summe.semester_min)} + Prüfungen ${M.stunden(e.summe.pruefung_min)} · ${z.kritisch} kritisch, ${z.dran} zu tun, ${z.achtung} prüfen · ${e.vorkommen.length} Vorkommen`);

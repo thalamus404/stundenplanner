@@ -187,25 +187,56 @@ test('Einmaliger Posten (42): keine Wochenrate, einzelne Blöcke', () => {
 
 // ── G5 und Abgleich ──────────────────────────────────────────────────────────────────────────────
 
-test('G5 (9): zu wenige Präsenztermine jenseits der Toleranz gehen in die Vorbereitung der Hauptprüfung', () => {
+test('G5 (9, SP-0411): zu wenige Präsenztermine jenseits der Toleranz bleiben Puffer — die Prüfung wird nicht größer', () => {
   const e = rechne({ wahl: { 'por-ue': 'por-g1' } });
   const P = e.posten.find((x) => x.id === 'POR/ue-p');
-  assert.equal(P.g5_min, 20 * 60);
-  assert.equal(P.g5_nach, 'por-k', 'die Klausur (später als der Test) ist die Hauptprüfung');
+  assert.equal(P.puffer_min, 20 * 60);
+  assert.equal(P.g5_nach, undefined, 'keine Umbuchung mehr');
   const X = e.pruefungen.get('por-k');
-  assert.deepEqual(X.herkunft.map((x) => [x.text, x.min / 60]), [['Prüfungsvorbereitung (Klausur)', 50], ['aus der Übung', 20]]);
-  assert.equal(e.module[2].pruefung_min, (50 + 40 + 20) * 60);
+  assert.equal(X.haupt, true, 'die Klausur (später als der Test) ist die Hauptprüfung');
+  assert.deepEqual(X.herkunft.map((x) => [x.text, x.min / 60]), [['Prüfungsvorbereitung (Klausur)', 50]]);
+  assert.equal(e.module[2].pruefung_min, (50 + 40) * 60);
+  assert.equal(e.module[2].puffer_min, 20 * 60, 'der Puffer steht im Semester-Topf');
+  assert.equal(e.module[2].semester_min + e.module[2].pruefung_min, e.module[2].soll_min);
+  assert.ok(e.module[2].flags.some((f) => f.art === 'puffer' && f.stufe === 'info' && /Puffer/.test(f.text)));
 });
 
-test('Erwartete Termine (Tutorium 12 statt 15): weniger 6 h (20 %) → G5; ein Rest innerhalb der Toleranz bleibt (47)', () => {
+test('Vorbereitung mit soll_h statt Posten (SP-0411, EINFWI nach Punkten): Herkunft nennt die Tabelle und den Grund', () => {
+  const a = angebot();
+  const m = a.module[2];
+  m.teile.find((t) => t.id === 'por-pv-t').soll_h = 18;
+  Object.assign(m.teile.find((t) => t.id === 'por-pv-k'), { soll_h: 72, soll_grund: 'nach Punkten' });
+  const e = M.rechnen(a, {}, { heute });
+  const K = e.pruefungen.get('por-k'), T = e.pruefungen.get('por-t');
+  assert.equal(T.kontingent_min, 18 * 60);
+  assert.equal(K.kontingent_min, 72 * 60);
+  assert.deepEqual(K.herkunft.map((x) => x.text), ['Prüfungsvorbereitung (Klausur) (50 h laut Tabelle, nach Punkten)']);
+  assert.equal(e.module[2].pruefung_min, 90 * 60, 'der Topf bleibt die Summe der Tabelle');
+});
+
+test('Mehr Lernzeit gelegt als das Kontingent (SP-0411): eine Meldung ab der Toleranz', () => {
+  const a = angebot();
+  a.module[2].teile.find((t) => t.id === 'por-pv-t').soll_h = 2;
+  const bloecke = [{ id: 'b1', teil: 'por-pv-t', datum: '2030-11-16', start: '09:00', ende: '13:00' }];
+  const e = M.rechnen(a, { bloecke }, { heute });
+  const X = e.pruefungen.get('por-t');
+  assert.equal(X.geplant_min, 4 * 60);
+  assert.equal(X.zu_viel_min, 2 * 60);
+  const f = e.offen.find((x) => x.art === 'zu_viel');
+  assert.ok(f && f.stufe === 'achtung' && /2 h mehr/.test(f.text), f && f.text);
+  a.module[2].teile.find((t) => t.id === 'por-pv-t').soll_h = 3.5;
+  assert.ok(!M.rechnen(a, { bloecke }, { heute }).offen.some((x) => x.art === 'zu_viel'), '30 min darüber liegt in der Toleranz (1 h)');
+});
+
+test('Erwartete Termine (Tutorium 12 statt 15): weniger 6 h (20 %) → Puffer (G5); ein Rest innerhalb der Toleranz bleibt (47)', () => {
   const e = rechne();
   const P = e.posten.find((x) => x.id === 'ANA/tut-p');
   assert.equal(P.struktur_min, 12 * 120);
-  assert.equal(P.g5_min, 6 * 60);
+  assert.equal(P.puffer_min, 6 * 60);
   const a = angebot(); a.module[0].teile[3].erwartet.anzahl = 14;
   const Q = M.rechnen(a, {}, { heute }).posten.find((x) => x.id === 'ANA/tut-p');
   assert.equal(Q.audit.ergebnis, 'passt', '−2 h sind 6,7 %: bleibt stehen');
-  assert.equal(Q.g5_min, 0);
+  assert.equal(Q.puffer_min, 0);
 });
 
 test('TU geschlossen (20, 44): Präsenz vor Ort fällt aus, online nicht; die fehlenden Stunden zählen für G5', () => {
@@ -215,10 +246,10 @@ test('TU geschlossen (20, 44): Präsenz vor Ort fällt aus, online nicht; die fe
   assert.deepEqual(aus.map((v) => [v.datum, v.ausgefallen]), [['2030-12-20', 'geschlossen']]);
   assert.ok(!aus[0].hart, 'sperrt nichts');
   assert.equal(iv.termine_min, iv.vk.filter((v) => !v.ausgefallen).length * 120);
-  // IV-Präsenz: 15 Freitage = 30 h + Screencasts 3 h = 33 h von 60 h → G5 27 h.
+  // IV-Präsenz: 15 Freitage = 30 h + Screencasts 3 h = 33 h von 60 h → 27 h Puffer (G5).
   const P = e.posten.find((x) => x.id === 'ANA/iv-p');
   assert.equal(P.struktur_min, (15 * 2 + 3) * 60);
-  assert.equal(P.g5_min, 27 * 60);
+  assert.equal(P.puffer_min, 27 * 60);
   // Online (Zoom) fällt nicht aus.
   assert.ok(M.nurOnline('online (Zoom)'));
   assert.ok(!M.nurOnline('A 151'));
@@ -301,7 +332,7 @@ test('Prüfung ohne Termin (18, 43): Info fehlt, Stichtag 14 Tage nach Modulbegi
   assert.equal(X.info.stichtag, '2030-11-01', 'erste IV Fr 18.10. + 14 Tage');
   assert.equal(X.fenster.bis, null);
   assert.deepEqual(X.vorschlag, []);
-  assert.equal(X.kontingent_min, (60 + 6 + 27) * 60, '60 h + G5 aus Tutorium und IV');
+  assert.equal(X.kontingent_min, 60 * 60, 'nur die Tabelle — die Reste von Tutorium und IV sind Puffer (G5)');
 });
 
 test('Wahl offen (11, 12): früheste als Arbeitsannahme; gewählt wandern Fenster und Fristen mit (§ 63 Abs. 2, 4, 5)', () => {
