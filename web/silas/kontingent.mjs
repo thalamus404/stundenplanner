@@ -791,7 +791,8 @@ function meldungen(erg, angebot, plan) {
     // Mehr gelegt als das Kontingent (SP-0411): Als die EINFWI-Testvorbereitung von 40 h auf 18 h sank, lagen 40 h
     // Blöcke da, und nichts sagte es. Ab der Toleranz des Postens (10 %, mindestens 1 h) eine Meldung.
     const ueber = X.erledigt_min + X.geplant_min - X.zu_planen_min;
-    if (X.zaehlt && ueber > toleranz(X.zu_planen_min, r)) f('zu_viel', 'achtung', `${X.p.titel}: ${stunden(ueber)} mehr Lernzeit gelegt als das Kontingent (${stunden(X.zu_planen_min)}) — Blöcke kürzen oder einer anderen Prüfung geben`, { ueber_min: ueber });
+    X.zu_viel_min = X.zaehlt && ueber > toleranz(X.zu_planen_min, r) ? ueber : 0;
+    if (X.zu_viel_min) f('zu_viel', 'achtung', `${X.p.titel}: ${stunden(ueber)} mehr Lernzeit gelegt als das Kontingent (${stunden(X.zu_planen_min)}) — Blöcke kürzen oder einer anderen Prüfung geben`, { ueber_min: ueber });
     if (X.wiederholung) f('wiederholung', 'info', `${X.p.titel}: Wiederholung am ${datumTag(X.termin.datum)} — eigenes Kontingent ${stunden(X.kontingent_min)}, außerhalb der 180 h`);
   }
   for (const q of erg.quoten) {

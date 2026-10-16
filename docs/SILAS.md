@@ -260,7 +260,8 @@ Silas: das Audit als eigene Schicht, nicht als Logik. `audit()`:
 Jede Meldung trägt ihre Stufe (`meldungen()` am Ende): `kritisch` (rot, jetzt handeln: Gruppenanmeldung in der letzten
 Woche, Prüfungsanmeldung in der letzten Woche oder vorbei ohne Stand, gescheitert, Vorbehalt in der letzten Woche,
 Konflikt fester Termine), `achtung` (orange, prüfen oder entscheiden: Stichtag vorbei, Unsicheres, Abweichungen und
-Entscheidungen des Abgleichs, Vorschlag passt nicht, verfehlt, zu volle Wochen und Tage, zwei Prüfungen an einem Tag),
+Entscheidungen des Abgleichs, Vorschlag passt nicht, verfehlt, zu volle Wochen und Tage, zwei Prüfungen an einem Tag,
+mehr Lernzeit gelegt als das Kontingent einer Prüfung — `zu_viel`, ab der Toleranz, SP-0411),
 `dran` (hellblau, du bist dran: wählen, anmelden, Zuteilung bestätigen, ✓/✗ für Vergangenes, Nacharbeit,
 Videolängen erschienener Videos, Block von einem Termin wegschieben), `kommt` (grau, Augen offen: Info fehlt vor dem
 Stichtag, wartet), `info` (Hinweise). `erg.offen` ist die Liste fürs „Offen“, nach Stufe und Stichtag.
@@ -613,6 +614,20 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   - **Messen:** `python3 ops/sicht_silas.py` — 32 Ansichten; Befund, wenn die Seite oder das Raster seitlich
     übersteht, `#dran` nicht direkt über dem Raster steht, die Übersicht aufgeklappt ist oder ein Schritt über 4 000 px
     lang wird. Gegen den Stand vor V-0391 meldet sie 52 Befunde.
+- **Am Surface Pro 11, im größten Browserfenster** (SP-0411, Silas, 16.10.: *„dass es da auch perfekt aussieht und dass
+  sich die unnötigen Elemente hiden oder einklappen lassen“*): 2880 × 1920 bei 200 % sind 1440 × 960 CSS-Pixel, im
+  maximierten Browser bleiben rund 1440 × 830. Gemessen vorher: Die Seite scrollte nicht, aber das Raster hatte 33 px je
+  Stunde (Kacheln abgeschnitten), unter ihm standen drei Zeilen Legende, die Festgelegt-Leiste stand in eigener Zeile,
+  unter „Analytics“ schien die Modulliste 24 px durch (das Polster der Spalte), und „Prüfungs-Topf 2…“ war abgeschnitten.
+  Jetzt, auf jeder Breite:
+  - **Die Legende ist zugeklappt**, bis Silas sie aufklappt, und bleibt so (`ansicht.legende`, im Browser gemerkt).
+  - **Festgelegt** steht kurz da („✓ Festgelegt am … [Bearbeiten]“) und teilt die Zeile mit Offen, Abgleich, So wird
+    gerechnet, Zurücksetzen.
+  - **Die Semester-Leiste rechts** klappt auf eine Schiene, die „Semester“ sagt (`ansicht.leiste`); eingeklappt hat
+    das Raster bei 1440 px rund 190 px je Tag, und die Kacheln zeigen Titel, Zeit und Raum ganz.
+  - „Analytics“ unten links deckt bis zur Kante; die Hauptreiter sagen „Topf 632 h“ und „Topf 268 h“.
+  - Unter „Prüfungen“ sagt eine Zeile, wenn für eine Prüfung mehr gelegt ist als ihr Kontingent (`zu_viel_min`, §2.9).
+  Das Raster hat so bei 1440 × 830 rund 40 px je Stunde (mit Leiste), 865 px und das Telefon bleiben, wie sie waren.
 
 ## 4. Stellschrauben (`REGELN` in `grund.mjs`, im Angebot unter `regeln` überschreibbar)
 

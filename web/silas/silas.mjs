@@ -83,11 +83,10 @@ const Z = {
   // schritt: 1 Grundlage · 2 Gruppen · 3 Videos · 4 EVL (V-0333). bereich: plan (das Raster: Standardwoche oder eine
   // echte Woche) · frei (Prüfungsvorbereitung in der vorlesungsfreien Zeit, Schritt 4) · offen (Lücken und Annahmen) ·
   // erklaerung (So wird gerechnet).
-  ansicht: { schritt: 1, bereich: 'plan', modus: 'standard', woche: null, leiste: true, wochenende: false },
+  ansicht: { schritt: 1, bereich: 'plan', modus: 'standard', woche: null, leiste: true, wochenende: false, legende: false },
   fokus: null,          // Teil-Id (oder modul:…, pruefung:…), dessen Karte offen ist
   setzen: null,         // Prüfungs-Id (oder u:<Teil> für Unregelmäßiges), die unter „Prüfungen“ gewählt ist: für sie legt ein Tipp im Kalender Lernzeit
   legen: null,          // { teil, dauer, alle, rest } — der Block, der am Zeiger hängt (V-0335)
-  legendeAuf: false,    // am Telefon: die Legende unter dem Raster aufgeklappt (V-0391)
   jetzt: {},            // je Schritt der Bestandteil, den Silas links gewählt hat (sonst der erste offene)
   sprung: null,         // { nach } — kurz in einen früheren Schritt zurückgesprungen (V-0336), danach zurück nach `nach`
   auf: {},              // je Schritt das Modul, das Silas trotz „fertig“ aufgeklappt hat
@@ -750,9 +749,9 @@ function moduleZeichnen() {
 function hauptreiterEl() {
   const b = Z.ansicht.bereich, n = schritt();
   return h('div', { class: 'hauptreiter', role: 'tablist', 'aria-label': 'Ansicht' },
-    h('button', { type: 'button', role: 'tab', 'aria-selected': String(!['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'plan' }, sym('kalender'), h('span', {}, h('b', { text: 'Woche' }), h('small', { text: fertig() ? 'Semester-Topf' : `Schritt ${n} von 4` }))),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': String(!['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'plan' }, sym('kalender'), h('span', {}, h('b', { text: 'Woche' }), h('small', { text: fertig() ? `Topf ${M.stunden(Z.erg.summe.semester_min)}` : `Schritt ${n} von 4` }))),
     h('button', { type: 'button', role: 'tab', 'aria-selected': String(['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'frei', disabled: !fertig(), title: fertig() ? null : 'Erst nach „Stundenplan festlegen“' },
-      sym('ziel'), h('span', {}, h('b', { text: 'Prüfungen' }), h('small', { text: fertig() ? `Prüfungs-Topf ${M.stunden(Z.erg.summe.pruefung_min)}` : 'nach dem Festlegen' }))));
+      sym('ziel'), h('span', {}, h('b', { text: 'Prüfungen' }), h('small', { text: fertig() ? `Topf ${M.stunden(Z.erg.summe.pruefung_min)}` : 'nach dem Festlegen' }))));
 }
 
 /** Die zwei Töpfe eines Moduls als Zeile (Kontingent-Modell, G1/G2): Semester + Prüfungen = LP × 30 h. */
@@ -1165,9 +1164,10 @@ function planKopfZeichnen() {
   // Die vier Schritte (V-0333): ein Knopf je Schritt, mit seinem Stand. Man springt frei vor und zurück. Festgelegt
   // (V-0334) ruhen sie: Dann steht da, seit wann, und „Stundenplan bearbeiten“ führt in einen Schritt zurück.
   const schritteEl = fertig() ? h('div', { class: 'fertig-leiste' },
-    // Am Telefon kürzer, damit Satz und Knopf in eine Zeile passen (V-0391).
-    h('span', { class: 'fertig-text' }, sym('ok'), h('b', { text: SCHMAL.matches ? 'Festgelegt' : 'Stundenplan festgelegt' }), h('span', { text: ` am ${datumMitTag(Z.stand.plan.festgelegt.slice(0, 10))}` })),
-    h('button', { type: 'button', class: 'knopf haupt', 'data-act': 'bearbeiten', 'aria-label': SCHMAL.matches ? 'Stundenplan bearbeiten' : null }, sym('stift'), SCHMAL.matches ? 'Bearbeiten' : 'Stundenplan bearbeiten'))
+    // Kurz, damit Satz und Knopf neben Offen, Abgleich … in eine Zeile passen — am Telefon (V-0391) und am Rechner
+    // (SP-0411: die Leiste in eigener Zeile nahm dem Raster bei 1440 × 830 rund 50 px).
+    h('span', { class: 'fertig-text' }, sym('ok'), h('b', { text: 'Festgelegt' }), h('span', { text: ` am ${datumMitTag(Z.stand.plan.festgelegt.slice(0, 10))}` })),
+    h('button', { type: 'button', class: 'knopf haupt', 'data-act': 'bearbeiten', 'aria-label': 'Stundenplan bearbeiten' }, sym('stift'), 'Bearbeiten'))
   : h('nav', { class: 'schritte', 'aria-label': 'Schritte' },
     ...Z.schritte.slice(0, 4).map((sc) => {
       const st = schrittStand(sc);
@@ -1748,9 +1748,10 @@ function fussZeichnen() {
   // links) und nur die Formen, die im gezeigten Schritt vorkommen.
   const n = schritt();
   const form = (kl, text) => h('span', { class: 'legende' }, h('i', { class: kl }), text);
-  // Am Telefon zugeklappt (V-0391): ausgeklappt sind es 280 px zwischen Raster und dem, was dran ist.
-  const zu = SCHMAL.matches && !Z.legendeAuf;
-  const klappe = SCHMAL.matches ? h('button', { type: 'button', class: 'knopf klein leise legende-knopf', 'data-act': 'legende', 'aria-expanded': String(!zu) }, zu ? 'Legende zeigen' : 'Legende einklappen') : null;
+  // Zugeklappt, bis Silas sie aufklappt, und so gemerkt (ansicht.legende): am Telefon waren es 280 px zwischen Raster und
+  // dem, was dran ist (V-0391), am Surface (1440 × 830) drei Zeilen, die dem Raster fehlten (SP-0411).
+  const zu = !Z.ansicht.legende;
+  const klappe = h('button', { type: 'button', class: 'knopf klein leise legende-knopf', 'data-act': 'legende', 'aria-expanded': String(!zu) }, zu ? 'Legende zeigen' : 'Legende einklappen');
   if (zu) { fuellen($('p-fuss'), klappe); return; }
   fuellen($('p-fuss'), [klappe,
     h('span', { class: 'legende' }, h('i', { class: 'k-etikett e-praesenz', text: 'Präsenz' }), h('i', { class: 'k-etikett e-video', text: 'Video' }), h('i', { class: 'k-etikett e-evl', text: 'EVL' }), fertig() ? h('i', { class: 'k-etikett e-pruefung', text: 'Prüfung' }) : null),
@@ -1916,6 +1917,8 @@ function pruefZeileEl(X) {
       vor && f.status === 'offen' ? h('span', { class: 'p-vor', text: ` · Vorschlag ${M.stunden(vor)}` }) : null),
     h('div', { class: 'r-satz' }, fBalken(f)),
     X.passt_nicht_min >= 30 ? h('p', { class: 'r-satz r-warn', text: `${M.stunden(X.passt_nicht_min)} passen nicht — Entscheidung offen` }) : null,
+    // Mehr gelegt als das Kontingent (SP-0411): Der Balken deckelt bei 100 %, darum sagt es eine Zeile.
+    X.zu_viel_min ? h('p', { class: 'r-satz r-warn', text: `${M.stunden(X.zu_viel_min)} mehr gelegt als das Kontingent` }) : null,
     sel ? pruefDetail(X) : null);
 }
 
@@ -2770,7 +2773,9 @@ function leisteZeichnen() {
   }
   const kopf = h('div', { class: 'l-kopf' },
     h('h2', { text: 'Semester' }),
-    h('button', { class: 'knopf rund leise l-zu', type: 'button', 'data-act': 'leiste', 'aria-label': Z.ansicht.leiste ? 'Leiste einklappen' : 'Leiste ausklappen', title: 'Leiste ein-/ausklappen' }, sym('leiste')));
+    // Eingeklappt sagt die Schiene, was dahinter liegt (SP-0411: am Surface bleibt das Raster so 190 px je Tag breit —
+    // ein Symbol allein fand man nicht wieder).
+    h('button', { class: 'knopf rund leise l-zu', type: 'button', 'data-act': 'leiste', 'aria-label': Z.ansicht.leiste ? 'Leiste einklappen' : 'Leiste ausklappen', title: 'Leiste ein-/ausklappen' }, sym('leiste'), Z.ansicht.leiste ? null : h('span', { class: 'l-wort', text: 'Semester' })));
   fuellen(box, kopf,
     h('p', { class: 'l-satz t-zahlen', text: 'Jede Spalte eine Woche, jede Zeile ein Bestandteil — Termine kräftig, eigene Blöcke heller, andere Schritte blass. Ein Klick auf eine Zelle zeigt die Woche, einer auf den Namen wählt den Bestandteil.' }),
     minimapEl(),
@@ -3530,7 +3535,7 @@ function verdrahten() {
       case 'zur-woche': zurWoche(el.dataset.woche, el.dataset.hell); break;
       case 'leiste': Z.ansicht.leiste = !Z.ansicht.leiste; ansichtMerken(); zeichnen(); break;
       case 'leiste-handy': Z.ansicht.leisteHandy = !Z.ansicht.leisteHandy; ansichtMerken(); leisteZeichnen(); break;
-      case 'legende': Z.legendeAuf = !Z.legendeAuf; fussZeichnen(); break;
+      case 'legende': Z.ansicht.legende = !Z.ansicht.legende; ansichtMerken(); fussZeichnen(); break;
       case 'rueck': rueckgaengig(); break;
       case 'kalender': kalenderKarte(el); break;
       case 'setzen-aus': Z.setzen = null; zeichnen(); bannerZeigen(); break;

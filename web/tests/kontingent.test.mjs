@@ -221,6 +221,7 @@ test('Mehr Lernzeit gelegt als das Kontingent (SP-0411): eine Meldung ab der Tol
   const e = M.rechnen(a, { bloecke }, { heute });
   const X = e.pruefungen.get('por-t');
   assert.equal(X.geplant_min, 4 * 60);
+  assert.equal(X.zu_viel_min, 2 * 60);
   const f = e.offen.find((x) => x.art === 'zu_viel');
   assert.ok(f && f.stufe === 'achtung' && /2 h mehr/.test(f.text), f && f.text);
   a.module[2].teile.find((t) => t.id === 'por-pv-t').soll_h = 3.5;
