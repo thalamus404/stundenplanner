@@ -19,6 +19,9 @@ const LS = { schluessel: 'silas:v1:schluessel', stand: `silas:v1:stand${PLAN_NR 
 const RASTER_MIN = 15;          // Ziehen rastet auf Viertelstunden
 const SPEICHERN_NACH_MS = 900;
 const GROB = matchMedia('(pointer: coarse)');
+// Am Telefon (V-0391): unter 820 px liegt alles untereinander. Die Woche passt in die Breite, was dran ist, steht über
+// dem Raster (#dran), Legende und Semester-Übersicht sind zugeklappt — gleiche Grenze wie in silas.css.
+const SCHMAL = matchMedia('(max-width: 820px)');
 
 const $ = (id) => document.getElementById(id);
 const ls = {
@@ -84,6 +87,7 @@ const Z = {
   fokus: null,          // Teil-Id (oder modul:…, pruefung:…), dessen Karte offen ist
   setzen: null,         // Prüfungs-Id (oder u:<Teil> für Unregelmäßiges), die unter „Prüfungen“ gewählt ist: für sie legt ein Tipp im Kalender Lernzeit
   legen: null,          // { teil, dauer, alle, rest } — der Block, der am Zeiger hängt (V-0335)
+  legendeAuf: false,    // am Telefon: die Legende unter dem Raster aufgeklappt (V-0391)
   jetzt: {},            // je Schritt der Bestandteil, den Silas links gewählt hat (sonst der erste offene)
   sprung: null,         // { nach } — kurz in einen früheren Schritt zurückgesprungen (V-0336), danach zurück nach `nach`
   auf: {},              // je Schritt das Modul, das Silas trotz „fertig“ aufgeklappt hat
@@ -357,6 +361,7 @@ function zeichnen() {
   kopfZeichnen();
   moduleZeichnen();
   planKopfZeichnen();
+  dranZeichnen();
   const r = zeigtRaster();
   $('raster-rahmen').hidden = !r; $('p-fuss').hidden = !r; $('bereich').hidden = r;
   if (r) rasterZeichnen(); else bereichZeichnen();
@@ -662,6 +667,47 @@ function reiheEl(n, modul = null) {
   }));
 }
 
+/** Am Telefon: was dran ist, direkt über dem Raster (V-0391, Silas, 16.10.: „die app bitte einmal für jeden schritt auch
+ *  für mobile optimieren“). Am Rechner steht das links in der Modulspalte — am Telefon läge es unter Raster und Legende
+ *  (y ≈ 1300 bei 390 × 844), und wer „Block legen“ tippte, musste zum Raster zurückscrollen. Hier: der Schritt mit
+ *  Fortschritt, die Sache, die dran ist, mit ihren Knöpfen (wählen, legen, verschieben, Details), und „Weiter“, wenn im
+ *  Schritt nichts mehr offen ist. Festgelegt und außerhalb der Woche bleibt die Zeile leer. */
+function dranZeichnen() {
+  const box = $('dran');
+  if (!SCHMAL.matches || fertig() || Z.ansicht.bereich !== 'plan') { fuellen(box); box.hidden = true; return; }
+  box.hidden = false;
+  const n = schritt();
+  const f = schrittFort(n);
+  const offen = n >= 2 ? reihe(n).filter((x) => x.offen) : [];
+  const j = n >= 2 ? jetztIn(n) : null;
+  const weiter = n < 4
+    ? h('button', { type: 'button', class: `knopf klein${offen.length ? ' leise' : ' haupt'}`, 'data-act': 'schritt', 'data-schritt': String(n + 1) }, `Weiter: ${n + 1} · ${M.SCHRITTE[n].titel}`, sym('rechts'))
+    : h('button', { type: 'button', class: `knopf klein${offen.length ? ' leise' : ' haupt'}`, 'data-act': 'festlegen' }, sym('ok'), 'Festlegen');
+  const kopf = h('div', { class: 'dr-kopf' }, h('b', { text: `Schritt ${n} · ${M.SCHRITTE[n - 1].titel}` }), fBalken(f), h('span', { class: `m-proz f-${f.status}`, text: prozent(f) }));
+  if (n === 1 || !j) {
+    fuellen(box, kopf, h('p', { class: 'dr-satz', text: n === 1 ? 'Die festen Termine. Tippe einen an, um ihn zu prüfen oder Zeit und Raum zu ergänzen.' : n === 2 ? 'Alle wählbaren Gruppen sind gewählt.' : 'Alles liegt im Plan.' }),
+      h('div', { class: 'dr-knoepfe' }, weiter));
+    return;
+  }
+  const t = j.z.teil, m = j.z.modul;
+  const stand = n === 2
+    ? (j.gew ? `${j.z.alternativen === 'gewaehlt' ? '✓' : 'Wunsch'} ${j.gew.label.split(' · ')[0]}` : j.anzahl ? `${j.anzahl} Gruppen` : 'noch keine Gruppen')
+    : j.wartet ? 'wartet' : j.fertig ? `✓ ${M.stunden(j.z.plan_min)}` : vorgabeText(j.vg, true);
+  const satz = Z.legen && Z.legen.teil === t.id
+    ? `Tippe auf einen grünen Platz — der Block (${M.stunden(Z.legen.dauer)}) liegt dann ${Z.legen.einzeln ? 'an diesem Tag' : Z.legen.alle > 1 ? `alle ${Z.legen.alle} Wochen` : 'jede Woche'} dort${Z.legen.rest > 1 ? ` (noch ${Z.legen.rest})` : ''}.`
+    : n === 2 ? (j.anzahl ? (j.gew ? 'Gewählt. Eine andere Gruppe im Plan antippen wählt um, die gewählte noch einmal wählt ab.' : 'Tippe eine Gruppe im Plan an.') : 'Die Gruppen kommen noch.')
+      : j.fertig ? 'Liegt im Plan.' : null;
+  const naechste = offen.find((x) => x.z !== j.z);
+  const details = h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'teil', 'data-teil': t.id, 'aria-expanded': String(Z.fokus === t.id) }, 'Details');
+  const knoepfe = n >= 3 && j.vg ? legenKnoepfe(j.z, j.vg, j.f) : [];
+  fuellen(box, kopf,
+    h('div', { class: `dr-sache m${m.farbe || 1}` }, h('span', { class: 'm-punkt' }), h('span', { class: 'dr-name', text: `${M.kurz(m)} · ${t.titel}` }), h('span', { class: 'dr-stand', text: stand })),
+    satz ? h('p', { class: 'dr-satz', text: satz }) : null,
+    h('div', { class: 'dr-knoepfe' }, ...knoepfe, details,
+      naechste && !(Z.legen && Z.legen.teil === t.id) ? h('button', { type: 'button', class: `knopf klein${j.offen ? ' leise' : ' haupt'}`, 'data-act': 'jetzt', 'data-teil': naechste.z.teil.id }, `Nächste: ${M.kurz(naechste.z.modul)} · ${naechste.z.teil.titel}`, sym('rechts')) : null,
+      !naechste && !j.offen ? weiter : null));
+}
+
 function moduleZeichnen() {
   const box = $('module');
   const oben = box.scrollTop;
@@ -682,12 +728,9 @@ function moduleZeichnen() {
     : b === 'frei' || b === 'pruefplan'
       ? kasten('Prüfungen und Unregelmäßiges', schrittFort(M.PRUEFUNGEN), 'Je Prüfung ihr Kontingent (Prüfungs-Topf), dazu was an einzelne Termine gebunden ist (Quicktests, Vorbereitung auf die Übungen, Literatur). Eine wählen, dann im Kalender: ein Tipp legt einen Lernblock, Ziehen nach unten wählt die Stunden.')
       : kasten('Dein Stundenplan', fortVon([...Z.erg.teile.values()].filter((z) => M.schrittVon(z.teil) <= 4)), 'Festgelegt — die Schritte 1–4. Die Prüfungen und das Unregelmäßige zählen unter „Prüfungen“. Vergangenes bekommt ✓ oder ✗ (Klick auf die Kachel). Ändern: oben „Stundenplan bearbeiten“.');
-  // Die zwei Hauptansichten (V-0338). Prüfungen gibt es erst, wenn der Stundenplan festgelegt ist.
-  const haupt = h('div', { class: 'hauptreiter', role: 'tablist', 'aria-label': 'Ansicht' },
-    h('button', { type: 'button', role: 'tab', 'aria-selected': String(!['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'plan' }, sym('kalender'), h('span', {}, h('b', { text: 'Woche' }), h('small', { text: fertig() ? 'Semester-Topf' : `Schritt ${n} von 4` }))),
-    h('button', { type: 'button', role: 'tab', 'aria-selected': String(['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'frei', disabled: !fertig(), title: fertig() ? null : 'Erst nach „Stundenplan festlegen“' },
-      sym('ziel'), h('span', {}, h('b', { text: 'Prüfungen' }), h('small', { text: fertig() ? `Prüfungs-Topf ${M.stunden(Z.erg.summe.pruefung_min)}` : 'nach dem Festlegen' }))));
-  const kopf = h('div', { class: 'links-kopf' }, haupt, tun,
+  // Am Telefon stehen die Hauptreiter oben (festgelegt) oder fehlen (im Ablauf gibt es nur die Woche), und Fortschritt und
+  // „Weiter“ stehen über dem Raster (dranZeichnen) — hier unten wären sie unter Raster und Legende (V-0391).
+  const kopf = h('div', { class: 'links-kopf' }, SCHMAL.matches ? null : hauptreiterEl(), SCHMAL.matches && !fertig() ? null : tun,
     (fertig() || n > 2) && b !== 'frei' && b !== 'pruefplan' ? h('div', { class: 'umschalter', role: 'group', 'aria-label': 'Zeitraum der Module' },
       h('button', { type: 'button', 'aria-pressed': String(!woche), 'data-act': 'links', 'data-wert': 'semester', text: 'Ganzes Semester' }),
       h('button', { type: 'button', 'aria-pressed': String(woche), 'data-act': 'links', 'data-wert': 'woche', text: 'Diese Woche' })) : null);
@@ -701,6 +744,15 @@ function moduleZeichnen() {
   if (fertig() && (b === 'frei' || b === 'pruefplan')) fuellen(box, kopf, pruefListe(), fuss);
   else fuellen(box, kopf, planFl, ...Z.erg.module.map(modulKarte), fuss);
   box.scrollTop = oben;
+}
+
+/** Die zwei Hauptansichten (V-0338): Woche und Prüfungen. Prüfungen gibt es erst, wenn der Stundenplan festgelegt ist. */
+function hauptreiterEl() {
+  const b = Z.ansicht.bereich, n = schritt();
+  return h('div', { class: 'hauptreiter', role: 'tablist', 'aria-label': 'Ansicht' },
+    h('button', { type: 'button', role: 'tab', 'aria-selected': String(!['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'plan' }, sym('kalender'), h('span', {}, h('b', { text: 'Woche' }), h('small', { text: fertig() ? 'Semester-Topf' : `Schritt ${n} von 4` }))),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': String(['frei', 'pruefplan'].includes(b)), 'data-act': 'bereich', 'data-bereich': 'frei', disabled: !fertig(), title: fertig() ? null : 'Erst nach „Stundenplan festlegen“' },
+      sym('ziel'), h('span', {}, h('b', { text: 'Prüfungen' }), h('small', { text: fertig() ? `Prüfungs-Topf ${M.stunden(Z.erg.summe.pruefung_min)}` : 'nach dem Festlegen' }))));
 }
 
 /** Die zwei Töpfe eines Moduls als Zeile (Kontingent-Modell, G1/G2): Semester + Prüfungen = LP × 30 h. */
@@ -1113,8 +1165,9 @@ function planKopfZeichnen() {
   // Die vier Schritte (V-0333): ein Knopf je Schritt, mit seinem Stand. Man springt frei vor und zurück. Festgelegt
   // (V-0334) ruhen sie: Dann steht da, seit wann, und „Stundenplan bearbeiten“ führt in einen Schritt zurück.
   const schritteEl = fertig() ? h('div', { class: 'fertig-leiste' },
-    h('span', { class: 'fertig-text' }, sym('ok'), h('b', { text: 'Stundenplan festgelegt' }), h('span', { text: ` am ${datumMitTag(Z.stand.plan.festgelegt.slice(0, 10))}` })),
-    h('button', { type: 'button', class: 'knopf haupt', 'data-act': 'bearbeiten' }, sym('stift'), 'Stundenplan bearbeiten'))
+    // Am Telefon kürzer, damit Satz und Knopf in eine Zeile passen (V-0391).
+    h('span', { class: 'fertig-text' }, sym('ok'), h('b', { text: SCHMAL.matches ? 'Festgelegt' : 'Stundenplan festgelegt' }), h('span', { text: ` am ${datumMitTag(Z.stand.plan.festgelegt.slice(0, 10))}` })),
+    h('button', { type: 'button', class: 'knopf haupt', 'data-act': 'bearbeiten', 'aria-label': SCHMAL.matches ? 'Stundenplan bearbeiten' : null }, sym('stift'), SCHMAL.matches ? 'Bearbeiten' : 'Stundenplan bearbeiten'))
   : h('nav', { class: 'schritte', 'aria-label': 'Schritte' },
     ...Z.schritte.slice(0, 4).map((sc) => {
       const st = schrittStand(sc);
@@ -1129,12 +1182,13 @@ function planKopfZeichnen() {
     h('button', { type: 'button', class: `knopf leise${b === 'offen' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'offen' }, 'Offen', rot ? h('span', { class: 'zahl', text: String(rot) }) : null),
     h('button', { type: 'button', class: `knopf leise${b === 'abgleich' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'abgleich', text: 'Abgleich' }),
     h('button', { type: 'button', class: `knopf leise${b === 'erklaerung' ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': 'erklaerung', text: 'So wird gerechnet' }),
-    h('button', { type: 'button', class: 'knopf leise', 'data-act': 'zuruecksetzen', title: 'Zurück auf die Grundlage' }, sym('zurueck'), 'Zurücksetzen'));
+    h('button', { type: 'button', class: 'knopf leise', 'data-act': 'zuruecksetzen', title: 'Zurück auf die Grundlage', 'aria-label': SCHMAL.matches ? 'Zurücksetzen' : null }, sym('zurueck'), SCHMAL.matches ? null : 'Zurücksetzen'));
   const zeile = h('div', { class: 'p-zeile' });
   // Element.append schriebe null als Text „null“ (kein Rückgängig) — darum gefiltert.
   const dazu = (...k) => zeile.append(...k.filter(Boolean));
   const titel = h('div', { class: 'p-titel' });
-  const rueck = Z.rueck.length ? h('button', { class: 'knopf leise', type: 'button', 'data-act': 'rueck', title: 'Rückgängig (⌘Z)' }, sym('zurueck'), 'Rückgängig') : null;
+  // Am Telefon nur das Symbol (V-0391): So passt es neben den Umschalter.
+  const rueck = Z.rueck.length ? h('button', { class: 'knopf leise', type: 'button', 'data-act': 'rueck', title: 'Rückgängig (⌘Z)', 'aria-label': SCHMAL.matches ? 'Rückgängig' : null }, sym('zurueck'), SCHMAL.matches ? null : 'Rückgängig') : null;
   const nav = (liste, aktuell, std) => {
     const sel = h('select', { 'aria-label': 'Woche', 'data-act': 'woche-waehlen' },
       ...liste.map((x) => h('option', { value: x.id, selected: x.id === aktuell && !std, text: `${x.kurz} · ${M.datumKurz(x.von)}` })));
@@ -1152,7 +1206,9 @@ function planKopfZeichnen() {
   if (b === 'plan' || b === 'pruefplan') {
     const std = Z.ansicht.modus === 'standard';
     const w = wo.find((x) => x.id === Z.ansicht.woche);
-    if (std) titel.append(h('b', { text: 'Standardwoche' }), h('span', { title: 'Mittel der 16 Vorlesungswochen; die Aufwandstabellen nennen je Woche die Posten mit Multiplikator 15', text: `Ø ${M.stunden(Math.round(Z.mittel.belegt / 15) * 15)} belegt je Vorlesungswoche · laut Tabellen ${M.stunden(Z.erg.summe.woche_min)} · Grenze ${Z.erg.regeln.woche_h} h` }));
+    // Am Telefon ohne die Überschrift: Umschalter und Wochenwahl sagen schon, was gezeigt ist (V-0391).
+    // (Element.append schriebe null als „null“ — darum fuellen mit dem, was schon da ist.)
+    if (std) fuellen(titel, SCHMAL.matches && b === 'plan' ? null : h('b', { text: 'Standardwoche' }), h('span', { title: 'Mittel der 16 Vorlesungswochen; die Aufwandstabellen nennen je Woche die Posten mit Multiplikator 15', text: `Ø ${M.stunden(Math.round(Z.mittel.belegt / 15) * 15)} ${SCHMAL.matches ? 'je Woche' : 'belegt je Vorlesungswoche'} · ${SCHMAL.matches ? 'Tabellen' : 'laut Tabellen'} ${M.stunden(Z.erg.summe.woche_min)} · Grenze ${Z.erg.regeln.woche_h} h` }));
     else {
       const art = w.art === 'vorlesung' ? `Vorlesungswoche ${w.nr}` : w.art === 'frei' ? 'Vorlesungsfrei' : 'Prüfungszeit';
       // Die Last der Woche (G8): was liegt — Termine, Blöcke, Prüfungen — und der Bedarf, den noch kein Block deckt.
@@ -1161,7 +1217,7 @@ function planKopfZeichnen() {
       const imPlan = l.termine + l.pruefung + l.bloecke + l.pbloecke;
       const offen = nochNichtImPlan().reduce((s, x) => s + x.offen_min, 0);
       const ueber = imPlan + offen > Z.erg.regeln.woche_h * 60;
-      titel.append(h('b', { text: `${w.kurz} · ${M.datumKurz(w.von)}–${M.datumKurz(w.bis)}` }),
+      fuellen(titel, SCHMAL.matches && b === 'plan' ? null : h('b', { text: `${w.kurz} · ${M.datumKurz(w.von)}–${M.datumKurz(w.bis)}` }),
         h('span', { class: ueber ? 'rot' : null, title: `Termine ${M.stunden(l.termine + l.pruefung)} · Blöcke ${M.stunden(l.bloecke + l.pbloecke)}${offen ? ` · noch nicht im Plan ${M.stunden(offen)} (die Liste unter dem Raster)` : ''}`,
           text: `${art} · ${M.stunden(imPlan)} im Plan${offen >= 15 ? ` + ${M.stunden(offen)} noch nicht = ${M.stunden(imPlan + offen)}` : ''} von ${Z.erg.regeln.woche_h} h` }));
     }
@@ -1194,7 +1250,7 @@ function planKopfZeichnen() {
     titel.append(h('b', { text: 'So wird gerechnet' }), h('span', { text: 'Leistungspunkte, Aufwandstabellen und die Regeln dieses Planers' }));
     dazu(titel);
   }
-  fuellen($('p-kopf'), h('div', { class: 'p-schritte' }, schritteEl, weitere), zeile);
+  fuellen($('p-kopf'), SCHMAL.matches && fertig() ? hauptreiterEl() : null, h('div', { class: 'p-schritte' }, schritteEl, weitere), zeile);
 }
 
 function bannerZeigen() {
@@ -1208,6 +1264,7 @@ function bannerZeigen() {
     h('button', { class: 'knopf', type: 'button', 'data-act': 'ueberschreiben', text: 'Meinen behalten' }));
     b.hidden = false; return;
   }
+  if (Z.legen && SCHMAL.matches && !$('dran').hidden) { b.hidden = true; return; } // am Telefon sagt es #dran (V-0391)
   if (Z.legen) {
     const z = Z.erg.teile.get(Z.legen.teil);
     b.className = 'banner';
@@ -1351,8 +1408,10 @@ function rasterZeichnen() {
   for (let d = 0; d < tage; d++) {
     const datum = std ? null : M.plusTage(w.von, d);
     const last = zahlen ? zahlen.proTag[d] : Z.mittel.proTag[d];
-    kopf.push(h('div', { class: datum === heute() ? 'heute' : '' }, M.TAGE_LANG[d],
-      h('span', { class: `last${last > 10 * 60 ? ' voll' : ''}`, title: std ? 'Mittel der Vorlesungswochen (belegt, c.t. als Doppelstunde)' : null, text: `${datum ? `${M.datumKurz(datum)} · ` : 'Ø '}${last ? M.stunden(Math.round(last / 15) * 15) : '—'}` })));
+    // Am Telefon (V-0391) „Mo 12.10.“ und darunter nur die Last — „Montag“ und „12.10. · 5,5 h“ passen in 68 px nicht.
+    const schmal = SCHMAL.matches;
+    kopf.push(h('div', { class: datum === heute() ? 'heute' : '' }, schmal ? `${M.TAGE[d]}${datum ? ` ${M.datumKurz(datum)}` : ''}` : M.TAGE_LANG[d],
+      h('span', { class: `last${last > 10 * 60 ? ' voll' : ''}`, title: std ? 'Mittel der Vorlesungswochen (belegt, c.t. als Doppelstunde)' : null, text: `${datum && !schmal ? `${M.datumKurz(datum)} · ` : std ? 'Ø ' : ''}${last ? M.stunden(Math.round(last / 15) * 15) : '—'}` })));
   }
   fuellen($('r-kopf'), ...kopf);
 
@@ -1571,7 +1630,8 @@ function kachelEl(k) {
   const kl = ['kachel', m ? `m${m.farbe || 1}` : '', z ? `k-${M.kategorie(z.teil)}` : k.art === 'pruefung' ? 'k-pruefung' : '', `lage-${k.lage || 'jetzt'}`];
   const flags = new Set(k.vk ? k.vk.flatMap((v) => v.flags) : []);
   let titel = z ? `${M.kurz(m)} · ${z.teil.titel}` : (k.v && k.v.titel) || '';
-  let zeile2 = `${zeitspanne(k.start, k.ende)}${k.ort ? ` · ${k.ort}` : ''}`;
+  // Am Telefon (V-0391) nur der Beginn: Das Ende zeigt die Höhe der Kachel, „12:15–13:45“ nahm in 68 px zwei Zeilen.
+  let zeile2 = `${SCHMAL.matches ? uhr(k.start) : zeitspanne(k.start, k.ende)}${k.ort ? ` · ${k.ort}` : ''}`;
   let marke = null, markeKl = 'rot', act = null, bezug = null;
   if (k.art === 'termin') {
     // Präsenz mit leicht roter Umrandung (Silas, 12.10.: „Präsenztermine sollen im Planner eine leicht rote Outline bekommen,
@@ -1633,9 +1693,12 @@ function kachelEl(k) {
     // Ist schon eine Gruppe gewählt, stehen die anderen blass daneben (V-0345, Silas: „die anderen sollen nur verblassen
     // und grauer werden, aber in einem anderen Farbton als die im vorherigen Schritt gewählten“).
     if (k.alternative) kl.push('alternative');
-    titel = `${M.kurz(m)} · ${z.teil.titel} ${k.alternative ? 'umwählen' : 'wählen'}`;
-    zeile2 = k.label;
-    if (k.kollision) marke = `trifft ${k.kollision}× einen Termin`;
+    // Am Telefon (V-0391) ohne „wählen“ (die Kachel ist gestrichelt, darüber steht „Tippe eine Gruppe an“) und mit kurzer
+    // Marke — sonst bliebe in 68 px Breite vom Titel nichts.
+    titel = SCHMAL.matches ? `${M.kurz(m)} · ${z.teil.titel}` : `${M.kurz(m)} · ${z.teil.titel} ${k.alternative ? 'umwählen' : 'wählen'}`;
+    // Am Telefon ohne Tag und Uhrzeit aus dem Namen („Mo 8–10 · Tutor A, X 101“ → „Tutor A, X 101“): Spalte und Lage sagen es.
+    zeile2 = SCHMAL.matches ? k.label.split(' · ').filter((x) => !/^(Mo|Di|Mi|Do|Fr|Sa|So)\.? ?\d/.test(x)).join(' · ') || k.label : k.label;
+    if (k.kollision) marke = SCHMAL.matches ? `⚠ ${k.kollision}×` : `trifft ${k.kollision}× einen Termin`;
     act = 'option';
   } else if (k.art === 'pruefung') {
     kl.push('pruefung'); titel = `${M.kurz(m)} · ${k.v.titel}`;
@@ -1685,7 +1748,11 @@ function fussZeichnen() {
   // links) und nur die Formen, die im gezeigten Schritt vorkommen.
   const n = schritt();
   const form = (kl, text) => h('span', { class: 'legende' }, h('i', { class: kl }), text);
-  fuellen($('p-fuss'), [
+  // Am Telefon zugeklappt (V-0391): ausgeklappt sind es 280 px zwischen Raster und dem, was dran ist.
+  const zu = SCHMAL.matches && !Z.legendeAuf;
+  const klappe = SCHMAL.matches ? h('button', { type: 'button', class: 'knopf klein leise legende-knopf', 'data-act': 'legende', 'aria-expanded': String(!zu) }, zu ? 'Legende zeigen' : 'Legende einklappen') : null;
+  if (zu) { fuellen($('p-fuss'), klappe); return; }
+  fuellen($('p-fuss'), [klappe,
     h('span', { class: 'legende' }, h('i', { class: 'k-etikett e-praesenz', text: 'Präsenz' }), h('i', { class: 'k-etikett e-video', text: 'Video' }), h('i', { class: 'k-etikett e-evl', text: 'EVL' }), fertig() ? h('i', { class: 'k-etikett e-pruefung', text: 'Prüfung' }) : null),
     fertig() ? h('span', { class: 'legende' }, h('i', { class: 'k-ist i-ja', text: '✓' }), 'erledigt', h('i', { class: 'k-ist i-nein', text: '✗' }), 'nicht gemacht', h('i', { class: 'k-ist i-offen', text: '?' }), 'vorbei, noch offen') : null,
     h('span', { class: 'legende' }, h('i', { class: 'k-anzahl', text: '12×' }), 'so oft noch bis Semesterende', h('i', { class: 'k-anzahl einmal', text: '1×' }), 'einmalig'),
@@ -2692,6 +2759,15 @@ function erklaerung() {
 function leisteZeichnen() {
   const box = $('leiste');
   const oben = box.scrollTop;
+  // Am Telefon steht die Übersicht unter allem und war 6 900 px lang (V-0391): zugeklappt, bis man sie aufklappt.
+  if (SCHMAL.matches) {
+    const auf = !!Z.ansicht.leisteHandy;
+    const kopf = h('div', { class: 'l-kopf' }, h('h2', { text: 'Semester' }),
+      h('button', { class: 'knopf klein', type: 'button', 'data-act': 'leiste-handy', 'aria-expanded': String(auf) }, auf ? 'Einklappen' : 'Zeigen'));
+    if (!auf) { fuellen(box, kopf, h('p', { class: 'l-satz t-zahlen', text: 'Alle Wochen auf einen Blick und das Unregelmäßige ab heute.' })); return; }
+    fuellen(box, kopf, minimapEl(), h('h3', { class: 'l-zwischen', text: 'Unregelmäßig, ab heute' }), chronikEl());
+    return;
+  }
   const kopf = h('div', { class: 'l-kopf' },
     h('h2', { text: 'Semester' }),
     h('button', { class: 'knopf rund leise l-zu', type: 'button', 'data-act': 'leiste', 'aria-label': Z.ansicht.leiste ? 'Leiste einklappen' : 'Leiste ausklappen', title: 'Leiste ein-/ausklappen' }, sym('leiste')));
@@ -3265,6 +3341,18 @@ function wocheSchritt(n) {
   ansichtMerken(); zeichnen();
 }
 
+/** Am Telefon (V-0391) liegen Liste und Raster untereinander: Wird unten in der Liste (oder unter dem Raster) etwas zu der
+ *  Sache, die dran ist — „Block legen“, eine Sache antippen, „Gruppen zeigen“ —, rückt die Seite zur Zeile über dem Raster,
+ *  dort stehen die Gruppen bzw. die grünen Plätze. „Details“ über dem Raster führt umgekehrt zur Karte in der Liste. */
+function amTelefonHin(a, von, teil) {
+  if (!SCHMAL.matches) return;
+  const hin = (ziel) => requestAnimationFrame(() => ziel && ziel.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  const oben = () => (!$('dran').hidden ? $('dran') : $('raster-rahmen'));
+  if (['jetzt', 'legen', 'verschieben', 'aufklappen'].includes(a) && ['module', 'bedarf', 'leiste'].includes(von)) hin(oben());
+  else if (a === 'teil' && von === 'bedarf') hin(oben());
+  else if (a === 'teil' && von === 'dran' && Z.fokus === teil) hin(document.querySelector(`#module .r-zeile[data-teil="${teil}"]`) || document.querySelector(`#module [data-teil="${teil}"].teil`));
+}
+
 let verdrahtet = false;
 function verdrahten() {
   if (verdrahtet) return;
@@ -3273,6 +3361,8 @@ function verdrahten() {
     const el = e.target.closest('[data-act]');
     if (!el || el.closest('#karte') && !el.dataset.act) return;
     const a = el.dataset.act, teil = el.dataset.teil;
+    // Woher der Klick kam — vor dem Zeichnen, danach hängt el nicht mehr in der Seite (amTelefonHin, V-0391).
+    const von = el.closest('#dran, #raster, #bedarf, #module, #leiste, #p-kopf')?.id || null;
     switch (a) {
       case 'teil': {
         fokussieren(teil);
@@ -3439,6 +3529,8 @@ function verdrahten() {
       case 'woche-vor': wocheSchritt(Number(el.dataset.schritt)); break;
       case 'zur-woche': zurWoche(el.dataset.woche, el.dataset.hell); break;
       case 'leiste': Z.ansicht.leiste = !Z.ansicht.leiste; ansichtMerken(); zeichnen(); break;
+      case 'leiste-handy': Z.ansicht.leisteHandy = !Z.ansicht.leisteHandy; ansichtMerken(); leisteZeichnen(); break;
+      case 'legende': Z.legendeAuf = !Z.legendeAuf; fussZeichnen(); break;
       case 'rueck': rueckgaengig(); break;
       case 'kalender': kalenderKarte(el); break;
       case 'setzen-aus': Z.setzen = null; zeichnen(); bannerZeigen(); break;
@@ -3472,8 +3564,11 @@ function verdrahten() {
       case 'erledigt': aendern((s) => { const t = teilIn(s, teil); delete t[el.dataset.feld]; if (el.dataset.feld === 'offen' && t.einheiten) delete t.einheiten.offen; }); break;
       default: break;
     }
+    amTelefonHin(a, von, teil);
   });
   $('schleier').addEventListener('click', () => karteSchliessen());
+  // Über die Grenze von 820 px (Telefon drehen, Fenster ziehen): neu zeichnen — Tageskopf, Kacheln und #dran hängen daran.
+  SCHMAL.addEventListener('change', () => { if (Z.stand) { zeichnen(); bannerZeigen(); } });
   document.addEventListener('change', (e) => {
     const d = e.target.dataset || {};
     if (d.act === 'woche-waehlen' && e.target.value) zurWoche(e.target.value);
