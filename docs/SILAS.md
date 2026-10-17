@@ -457,17 +457,27 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   frühesten und nach dem spätesten Termin vor Ort (Online zählt nicht), `pendeln_min` 45 (V-0345, Silas: *„45 Minuten
   vor dem ersten Präsenzmodul … und 45 Minuten nach dem letzten“*); grau gestrichelt (2 px) und seit V-0340 ÜBER den
   Kacheln, durchsichtig — die Fahrt nach Hause lag sonst unter dem nächsten Block. Sie sperrt nichts, auch in der
-  Standardwoche. **Lücke zwischen Fahrzeit und Termin** (V-0345, Silas: *„manchmal ist die Fahrzeit direkt dran
+  Standardwoche. **Über keiner Kachel** (SP-0418, Silas: *„die überschneiden sich manchmal mit irgendwelchen
+  Modulkacheln, aber das geht ja nicht … man soll Fahrzeit auch lösen können und selbst verschieben … nur für diese
+  Woche“*): Liegt vor dem ersten Termin vor Ort etwas (ein Online-Termin, ein Block), rückt die Hinfahrt in die nächste
+  Lücke davor, die Rückfahrt entsprechend hinter das, was nach dem letzten liegt (`naechsterPlatz()`). In echten Wochen
+  lässt sie sich am Schild „Fahrzeit“ je Tag ziehen, nach derselben Regel und nie über den ersten bzw. letzten Termin
+  hinaus; sie steht dann in `plan.fahrt[datum] {hin, zurueck}` (durchgezogen), ein Doppelklick macht sie wieder
+  automatisch. **Lücke zwischen Fahrzeit und Termin** (V-0345, Silas: *„manchmal ist die Fahrzeit direkt dran
   gekoppelt und manchmal ist da eine kleine Lücke“*): Kacheln einer Terminreihe (EINFWI-Übung, BuK-VL) trugen die
   Klasse `reihe`, die auch die geführte Liste links hat (`margin-top: 8px`) — sie rutschten 10 min unter ihre Zeit.
   Jetzt `t-reihe`; ein Test hält jede Kachel-Klasse frei von Regeln ohne `.kachel`.
-- **Mittagspause** (V-0340, Silas: *„einen Slot von 45 Minuten für Mittagspause … der hat keine logische Konsequenz,
-  da kann man drüber planen … dass man im Hinterkopf behält, dass man auch noch essen möchte“*): `mittagspause()` — Mo–Fr
-  45 min im ersten freien Fenster 11:30–14:30, nicht in der Fahrzeit (V-0345); ohne ganzes Fenster in der längsten
-  Lücke, ohne jede Lücke um 12:30; bernstein gepunktet über den Kacheln. Seit V-0345 (Silas: *„leicht verschieben, auch
+- **Mittagspause** (V-0340, Silas: *„einen Slot von 45 Minuten für Mittagspause … dass man im Hinterkopf behält, dass
+  man auch noch essen möchte“*): `mittagspause()` — seit SP-0418 (Silas, 17.10.: *„im besten Fall 30 Minuten … 12 Uhr
+  die optimale Uhrzeit und je näher an 12 …, desto besser … nicht vor 11 … nicht nach 15 Uhr“*) Mo–Fr 30 min, so nah an
+  12 Uhr wie möglich zwischen 11 und 15 Uhr, über keiner Kachel und nicht in der Fahrzeit. Passen 30 min nirgends, liegt
+  sie in der größten Lücke (bei gleicher Größe der näheren an 12), ab 10 min; ein kleines „!“ am Schild sagt beim
+  Zeigen, wie viel Zeit bleibt. Ohne jede Lücke gibt es an dem Tag keinen Mittag (bis SP-0418 lag er dann um 12:30 über
+  den Kacheln). Bernstein gepunktet über den Kacheln. Seit V-0345 (Silas: *„leicht verschieben, auch
   wenn man gerade nicht den Stundenplan selbst bearbeitet … pro Woche einzeln … in der Standardwoche gar nicht“*) nur in
   echten Wochen, und am Schild „Mittag“ lässt sie sich je Tag ziehen — auch festgelegt; sie steht dann in
-  `plan.mittag[datum]` (durchgezogen), ein Doppelklick aufs Schild macht sie wieder automatisch.
+  `plan.mittag[datum]` (durchgezogen), ein Doppelklick aufs Schild macht sie wieder automatisch. Gezogen ist sie ein
+  Ziel statt 12 Uhr: Sie folgt dem Zeiger nur dorthin, wo nichts liegt, und weicht aus, wenn später etwas dorthin kommt.
 - **Minimap** (V-0340): unter „Woche“ nur die Vorlesungszeit bis zur letzten Vorlesungswoche, unter „Prüfungen“ das
   ganze Semester.
 - **Links oben der Fortschritt** (V-0354, Silas: *„ganz oben bei Grundlage eine Progress Bar, die von 0 % bis 100 %
@@ -612,7 +622,8 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   - **Die Woche passt in die Breite** (Zeitspalte 28 px, je Tag rund 68 px): Tageskopf „Mo 12.10.“ mit der Last
     darunter, Kacheln umbrechen (Titel zwei, zweite Zeile drei Zeilen), nur der Beginn statt „12:15–13:45“, Gruppen ohne
     Tag und Uhrzeit im Namen („Tutor A, X 101“) und ohne „wählen“, die Marke kurz („⚠ 2×“). Das Etikett ist ein schmaler
-    Streifen in seiner Farbe, die Fahrzeit ohne Schild. Höhe `clamp(560px, 100svh − 150px, 720px)`.
+    Streifen in seiner Farbe, Fahrzeit und Mittag mit kleinem Schild zum Ziehen (die Fahrzeit bis SP-0418 ohne, es lag
+    über der nächsten Kachel). Höhe `clamp(560px, 100svh − 150px, 720px)`.
   - **Über dem Raster `#dran`** (`dranZeichnen()`): der Schritt mit Fortschritt; die Sache, die dran ist, mit Stand
     („10 Gruppen“, „✓ Mo 8–10“, „1 h je Woche“), einem Satz, was zu tun ist („Tippe eine Gruppe im Plan an“, „Tippe auf
     einen grünen Platz“), ihren Knöpfen (Block legen/verschieben, Details) und „Nächste: …“; ist nichts mehr offen,
@@ -669,11 +680,11 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
 | `erwartet_min` | 120 | ein erwarteter Termin, dessen Daten fehlen: eine Doppelstunde |
 | `video_puffer_min`, `raster_min` | 15, 30 | Silas: 1:45 → 2 h |
 | `lerntag_h`, `lernfenster` | 6, 09–19 | höchstens so lang legt ein Tipp im Prüfungskalender; wo zuerst gesucht wird |
-| `pendeln_min` | 45 | Silas, V-0345 (V-0338: 40): Fahrzeit vor dem ersten und nach dem letzten Termin vor Ort (nur gezeigt) |
+| `pendeln_min` | 45 | Silas, V-0345 (V-0338: 40): Fahrzeit vor dem ersten und nach dem letzten Termin vor Ort (nur gezeigt, über keiner Kachel, SP-0418) |
 | `evl_block_min`, `evl_min_min` | 120, 90 | Silas, V-0335: „EVL-Block muss einfach zwei Stunden sein … mindestens anderthalb“ |
 | `evl_fenster`, `tag_fenster` | 10–18, 08–20 | bevorzugte und überhaupt gesuchte freie Plätze |
 | `pruef_fenster` | 07–22 | Prüfungsvorbereitung: auch früh und abends (V-0337) |
-| `mittag_min`, `mittag_fenster` | 45, 11:30–14:30 | Silas, V-0340: Mittagspause, nur gezeigt |
+| `mittag_min`, `mittag_fenster`, `mittag_ziel`, `mittag_rest_min` | 30, 11–15, 12:00, 10 | Silas, 17.10. (SP-0418; V-0340: 45 min, 11:30–14:30): Mittagspause, nur gezeigt; ohne 30 min die größte Lücke ab 10 min |
 | `bezug_direkt_min`, `bezug_nah_tage` | 120, 3 | V-0342: bis 2 h nach dem Stoff ist „direkt“, bis 3 Tage „nah“ |
 
 ## 5. Das Datenformat
@@ -704,7 +715,7 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   teil|null, tag | datum, start, ende, ab?, bis?, pause?, alle?, versatz?, ohne? [Montag] (Wochen, die die Reihe
   auslässt), serie? (aus welcher Reihe einzeln verschoben), titel?, aus? (verschoben von), vorschlag? (aus dem
   Vorschlag übernommen)}]`, `bestaetigt {annahme-id: true}`, `festgelegt` (Zeitpunkt), `mittag {datum:
-  "HH:MM"}`, `zurueckgesetzt {am, ab, wahl, bloecke}`. Nicht mehr gelesen: `umwidmungen` (seit V-0349 ersetzt G5 sie),
+  "HH:MM"}`, `fahrt {datum: {hin?: "HH:MM", zurueck?: "HH:MM"}}` (SP-0418), `zurueckgesetzt {am, ab, wahl, bloecke}`. Nicht mehr gelesen: `umwidmungen` (seit V-0349 ersetzt G5 sie),
   `lernplan: true` an alten Blöcken.
 - `pruefeAngebot()` lehnt ab, was formal nicht stimmt (doppelte Ids, unbekannte Art oder Topf, kaputtes Muster); die
   API speichert dann nicht (422).

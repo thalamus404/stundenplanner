@@ -377,6 +377,18 @@ test('Fahrzeit: 45 min vor dem ersten und nach dem letzten Termin vor Ort, onlin
   assert.deepEqual(M.fahrzeiten([]), []);
 });
 
+test('Fahrzeit über keiner Kachel: sie rückt in die nächste Lücke, gezogen bleibt sie auf ihrer Seite (SP-0418)', () => {
+  const m = M.min;
+  const vl = [{ start: m('10:15'), ende: m('11:45'), ort: 'H 104' }];
+  // Ein Lernblock direkt nach der VL bis 13:00 und ein Online-Termin 9:00–10:00: Hinfahrt vor 9, Rückfahrt ab 13.
+  const belegt = [[m('09:00'), m('10:00')], [m('10:15'), m('11:45')], [m('11:45'), m('13:00')]];
+  assert.deepEqual(M.fahrzeiten(vl, M.REGELN, belegt), [[m('08:15'), m('09:00')], [m('13:00'), m('13:45')]]);
+  // Gezogen: Rückfahrt 15:00, Hinfahrt 7:00 — aber nie über den ersten Termin hinaus und nicht auf eine Kachel.
+  assert.deepEqual(M.fahrzeiten(vl, M.REGELN, belegt, { hin: m('07:00'), zurueck: m('15:00') }), [[m('07:00'), m('07:45')], [m('15:00'), m('15:45')]]);
+  assert.deepEqual(M.fahrzeiten(vl, M.REGELN, [], { hin: m('11:00'), zurueck: m('09:00') }), [[m('09:30'), m('10:15')], [m('11:45'), m('12:30')]]);
+  assert.deepEqual(M.fahrzeiten(vl, M.REGELN, belegt, { zurueck: m('12:00') }), [[m('08:15'), m('09:00')], [m('13:00'), m('13:45')]]);
+});
+
 test('Freie Lücke in einem eigenen Fenster (Prüfungsvorbereitung in der Vorlesungszeit: 7–22 Uhr)', () => {
   const e = M.rechnen(angebot(), {});
   // Di 15.10.2030: VL 10:15–11:45. Im Lernfenster 9–19 ist 11:45–19:00 die größte Lücke, in 7–22 Uhr 11:45–22:00.
@@ -409,17 +421,53 @@ test('Vorschlag: die zwei Wochenenden vor der Prüfung je 10 h, dann 4 h je Woch
   assert.equal(Y.vorschlag.reduce((s, v) => s + v.min, 0), 84 * 60);
 });
 
-test('Mittagspause: 45 min im ersten freien Fenster 11:30–14:30, sonst um 12:30', () => {
+test('Mittagspause: 30 min so nah an 12 Uhr wie möglich, 11–15 Uhr, über nichts (SP-0418)', () => {
   const m = M.min;
-  assert.deepEqual(M.mittagspause([[m('10:00'), m('12:00')]]), [m('12:00'), m('12:45')]);
-  assert.deepEqual(M.mittagspause([[m('11:00'), m('15:00')]]), [m('12:30'), m('13:15')], 'kein Platz: trotzdem zeigen');
-  assert.deepEqual(M.mittagspause([]), [m('11:30'), m('12:15')]);
+  assert.equal(M.REGELN.mittag_min, 30, 'Silas, 17.10.: „im besten Fall 30 Minuten“');
+  assert.deepEqual(M.mittagspause([]), [m('12:00'), m('12:30')], '12 Uhr ist das Ziel');
+  assert.deepEqual(M.mittagspause([[m('10:00'), m('12:15')]]), [m('12:15'), m('12:45')]);
+  // Frei bis 11:15, dann belegt bis 13:45: 10:30–11:00 läge näher an 12, ist aber vor 11 → 13:45.
+  assert.deepEqual(M.mittagspause([[m('11:15'), m('13:45')]]), [m('13:45'), m('14:15')], 'nie vor 11');
+  assert.deepEqual(M.mittagspause([[m('11:30'), m('13:45')]]), [m('11:00'), m('11:30')]);
+  // Nie nach 15 Uhr: 14:45–16:00 frei, aber nur 15 min davon im Fenster → die größte Lücke darin.
+  assert.deepEqual(M.mittagspause([[m('10:00'), m('14:45')]]), [m('14:45'), m('15:00')]);
   // Nicht in der Fahrt zu einem Termin um 12:15 (V-0345): die Fahrzeit 11:30–12:15 ist belegt.
-  assert.deepEqual(M.mittagspause([[m('11:30'), m('12:15')], [m('12:15'), m('13:45')]]), [m('13:45'), m('14:30')]);
-  // Kein ganzes Fenster: in die längste Lücke (Fr: Fahrt 11:30, BuK 12:15–13:45, PROG1 ab 14:15 → 13:45).
-  assert.deepEqual(M.mittagspause([[m('11:30'), m('12:15')], [m('12:15'), m('13:45')], [m('14:15'), m('15:45')]]), [m('13:45'), m('14:30')]);
-  // Gezogen gilt sie, wo Silas sie hingelegt hat — auch über Belegtem.
-  assert.deepEqual(M.mittagspause([[m('12:00'), m('14:00')]], M.REGELN, m('13:00')), [m('13:00'), m('13:45')]);
+  assert.deepEqual(M.mittagspause([[m('11:30'), m('12:15')], [m('12:15'), m('13:45')]]), [m('11:00'), m('11:30')]);
+  // Kein ganzes Fenster: die größte Lücke (13:45–14:10, 25 min) …
+  assert.deepEqual(M.mittagspause([[m('10:00'), m('11:00')], [m('11:20'), m('13:45')], [m('14:10'), m('15:00')]]), [m('13:45'), m('14:10')]);
+  // … bei gleicher Größe die nähere an 12 (11:00–11:20 statt 13:45–14:05).
+  assert.deepEqual(M.mittagspause([[m('10:00'), m('11:00')], [m('11:20'), m('13:45')], [m('14:05'), m('15:00')]]), [m('11:00'), m('11:20')]);
+  // Ohne jede Lücke (ab 10 min): kein Mittag.
+  assert.equal(M.mittagspause([[m('10:00'), m('16:00')]]), null);
+  // Gezogen: das Ziel ist, wohin Silas sie gelegt hat — aber auch dort nicht über Belegtem.
+  assert.deepEqual(M.mittagspause([], M.REGELN, m('13:30')), [m('13:30'), m('14:00')]);
+  assert.deepEqual(M.mittagspause([[m('12:00'), m('14:00')]], M.REGELN, m('13:00')), [m('14:00'), m('14:30')]);
+  assert.deepEqual(M.mittagspause([], M.REGELN, m('16:00')), [m('14:30'), m('15:00')], 'auch gezogen nicht nach 15 Uhr');
+});
+
+test('Mittag und Fahrzeit überdecken nie eine Kachel und nie einander — 2000 erfundene Tage (SP-0418)', () => {
+  let x = 17;
+  const zufall = (n) => { x = (x * 1103515245 + 12345) % 2147483648; return x % n; };
+  const ueber = (a, b, liste) => liste.some(([s, e]) => a < e && s < b);
+  for (let i = 0; i < 2000; i++) {
+    const kacheln = [];
+    for (let k = zufall(6); k > 0; k--) { const s = 420 + zufall(48) * 15; kacheln.push({ start: s, ende: s + 30 + zufall(8) * 15, ort: zufall(3) ? 'H 104' : 'online (Zoom)' }); }
+    const belegt = kacheln.map((k) => [k.start, k.ende]);
+    const fest = zufall(2) ? { hin: 360 + zufall(40) * 15, zurueck: 600 + zufall(40) * 15 } : {};
+    const fahrt = M.fahrzeiten(kacheln, M.REGELN, belegt, fest);
+    const vorOrt = kacheln.filter(M.vorOrt);
+    for (const [a, b] of fahrt) assert.ok(!ueber(a, b, belegt), `Fahrzeit ${M.hhmm(a)} über einer Kachel (Tag ${i})`);
+    if (fahrt.length) {
+      assert.ok(fahrt[0][1] <= Math.min(...vorOrt.map((k) => k.start)), 'die Hinfahrt endet vor dem ersten Termin vor Ort');
+      assert.ok(fahrt[1][0] >= Math.max(...vorOrt.map((k) => k.ende)), 'die Rückfahrt beginnt nach dem letzten');
+    }
+    const alles = [...belegt, ...fahrt];
+    const mt = M.mittagspause(alles, M.REGELN, zufall(2) ? 540 + zufall(40) * 15 : null);
+    if (!mt) continue;
+    assert.ok(!ueber(mt[0], mt[1], alles), `Mittag ${M.hhmm(mt[0])} über einer Kachel oder der Fahrzeit (Tag ${i})`);
+    assert.ok(mt[0] >= M.min('11:00') && mt[1] <= M.min('15:00'), 'nie vor 11, nie nach 15');
+    assert.ok(mt[1] - mt[0] >= M.REGELN.mittag_rest_min && mt[1] - mt[0] <= M.REGELN.mittag_min);
+  }
 });
 
 test('Tageslast: Termine als Doppelstunde, Blöcke mit ihrer Dauer, Ausweichtermine nicht', () => {
