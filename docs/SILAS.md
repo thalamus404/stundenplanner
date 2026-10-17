@@ -726,7 +726,8 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   kennt nur seinen SHA-256 (Geheimnis `SILAS_SCHLUESSEL` der Pages). `#schluessel=…` in der Adresse legt ihn einmal
   in einem Browser ab und verschwindet sofort aus der Adresse (ein Fragment geht nie an den Server).
 - **Speichern** mit optimistischer Sperre: Wer auf einem älteren Stand geändert hat (anderes Gerät), bekommt 409 und
-  wählt „neuesten laden“ oder „meinen behalten“. Je Stunde eine Sicherung (60 Tage, `GET /silas/api/verlauf`).
+  wählt „neuesten laden“ oder „meinen behalten“. Je Stunde eine Sicherung (60 Tage, `GET /silas/api/verlauf`), dazu
+  eine auf die Minute, wenn ein Probeplan den echten ersetzt (SP-0413).
   Ungespeichertes bleibt im Browser und wird nachgereicht.
 - Die Vorschau-Auslieferungen schreiben in einen eigenen Namensraum (`stundenplanner-silas-vorschau`).
 - **Probepläne** (V-0345, Silas: *„verschiedene Stundenpläne abspeichern … unter stundenplanner.de/silas/1, 2, 3 … um
@@ -738,6 +739,17 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   Oben links wählt man den Plan; das Schild heißt „silas · Probeplan n“, das Kalender-Abo fehlt dort. Die Kalender-Abos
   kommen immer aus dem echten Plan; die Ereignisse ohne `plan` auch, mit `ereignisse?plan=n` aus dem Probeplan (SP-0412,
   für das Study OS — §6). `GET /silas/api/plaene` listet die angelegten.
+- **Probeplan zum echten Plan machen** (SP-0413, Silas, 17.10.2026: *„damit wird quasi der echte Plan überschrieben,
+  alles wird überschrieben mit dem Probeplan … und der Probeplan selbst wird wieder frei“*): Im Probeplan steht neben der
+  Planwahl der Knopf „Zum echten Plan machen“. Er speichert erst, was noch offen ist, fragt einmal nach und ruft
+  `POST /silas/api/uebernehmen?plan=n` mit `{ basis }` (der Version des Probeplans, die die Seite zeigt; passt sie
+  nicht, 409). Der Server sichert den alten echten Plan auf die Minute (`verlauf:JJJJMMTTHHMM`, damit das nächste
+  Speichern derselben Stunde ihn nicht überschreibt), schreibt Angebot und Plan des Probeplans als nächste Version des
+  echten (ein anderes Gerät bekommt beim Speichern 409), legt die Stundensicherung an und löscht `stand:<n>`. Ganz heißt
+  ganz: Auch `festgelegt` und das Angebot kommen aus dem Probeplan. Die Seite verwirft danach den Zwischenspeicher des
+  echten Plans in diesem Browser (sonst böte sie „meinen behalten“ an und holte den alten zurück), gibt ihm die Ansicht
+  des Probeplans und öffnet `/silas/`. Kalender-Abos und `ereignisse` ohne `plan` folgen sofort; **wer
+  `ereignisse?plan=n` liest (das Study OS), bekommt danach 404** und muss auf den echten Plan umgestellt werden.
 
 ## 8. Offen
 

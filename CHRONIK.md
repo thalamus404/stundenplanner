@@ -12,6 +12,16 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas: Probeplan zum echten Plan machen (SP-0413)
+
+- Silas: Im Probeplan soll man sagen können *„Probeplan zum echten Plan machen und damit wird quasi der echte Plan
+  überschrieben, alles wird überschrieben mit dem Probeplan … und der Probeplan selbst wird wieder frei“*.
+- Ein Knopf neben der Planwahl; der Server macht es in einem Weg (`POST /silas/api/uebernehmen?plan=n`): den alten
+  echten Plan auf die Minute sichern, den Probeplan als nächste Version des echten schreiben, den Probeplan löschen.
+  Übernommen wird nur die Version, die die Seite zeigt (sonst 409) — und ganz, auch Angebot und `festgelegt`.
+- Folge für das Study OS: Liest es `ereignisse?plan=n` und wird genau dieser Probeplan übernommen, ist er danach leer
+  (404) — es muss dann den echten Plan lesen (docs/SILAS.md §7).
+
 ## 17.10.2026 — /silas/api/ereignisse: Probeplan wählbar, Prüfungen und Zeiträume für das Study OS (SP-0412)
 
 - Silas: Das Study OS soll *„die Termine und Intervalle und auch die Daten vom Prüfungstab“* aus /silas zeigen — und
