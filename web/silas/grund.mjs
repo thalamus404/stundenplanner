@@ -42,7 +42,7 @@ export const REGELN = {
   pruef_fenster: ['07:00', '22:00'], // Prüfungsvorbereitung: auch früh und abends (V-0337)
   mittag_min: 45, mittag_fenster: ['11:30', '14:30'], // Silas, V-0340: 45 min Mittagspause, nur gezeigt
   bezug_direkt_min: 120, // V-0342: ein Lernblock höchstens 2 h nach seinem Stoff (oder vor einer Präsenz) = „direkt“ …
-  bezug_nah_tage: 3,     // … bis 3 Tage danach „nah“, später „weit weg vom Stoff“
+  bezug_nah_tage: 3,     // … bis 3 Tage danach „nah“, später „fern“
 };
 
 // ── Zeit ─────────────────────────────────────────────────────────────────────────────────────────
