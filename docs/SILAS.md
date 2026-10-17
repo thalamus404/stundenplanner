@@ -158,8 +158,9 @@ sich nicht legen.
 6. **Zwei Termine übereinander sind ein Konflikt** (rot an beiden).
 6a. **Ein Lernblock zählt erst ab dem Stoff seines Moduls** (V-0342): vor dem ersten Termin oder der ersten Freigabe
    seiner Lehrveranstaltung (`stoff_ab`) zählt er nicht (`vor_stoff`).
-6b. **Bezug zum Stoff** (V-0342): `bezug` je Vorkommen — direkt, nah, fern, ohne; ein Hinweis, wenn ein Block meist weit
-   weg liegt. Er zählt nichts ab, er hilft beim Legen.
+6b. **Bezug zum Stoff** (V-0342): `bezug` je Vorkommen — direkt, nah, fern, ohne; als Satz im Tooltip und in der
+   Blockkarte („Zum Stoff: meist …“). Er zählt nichts ab und wertet nicht: Den Hinweis und die Marke „weit vom Stoff“
+   gibt es seit SP-0416 nicht mehr (Silas, 17.10.: *„das verwirrt nur“*).
 7. **Wochenwert** (nur `rest`-Elemente im Semester-Topf): **(Kontingent − erledigt) ÷ Vorlesungswochen, die im Fenster
    bleiben** — gezählt ab der Woche von heute; die Weihnachtspause zählt nicht mit. Das Fenster beginnt mit dem Stoff
    (Regel 6a) und endet mit der Vorlesungszeit. Ein einmaliger Posten (`mult: 1`, BuK-Literatur 5 h) hat keine Rate,
@@ -536,7 +537,10 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   Rumschieben“*): In einer echten Woche trägt jeder eigene Block `data-ziehen` und lässt sich mit der Maus ziehen, nur
   dieses Vorkommen — wie die Mittagspause. Ein Klick ohne Bewegung bleibt, was er war (Bestandteil zeigen, ✓/✗); nach
   einer Bewegung schluckt `kachelGezogen` den Klick. Die Standardwoche bleibt festgelegt gesperrt, am Telefon zieht es
-  nicht.
+  nicht. **Gekennzeichnet** (SP-0416, Silas, 17.10.: *„Sobald ein Termin … für eine einzelne Woche verschoben wird, muss
+  der … eine Kennzeichnung tragen“*): Ein Block mit `serie` trägt in der echten Woche die blaue Marke „nur diese Woche“
+  (am Telefon „einzeln“), Tooltip und Blockkarte sagen, wo die Reihe sonst liegt; im Kalender-Abo steht es in der
+  Beschreibung, im Ereignis als `einzeln`.
 - **Ein Modul anklicken** (V-0356, Silas: *„wenn man ein Modul anklickt, egal in welchem Schritt, dann sollen alle Blöcke,
   die diesem Modul zugeordnet sind, aufleuchten … die Vorlesung, Vor- und Nachbereitung, die Videos, Übungen, Tutorium“*):
   Der Kopf eines Moduls (eingeklappt oder offen) lässt alles, was das Raster von ihm zeigt, aufleuchten (`m-hell`, kurz
@@ -708,7 +712,7 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   `<prüfung>@<datum>`), `schicht` (A/B/C/D/R), `quelle`, `art`, `modul`, `modulnummer`, `titel` („TECHGI · VL“), `datum`,
   `bis`, `start`/`ende` als ISO mit Zeitzone (`2026-10-29T12:15:00+01:00`), `ganztag`, `uhrzeit` (Fristen mit
   Zeitpunkt), `ort`, `online`, `wichtig` (bei einer Prüfung: dieser Termin gilt), `unsicher`, `teil`, `zaehlt_min`,
-  `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den Kalender-Abos), `ist` (Lebenslauf). Die Fristen der
+  `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den Kalender-Abos), `ist` (Lebenslauf), `einzeln` (nur in dieser Woche verschoben, SP-0416). Die Fristen der
   Prüfungen (Verweise nach § 63) kommen mit (`<prüfung>-anmeldung`). Die Ereignisse rechnen ohne `heute` (wie seit V-0321).
 - **`pruefungen[]`** (SP-0412, Silas, 17.10.: *„die Termine und Intervalle und auch die Daten vom Prüfungstab“*) ist der
   Reiter „Prüfungen“ als Daten, aus `pruefungenExport(rechnen(…, { heute }))` mit dem Berliner Tag (`heute`): je Prüfung

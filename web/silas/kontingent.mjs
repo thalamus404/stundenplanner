@@ -818,7 +818,7 @@ function rohStufe(f, z) {
     case 'konflikt': return z && z.teil.art === 'praesenz' ? 'kritisch' : 'achtung';
     case 'gesperrt': return f.dauernd ? 'dran' : 'info';
     case 'nach_pruefung': case 'vor_fenster': return 'achtung';
-    default: return 'info'; // leer, vor_stoff, bezug, zu_kurz, einheit_unsicher …
+    default: return 'info'; // leer, vor_stoff, zu_kurz, einheit_unsicher …
   }
 }
 
