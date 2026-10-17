@@ -688,15 +688,32 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
 Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stundenplanner fragt nie etwas von dort ab
 (AGENTS.md §2 ④).
 
-- `GET /silas/api/ereignisse` mit `Authorization: Bearer <Schlüssel>` liefert `{schema, version, geaendert, semester,
-  ereignisse[]}`. Ein Ereignis: `id` (stabil: `<teil>@<datum>@<uhrzeit>`, `<block>@<datum>`, `<prüfung>@<datum>`),
-  `schicht` (A/B/C/D/R), `quelle`, `art`, `modul`, `modulnummer`, `titel` („TECHGI · VL“), `datum`, `bis`, `start`/`ende`
-  als ISO mit Zeitzone (`2026-10-29T12:15:00+01:00`), `ganztag`, `uhrzeit` (Fristen mit Zeitpunkt), `ort`, `online`,
-  `wichtig`, `unsicher`, `teil`, `zaehlt_min`, `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den
-  Kalender-Abos), `ist` (Lebenslauf). Die Fristen der Prüfungen (Verweise nach § 63) kommen mit (`<prüfung>-anmeldung`).
+- `GET /silas/api/ereignisse[?plan=n]` mit `Authorization: Bearer <Schlüssel>` liefert `{schema, plan, version,
+  geaendert, heute, semester, ereignisse[], pruefungen[], zeitraeume[]}`. Ohne `plan` der echte Plan, mit `plan=1…9` der
+  Probeplan (SP-0412; ein leerer: 404). Ein Ereignis: `id` (stabil: `<teil>@<datum>@<uhrzeit>`, `<block>@<datum>`,
+  `<prüfung>@<datum>`), `schicht` (A/B/C/D/R), `quelle`, `art`, `modul`, `modulnummer`, `titel` („TECHGI · VL“), `datum`,
+  `bis`, `start`/`ende` als ISO mit Zeitzone (`2026-10-29T12:15:00+01:00`), `ganztag`, `uhrzeit` (Fristen mit
+  Zeitpunkt), `ort`, `online`, `wichtig` (bei einer Prüfung: dieser Termin gilt), `unsicher`, `teil`, `zaehlt_min`,
+  `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den Kalender-Abos), `ist` (Lebenslauf). Die Fristen der
+  Prüfungen (Verweise nach § 63) kommen mit (`<prüfung>-anmeldung`). Die Ereignisse rechnen ohne `heute` (wie seit V-0321).
+- **`pruefungen[]`** (SP-0412, Silas, 17.10.: *„die Termine und Intervalle und auch die Daten vom Prüfungstab“*) ist der
+  Reiter „Prüfungen“ als Daten, aus `pruefungenExport(rechnen(…, { heute }))` mit dem Berliner Tag (`heute`): je Prüfung
+  `id`, `modul`, `modulnummer`, `kurz`, `titel`, `art` (klausur · etest · test, die Form der Marke), `form`, `portfolio`,
+  `haupt`, `dauer_min`, `punkte`, `erreicht`, `status` (§ 63, §2.6), `zaehlt`, `alternativen` (fest · wahl_offen ·
+  gewaehlt · info_fehlt), `gewaehlt`, `annahme` (G7), `termin` (der geltende), `termine[]` (jeder datierte mit `gilt`,
+  `nachholen`, `label`, `ort`), `offen[]` (Termine ohne Datum mit ihrem Text), `frage`, `zulassung`, `stoff`, `quelle`,
+  das Kontingent (`kontingent_min`, `zu_planen_min`, `erledigt_min`, `geplant_min`, `offen_min`, `vorschlag_min`,
+  `passt_nicht_min`), `fenster`, **`vorbereitung {von, bis}`** (die Strecke der Zeitleiste: vom ersten gelegten oder
+  vorgeschlagenen Tag bis zum Vortag) und `fristen[]`. Nach Datum, ohne Termin zuletzt.
+- **`zeitraeume[]`** (`zeitraeume(semester)`): Vorlesungszeit, Pausen, die vorlesungsfreie Zeit bis `semester.ende` und
+  die Schließung der Gebäude (`geschlossen`) — je `{id, art, titel, von, bis}`.
 - Für die Timeline heißt das: `modulnummer` → Spur `modul:<nr>`, `ganztag`/`start` → `von`/`zeit`, `unsicher` →
   Status `entwurf`, Schicht D → „geplant“. Das Study OS braucht dafür nur den Schlüssel (Vault
-  `stundenplanner-silas-schluessel`) und einen Abruf, z. B. stündlich.
+  `stundenplanner-silas-schluessel`) und einen Abruf, z. B. stündlich. Welchen Plan es liest, entscheidet es selbst
+  (`?plan=`); Silas, 17.10.: „die dritte Version“.
+- **Ein Probeplan trägt sein eigenes Angebot** (eine Kopie vom Tag, an dem er angelegt wurde). Was danach am Angebot des
+  echten Plans korrigiert wird (eine ISIS-Angabe, ein Prüfungstermin), steht nicht im Probeplan — wer einen Probeplan
+  liest, liest auch dessen Angebot.
 - **Kalender-Abos:** `/silas/api/kalender/termine.ics?k=…` („TU · Termine“: A, B, C) und `…/lernen.ics?k=…`
   („TU · Lernen“: D), so wie Silas' Semesterplan es vorschlägt. `alles.ics` vereint beide. Stündlich aktualisiert.
 
@@ -718,8 +735,9 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   und schreibt (KV `stand:<n>`, dieselbe Sperre, keine Sicherung). Zwischenspeicher und Ansicht im Browser sind je Plan
   getrennt (`silas:v1:stand:<n>`), sonst landete ein Probeplan beim nächsten Laden im echten. Ein leerer Probeplan
   bietet „Leer beginnen“ (die Module des echten, ohne Wahl und Blöcke) oder „Kopie meines Plans“ (ohne `festgelegt`).
-  Oben links wählt man den Plan; das Schild heißt „silas · Probeplan n“, das Kalender-Abo fehlt dort. Ereignisse und
-  Kalender kommen immer aus dem echten Plan. `GET /silas/api/plaene` listet die angelegten.
+  Oben links wählt man den Plan; das Schild heißt „silas · Probeplan n“, das Kalender-Abo fehlt dort. Die Kalender-Abos
+  kommen immer aus dem echten Plan; die Ereignisse ohne `plan` auch, mit `ereignisse?plan=n` aus dem Probeplan (SP-0412,
+  für das Study OS — §6). `GET /silas/api/plaene` listet die angelegten.
 
 ## 8. Offen
 
@@ -734,5 +752,7 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   unter „Offen“ → „Augen offen“ mit Stichtag und wird auf der Seite nachgetragen.
 - Ein Termin für zwei Posten (PROG1: VL und Übungsanteile gemischt) bucht das Modell vorläufig ganz auf die VL; das Mehr
   steht im Abgleich. Einlass, Zeitfenster und Räume nach Nachnamen einer Prüfung stehen nur als Text.
-- Das Study OS liest `/silas/api/ereignisse` (Vorgang im Airfield studyos).
+- Das Study OS liest `/silas/api/ereignisse` (seit V-0329 im Airfield studyos; seit SP-0412 mit `?plan=`, Prüfungen und
+  Zeiträumen). Die Kalender-Abos kennen noch keinen Probeplan — soll das iPhone-Abo derselben Version folgen, ist das eine
+  Entscheidung von Silas.
 - Ob der Planer für alle kommt, entscheidet Silas; das Modell ist dafür schon allgemein.
