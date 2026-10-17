@@ -307,6 +307,19 @@ Prüfungsvorbereitung ohne Prüfungstermin grau. **Festgelegt** zählt der Balke
 vorher auch die Prüfungsvorbereitung — nach dem Festlegen sprang er von „alles erledigt“ auf 57 %); die Prüfungen und
 das Unregelmäßige zählen unter „Prüfungen“.
 
+**Vollzug** (SP-0419, `vollzug(erg, z, w?, b?)`, `vollzugVon(erg, zs, w?, wb?)`, Silas, 17.10.: *„wenn der Stundenplaner
+fertig ist, dann soll es die Progress Bar sein … wie viel hast du gemacht von dem, was da ist, und wie viel kommt noch …
+100 % in grün wäre, man hat alles gemacht … eine rote Bar für das, wo man es nicht gemacht hat und was noch offen ist.
+Und bei dieser Woche genau die gleiche Logik, nur eben für diese Woche, und da in Rot, wie viel Prozent noch fehlen,
+welche noch nicht verplant sind“*): Der Fortschritt misst die Planung, der Vollzug, was davon getan ist — in Minuten
+`{k, gruen, rot, schwarz, unbest, kommt, ungeplant, status}`. **gruen** ist erledigt (✓, „teilweise“ mit seinen Minuten,
+ein ✗ mit „Nachgeholt“ von Hand; deckt ein späterer Block ein Video von selbst, zählt dessen ✓), **rot** nicht gemacht
+und nachzuholen, **schwarz** verpasste Präsenz (beides wie `verpasst()`), **unbest** vorbei, aber ohne ✓/✗ (G6). Im
+Semester ist `k` das Kontingent und **kommt** der Rest; erledigt bis auf die Toleranz, nichts mehr rot, unbestätigt oder
+geplant heißt **fertig** (100 %). In einer Woche ist **kommt** das Geplante, das noch nicht vorbei ist, und
+**ungeplant**, was `wochenBedarf()` mit „planen“ verlangt und noch keinen Block hat (ab derselben Toleranz, 30 min bzw.
+10 %; ein ✗ ist rot, nicht ungeplant); `k` ist beides zusammen mit dem Belegten.
+
 Ein Block gehört zum Schritt seines Elements (`schrittVonBlock`: Video 3, Prüfungs-Topf 5, sonst 4). **Zurücksetzen**
 (`zuruecksetzen(plan, angebot, ab, {am})`) nimmt alles aus den Schritten `ab` bis 4 heraus und **hebt es in
 `plan.zurueckgesetzt` auf** (`wiederherstellen()`); es bleibt, was Silas weiß (`angemeldet`, `zugeteilt`, `ist`,
@@ -484,11 +497,17 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   geht“* und *„Die Hinweise unter ‚Woche‘ und ‚Prüfungen‘ bitte wegmachen, die nehmen nur wertvollen Platz weg“*): statt
   des erklärenden Satzes (er steht noch im Tooltip) der Schritt mit Prozent, sein Balken grün · gelb · grau und
   „Weiter“ bzw. „Stundenplan festlegen“; festgelegt der Fortschritt des Semesters, unter „Prüfungen“ der von Schritt 5.
+  Oben misst er festgelegt weiter die **Planung** (SP-0419: *„oben bei ‚Dein Stundenplan‘ soll weiterhin die
+  Progress-Bar sein für wie viel einem noch fehlt in der Planung“*); die Modulbalken darunter zeigen den Vollzug.
 - **Je Modul ein Balken, und was fertig ist, klappt ein** (V-0354, Silas: *„Sobald alles von einem Format in dem Modul
   gelegt ist, soll es sich einklappen und auch einen grünen Haken zeigen. Wenn die Termine zum Wählen fehlen, dann ein
   grauer Haken, aber auch eingeklappt. Sobald alle Formate eines Moduls eingeklappt sind, soll sich das Modul selbst
   einklappen und nur noch Namen, Progress Bar und ‚Blöcke ändern‘ anzeigen“*): Im Ablauf der Fortschritt des Moduls in
-  diesem Schritt, festgelegt der des ganzen Moduls (auch Prüfungen und Unregelmäßiges). Eine fertige Sache ist eine Zeile
+  diesem Schritt. **Festgelegt zeigt der Modulbalken den Vollzug** (SP-0419, §2.10): unter „Ganzes Semester“ der
+  Schritte 1–4 des Moduls, unter „Diese Woche“ nur der gezeigten Woche (in der Standardwoche der gewählten) — grün
+  erledigt, rot nicht gemacht, schwarz Präsenz verpasst, grün-grau schraffiert vorbei ohne ✓/✗, grau kommt noch, rot
+  schraffiert noch nicht verplant; die Prozent sind das Erledigte. Darunter in der Woche „x h von y h erledigt“ und
+  rot „n % noch nicht verplant“. Was einklappt, entscheidet weiter die Planung. Eine fertige Sache ist eine Zeile
   mit grünem Haken, eine unbekannte mit grauem („Gruppen kommen noch“, „wartet auf Übung“); ein Klick macht sie zur
   Sache, die dran ist. Ein Modul ohne Offenes zeigt Name, Balken mit Prozent und „Wahl ändern“ / „Blöcke ändern“
   („Ansehen“ in Schritt 1, festgelegt und wo nur Graues ist); aufgeklappt klappt ein Klick auf den Kopf es wieder zu.
@@ -597,7 +616,8 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   angenommen“ (erwartete Gruppen) und „wartet“, hellblau „Block legen“. Videos zählen in der Woche, in der ein Block sie
   deckt.
 - **Im Kopf der Woche** steht ihre Last: „Vorlesungswoche 5 · 47,5 h von 45 h (davon 6 h noch ohne Block)“ — rot über 45 h.
-- **Links: Ganzes Semester | Diese Woche** (ab Schritt 3 und festgelegt). Die Woche ist die im Raster gezeigte.
+- **Links: Ganzes Semester | Diese Woche** (ab Schritt 3 und festgelegt). Die Woche ist die im Raster gezeigte;
+  festgelegt in der Standardwoche die gewählte echte Woche, denn der Vollzug braucht Tage (SP-0419).
 - **Ohne Uhrzeit:** Ein Termin mit Datum, aber ohne Uhrzeit steht über dem Raster; ein Klick trägt Uhrzeit und Ort nach.
 - **Abgleich** (V-0349, §2.8): je Modul eine Tabelle Posten · Tabelle · Wirklichkeit · Ergebnis · Folge („8,5 h
   Puffer (G5)“, „Entscheidung offen“), darunter mehr/weniger innerhalb der Toleranz; die **Last je Woche** als Säulen

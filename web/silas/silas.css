@@ -1320,3 +1320,9 @@ body.mit-unten .links-fuss { position: static; }
 @media (max-width: 380px) {
   .p-weitere .knopf { padding: 0 6px; font-size: 12px; }
 }
+
+/* ── SP-0419: festgelegt der Vollzug je Modul — grün erledigt, rot nicht gemacht, schraffiert ohne ✓/✗, grau kommt
+   noch; in der Woche rot schraffiert, was dran wäre und noch keinen Block hat (die Zeile darunter nennt die Prozent) ─ */
+.fbalken > i.unbest { background: repeating-linear-gradient(135deg, var(--gruen) 0 2px, var(--grau-4) 2px 5px); }
+.fbalken > i.ungeplant { background: repeating-linear-gradient(135deg, var(--rot) 0 2px, var(--rot-flaeche) 2px 5px); }
+.m-zahl .fehlt.rot { color: var(--rot-text); }
