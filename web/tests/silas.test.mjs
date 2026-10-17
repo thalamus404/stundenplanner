@@ -689,6 +689,7 @@ function env() {
     SILAS: {
       get: async (k) => kv.get(k) ?? null,
       put: async (k, v) => { kv.set(k, v); },
+      delete: async (k) => { kv.delete(k); },
       list: async ({ prefix }) => ({ keys: [...kv.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
     },
   };
@@ -907,6 +908,49 @@ test('ereignisse?plan=n: der Probeplan für das Study OS, mit Prüfungen und Zei
   assert.ok(Array.isArray(drei.zeitraeume) && drei.zeitraeume.some((z) => z.art === 'vorlesung'));
   assert.equal((await silasApi(anfrage('ereignisse?plan=4'), e, jetzt)).status, 404, 'ein leerer Probeplan');
   assert.equal((await silasApi(anfrage('ereignisse?plan=10'), e, jetzt)).status, 400);
+});
+
+test('uebernehmen?plan=n: der Probeplan wird der echte Plan, der alte ist gesichert, der Probeplan ist danach leer (SP-0413)', async () => {
+  const e = env();
+  const jetzt = new Date('2030-10-01T10:30:00Z');
+  const a = angebot();
+  a.module[0].titel = 'Aus dem Probeplan';
+  await silasApi(anfrage('stand', { methode: 'PUT', body: { basis: null, angebot: angebot(), plan: { festgelegt: true } } }), e, new Date('2030-10-01T10:00:00Z'));
+  await silasApi(anfrage('stand', { methode: 'PUT', body: { basis: 1, angebot: angebot(), plan: { festgelegt: true, wahl: { 'bsp-ue': 'g1' } } } }), e, new Date('2030-10-01T10:10:00Z'));
+  await silasApi(anfrage('stand?plan=2', { methode: 'PUT', body: { basis: null, angebot: a, plan: { pruefungstermin: { 'bsp-klausur': '2031-03-03' } } } }), e);
+  const vorher = await (await silasApi(anfrage('stand'), e)).json();
+
+  assert.equal((await silasApi(anfrage('uebernehmen', { methode: 'POST', body: { basis: 1 } }), e, jetzt)).status, 400, 'ohne plan');
+  assert.equal((await silasApi(anfrage('uebernehmen?plan=3', { methode: 'POST', body: { basis: 1 } }), e, jetzt)).status, 404, 'ein leerer Probeplan');
+  assert.equal((await silasApi(anfrage('uebernehmen?plan=2', { methode: 'POST', body: { basis: 7 } }), e, jetzt)).status, 409, 'nur, was man gesehen hat');
+  assert.equal((await silasApi(anfrage('uebernehmen?plan=2'), e, jetzt)).status, 404, 'nur POST');
+  assert.equal((await silasApi(anfrage('stand'), e)).status, 200);
+  assert.deepEqual(await (await silasApi(anfrage('stand'), e)).json(), vorher, 'ein Fehlversuch ändert nichts');
+
+  const r = await silasApi(anfrage('uebernehmen?plan=2', { methode: 'POST', body: { basis: 1 } }), e, jetzt);
+  assert.equal(r.status, 200);
+  const antwort = await r.json();
+  assert.equal(antwort.version, 3, 'die nächste Version des echten — ein anderes Gerät merkt es am 409');
+  assert.equal(antwort.gesichert, '203010011030');
+  const echt = await (await silasApi(anfrage('stand'), e)).json();
+  assert.equal(echt.version, 3);
+  assert.equal(echt.angebot.module[0].titel, 'Aus dem Probeplan', 'das Angebot des Probeplans');
+  assert.deepEqual(echt.plan, { pruefungstermin: { 'bsp-klausur': '2031-03-03' } }, 'der ganze Plan, nichts vom alten bleibt');
+  assert.equal((await silasApi(anfrage('stand?plan=2'), e)).status, 404, 'der Probeplan ist wieder frei');
+  assert.deepEqual((await (await silasApi(anfrage('plaene'), e)).json()).plaene, []);
+  const sicherung = await (await silasApi(anfrage('verlauf/203010011030'), e)).json();
+  assert.deepEqual(sicherung, vorher, 'der alte echte Plan, auf die Minute gesichert');
+  const liste = (await (await silasApi(anfrage('verlauf'), e)).json()).verlauf;
+  assert.ok(liste.includes('203010011030') && liste.includes('2030100110'));
+  // Die Stundensicherung trägt den neuen Stand; ein weiteres Speichern derselben Stunde lässt die alte unberührt.
+  await silasApi(anfrage('stand', { methode: 'PUT', body: { basis: 3, angebot: a, plan: {} } }), e, new Date('2030-10-01T10:40:00Z'));
+  assert.deepEqual(await (await silasApi(anfrage('verlauf/203010011030'), e)).json(), vorher);
+  // Ohne echten Plan: der Probeplan wird der erste Stand, gesichert wird nichts.
+  const f = env();
+  await silasApi(anfrage('stand?plan=5', { methode: 'PUT', body: { basis: null, angebot: a, plan: {} } }), f);
+  const r2 = await (await silasApi(anfrage('uebernehmen?plan=5', { methode: 'POST', body: { basis: 1 } }), f, jetzt)).json();
+  assert.equal(r2.version, 1);
+  assert.equal(r2.gesichert, null);
 });
 
 test('Prüfungen als Daten: gilt und Rückfall, gewählt oder Annahme, Vorbereitung, Termine ohne Datum, Zeiträume (SP-0412)', () => {
