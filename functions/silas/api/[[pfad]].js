@@ -16,6 +16,8 @@
 //                           Adresse (?k=), weil ein Kalender keine Kopfzeile senden kann
 //   GET  verlauf[/<id>]   → die stündlichen Sicherungen der letzten 60 Tage
 //   GET  plaene           → die Probepläne: [{ nr, version, geaendert }]
+//   POST uebernehmen?plan=n ← { basis } — den Probeplan zum echten Plan machen (SP-0413): der echte wird ganz
+//                           überschrieben (vorher gesichert), der Probeplan danach geleert
 //
 // Probepläne (V-0345, Silas: „verschiedene Stundenpläne abspeichern … unter stundenplanner.de/silas/1, 2, 3 … einfach
 // nur fürs Testen“): `stand?plan=1…9` liest und schreibt einen eigenen Stand (KV `stand:<n>`), mit derselben Sperre.
@@ -67,6 +69,9 @@ const PLAN = /^[1-9]$/;
 const berlinTag = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 
 const stundenSchluessel = (d) =>'verlauf:' + d.toISOString().slice(0, 13).replace(/[-T]/g, '');
+/** Die Sicherung des echten Plans, bevor ein Probeplan ihn ersetzt: auf die Minute, damit das nächste Speichern derselben
+ *  Stunde sie nicht überschreibt (die Stundensicherung trägt dann schon den neuen Stand). */
+const minutenSchluessel = (d) =>'verlauf:' + d.toISOString().slice(0, 16).replace(/[-T:]/g, '');
 
 export async function silasApi(request, env, jetzt = new Date()) {
   const url = new URL(request.url);
@@ -109,6 +114,27 @@ export async function silasApi(request, env, jetzt = new Date()) {
     return json(200, { version: stand.version, geaendert: stand.geaendert });
   }
 
+  // Den Probeplan zum echten Plan machen (SP-0413, Silas, 17.10.2026: „damit wird quasi der echte Plan überschrieben, alles
+  // wird überschrieben mit dem Probeplan … und der Probeplan selbst wird wieder frei“). Angebot und Plan des Probeplans
+  // werden der echte Stand, auf der nächsten Version des echten — so merkt jedes andere Gerät am 409, dass sich etwas
+  // geändert hat. `basis` ist die Version des Probeplans, die die Seite zeigt: Übernommen wird nur, was man gesehen hat.
+  if (weg === 'uebernehmen' && request.method === 'POST') {
+    if (!plan) return fehler(400, 'Welcher Probeplan? (?plan=1…9)');
+    let neu;
+    try { neu = JSON.parse(await request.text()); } catch { return fehler(400, 'Kein gültiges JSON.'); }
+    const probe = await lesen(env, ort);
+    if (!probe) return fehler(404, `Probeplan ${plan} ist leer.`);
+    if (!neu || neu.basis !== probe.version) return json(409, { fehler: 'Der Probeplan wurde auf einem anderen Gerät geändert.', version: probe.version, geaendert: probe.geaendert });
+    const alt = await lesen(env);
+    if (alt) await env.SILAS.put(minutenSchluessel(jetzt), JSON.stringify(alt), { expirationTtl: VERLAUF_TAGE * 86400 });
+    const stand = { schema: 1, version: (alt ? alt.version : 0) + 1, geaendert: jetzt.toISOString(), angebot: probe.angebot, plan: probe.plan };
+    const text = JSON.stringify(stand);
+    await env.SILAS.put('stand', text);
+    await env.SILAS.put(stundenSchluessel(jetzt), text, { expirationTtl: VERLAUF_TAGE * 86400 });
+    await env.SILAS.delete(ort);
+    return json(200, { version: stand.version, geaendert: stand.geaendert, gesichert: alt ? minutenSchluessel(jetzt).slice(8) : null });
+  }
+
   if (weg === 'ereignisse' && request.method === 'GET') {
     const s = await lesen(env, ort);
     if (!s) return fehler(404, plan ? `Probeplan ${plan} ist leer.` : 'Noch kein Stand gespeichert.');
@@ -148,7 +174,7 @@ export async function silasApi(request, env, jetzt = new Date()) {
     const liste = await env.SILAS.list({ prefix: 'verlauf:' });
     return json(200, { verlauf: liste.keys.map((k) => k.name.slice(8)).sort().reverse() });
   }
-  const v = /^verlauf\/(\d{10})$/.exec(weg);
+  const v = /^verlauf\/(\d{10}|\d{12})$/.exec(weg);
   if (v && request.method === 'GET') {
     const roh = await env.SILAS.get('verlauf:' + v[1]);
     return roh ? new Response(roh, { headers: { ...KOPF, 'content-type': 'application/json; charset=utf-8' } }) : fehler(404, 'Diese Sicherung gibt es nicht.');

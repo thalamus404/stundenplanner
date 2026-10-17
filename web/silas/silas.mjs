@@ -333,13 +333,43 @@ function probeplanAnlegen(fehler = null) {
   };
   fuellen($('tor').querySelector('.tor-karte'),
     h('h1', { text: `Probeplan ${PLAN_NR}` }),
-    h('p', { text: 'Hier kannst du einen Stundenplan zum Ausprobieren bauen — dein echter Plan bleibt, wie er ist. Ereignisse und Kalender-Abo kommen immer aus dem echten.' }),
+    h('p', { text: 'Hier kannst du einen Stundenplan zum Ausprobieren bauen — dein echter Plan bleibt, wie er ist, bis du oben „Zum echten Plan machen“ drückst. Kalender-Abos kommen immer aus dem echten.' }),
     h('div', { class: 'tor-wahl' },
       h('button', { class: 'knopf haupt', type: 'button', onclick: () => anlegen(false), text: 'Leer beginnen' }),
       h('button', { class: 'knopf', type: 'button', onclick: () => anlegen(true), text: 'Kopie meines Plans' })),
     h('p', { class: 'satz', text: 'Leer: deine Module mit allen Terminen, aber ohne gewählte Gruppen und ohne Blöcke — von Schritt 1 an.' }),
     fehler ? h('p', { class: 'tor-fehler', text: fehler }) : null,
     h('p', {}, h('a', { href: '/silas/', text: 'Zum echten Plan' })));
+}
+
+/** Den Probeplan zum echten Plan machen (SP-0413, Silas, 17.10.2026: „damit wird quasi der echte Plan überschrieben, alles
+ *  wird überschrieben mit dem Probeplan … und der Probeplan selbst wird wieder frei“). Erst wird gespeichert, was noch
+ *  offen ist — übernommen wird genau der Stand, den man sieht. Der Server sichert den alten echten Plan (verlauf),
+ *  ersetzt ihn und leert den Probeplan; danach geht es zum echten Plan. */
+async function zumEchtenPlan() {
+  if (!PLAN_NR) return;
+  clearTimeout(Z.sync.timer);
+  if (Z.sync.lage === 'offen' || Z.sync.laeuft) {
+    while (Z.sync.laeuft) await new Promise((r) => setTimeout(r, 100));
+    if (Z.sync.lage !== 'ok') await speichern();
+  }
+  if (Z.sync.lage !== 'ok' && Z.sync.lage !== 'ruhig') { melden('Erst muss der Probeplan gespeichert sein — dann geht es.'); return; }
+  if (!confirm(`Probeplan ${PLAN_NR} zum echten Plan machen?\n\nDein echter Plan wird ganz durch diesen Probeplan ersetzt: Module, Wahl, Blöcke, alles. Kalender-Abos und Ereignisse folgen ihm. Der alte echte Plan bleibt als Sicherung im Verlauf. Probeplan ${PLAN_NR} ist danach wieder leer.`)) return;
+  let r;
+  try { r = await api(`uebernehmen?plan=${PLAN_NR}`, { method: 'POST', body: JSON.stringify({ basis: Z.stand.version }) }); } catch { r = { status: 0 }; }
+  if (r.status !== 200) {
+    melden(r.status === 409 ? 'Der Probeplan wurde auf einem anderen Gerät geändert — lade neu und versuch es noch einmal.'
+      : r.status === 0 ? 'Offline — der echte Plan ist unverändert.' : `Nicht übernommen: ${(r.daten && r.daten.fehler) || `Fehler ${r.status}`}`);
+    return;
+  }
+  // Was dieser Browser vom echten Plan noch zwischengespeichert hat, gilt nicht mehr (es meldete sonst einen Konflikt
+  // und böte „meinen behalten“ an — das holte den alten zurück). Die Ansicht des Probeplans nimmt der echte mit.
+  ls.weg(LS.stand);
+  ls.weg('silas:v1:stand');
+  const ansicht = ls.get(LS.ansicht);
+  if (ansicht) ls.set('silas:v1:ansicht', ansicht);
+  ls.weg(LS.ansicht);
+  location.assign('/silas/');
 }
 
 // ── Zeichnen ─────────────────────────────────────────────────────────────────────────────────────
@@ -385,7 +415,9 @@ function kopfZeichnen() {
   const planwahl = h('select', { class: 'planwahl', 'aria-label': 'Plan', 'data-act': 'plan' },
     h('option', { value: '', text: 'Echter Plan', selected: !PLAN_NR }),
     ...nrn.map((n) => h('option', { value: String(n), selected: String(n) === PLAN_NR, text: `Probeplan ${n}${da.has(n) ? ` · ${M.datumKurz(da.get(n).geaendert.slice(0, 10))}` : ' (leer)'}` })));
-  fuellen($('k-links'), h('b', { text: `${s.titel} · ${s.fachsemester ? `${s.fachsemester}. Fachsemester` : ''}` }), h('span', { class: 'k-unter' }, h('span', { text: s.studiengang || '' }), planwahl));
+  // Im Probeplan daneben: ihn zum echten Plan machen (SP-0413).
+  const zumEchten = PLAN_NR ? h('button', { class: 'knopf klein', type: 'button', 'data-act': 'zum-echten', title: 'Der echte Plan wird ganz durch diesen Probeplan ersetzt; der Probeplan ist danach wieder leer.', text: 'Zum echten Plan machen' }) : null;
+  fuellen($('k-links'), h('b', { text: `${s.titel} · ${s.fachsemester ? `${s.fachsemester}. Fachsemester` : ''}` }), h('span', { class: 'k-unter' }, h('span', { text: s.studiengang || '' }), planwahl, zumEchten));
   // Die Bilanz (V-0349, Kontingent-Modell G1/G2): Die Leistungspunkte sind fest (5 × 180 h); sie teilen sich in den
   // Semester-Topf („Woche“) und den Prüfungs-Topf („Prüfungen“). Abgebucht wird erst, was ✓ hat (G6).
   const su = Z.erg.summe;
@@ -3540,6 +3572,7 @@ function verdrahten() {
       case 'kalender': kalenderKarte(el); break;
       case 'setzen-aus': Z.setzen = null; zeichnen(); bannerZeigen(); break;
       case 'neu-laden': neuLaden(); break;
+      case 'zum-echten': zumEchtenPlan(); break;
       case 'ueberschreiben': if (confirm('Den Stand auf dem Server mit dem aus diesem Browser überschreiben?')) { Z.konflikt = null; speichern(true); } break;
       case 'erste-luecke': {
         const z = [...Z.erg.teile.values()].find((x) => x.rot);
