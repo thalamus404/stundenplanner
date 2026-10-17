@@ -16,7 +16,7 @@
 import {
   REGELN, TAGE, min, hhmm, plusTage, wochentag, montagVon, tageZwischen, istDatum, datumKurz, aufRaster, stunden,
   istFrei, istGeschlossen, wochen, muster, termineAus, zaehltMin, nurOnline, einheiten, videoBlockMin, pruefungsTermin,
-  freieFenster, isoZeit, vorOrt,
+  freieFenster, isoZeit, vorOrt, phasen,
 } from './grund.mjs';
 import { kontingentRechnen, istEintrag, wochenBedarf as bedarfJeWoche, STUFEN, toleranz } from './kontingent.mjs';
 
@@ -1125,6 +1125,52 @@ export function ereignisse(angebot, plan, optionen = {}) {
     if (v.punkt != null) e.uhrzeit = hhmm(v.punkt);
     return e;
   });
+}
+
+/** Der Reiter „Prüfungen“ als Daten für das Study OS (SP-0412). Silas, 17.10.2026: das Study OS soll „die Termine und
+ *  Intervalle und auch die Daten vom Prüfungstab“ zeigen. Die Ereignisse tragen je Prüfungstermin nur `wichtig` (gilt);
+ *  was der Reiter darüber hinaus weiß — Art (Form der Marke), gewählt oder Arbeitsannahme (G7), Rückfall- und
+ *  Nachholtermine, Stand nach § 63, Punkte, Fristen, Kontingent und die Strecke der Vorbereitung (vom ersten gelegten
+ *  oder vorgeschlagenen Tag an, wie die Zeitleiste sie zieht) —, steht hier, aus demselben `rechnen()`. Prüfungen ohne
+ *  Datum kommen mit ihrer offenen Frage; das Study OS erfindet kein Datum. `erg` braucht `heute` (sonst schlägt der
+ *  Vorschlag auch Vergangenes vor). */
+export function pruefungenExport(erg) {
+  const termin = (x, gilt) => ({
+    datum: x.datum, start: x.start || null, ende: x.ende || null, ort: x.ort || null, label: x.label || null,
+    gilt: x === gilt, nachholen: !!x.nachholen, unsicher: !!x.unsicher,
+  });
+  return [...erg.pruefungen.values()].map((X) => {
+    const t = X.termin;
+    const tage = [...(X.bloecke || []).filter((v) => v.ist !== 'verschoben').map((v) => v.datum), ...(X.vorschlag || []).map((v) => v.datum)].sort();
+    const ab = t && tage[0] && tage[0] < t.datum ? tage[0] : null;
+    return {
+      id: X.id, modul: X.modul.id, modulnummer: X.modul.nr ? String(X.modul.nr) : null, kurz: kurz(X.modul),
+      titel: X.p.titel, art: X.art, form: X.p.form || null, portfolio: !!X.portfolio, haupt: !!X.haupt,
+      dauer_min: Number.isFinite(X.p.dauer_min) ? X.p.dauer_min : null, punkte: X.punkte, erreicht: X.erreicht,
+      status: X.status, zaehlt: !!X.zaehlt, alternativen: X.alternativen, gewaehlt: !!X.gewaehlt, annahme: !!X.annahme,
+      wiederholung: !!X.wiederholung,
+      termin: t ? termin(t, t) : null,
+      termine: X.datiert.map((x) => termin(x, t)),
+      // Termine ohne Datum (etwa „laut Semesterplanung in der Klausurwoche …“) mit dem, was über sie bekannt ist.
+      offen: (X.p.termine || []).filter((x) => !istDatum(x.datum)).map((x) => ({ label: x.label || null, text: x.offen || null })),
+      frage: X.info ? { text: X.info.frage, stichtag: X.info.stichtag || null } : null,
+      zulassung: X.p.zulassung || null, stoff: X.p.stoff || null, quelle: X.p.quelle || null,
+      kontingent_min: X.kontingent_min, zu_planen_min: X.zu_planen_min, erledigt_min: X.erledigt_min,
+      geplant_min: X.geplant_min, offen_min: X.offen_min,
+      vorschlag_min: (X.vorschlag || []).reduce((s, v) => s + v.min, 0), passt_nicht_min: X.passt_nicht_min || 0,
+      fenster: X.fenster ? { ab: X.fenster.ab || null, bis: X.fenster.bis || null } : null,
+      vorbereitung: ab ? { von: ab, bis: plusTage(t.datum, -1) } : null,
+      fristen: (X.fristen || []).map((f) => ({ art: f.art, datum: f.datum, zeit: f.zeit || null, text: f.text, regel: !!f.regel })),
+    };
+  }).sort((a, b) => ((a.termin && a.termin.datum) || '9') < ((b.termin && b.termin.datum) || '9') ? -1 : 1);
+}
+
+/** Die Zeiträume des Semesters für das Study OS (SP-0412): Vorlesungszeit, Pausen, die vorlesungsfreie Zeit bis zum Ende
+ *  des Planungszeitraums (die Prüfungszeit, P1 …) und die Schließung der Gebäude. Dieselben Phasen wie phasen(). */
+export function zeitraeume(sem) {
+  const aus = phasen(sem).map((p, i) => ({ id: p.id === 'pause' ? `pause-${i}` : p.id, art: p.id, titel: p.titel, von: p.von, bis: p.bis }));
+  (sem.geschlossen || []).forEach((g, i) => aus.push({ id: `geschlossen-${i}`, art: 'geschlossen', titel: g.titel || 'Gebäude geschlossen', von: g.von, bis: g.bis, quelle: g.quelle || null }));
+  return aus.sort((a, b) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
 }
 
 // ── Prüfung eines Angebots ──────────────────────────────────────────────────────────────────────

@@ -10,7 +10,8 @@
 //   GET  stand            → { schema, version, geaendert, angebot, plan }      (404, solange leer)
 //   PUT  stand            ← { basis, angebot, plan } — basis ist die Version, auf der die Änderung
 //                           beruht; passt sie nicht, 409 mit dem Stand des Servers (anderes Gerät)
-//   GET  ereignisse       → jedes konkrete Vorkommen mit Id und Zeitzone: die Schnittstelle zum Study OS
+//   GET  ereignisse       → jedes konkrete Vorkommen mit Id und Zeitzone, dazu die Prüfungen (der Reiter „Prüfungen“
+//                           als Daten) und die Zeiträume: die Schnittstelle zum Study OS (docs/SILAS.md §6)
 //   GET  kalender/<k>.ics → Kalender-Abo (termine | lernen | alles); der Schlüssel steht hier in der
 //                           Adresse (?k=), weil ein Kalender keine Kopfzeile senden kann
 //   GET  verlauf[/<id>]   → die stündlichen Sicherungen der letzten 60 Tage
@@ -18,7 +19,8 @@
 //
 // Probepläne (V-0345, Silas: „verschiedene Stundenpläne abspeichern … unter stundenplanner.de/silas/1, 2, 3 … einfach
 // nur fürs Testen“): `stand?plan=1…9` liest und schreibt einen eigenen Stand (KV `stand:<n>`), mit derselben Sperre.
-// Sie haben keine Sicherungen, und Ereignisse und Kalender kommen immer aus dem echten Plan.
+// Sie haben keine Sicherungen. Die Kalender-Abos kommen immer aus dem echten Plan; `ereignisse?plan=n` aus dem
+// Probeplan (SP-0412, Silas, 17.10.2026: das Study OS soll „die dritte Version“ zeigen) — ohne `plan` der echte.
 //
 // Das Study OS liest später mit demselben Schlüssel (Kopfzeile Authorization: Bearer …). Der
 // Stundenplanner selbst fragt nie etwas von dort ab: Die Richtung ist Study OS → Stundenplanner.
@@ -61,7 +63,10 @@ async function lesen(env, schluessel = 'stand') {
 }
 const PLAN = /^[1-9]$/;
 
-const stundenSchluessel = (d) => 'verlauf:' + d.toISOString().slice(0, 13).replace(/[-T]/g, '');
+/** Der Kalendertag in Berlin (JJJJ-MM-TT) — der Worker läuft in UTC, Silas' Tag nicht. */
+const berlinTag = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+
+const stundenSchluessel = (d) =>'verlauf:' + d.toISOString().slice(0, 13).replace(/[-T]/g, '');
 
 export async function silasApi(request, env, jetzt = new Date()) {
   const url = new URL(request.url);
@@ -105,10 +110,17 @@ export async function silasApi(request, env, jetzt = new Date()) {
   }
 
   if (weg === 'ereignisse' && request.method === 'GET') {
-    const s = await lesen(env);
-    if (!s) return fehler(404, 'Noch kein Stand gespeichert.');
+    const s = await lesen(env, ort);
+    if (!s) return fehler(404, plan ? `Probeplan ${plan} ist leer.` : 'Noch kein Stand gespeichert.');
+    // Die Ereignisse rechnen ohne `heute`, wie seit V-0321 (zaehlt_min bleibt, was das Study OS kennt). Die Prüfungen
+    // rechnen mit dem Berliner Tag: Ihr Vorschlag beginnt nie vor heute — so wie auf der Seite.
     const ereignisse = M.ereignisse(s.angebot, s.plan);
-    return json(200, { schema: 1, version: s.version, geaendert: s.geaendert, semester: s.angebot.semester, ereignisse });
+    const heute = berlinTag(jetzt);
+    const erg = M.rechnen(s.angebot, s.plan, { heute });
+    return json(200, {
+      schema: 1, plan: plan ? Number(plan) : null, version: s.version, geaendert: s.geaendert, heute,
+      semester: s.angebot.semester, ereignisse, pruefungen: M.pruefungenExport(erg), zeitraeume: M.zeitraeume(s.angebot.semester),
+    });
   }
 
   if (ics && request.method === 'GET') {

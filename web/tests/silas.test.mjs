@@ -885,6 +885,57 @@ test('Probepläne: stand?plan=n liegt getrennt vom echten Plan, ohne Sicherung; 
   assert.ok([...kv.keys()].some((x) => x.startsWith('verlauf:')), 'der echte schon');
 });
 
+test('ereignisse?plan=n: der Probeplan für das Study OS, mit Prüfungen und Zeiträumen; ohne plan der echte (SP-0412)', async () => {
+  const e = env();
+  const a = angebot();
+  a.module[0].pruefungen[0].termine.push({ datum: '2031-03-17', start: '10:00', ende: '11:30', label: '2. Termin', wichtig: false });
+  await silasApi(anfrage('stand', { methode: 'PUT', body: { basis: null, angebot: angebot(), plan: {} } }), e);
+  await silasApi(anfrage('stand?plan=3', { methode: 'PUT', body: { basis: null, angebot: a, plan: { pruefungstermin: { 'bsp-klausur': '2031-03-17' } } } }), e);
+  const jetzt = new Date('2030-10-31T23:30:00Z');          // in Berlin schon der 01.11.
+  const echt = await (await silasApi(anfrage('ereignisse'), e, jetzt)).json();
+  const drei = await (await silasApi(anfrage('ereignisse?plan=3'), e, jetzt)).json();
+  assert.equal(echt.plan, null);
+  assert.equal(drei.plan, 3);
+  assert.equal(drei.heute, '2030-11-01', 'der Berliner Tag, nicht der UTC-Tag');
+  const pruef = (r) => r.ereignisse.filter((x) => x.quelle === 'pruefung').map((x) => [x.datum, x.wichtig]);
+  assert.deepEqual(pruef(echt), [['2031-03-03', true]]);
+  assert.deepEqual(pruef(drei), [['2031-03-03', false], ['2031-03-17', true]], 'Plan 3 hat den 2. Termin gewählt');
+  const X = drei.pruefungen.find((p) => p.id === 'bsp-klausur');
+  assert.equal(X.termin.datum, '2031-03-17');
+  assert.equal(X.gewaehlt, true);
+  assert.equal(X.modulnummer, '99999');
+  assert.ok(Array.isArray(drei.zeitraeume) && drei.zeitraeume.some((z) => z.art === 'vorlesung'));
+  assert.equal((await silasApi(anfrage('ereignisse?plan=4'), e, jetzt)).status, 404, 'ein leerer Probeplan');
+  assert.equal((await silasApi(anfrage('ereignisse?plan=10'), e, jetzt)).status, 400);
+});
+
+test('Prüfungen als Daten: gilt und Rückfall, gewählt oder Annahme, Vorbereitung, Termine ohne Datum, Zeiträume (SP-0412)', () => {
+  const a = angebot();
+  a.module[0].pruefungen[0].termine.push({ datum: '2031-03-17', start: '10:00', ende: '11:30', label: '2. Termin', wichtig: false });
+  a.module[0].pruefungen.push({ id: 'bsp-test', titel: 'Online-Test', dauer_min: 30, punkte: 20,
+    termine: [{ datum: null, label: 'Ersttermin', offen: 'in der Klausurwoche, Tag offen' }] });
+  a.semester.geschlossen = [{ von: '2030-12-19', bis: '2031-01-05', titel: 'Gebäude geschlossen', quelle: 'Mitteilung' }];
+  const plan = { bloecke: [{ id: 'l1', teil: 'bsp-pv', datum: '2031-02-22', start: '09:00', ende: '12:00' }] };
+  const ps = M.pruefungenExport(M.rechnen(a, plan, { heute: '2030-11-01' }));
+  const K = ps.find((p) => p.id === 'bsp-klausur');
+  assert.equal(K.art, 'klausur');
+  assert.equal(K.gewaehlt, false);
+  assert.deepEqual(K.termine.map((t) => [t.datum, t.gilt]), [['2031-03-03', true], ['2031-03-17', false]], 'ohne Wahl gilt der frühere, der Rückfall bleibt stehen (G7)');
+  assert.equal(K.status, 'offen');
+  assert.ok(K.vorbereitung && K.vorbereitung.von <= '2031-02-22' && K.vorbereitung.bis === '2031-03-02', 'vom ersten gelegten oder vorgeschlagenen Tag bis zum Vortag');
+  assert.ok(K.fristen.some((f) => f.art === 'anmeldung'));
+  assert.ok(K.kontingent_min > 0);
+  const T = ps.find((p) => p.id === 'bsp-test');
+  assert.equal(T.termin, null);
+  assert.equal(T.vorbereitung, null);
+  assert.deepEqual(T.offen, [{ label: 'Ersttermin', text: 'in der Klausurwoche, Tag offen' }]);
+  assert.equal(T.alternativen, 'info_fehlt');
+  assert.deepEqual(ps.map((p) => p.id), ['bsp-klausur', 'bsp-test'], 'nach Datum, ohne Datum zuletzt');
+  const zr = M.zeitraeume(a.semester);
+  assert.deepEqual(zr.map((z) => z.art), ['vorlesung', 'geschlossen', 'pause', 'frei']);
+  assert.equal(zr.find((z) => z.art === 'frei').von, '2031-02-16');
+});
+
 test('Kachel-Klassen haben keine eigenen Regeln: eine Klasse an .kachel ist nirgends allein ein Selektor (V-0345)', () => {
   // „reihe“ war Kachel-Klasse UND die geführte Liste links (.reihe { margin: 8px 0 0 }): Die Kachel rutschte 10 min
   // unter ihre Zeit, weg von der Fahrzeit. Eine Klasse, die an .kachel hängt, darf keine Regel ohne .kachel haben.
