@@ -3078,7 +3078,14 @@ function blockKarte(blockId, nahe, datum) {
   const bz = z && z.teil.art === 'selbst' ? bezugVon(vk) : null;
   const vg = z && !b.datum ? M.vorgabe(Z.erg, z.teil.id) : null;
   const abVorschlag = vg && vg.ab && (!b.ab || b.ab < vg.ab) && vk.some((v) => v.datum < vg.ab) ? vg.ab : null;
+  // In einer echten Woche gilt eine Änderung an einem Wochenblock zuerst nur für dieses Vorkommen (SP-0414); „jede Woche“
+  // ändert die Reihe wie in der Standardwoche.
+  const einzelnMoeglich = !b.datum && !!diese;
+  const versetzt = !b.datum ? (Z.stand.plan.bloecke || []).filter((x) => x.serie === b.id).length : 0;
   const form = h('form', { class: 'formular' },
+    einzelnMoeglich ? h('label', { class: 'breit' }, 'Gilt für', h('select', { name: 'umfang' },
+      h('option', { value: 'einzeln', text: `nur diese Woche (${datumMitTag(diese.datum)})`, selected: true }),
+      h('option', { value: 'reihe', text: 'jede Woche' }))) : null,
     h('label', { class: 'breit' }, 'Wofür', h('select', { name: 'teil' },
       sch === 4 ? h('option', { value: '', text: 'Puffer / Organisation', selected: !b.teil }) : null,
       ...teile.map((x) => h('option', { value: x.teil.id, selected: x.teil.id === b.teil, text: `${M.kurz(x.modul)} · ${x.teil.titel}` })))),
@@ -3094,12 +3101,22 @@ function blockKarte(blockId, nahe, datum) {
     !b.datum ? h('label', {}, 'bis (optional)', h('input', { name: 'bis', type: 'date', value: b.bis || '' })) : null,
     h('p', { class: 'satz', text: b.datum
       ? `Zählt ${M.stunden(zaehlt)}${diese && diese.zaehlt_min === 0 ? ' — an diesem Tag nicht (siehe Hinweis am Teil)' : ''}.`
-      : `${vk.length} Wochen, davon zählen ${vk.filter((v) => v.zaehlt_min > 0).length} — zusammen ${M.stunden(zaehlt)}.${diese && diese.zaehlt_min < diese.ende - diese.start ? ` Am ${datumMitTag(diese.datum)} zählt er ${M.stunden(diese.zaehlt_min)}.` : ''}` }),
+      : `${vk.length} Wochen, davon zählen ${vk.filter((v) => v.zaehlt_min > 0).length} — zusammen ${M.stunden(zaehlt)}.${diese && diese.zaehlt_min < diese.ende - diese.start ? ` Am ${datumMitTag(diese.datum)} zählt er ${M.stunden(diese.zaehlt_min)}.` : ''}${versetzt ? ` ${versetzt === 1 ? 'Eine Woche ist' : `${versetzt} Wochen sind`} einzeln verschoben.` : ''}` }),
     bz ? h('p', { class: `satz${bz.weit ? ' hinweis' : ''}`, text: `Zum Stoff: meist ${bz.text}.${bz.weit ? ' Das ist weit weg — direkt nach dem Stoff bleibt mehr hängen.' : ''}` }) : null,
     abVorschlag ? h('p', { class: 'satz' }, `Vor ${datumMitTag(abVorschlag)} gibt es ${z.teil.art === 'video' ? 'kein Video' : 'noch keinen Stoff'} — dort zählt er nicht. `,
       h('button', { class: 'knopf klein', type: 'button', onclick: () => { karteSchliessen(false); aendern((s) => { const x = s.plan.bloecke.find((y) => y.id === b.id); if (x) x.ab = abVorschlag; }); melden(`Der Block beginnt jetzt am ${datumMitTag(abVorschlag)}`); }, text: `Erst ab ${datumMitTag(abVorschlag)}` })) : null,
     h('div', { class: 'zeile' },
-      h('button', { class: 'knopf klein rot', type: 'button', onclick: () => { karteSchliessen(false); aendern((s) => { s.plan.bloecke = s.plan.bloecke.filter((x) => x.id !== b.id); }); }, text: 'Löschen' }),
+      h('button', { class: 'knopf klein rot', type: 'button', onclick: () => {
+        karteSchliessen(false);
+        // „nur diese Woche“: das Vorkommen fällt aus der Reihe; sonst geht die Reihe mit ihren einzeln verschobenen Wochen.
+        if (einzelnMoeglich && new FormData(form).get('umfang') === 'einzeln') {
+          aendern((s) => { const x = s.plan.bloecke.find((y) => y.id === b.id); x.ohne = [...new Set([...(x.ohne || []), M.montagVon(diese.datum)])].sort(); });
+          melden(`Nur am ${datumMitTag(diese.datum)} gelöscht — die anderen Wochen bleiben.`);
+          return;
+        }
+        aendern((s) => { s.plan = M.blockLoeschen(s.plan, b.id); });
+        if (versetzt) melden(`Gelöscht, mit ${versetzt === 1 ? 'der einzeln verschobenen Woche' : `den ${versetzt} einzeln verschobenen Wochen`}.`);
+      }, text: 'Löschen' }),
       h('button', { class: 'knopf klein haupt', type: 'submit', text: 'Fertig' })),
   );
   form.addEventListener('submit', (ev) => {
@@ -3111,6 +3128,15 @@ function blockKarte(blockId, nahe, datum) {
     const mindest = evlMindest(neuTeil);
     if (M.schrittVonBlock(neuTeil) === 4 && M.min(ende) - M.min(start) < mindest) { alert(`Ein EVL-Block ist mindestens ${M.stunden(mindest)} lang.`); return; }
     const tag = b.datum ? M.wochentag(f.get('datum') || b.datum) : M.TAGE.indexOf(f.get('tag') || b.tag);
+    if (einzelnMoeglich && f.get('umfang') === 'einzeln') {
+      const datum = M.plusTage(M.montagVon(diese.datum), tag);
+      if (gesperrtMelden({ tag, datum, start: M.min(start), ende: M.min(ende), woechentlich: false })) return;
+      karteSchliessen(false);
+      const teil = f.get('teil') || null;
+      aendern((s) => { s.plan = M.einzelnVerschieben(s.plan, b.id, diese.datum, { datum, start, ende, teil, titel: teil ? null : (f.get('titel') || b.titel || 'Puffer').toString().slice(0, 80) }).plan; });
+      melden(`Nur diese Woche: ${datumMitTag(datum)} ${start}–${ende} — die anderen Wochen bleiben.`);
+      return;
+    }
     if (gesperrtMelden({ tag, datum: b.datum ? (f.get('datum') || b.datum) : null, start: M.min(start), ende: M.min(ende), woechentlich: !b.datum })) return;
     karteSchliessen(false);
     aendern((s) => {
@@ -3129,7 +3155,7 @@ function blockKarte(blockId, nahe, datum) {
       }
     });
   });
-  karteOeffnen([h('h3', {}, z ? `${M.kurz(z.modul)} · ${z.teil.titel}` : (b.titel || 'Puffer'), h('span', { class: 't-zahlen', text: b.datum ? 'einmal' : 'jede Vorlesungswoche' })), form], nahe);
+  karteOeffnen([h('h3', {}, z ? `${M.kurz(z.modul)} · ${z.teil.titel}` : (b.titel || 'Puffer'), h('span', { class: 't-zahlen', text: b.datum ? (b.serie ? 'einmal, aus einer Reihe' : 'einmal') : 'jede Vorlesungswoche' })), form], nahe);
 }
 
 /** Uhrzeit (und Ort) für einen Termin, der nur ein Datum hat: Prüfungstermin oder Einzeltermin. */
@@ -3922,8 +3948,11 @@ function blockZiehen(e, kachel, rect) {
   const tag0 = b.datum ? M.wochentag(b.datum) : M.TAGE.indexOf(b.tag);
   const y0 = minutenBei(e.clientY, rect);
   let neu = { start: s0, ende: e0, tag: tag0 }, bewegt = false;
+  // In der Standardwoche zieht ein Wochenblock die ganze Reihe mit; in einer echten Woche nur dieses eine Vorkommen
+  // (SP-0414, Silas, 17.10.: „dann soll das für diese Woche halt verschoben werden, aber nicht für die anderen Termine“).
+  const einzeln = !b.datum && !geo.std && !!kachel.dataset.datum;
   // Wohin der Block fiele — und ob dort ein Termin liegt (V-0333: dann springt er zurück).
-  const ziel = (x) => ({ tag: x.tag ?? tag0, start: x.start, ende: x.ende, woechentlich: !b.datum,
+  const ziel = (x) => ({ tag: x.tag ?? tag0, start: x.start, ende: x.ende, woechentlich: !b.datum && !einzeln,
     datum: b.datum ? M.plusTage(b.datum, (x.tag ?? tag0) - tag0) : geo.std ? null : M.plusTage(geo.woche.von, x.tag ?? tag0) });
   const sperre = (x) => M.gesperrtDurch(Z.stand.angebot, Z.stand.plan, Z.erg, ziel(x));
   const x0 = e.clientX, yy0 = e.clientY;
@@ -3954,6 +3983,13 @@ function blockZiehen(e, kachel, rect) {
     removeEventListener('pointermove', weiter); removeEventListener('pointerup', loslassen);
     if (!bewegt) { blockKarte(b.id, kachel, kachel.dataset.datum); return; }
     if (gesperrtMelden(ziel(neu))) { rasterZeichnen(); return; }
+    if (einzeln) {
+      const z = ziel(neu);
+      aendern((s) => { s.plan = M.einzelnVerschieben(s.plan, b.id, kachel.dataset.datum, { datum: z.datum, start: M.hhmm(neu.start), ende: M.hhmm(neu.ende) }).plan; });
+      melden(`Nur diese Woche: ${datumMitTag(z.datum)} ${zeitspanne(neu.start, neu.ende)} — die anderen Wochen bleiben ${M.TAGE_LANG[tag0]} ${zeitspanne(s0, e0)}. Für alle Wochen in der Standardwoche ziehen.`);
+      if (Z.sprung) sprungEnde();
+      return;
+    }
     aendern((s) => {
       const x = s.plan.bloecke.find((y) => y.id === b.id);
       x.start = M.hhmm(neu.start); x.ende = M.hhmm(neu.ende);
