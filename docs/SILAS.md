@@ -531,7 +531,12 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   Woche verschiebt Ziehen (auch am Griff länger machen) nur dieses Vorkommen: `einzelnVerschieben()` trägt die Woche
   in `ohne` der Reihe ein und legt das Vorkommen als Datumsblock mit `serie` ab; ein ✓ zieht mit. Die Blockkarte fragt
   dort „Gilt für: nur diese Woche (vorgewählt) / jede Woche“, für Ändern und Löschen — am Telefon, wo man nicht zieht.
-  Eine Reihe zu löschen nimmt ihre einzeln verschobenen Wochen mit (`blockLoeschen()`).
+  Eine Reihe zu löschen nimmt ihre einzeln verschobenen Wochen mit (`blockLoeschen()`). **Auch festgelegt** (SP-0415,
+  Silas, 17.10.: *„Ich will nicht vorher erst auf Bearbeiten klicken müssen, sondern es soll direkt funktionieren mit dem
+  Rumschieben“*): In einer echten Woche trägt jeder eigene Block `data-ziehen` und lässt sich mit der Maus ziehen, nur
+  dieses Vorkommen — wie die Mittagspause. Ein Klick ohne Bewegung bleibt, was er war (Bestandteil zeigen, ✓/✗); nach
+  einer Bewegung schluckt `kachelGezogen` den Klick. Die Standardwoche bleibt festgelegt gesperrt, am Telefon zieht es
+  nicht.
 - **Ein Modul anklicken** (V-0356, Silas: *„wenn man ein Modul anklickt, egal in welchem Schritt, dann sollen alle Blöcke,
   die diesem Modul zugeordnet sind, aufleuchten … die Vorlesung, Vor- und Nachbereitung, die Videos, Übungen, Tutorium“*):
   Der Kopf eines Moduls (eingeklappt oder offen) lässt alles, was das Raster von ihm zeigt, aufleuchten (`m-hell`, kurz
