@@ -196,6 +196,10 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
       }
       const alle = Math.max(1, Math.round(b.alle || 1));
       if (alle > 1) tage = tage.filter((_, i) => i % alle === (b.versatz || 0) % alle);
+      // Wochen, aus denen ein Vorkommen einzeln verschoben wurde (SP-0414, einzelnVerschieben): erst nach dem Takt
+      // streichen, sonst rückte `alle: n` jede spätere Woche um eins. Nach Montag, damit es auch nach einem neuen
+      // Wochentag der Reihe dieselbe Woche bleibt.
+      if (b.ohne && b.ohne.length) tage = tage.filter((d) => !b.ohne.includes(montagVon(d)));
     }
     for (const d of tage) {
       const v = {
@@ -598,6 +602,50 @@ export function wiederherstellen(plan) {
   const ids = new Set((neu.bloecke || []).map((b) => b.id));
   neu.bloecke = [...(neu.bloecke || []), ...z.bloecke.filter((b) => !ids.has(b.id))];
   delete neu.zurueckgesetzt;
+  return neu;
+}
+
+/** Ein Vorkommen eines Wochenblocks einzeln verschieben (SP-0414, Silas, 17.10.: „wenn man nicht auf Standardwoche,
+ *  sondern auf echte Woche … etwas verschiebt, dann soll das für diese Woche halt verschoben werden … es gilt nur für
+ *  diese eine Instanz“). Die Reihe lässt diese Woche aus (`ohne`, ihr Montag), und das Vorkommen wird ein Datumsblock mit
+ *  `serie` (von welcher Reihe) — `ziel` {datum, start, ende, teil?, titel?}, Zeiten als "HH:MM". Ein Eintrag im
+ *  Lebenslauf (plan.ist) zieht mit. Ist der Block schon ein Datumsblock, ändert sich nur er. Rein: gibt den neuen Plan
+ *  und die Id des Blocks zurück, der das Vorkommen jetzt trägt. */
+export function einzelnVerschieben(plan, blockId, datum, ziel) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  const b = (neu.bloecke || []).find((x) => x.id === blockId);
+  if (!b) return { plan: neu, id: null };
+  const setzen = (x) => {
+    x.datum = ziel.datum; x.start = ziel.start; x.ende = ziel.ende;
+    if ('teil' in ziel) x.teil = ziel.teil || null;
+    if (ziel.titel) x.titel = ziel.titel; else if ('teil' in ziel && ziel.teil) delete x.titel;
+  };
+  const ist = { ...(neu.ist || {}) };
+  if (b.datum) {
+    const alt = `${b.id}@${b.datum}`;
+    setzen(b);
+    if (alt in ist && ziel.datum !== datum) { ist[`${b.id}@${ziel.datum}`] = ist[alt]; delete ist[alt]; neu.ist = ist; }
+    return { plan: neu, id: b.id };
+  }
+  const montag = montagVon(datum);
+  b.ohne = [...new Set([...(b.ohne || []), montag])].sort();
+  const ids = new Set(neu.bloecke.map((x) => x.id));
+  let id = `${b.id}-${montag.replaceAll('-', '')}`;
+  for (let i = 2; ids.has(id); i += 1) id = `${b.id}-${montag.replaceAll('-', '')}-${i}`;
+  const x = { id, teil: b.teil || null, serie: b.id };
+  if (b.titel) x.titel = b.titel;
+  setzen(x);
+  neu.bloecke.push(x);
+  const alt = `${b.id}@${datum}`;
+  if (alt in ist) { ist[`${id}@${ziel.datum}`] = ist[alt]; delete ist[alt]; neu.ist = ist; }
+  return { plan: neu, id };
+}
+
+/** Einen Block löschen — eine Reihe mit allem, was einzeln aus ihr verschoben wurde (`serie`, SP-0414): Es sind ihre
+ *  Vorkommen, nur an anderer Stelle. */
+export function blockLoeschen(plan, blockId) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  neu.bloecke = (neu.bloecke || []).filter((x) => x.id !== blockId && x.serie !== blockId);
   return neu;
 }
 

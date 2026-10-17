@@ -993,3 +993,55 @@ test('Kachel-Klassen haben keine eigenen Regeln: eine Klasse an .kachel ist nirg
   }
   assert.deepEqual(allein, []);
 });
+
+// ── SP-0414: In einer echten Woche verschiebt Ziehen nur dieses eine Vorkommen ───────────────────
+
+test('einzelnVerschieben: die Reihe lässt nur diese Woche aus, das Vorkommen wird ein Datumsblock (SP-0414)', () => {
+  const plan = { bloecke: [{ id: 'b1', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }], ist: { 'b1@2030-10-24': 'ja' } };
+  const vorher = M.rechnen(angebot(), plan).vorkommen.filter((v) => v.block === 'b1');
+  // Do 31.10. → Fr 01.11. 14–16 Uhr, nur diese Woche
+  const { plan: neu, id } = M.einzelnVerschieben(plan, 'b1', '2030-10-31', { datum: '2030-11-01', start: '14:00', ende: '16:00' });
+  assert.deepEqual(plan.bloecke[0].ohne, undefined, 'der alte Plan bleibt unberührt');
+  const reihe = neu.bloecke.find((b) => b.id === 'b1');
+  assert.deepEqual(reihe.ohne, ['2030-10-28'], 'die Woche steht als Montag in ohne');
+  assert.equal(reihe.tag, 'Do', 'die Reihe selbst bleibt, wo sie war');
+  const x = neu.bloecke.find((b) => b.id === id);
+  assert.deepEqual({ datum: x.datum, start: x.start, ende: x.ende, teil: x.teil, serie: x.serie }, { datum: '2030-11-01', start: '14:00', ende: '16:00', teil: 'bsp-vn', serie: 'b1' });
+  const e = M.rechnen(angebot(), neu);
+  const vk = e.vorkommen.filter((v) => v.block === 'b1');
+  assert.equal(vk.length, vorher.length - 1, 'genau ein Vorkommen weniger in der Reihe');
+  assert.ok(!vk.some((v) => v.datum === '2030-10-31'), 'am 31.10. liegt die Reihe nicht mehr');
+  assert.ok(vk.some((v) => v.datum === '2030-10-24') && vk.some((v) => v.datum === '2030-11-07'), 'die Wochen davor und danach bleiben');
+  assert.deepEqual(e.vorkommen.filter((v) => v.block === id).map((v) => [v.datum, v.start, v.ende]), [['2030-11-01', 14 * 60, 16 * 60]]);
+  // Die Standardwoche zeigt weiter nur die Reihe am Donnerstag — der verschobene Einzelblock gehört nicht zum Gerüst.
+  const std = M.standardwoche(angebot(), neu, e).filter((k) => k.art === 'block');
+  assert.deepEqual(std.map((k) => [k.block, k.tag, k.start]), [['b1', 3, 9 * 60]]);
+  // Ein Lebenslauf-Eintrag einer anderen Woche bleibt, wo er war.
+  assert.equal(neu.ist['b1@2030-10-24'], 'ja');
+});
+
+test('einzelnVerschieben: Takt alle 2 Wochen verrutscht nicht, die Woche bleibt auch nach neuem Wochentag frei, der Eintrag zieht mit (SP-0414)', () => {
+  const plan = { bloecke: [{ id: 'b1', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00', alle: 2 }] };
+  const tage = (p) => M.rechnen(angebot(), p).vorkommen.filter((v) => v.block === 'b1').map((v) => v.datum);
+  const vorher = tage(plan);
+  const d = vorher[1];
+  const { plan: neu, id } = M.einzelnVerschieben({ ...plan, ist: { [`b1@${d}`]: 'ja' } }, 'b1', d, { datum: d, start: '15:00', ende: '17:00' });
+  assert.deepEqual(tage(neu), vorher.filter((x) => x !== d), 'nur diese eine Woche fällt aus dem Takt');
+  assert.equal(neu.ist[`${id}@${d}`], 'ja', 'der Eintrag gehört jetzt dem Einzelblock');
+  assert.ok(!(`b1@${d}` in neu.ist));
+  // In der Standardwoche auf Montag gezogen: Dieselbe Woche bleibt ohne Reihe.
+  neu.bloecke.find((b) => b.id === 'b1').tag = 'Mo';
+  assert.ok(!tage(neu).includes(M.montagVon(d)), 'die Woche ist nach Montag gemerkt, nicht nach Datum');
+  // Noch einmal einzeln verschieben: Der Einzelblock ändert sich, eine neue Kopie gibt es nicht.
+  const { plan: neu2, id: id2 } = M.einzelnVerschieben(neu, id, d, { datum: M.plusTage(d, 1), start: '15:00', ende: '17:00' });
+  assert.equal(id2, id);
+  assert.equal(neu2.bloecke.length, 2);
+  assert.equal(neu2.ist[`${id}@${M.plusTage(d, 1)}`], 'ja');
+});
+
+test('blockLoeschen: eine Reihe geht mit ihren einzeln verschobenen Wochen, ein Einzelblock allein (SP-0414)', () => {
+  const plan = { bloecke: [{ id: 'b1', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }, { id: 'b2', teil: 'bsp-vn', tag: 'Mo', start: '09:00', ende: '11:00' }] };
+  const { plan: neu, id } = M.einzelnVerschieben(plan, 'b1', '2030-10-31', { datum: '2030-11-01', start: '14:00', ende: '16:00' });
+  assert.deepEqual(M.blockLoeschen(neu, id).bloecke.map((b) => b.id), ['b1', 'b2']);
+  assert.deepEqual(M.blockLoeschen(neu, 'b1').bloecke.map((b) => b.id), ['b2']);
+});
