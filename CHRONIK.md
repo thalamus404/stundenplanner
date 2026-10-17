@@ -12,6 +12,18 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas: Festgelegt zeigen die Modulbalken, was getan ist (SP-0419)
+
+- Silas: *„… wenn der Stundenplaner fertig ist, dann soll es die Progress Bar sein bei ganzes Semester: Wie viel hast du
+  gemacht von dem, was da ist, und wie viel kommt noch? … Und bei dieser Woche soll es genau die gleiche Logik sein, nur
+  eben für diese Woche, und da soll auch der Hinweis kommen, in Rot, wie viel Prozent noch nicht verplant sind … oben
+  bei ‚Dein Stundenplan‘ weiterhin die Progress Bar für wie viel einem noch fehlt in der Planung.“*
+- Bisher maß jeder Balken die Planung, auch nach dem Festlegen — ein Modul stand bei 100 %, sobald alles lag, egal ob
+  etwas davon getan war. Jetzt rechnet `vollzug()` (docs/SILAS.md §2.10): grün erledigt, rot nicht gemacht und
+  nachzuholen, schwarz verpasste Präsenz, schraffiert vorbei ohne ✓/✗, grau kommt noch; 100 % erst, wenn alles erledigt
+  ist. „Diese Woche“ dasselbe für die Woche, dazu rot schraffiert und als Zeile „n % noch nicht verplant“.
+- Im Ablauf (Schritte 1–4) und oben unter „Dein Stundenplan“ bleibt der Planungsfortschritt.
+
 ## 17.10.2026 — /silas: Fahrzeit und Mittag über keiner Kachel, Mittag 30 min nahe 12 (SP-0418)
 
 - Silas: *„Fahrzeitlogik und Mittaglogik … überschneiden sich manchmal mit irgendwelchen Modulkacheln, aber das geht ja

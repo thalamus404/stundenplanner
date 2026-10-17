@@ -904,6 +904,74 @@ export function fortschrittVon(erg, zs, uListe = null) {
   return s;
 }
 
+/** Der Vollzug eines Elements (SP-0419, Silas, 17.10.: „wenn der Stundenplaner fertig ist, dann soll es die Progress Bar
+ *  sein … wie viel hast du gemacht von dem, was da ist, und wie viel kommt noch … 100 % in grün wäre, man hat alles
+ *  gemacht … eine rote Bar für das, wo man es nicht gemacht hat und was noch offen ist. Und bei dieser Woche genau die
+ *  gleiche Logik, nur eben für diese Woche, und da in Rot, wie viel Prozent noch fehlen, welche noch nicht verplant
+ *  sind“). Der Fortschritt oben misst weiter die Planung; das hier misst, was davon getan ist. In Minuten:
+ *   - gruen:  erledigt (✓, „teilweise“ mit seinen Minuten, ein ✗ mit „Nachgeholt“ von Hand);
+ *   - rot:    nicht gemacht und nachzuholen (✗ an Block oder Video, der Rest von „teilweise“), bis „Nachgeholt“;
+ *   - schwarz: Präsenz verpasst (nicht nachzuholen, wie im Fortschritt);
+ *   - unbest: vorbei, aber noch ohne ✓ oder ✗ (G6: unbestätigt ist nicht erledigt);
+ *   - kommt:  was noch kommt — im Semester alles Übrige, in der Woche das Geplante, das noch nicht vorbei ist;
+ *   - ungeplant: nur in der Woche — was dran wäre (wochenBedarf), aber noch keinen Block hat.
+ *  Ohne Woche ist k das Kontingent; mit Woche (w, b = sein Eintrag aus wochenBedarf) das Größere aus „dran“ und dem,
+ *  was in der Woche liegt. Erledigt bis auf die Toleranz und sonst nichts mehr offen heißt fertig (100 %). */
+export function vollzug(erg, z, w = null, b = null) {
+  const ist = (erg.plan && erg.plan.ist) || {};
+  const inW = (d) => !w || (d >= w.von && d <= w.bis);
+  const s = { gruen: 0, rot: 0, schwarz: 0, unbest: 0, kommt: 0, ungeplant: 0 };
+  for (const v of z.vk) {
+    if ((v.quelle !== 'termin' && v.quelle !== 'block') || v.ausgefallen || !inW(v.datum)) continue;
+    s.gruen += v.erledigt_min || 0;
+    if (v.ist === 'offen') s.unbest += v.plan_min || 0;
+    else if (w && !v.ist && !v.vergangen) s.kommt += v.plan_min || 0;
+  }
+  for (const x of verpasst(erg, z)) {
+    if (!inW(x.v.datum)) continue;
+    if (x.art === 'verpasst') s.schwarz += x.min;
+    else if (x.art === 'nachholen' && !x.nachgeholt) s.rot += x.min;
+    // „Nachgeholt“ von Hand ist getan; deckt es ein späterer Block von selbst (Videos), zählt dessen ✓.
+    else if (x.art === 'nachholen' && (istEintrag(ist[x.v.id]) || {}).nachgeholt) s.gruen += x.min;
+  }
+  let k;
+  if (!w) {
+    k = Math.max(0, z.kontingent_min || (z.P && z.P.K ? Math.round(z.P.K / Math.max(1, z.P.elemente.length)) : 0) || 60);
+    s.gruen = Math.min(k, s.gruen);
+    s.rot = Math.min(k - s.gruen, s.rot);
+    s.schwarz = Math.min(k - s.gruen - s.rot, s.schwarz);
+    s.unbest = Math.min(k - s.gruen - s.rot - s.schwarz, s.unbest);
+    s.kommt = k - s.gruen - s.rot - s.schwarz - s.unbest;
+    // Bis auf die Toleranz erledigt und nichts mehr offen oder geplant: fertig (eine Stunde unter dem Kontingent ist kein Rest).
+    if (!s.rot && !s.unbest && s.kommt <= toleranz(k, erg.regeln) && !z.vk.some((v) => (v.quelle === 'termin' || v.quelle === 'block') && !v.ausgefallen && !v.ist && !v.vergangen && (v.plan_min || 0) > 0)) {
+      s.gruen += s.kommt; s.kommt = 0;
+    }
+  } else {
+    const belegt = s.gruen + s.rot + s.schwarz + s.unbest + s.kommt;
+    // Noch nicht verplant ist nur, was der Wochenbedarf „planen“ nennt — nicht, was auf eine Info oder eine Übung wartet —,
+    // und erst jenseits derselben kleinen Toleranz wie dort (ein ✗ nimmt den Block aus dem Plan, er steht hier rot).
+    const fehlt = b && b.grund === 'planen' ? Math.max(0, b.soll_min - belegt) : 0;
+    s.ungeplant = fehlt >= Math.max(30, Math.round(b ? b.soll_min * 0.1 : 0)) ? fehlt : 0;
+    k = belegt + s.ungeplant;
+  }
+  s.k = k;
+  s.anteil = k ? s.gruen / k : 1;
+  s.status = s.gruen >= k ? 'fertig' : 'laeuft';
+  return s;
+}
+
+/** Der Vollzug einer Menge von Elementen (ein Modul): Summe der Minuten. wb: Map Teil-Id → Eintrag aus wochenBedarf. */
+export function vollzugVon(erg, zs, w = null, wb = null) {
+  const s = { k: 0, gruen: 0, rot: 0, schwarz: 0, unbest: 0, kommt: 0, ungeplant: 0 };
+  for (const z of zs) {
+    const f = vollzug(erg, z, w, wb ? wb.get(z.teil.id) : null);
+    for (const x of Object.keys(s)) s[x] += f[x];
+  }
+  s.anteil = s.k ? s.gruen / s.k : 1;
+  s.status = s.gruen >= s.k ? 'fertig' : 'laeuft';
+  return s;
+}
+
 /** Die Fahrzeit eines Tages (V-0338): vor dem frühesten und nach dem spätesten Termin vor Ort — Online-Termine zählen
  *  nicht. termine: [{start, ende, ort?, online?}] eines Tages. Ergebnis: [[start, ende] davor, [start, ende] danach].
  *  Sie überdeckt nichts (SP-0418, Silas: „die überschneiden sich manchmal mit irgendwelchen Modulkacheln, aber das geht

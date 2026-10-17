@@ -590,6 +590,46 @@ test('V-0357: Vorschlag für alle Prüfungen zusammen — 10 h, 10 h, dann 4 h j
   for (const X of e.pruefungen.values()) if (X.termin && X.zaehlt) assert.equal(X.passt_nicht_min, 0, X.id);
 });
 
+test('SP-0419: Vollzug — festgelegt grün erledigt, rot nicht gemacht, der Rest kommt noch; die Woche nennt, was noch nicht verplant ist', () => {
+  const tag = '2030-10-29';
+  const plan = { bloecke: [{ id: 'b', teil: 'ana-vn', tag: 'Mo', start: '10:00', ende: '12:00' }] };
+  const ohne = rechne(plan, { heute: tag });
+  const blk = (d) => ohne.vorkommen.find((v) => v.block === 'b' && v.datum === d);
+  plan.ist = { [blk('2030-10-21').id]: 'ja', [blk('2030-10-28').id]: 'nein' };
+  const e = rechne(plan, { heute: tag });
+  const z = e.teile.get('ana-vn');
+  const v = M.vollzug(e, z);
+  assert.equal(v.k, M.fortschritt(e, z).k, 'im Semester ist 100 % das Kontingent');
+  assert.equal(v.gruen, blk('2030-10-21').zaehlt_min, 'grün ist, was ✓ ist');
+  assert.equal(v.rot, 120, 'rot ist der ✗-Block');
+  assert.equal(v.unbest, 120, 'der Block vom 14.10. ist vorbei, aber ohne ✓/✗');
+  assert.equal(v.gruen + v.rot + v.schwarz + v.unbest + v.kommt, v.k);
+  assert.equal(v.status, 'laeuft');
+  // Die Woche des ✗: nur sie, und ein ✗ ist rot, nicht „noch nicht verplant“.
+  const w = e.wochen.find((x) => x.von <= '2030-10-28' && x.bis >= '2030-10-28');
+  const wb = new Map(M.wochenBedarf(null, plan, e, w.id).map((b) => [b.z.teil.id, b]));
+  const vw = M.vollzug(e, z, w, wb.get('ana-vn'));
+  assert.deepEqual([vw.gruen, vw.rot, vw.ungeplant], [0, 120, 0]);
+  // Eine Woche ohne Block, in der Selbststudium dran ist: alles „noch nicht verplant“.
+  const leer = rechne({}, { heute: tag });
+  const w3 = leer.wochen.find((x) => x.von <= '2030-11-04' && x.bis >= '2030-11-04');
+  const b3 = M.wochenBedarf(null, {}, leer, w3.id).find((b) => b.z.teil.id === 'ana-vn');
+  const v3 = M.vollzug(leer, leer.teile.get('ana-vn'), w3, b3);
+  assert.ok(b3.soll_min > 0 && v3.ungeplant === b3.soll_min && v3.k === b3.soll_min, 'ohne Block ist die ganze Woche offen');
+  // „Nachgeholt“ von Hand ist getan: grün statt rot.
+  plan.ist[blk('2030-10-28').id] = { s: 'nein', nachgeholt: true };
+  const e2 = rechne(plan, { heute: tag });
+  const v2 = M.vollzug(e2, e2.teile.get('ana-vn'));
+  assert.deepEqual([v2.rot, v2.gruen], [0, v.gruen + 120]);
+  // Alles ✓ und nichts kommt mehr: 100 %.
+  const spaet = '2031-03-01';
+  const alle = rechne(plan, { heute: spaet });
+  const ist = Object.fromEntries(alle.vorkommen.filter((x) => x.block === 'b').map((x) => [x.id, 'ja']));
+  const fertig = rechne({ ...plan, ist }, { heute: spaet });
+  const vf = M.vollzug(fertig, fertig.teile.get('ana-vn'));
+  assert.deepEqual([vf.gruen, vf.k, vf.status], [vf.k, M.fortschritt(fertig, fertig.teile.get('ana-vn')).k, 'fertig']);
+});
+
 test('V-0357: Verpasstes — ✗ am Block rot bis „nachgeholt“, ✗ an Präsenz schwarz, ausgefallen mit Grund ohne Verlust; der Balken bleibt gleich lang', () => {
   const tag = '2030-10-29';
   const plan = { bloecke: [{ id: 'b', teil: 'ana-vn', tag: 'Mo', start: '10:00', ende: '12:00' }] };

@@ -566,14 +566,28 @@ function fBalken(f, gross = false) {
   const b = h('div', { class: `fbalken${gross ? ' gross' : ''}`, role: 'img', 'aria-label': `${prozent(f)} geplant`,
     title: [`geplant ${M.stunden(f.gruen)}`, f.rot ? `nicht gemacht, nachzuholen ${M.stunden(f.rot)}` : null, f.schwarz ? `Präsenz verpasst ${M.stunden(f.schwarz)}` : null,
       `bekannt, noch nicht geplant ${M.stunden(f.gelb)}`, `noch nicht bekannt ${M.stunden(f.grau)}`].filter(Boolean).join(' · ') });
-  for (const [kl, w] of [['gruen', f.gruen], ['rot', f.rot || 0], ['schwarz', f.schwarz || 0], ['gelb', f.gelb], ['grau', f.grau]]) {
+  return balkenTeile(b, [['gruen', f.gruen], ['rot', f.rot || 0], ['schwarz', f.schwarz || 0], ['gelb', f.gelb], ['grau', f.grau]]);
+}
+/** Die Teile eines Balkens, je [Klasse, Minuten], jeder so breit wie seine Minuten. */
+function balkenTeile(b, liste) {
+  for (const [kl, w] of liste) {
     if (w <= 0) continue;
     const i = h('i', { class: kl }); i.style.flexGrow = String(w); b.append(i);
   }
   return b;
 }
-/** Balken mit Prozent in einer Zeile (Modulkarte). */
-const fZeile = (f) => h('div', { class: 'm-fort' }, fBalken(f), h('span', { class: `m-proz f-${f.status}`, text: prozent(f) }));
+/** Der Balken des Vollzugs (SP-0419, M.vollzug), festgelegt je Modul: grün erledigt, rot nicht gemacht und nachzuholen,
+ *  schwarz Präsenz verpasst, schraffiert vorbei ohne ✓/✗, grau kommt noch; in der Woche rot umrandet, was dran wäre und
+ *  noch keinen Block hat. */
+function vBalken(f) {
+  const b = h('div', { class: 'fbalken vollzug', role: 'img', 'aria-label': `${prozent(f)} erledigt`,
+    title: [`erledigt ${M.stunden(f.gruen)}`, f.rot ? `nicht gemacht, nachzuholen ${M.stunden(f.rot)}` : null, f.schwarz ? `Präsenz verpasst ${M.stunden(f.schwarz)}` : null,
+      f.unbest ? `vorbei, noch ohne ✓/✗ ${M.stunden(f.unbest)}` : null, f.kommt ? `kommt noch ${M.stunden(f.kommt)}` : null,
+      f.ungeplant ? `noch nicht verplant ${M.stunden(f.ungeplant)}` : null].filter(Boolean).join(' · ') });
+  return balkenTeile(b, [['gruen', f.gruen], ['rot', f.rot], ['schwarz', f.schwarz], ['unbest', f.unbest], ['grau', f.kommt], ['ungeplant', f.ungeplant]]);
+}
+/** Balken mit Prozent in einer Zeile (Modulkarte); festgelegt der Vollzug (v), sonst der Fortschritt. */
+const fZeile = (f, v = null) => h('div', { class: 'm-fort' }, v ? vBalken(v) : fBalken(f), h('span', { class: `m-proz f-${(v || f).status}`, text: prozent(v || f) }));
 
 // ── Geführt: die Reihe je Schritt (V-0335) ──────────────────────────────────────────────────────
 // Silas, 11.10.: „dass man von oben nach unten durchgeführt wird … du wählst halt genau gerade eine einzige Sache.“ Jeder
@@ -743,7 +757,8 @@ function moduleZeichnen() {
   const box = $('module');
   const oben = box.scrollTop;
   const woche = Z.ansicht.links === 'woche' && (fertig() || schritt() > 2);
-  const wid = bedarfsWoche();
+  // Festgelegt misst „Diese Woche“ den Vollzug einer echten Woche (SP-0419): in der Standardwoche die gewählte.
+  const wid = bedarfsWoche() || (fertig() && woche ? Z.ansicht.woche : null);
   bedarf = new Map(M.wochenBedarf(Z.stand.angebot, Z.stand.plan, Z.erg, wid).map((b) => [b.z.teil.id, b]));
   const n = schritt();
   const sch = M.SCHRITTE[n - 1];
@@ -793,8 +808,15 @@ function toepfeEl(r) {
     h('span', { text: r.erledigt_min ? `${M.stunden(r.erledigt_min)} ✓` : '' }));
 }
 
-/** Diese Woche (Umschalter links): was dran wäre und was davon im Plan ist. */
-function dieseWocheEl(zs) {
+/** Diese Woche (Umschalter links): was dran wäre und was davon im Plan ist. Festgelegt (v, SP-0419): was davon
+ *  erledigt ist, und rot, wie viel Prozent der Woche noch nicht verplant sind — damit man trotzdem plant. */
+function dieseWocheEl(zs, v = null) {
+  if (v) {
+    const p = v.ungeplant ? Math.max(1, Math.round((v.ungeplant / v.k) * 100)) : 0;
+    return h('p', { class: 'm-zahl' }, h('span', { text: v.k ? `${M.stunden(v.gruen)} von ${M.stunden(v.k)} erledigt` : 'diese Woche nichts' }),
+      p ? h('span', { class: 'fehlt rot', title: `${M.stunden(v.ungeplant)} sind diese Woche dran, haben aber noch keinen Block`, text: `${p} % noch nicht verplant` })
+        : h('span', { text: v.k ? 'alles verplant' : '' }));
+  }
   const bs = zs.map((z) => bedarf.get(z.teil.id)).filter(Boolean);
   const soll = bs.reduce((s, x) => s + x.soll_min, 0), ist = bs.reduce((s, x) => s + Math.min(x.ist_min, x.soll_min), 0);
   const fehlt = Math.max(0, soll - ist);
@@ -820,6 +842,10 @@ function modulKarte(r) {
   // auf einmal 57 %“ — der Balken hatte die Prüfungsvorbereitung mitgezählt).
   const f = fortVon(zs);
   const fSchritt = f;
+  // Festgelegt zeigt der Balken den Vollzug (SP-0419): im Semester das ganze Modul, mit „Diese Woche“ die Woche. Die
+  // Planung misst weiter f — sie entscheidet, was einklappt, und steht oben unter „Dein Stundenplan“.
+  const wo = fertig() && woche ? Z.erg.wochen.find((x) => x.id === Z.ansicht.woche) : null;
+  const v = fertig() ? M.vollzugVon(Z.erg, zs, wo, wo ? bedarf : null) : null;
   const kritisch = zs.some((z) => z.stufe === 'kritisch');
   const schluessel = fertig() ? 'fest' : n;
   const auf = Z.auf[schluessel] === m.id;
@@ -834,8 +860,8 @@ function modulKarte(r) {
     return h('section', { class: `modul m${m.farbe || 1} zu${kritisch ? ' rot' : ''}${filter ? ' filter' : ''}`, 'data-modul': m.id },
       kopf('modul', 'Alles von diesem Modul im Raster aufleuchten lassen'),
       ...jetzt.map(({ z, l }) => h('button', { type: 'button', class: `m-jetzt t-lage ${l.kl}`, 'data-act': fertig() ? 'teil' : 'jetzt', 'data-teil': z.teil.id, title: (z.flags.find((x) => x.stufe === z.stufe) || {}).text || null }, sym(l.s), `${z.teil.titel}: ${l.t}`)),
-      woche ? dieseWocheEl(zs) : null,
-      h('div', { class: 'm-fertig' }, fZeile(f),
+      woche ? dieseWocheEl(zs, v) : null,
+      h('div', { class: 'm-fertig' }, fZeile(f, v),
         h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'aufklappen', 'data-modul': m.id }, sym(wort === 'Ansehen' ? 'rechts' : 'stift'), wort)));
   }
   let liste;
@@ -865,9 +891,9 @@ function modulKarte(r) {
   const st = M.hoechste(wichtig);
   return h('section', { class: `modul m${m.farbe || 1}${kritisch ? ' rot' : ''}${filter ? ' filter' : ''}`, 'data-modul': m.id },
     kopf('modul', 'Alles von diesem Modul im Raster aufleuchten lassen', fertig() ? `${m.lp} LP = ${M.stunden(r.soll_min)}` : `${m.lp} LP`),
-    auf && !offenHier ? h('div', { class: 'm-fertig' }, fZeile(f), h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'zuklappen', 'data-modul': m.id }, sym('zu'), 'Einklappen')) : fZeile(f),
+    auf && !offenHier ? h('div', { class: 'm-fertig' }, fZeile(f, v), h('button', { type: 'button', class: 'knopf klein leise', 'data-act': 'zuklappen', 'data-modul': m.id }, sym('zu'), 'Einklappen')) : fZeile(f, v),
+    woche ? dieseWocheEl(zs, v) : null,
     fertig() ? toepfeEl(r) : null,
-    woche ? dieseWocheEl(zs) : null,
     wichtig.length ? h('button', { type: 'button', class: `m-hinweis st-${st}`, 'data-act': 'bereich', 'data-bereich': 'offen', title: wichtig.map((x) => x.text).join('\n') }, sym(STUFE_SYM[st]),
       wichtig.length === 1 ? wichtig[0].text.slice(0, 80) + (wichtig[0].text.length > 80 ? ' …' : '') : `${wichtig.length} Punkte prüfen`) : null,
     vp,
