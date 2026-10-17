@@ -1419,7 +1419,11 @@ function rasterZeichnen() {
   const std = lage.std;
   const w = Z.erg.wochen.find((x) => x.id === lage.woche);
   const kacheln = kachelnJetzt();
-  const wochenende = Z.ansicht.wochenende || pruefplan() || kacheln.some((k) => k.tag >= 5) || (!std && w.art !== 'vorlesung');
+  // Sa und So stehen da, wenn Silas sie an der Seite aufgeklappt hat (SP-0417) — und ohnehin, wo sie etwas tragen.
+  const grund = pruefplan() ? 'In der Prüfungsvorbereitung steht das Wochenende immer da'
+    : kacheln.some((k) => k.tag >= 5) ? `${std ? 'In der Standardwoche' : 'In dieser Woche'} liegt schon etwas am Wochenende`
+      : !std && w.art !== 'vorlesung' ? 'Außerhalb der Vorlesungszeit steht das Wochenende immer da' : null;
+  const wochenende = Z.ansicht.wochenende || !!grund;
   const tage = wochenende ? 7 : 5;
   let h0 = 8, h1 = 20;
   // Die Fahrzeit vor dem ersten Termin (8:15 − 40 min) soll noch im Raster stehen.
@@ -1427,7 +1431,7 @@ function rasterZeichnen() {
   for (const k of kacheln) { h0 = Math.min(h0, Math.floor((k.start - fahrt(k)) / 60)); h1 = Math.max(h1, Math.ceil((k.ende + fahrt(k)) / 60)); }
   if (pruefplan()) { h0 = Math.min(h0, 7); h1 = Math.max(h1, 22); } // auch früh und abends
   h0 = Math.max(6, h0); h1 = Math.min(23, h1);
-  geo = { h0, h1, tage, std, woche: w };
+  geo = { h0, h1, tage, std, woche: w, wochenende: { an: wochenende, grund } };
   for (const id of ['raster', 'r-kopf', 'ganztag']) $(id).style.setProperty('--tage', String(tage));
   const raster = $('raster');
   raster.style.setProperty('--stunde', `calc(100% / ${h1 - h0})`);
@@ -2823,6 +2827,7 @@ function leisteZeichnen() {
     h('h2', { text: 'Semester' }),
     // Eingeklappt sagt die Schiene, was dahinter liegt (SP-0411: am Surface bleibt das Raster so 190 px je Tag breit —
     // ein Symbol allein fand man nicht wieder).
+    wochenendeKnopf(),
     h('button', { class: 'knopf rund leise l-zu', type: 'button', 'data-act': 'leiste', 'aria-label': Z.ansicht.leiste ? 'Leiste einklappen' : 'Leiste ausklappen', title: 'Leiste ein-/ausklappen' }, sym('leiste'), Z.ansicht.leiste ? null : h('span', { class: 'l-wort', text: 'Semester' })));
   fuellen(box, kopf,
     h('p', { class: 'l-satz t-zahlen', text: 'Jede Spalte eine Woche, jede Zeile ein Bestandteil — Termine kräftig, eigene Blöcke heller, andere Schritte blass. Ein Klick auf eine Zelle zeigt die Woche, einer auf den Namen wählt den Bestandteil.' }),
@@ -2830,6 +2835,22 @@ function leisteZeichnen() {
     h('h3', { class: 'l-zwischen', text: 'Unregelmäßig, ab heute' }),
     chronikEl());
   box.scrollTop = oben;
+}
+
+/** Das Wochenende an der Seite (SP-0417, Silas, 17.10.: „da an der Seite, wo man auch das Semester aufklappen kann, soll
+ *  man auch aufklappen können, dass man das Wochenende für die jeweilige ausgewählte Woche sehen kann und da auch Sachen
+ *  hin verschieben kann“): Der Knopf neben „Semester“ — aufgeklappt im Kopf der Leiste, eingeklappt als zweite Schiene —
+ *  hängt Sa und So der gezeigten Woche an das Raster. Dort legt und zieht man wie an jedem anderen Tag: In einer echten
+ *  Woche wandert ein Wochenblock nur für diese Woche (SP-0414), in der Standardwoche für alle. Wo das Wochenende ohnehin
+ *  dasteht (`geo.wochenende.grund`), sagt der Knopf, warum, statt nichts zu tun. Gemerkt als `ansicht.wochenende`. */
+function wochenendeKnopf() {
+  if (!zeigtRaster() || !geo || !geo.wochenende) return null;
+  const { an, grund } = geo.wochenende;
+  const tage = geo.std ? 'der Standardwoche' : `${M.datumKurz(M.plusTage(geo.woche.von, 5))}–${M.datumKurz(M.plusTage(geo.woche.von, 6))}`;
+  return h('button', { class: `knopf klein l-we${an ? ' an' : ''}`, type: 'button', 'data-act': 'wochenende', 'aria-pressed': String(an),
+    'aria-disabled': grund ? 'true' : null,
+    title: grund ? `${grund} (${tage})` : an ? `Wochenende ${tage} einklappen` : `Wochenende ${tage} aufklappen — dort legen und hinziehen wie an jedem Tag` },
+  h('span', { class: 'l-wort', text: 'Wochenende' }));
 }
 
 /** Die Minimap (Silas, 11.10.: „wie die Minimap, die die Semesterübersicht einmal in Wochenansicht gibt, sodass
@@ -3610,6 +3631,9 @@ function verdrahten() {
       case 'woche-vor': wocheSchritt(Number(el.dataset.schritt)); break;
       case 'zur-woche': zurWoche(el.dataset.woche, el.dataset.hell); break;
       case 'leiste': Z.ansicht.leiste = !Z.ansicht.leiste; ansichtMerken(); zeichnen(); break;
+      case 'wochenende':
+        if (geo && geo.wochenende && geo.wochenende.grund) { melden(`${geo.wochenende.grund} — es bleibt aufgeklappt.`); break; }
+        Z.ansicht.wochenende = !Z.ansicht.wochenende; ansichtMerken(); zeichnen(); break;
       case 'leiste-handy': Z.ansicht.leisteHandy = !Z.ansicht.leisteHandy; ansichtMerken(); leisteZeichnen(); break;
       case 'legende': Z.ansicht.legende = !Z.ansicht.legende; ansichtMerken(); fussZeichnen(); break;
       case 'rueck': rueckgaengig(); break;

@@ -12,6 +12,13 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas: Das Wochenende klappt an der Seite auf (SP-0417)
+
+- Silas: *„… da an der Seite, wo man auch das Semester aufklappen kann, soll man auch aufklappen können, dass man das
+  Wochenende für die jeweilige ausgewählte Woche sehen kann und da auch Sachen hin verschieben kann.“* Neben „Semester“
+  steht jetzt „Wochenende“ (eingeklappt als zweite Schiene); er zeigt Sa und So der gewählten Woche im Raster, dorthin
+  legt und zieht man wie an jedem Tag. Der Schalter `ansicht.wochenende` gab es schon, nur setzte ihn nichts.
+
 ## 17.10.2026 — /silas: einzeln Verschobenes gekennzeichnet, „weit vom Stoff“ entfernt (SP-0416)
 
 - Silas: *„Sobald ein Termin … für eine einzelne Woche verschoben wird, muss der … eine Kennzeichnung tragen.“* Jetzt
