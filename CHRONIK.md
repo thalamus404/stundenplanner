@@ -12,6 +12,19 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas/api/ereignisse: Probeplan wählbar, Prüfungen und Zeiträume für das Study OS (SP-0412)
+
+- Silas: Das Study OS soll *„die Termine und Intervalle und auch die Daten vom Prüfungstab“* aus /silas zeigen — und
+  zwar aus *„der dritten Version“*, dem Probeplan, den er gerade festgelegt hat. Bis dahin lieferte `ereignisse` nur den
+  echten Plan (V-0345: „Ereignisse und Kalender kommen immer aus dem echten Plan“) und nur Vorkommen.
+- `ereignisse?plan=n` liest den Probeplan; ohne `plan` bleibt alles, wie es war. Die Kalender-Abos bleiben beim echten.
+- Dazu `pruefungen[]` (der Reiter „Prüfungen“ als Daten: Art, gilt/Rückfall, gewählt oder Arbeitsannahme, Stand,
+  Punkte, Fristen, Kontingent, die Strecke der Vorbereitung, Termine ohne Datum) und `zeitraeume[]` (Vorlesungszeit,
+  Pausen, vorlesungsfreie Zeit, Schließung) — aus demselben `rechnen()` wie die Seite, damit das Study OS nichts
+  nachrechnet (docs/SILAS.md §6).
+- Befund: Ein Probeplan trägt eine eigene Kopie des Angebots. Was danach am Angebot des echten Plans korrigiert wird,
+  fehlt dort — wer einen Probeplan liest, liest dessen Stand der ISIS-Angaben.
+
 ## 16.10.2026 — /silas: Prüfungen ohne Umbuchung, EINFWI nach Punkten, Surface-Ansicht (SP-0411)
 
 - Silas ließ die Prüfungskontingente nachrechnen (*„sagt mir jetzt nur mein Bauchgefühl“*): Die Grundzahlen stammen aus
