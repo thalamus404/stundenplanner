@@ -54,6 +54,7 @@ export function ics(ereignisse, { kalender = 'termine', jetzt = new Date() } = {
     const beschreibung = [];
     if (e.online) beschreibung.push(e.online);
     if (e.unsicher) beschreibung.push('Angabe unsicher — prüfen');
+    if (e.einzeln) beschreibung.push('Nur in dieser Woche verschoben — sonst liegt der Block an seinem Platz in der Woche');
     if (e.zaehlt_min === 0 && e.quelle === 'block' && e.teil) beschreibung.push('Zählt nicht für die Leistungspunkte (siehe stundenplanner.de/silas)');
     z.push('BEGIN:VEVENT', `UID:${text(e.id)}@stundenplanner.de`, `DTSTAMP:${stempel}`);
     if (e.ganztag) {

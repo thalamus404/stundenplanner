@@ -1618,6 +1618,14 @@ function rasterZeichnen() {
   fuellen(raster, zeiten, ...spaltenEl);
 }
 
+/** Der Satz zu einem einzeln verschobenen Block (SP-0416): woher er kommt und wo die Reihe sonst liegt. */
+function serieSatz(blockId) {
+  const bl = Z.stand.plan.bloecke || [];
+  const b = bl.find((x) => x.id === blockId);
+  const r = b && bl.find((x) => x.id === b.serie);
+  return r ? `Nur in dieser Woche verschoben — sonst ${M.TAGE_LANG[M.TAGE.indexOf(r.tag)]} ${r.start}–${r.ende}` : 'Nur in dieser Woche verschoben';
+}
+
 /** Wo ein Block meistens zu seinem Stoff liegt (V-0342, M.rechnen 6b): die häufigste Lage seiner zählenden
  *  Vorkommen, mit dem Satz einer Woche in dieser Lage. null, wenn nichts zählt oder der Bezug offen ist (die Übung,
  *  die er nachbereitet, hat noch keine Zeiten). */
@@ -1627,7 +1635,7 @@ function bezugVon(vks) {
   const zahl = new Map();
   for (const v of mit) zahl.set(v.bezug.lage, (zahl.get(v.bezug.lage) || 0) + 1);
   const lage = [...zahl].sort((a, b) => b[1] - a[1])[0][0];
-  return { lage, text: mit.find((x) => x.bezug.lage === lage).bezug.text, weit: lage === 'fern' || lage === 'ohne' };
+  return { lage, text: mit.find((x) => x.bezug.lage === lage).bezug.text };
 }
 
 /** Die Meldung „gesperrt“ eines Blocks: liegt er dauernd auf einem Termin (verschieben) oder nur an einzelnen Tagen? */
@@ -1715,9 +1723,11 @@ function kachelEl(k) {
       const frei = k.v.ende - k.v.start - (k.v.ueberlappt || 0);
       if (z && k.v.einheit && k.v.zaehlt_min > 0 && k.v.zaehlt_min < frei - 14 && !k.v.deckt_nicht) zeile2 = `zählt ${M.stunden(k.v.zaehlt_min)} · ${zeile2}`;
     }
-    // Bezug zum Stoff (V-0342): weit weg → eine kleine Marke; der Satz steht im Tooltip.
+    // Bezug zum Stoff (V-0342): nur als Satz im Tooltip, ohne Wertung (SP-0416).
     bezug = z && z.teil.art === 'selbst' ? bezugVon(k.vk || []) : null;
-    if (bezug && bezug.weit && !kl.includes('zaehlt-nicht') && !kl.includes('gesperrt')) { marke = 'weit vom Stoff'; markeKl = 'hinweis'; }
+    // Nur in dieser Woche verschoben (SP-0414): eine Marke an der Kachel (SP-0416, Silas, 17.10.: „Sobald ein Termin …
+    // für eine einzelne Woche verschoben wird, muss der … eine Kennzeichnung tragen“); der Satz steht im Tooltip.
+    if (b && b.serie && !geo.std && !marke) { marke = SCHMAL.matches ? 'einzeln' : 'nur diese Woche'; markeKl = 'einzeln'; }
     // Nur Blöcke des gezeigten Schritts lassen sich ziehen; ein früherer springt in seinen Schritt zurück, festgelegt
     // zeigt ein Klick den Bestandteil.
     act = k.lage === 'jetzt' ? 'block' : k.lage === 'frueher' ? (fertig() ? 'kachel-teil' : 'kurz-zurueck') : k.lage === 'erledigt' ? 'jetzt' : 'kachel-teil';
@@ -1762,7 +1772,8 @@ function kachelEl(k) {
   const tip = [titel, zeile2,
     act === 'abwaehlen' ? 'gewählt — ein Klick wählt ab, dann stehen alle Gruppen wieder da' : null,
     k.lage === 'frueher' ? `steht schon (Schritt ${k.schritt})${(k.art === 'block' || k.schicht === 'B') && !fertig() ? ' — Klick: kurz dorthin zurück' : ''}` : k.lage === 'erledigt' ? 'schon gewählt — Klick: ändern' : null,
-    bezug ? `${geo.std ? 'meist ' : ''}${bezug.text}${bezug.weit ? ' — weit weg vom Stoff, direkt danach bleibt mehr hängen' : ''}` : null,
+    k.art === 'block' && (Z.stand.plan.bloecke || []).find((x) => x.id === k.block)?.serie && !geo.std ? serieSatz(k.block) : null,
+    bezug ? `${geo.std ? 'meist ' : ''}${bezug.text}` : null,
     ...(k.vk || []).flatMap((v) => v.flags).filter((x, i, a) => a.indexOf(x) === i).map((f) => ({ konflikt: 'Überschneidung', gesperrt: 'liegt auf einem Termin (gesperrt)', leer: 'kein Video in dieser Woche', vor_stoff: 'vor dem ersten Stoff des Moduls — zählt nicht', nach_pruefung: 'nach der Prüfung' }[f]))].filter(Boolean).join('\n');
   const tags = kachelTags(k);
   const el = h(act === 'block' ? 'div' : act ? 'button' : 'div', {
@@ -3107,7 +3118,8 @@ function blockKarte(blockId, nahe, datum) {
     h('p', { class: 'satz', text: b.datum
       ? `Zählt ${M.stunden(zaehlt)}${diese && diese.zaehlt_min === 0 ? ' — an diesem Tag nicht (siehe Hinweis am Teil)' : ''}.`
       : `${vk.length} Wochen, davon zählen ${vk.filter((v) => v.zaehlt_min > 0).length} — zusammen ${M.stunden(zaehlt)}.${diese && diese.zaehlt_min < diese.ende - diese.start ? ` Am ${datumMitTag(diese.datum)} zählt er ${M.stunden(diese.zaehlt_min)}.` : ''}${versetzt ? ` ${versetzt === 1 ? 'Eine Woche ist' : `${versetzt} Wochen sind`} einzeln verschoben.` : ''}` }),
-    bz ? h('p', { class: `satz${bz.weit ? ' hinweis' : ''}`, text: `Zum Stoff: meist ${bz.text}.${bz.weit ? ' Das ist weit weg — direkt nach dem Stoff bleibt mehr hängen.' : ''}` }) : null,
+    b.serie ? h('p', { class: 'satz', text: `${serieSatz(b.id)}.` }) : null,
+    bz ? h('p', { class: 'satz', text: `Zum Stoff: meist ${bz.text}.` }) : null,
     abVorschlag ? h('p', { class: 'satz' }, `Vor ${datumMitTag(abVorschlag)} gibt es ${z.teil.art === 'video' ? 'kein Video' : 'noch keinen Stoff'} — dort zählt er nicht. `,
       h('button', { class: 'knopf klein', type: 'button', onclick: () => { karteSchliessen(false); aendern((s) => { const x = s.plan.bloecke.find((y) => y.id === b.id); if (x) x.ab = abVorschlag; }); melden(`Der Block beginnt jetzt am ${datumMitTag(abVorschlag)}`); }, text: `Erst ab ${datumMitTag(abVorschlag)}` })) : null,
     h('div', { class: 'zeile' },
@@ -3886,7 +3898,7 @@ function ablegen(tag, y, rect) {
   // Trifft ein Wochenblock an einzelnen Tagen einen Termin, der nicht in der Standardwoche steht (EINFWI-Kick-off), sagt
   // es die Meldung sofort (V-0357) — gesperrtDurch() kennt nur das Gerüst.
   const sf = sperrFlagge(b.id);
-  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}${bz.weit ? ' — weit weg vom Stoff' : ''}.` : ''}${sf ? ` Achtung: ${sf.text}.` : ''}${weiter ? ` Noch ${Z.legen.rest} ${Z.legen.rest > 1 ? 'Blöcke' : 'Block'} legen.` : ''}`);
+  melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}.` : ''}${sf ? ` Achtung: ${sf.text}.` : ''}${weiter ? ` Noch ${Z.legen.rest} ${Z.legen.rest > 1 ? 'Blöcke' : 'Block'} legen.` : ''}`);
 }
 
 /** Die Mittagspause eines Tages am Schild ziehen (V-0345): auf Viertelstunden, innerhalb des Rasters; beim Loslassen steht

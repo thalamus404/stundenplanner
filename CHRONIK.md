@@ -12,6 +12,14 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas: einzeln Verschobenes gekennzeichnet, „weit vom Stoff“ entfernt (SP-0416)
+
+- Silas: *„Sobald ein Termin … für eine einzelne Woche verschoben wird, muss der … eine Kennzeichnung tragen.“* Jetzt
+  trägt er die blaue Marke „nur diese Woche“; Tooltip und Blockkarte sagen, wo die Reihe sonst liegt, das Kalender-Abo
+  schreibt es in die Beschreibung, das Ereignis trägt `einzeln`. Kein gestrichelter Rand: der heißt „zur Wahl“.
+- *„Kannst du bitte entfernen, das weit vom Stoff, das verwirrt nur.“* Marke, Hinweis in der Liste, Satz in Karte,
+  Tooltip und Meldung sind weg; der neutrale Satz „Zum Stoff: meist …“ bleibt, ebenso das Einrasten beim Stoff.
+
 ## 17.10.2026 — /silas: Auch festgelegt lässt sich ein Block in einer echten Woche ziehen (SP-0415)
 
 - Silas versuchte nach SP-0414 im echten Plan (W01, TGI VL-Nachbereitung) einen Block zu schieben — es ging nicht:

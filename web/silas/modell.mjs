@@ -206,6 +206,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         id: `${b.id}@${d}`, quelle: 'block', schicht: 'D', schritt: schrittVonBlock(z && z.teil), block: b.id, teil: z ? z.teil.id : null,
         modul: z ? z.modul.id : null, datum: d, start: min(b.start), ende: min(b.ende),
         titel: b.titel || null, zaehlt_min: 0, flags: [], mit: [], woechentlich: !b.datum, aus: b.aus || null,
+        serie: b.serie || null, // nur in dieser Woche verschoben (SP-0414), gekennzeichnet (SP-0416)
       };
       vorkommen.push(v);
       if (z) z.vk.push(v);
@@ -404,7 +405,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   //      `bezug` am Vorkommen, wie nah er am Stoff liegt: direkt, nah, fern oder ohne.
   const absMin = (datum, m) => tageZwischen(sem.vorlesung.von, datum) * 1440 + m;
   for (const z of teile.values()) {
-    // „Vorbereitung auf …“ bezieht sich auf ihren Termin, nicht auf den Stoff davor (V-0354) — kein Bezug, kein „weit vom Stoff“.
+    // „Vorbereitung auf …“ bezieht sich auf ihren Termin, nicht auf den Stoff davor (V-0354) — kein Bezug.
     if (z.teil.art !== 'selbst' || z.topf === 'pruefung' || z.teil.vorbereitung_auf) continue;
     const { teile: stoff, eigen } = stoffTeile(teile, z);
     z.stoff_teile = stoff.map((x) => x.teil.id);
@@ -429,7 +430,6 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
     const ereignisse_ = stoff.flatMap((x) => x.vk.filter((v) => (v.quelle === 'termin' && !v.ausgefallen) || (v.quelle === 'block' && x.teil.art === 'video' && v.zaehlt_min > 0 && !v.deckt_nicht))
       .map((v) => ({ v, x, a: absMin(v.datum, v.start), e: absMin(v.datum, v.ende) })));
     const name = (o) => `${o.x.teil.titel} (${TAGE[wochentag(o.v.datum)]} ${hhmm(o.v.start)})`;
-    const weit = [];
     for (const v of bloecke) {
       if (!(v.zaehlt_min > 0)) continue;
       if (!eigen) { v.bezug = { lage: 'offen' }; continue; }
@@ -448,17 +448,6 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
         : nach ? `${direktNach ? 'direkt' : tage === 0 ? 'am selben Tag' : tage === 1 ? 'einen Tag' : `${tage} Tage`} nach ${name(nach)}`
         : spaeter ? `vor dem Stoff (${name(spaeter)}) — davor gibt es nichts nachzubereiten` : 'in den sieben Tagen davor kein Stoff';
       v.bezug = { lage, text, nach: nach ? nach.v.id : null, vor: vor ? vor.v.id : null };
-      if (lage === 'fern' || lage === 'ohne') weit.push(v);
-    }
-    const proBlock = new Map();
-    for (const v of weit) proBlock.set(v.block, [...(proBlock.get(v.block) || []), v]);
-    for (const vs of proBlock.values()) {
-      const alle = bloecke.filter((v) => v.block === vs[0].block && v.zaehlt_min > 0).length;
-      if (vs.length * 2 <= alle) continue;
-      const b = (plan.bloecke || []).find((x) => x.id === vs[0].block);
-      const wann = b && b.datum ? datumKurz(b.datum) : b ? `${b.tag} ${b.start}` : datumKurz(vs[0].datum);
-      const bsp = vs.find((v) => v.bezug.lage === 'fern') || vs[0];
-      flagge(z, 'bezug', `Block ${wann} liegt meist weit weg vom Stoff (${datumKurz(bsp.datum)}: ${bsp.bezug.text}) — direkt danach bleibt mehr hängen`, { block: vs[0].block });
     }
   }
 
@@ -1168,6 +1157,7 @@ export function ereignisse(angebot, plan, optionen = {}) {
       datum: v.datum, bis: v.bis || null, ort: v.ort || null, online: v.online || null,
       ganztag: !!v.ganztag || v.start == null, wichtig: !!v.wichtig, unsicher: !!v.unsicher,
       teil: v.teil || null, zaehlt_min: v.zaehlt_min, flags: v.flags, ausgefallen: v.ausgefallen || null, ist: v.ist || null,
+      einzeln: !!v.serie,
     };
     if (!e.ganztag) { e.start = isoZeit(v.datum, v.start); e.ende = isoZeit(v.datum, v.ende ?? v.start); }
     if (v.punkt != null) e.uhrzeit = hhmm(v.punkt);

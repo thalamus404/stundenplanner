@@ -802,7 +802,7 @@ test('Ein Block beginnt mit dem Stoff: vorgabe().ab, und mit ab liegt er davor g
   assert.ok(!vk.some((v) => v.flags.includes('leer') && v.datum < '2030-10-28'), 'keine durchgestrichene Woche vor der Freigabe');
 });
 
-test('Bezug: direkt nach dem Stoff, direkt vor einer Präsenz, nah, weit weg — und ein Hinweis, wenn er meist weit weg liegt', () => {
+test('Bezug: direkt nach dem Stoff, direkt vor einer Präsenz, nah, fern — ohne Hinweis „weit vom Stoff“ (SP-0416)', () => {
   const plan = { bloecke: [
     { id: 'nach', teil: 'bsp-vn', tag: 'Di', start: '12:00', ende: '13:30' }, // VL Di bis 11:45
     { id: 'vor', teil: 'bsp-vn', tag: 'Di', start: '08:00', ende: '09:30' },  // vor der VL um 10:15
@@ -818,9 +818,8 @@ test('Bezug: direkt nach dem Stoff, direkt vor einer Präsenz, nah, weit weg —
   assert.equal(am('nah', '2030-10-24').lage, 'nah');
   assert.match(am('nah', '2030-10-24').text, /^2 Tage nach VL/);
   assert.equal(am('weit', '2030-10-28').lage, 'fern');
-  const hinweise = e.teile.get('bsp-vn').flags.filter((f) => f.art === 'bezug');
-  assert.deepEqual(hinweise.map((f) => f.block), ['weit']);
-  assert.match(hinweise[0].text, /Block Mo 14:00 liegt meist weit weg vom Stoff \(\d\d\.\d\d\.: 6 Tage nach VL/);
+  // Silas, 17.10.: „das verwirrt nur“ — kein Hinweis mehr, nur der Satz am Vorkommen.
+  assert.ok(!e.teile.get('bsp-vn').flags.some((f) => /weit weg vom Stoff/.test(f.text)));
   // Ein geschautes Video ist Stoff: die Nachbereitung direkt nach dem Videoblock liegt direkt daran.
   const v = M.rechnen(angebot(), { bloecke: [{ id: 'v', teil: 'bsp-video', tag: 'Mo', start: '08:00', ende: '10:00', ab: '2030-10-21' }, { id: 'n', teil: 'bsp-vn', tag: 'Mo', start: '10:00', ende: '11:30' }] });
   const n = v.vorkommen.find((x) => x.block === 'n' && x.datum === '2030-10-21').bezug;
@@ -835,7 +834,6 @@ test('Bezug offen: hat die eigene Lehrveranstaltung noch keine Termine (Übung o
   const z = e.teile.get('bsp-ue-vn');
   assert.equal(z.stoff_eigen, false);
   assert.ok(z.vk.filter((v) => v.zaehlt_min > 0).every((v) => v.bezug.lage === 'offen'));
-  assert.ok(!z.flags.some((f) => f.art === 'bezug'));
   // Der Beginn kommt trotzdem vom Stoff des Moduls: die erste Woche zählt nicht.
   assert.ok(z.vk[0].flags.includes('vor_stoff'));
   // Mit gewählter Gruppe ist der Bezug die Übung.
@@ -1044,4 +1042,18 @@ test('blockLoeschen: eine Reihe geht mit ihren einzeln verschobenen Wochen, ein 
   const { plan: neu, id } = M.einzelnVerschieben(plan, 'b1', '2030-10-31', { datum: '2030-11-01', start: '14:00', ende: '16:00' });
   assert.deepEqual(M.blockLoeschen(neu, id).bloecke.map((b) => b.id), ['b1', 'b2']);
   assert.deepEqual(M.blockLoeschen(neu, 'b1').bloecke.map((b) => b.id), ['b2']);
+});
+
+test('Einzeln verschoben ist gekennzeichnet: am Vorkommen (serie), im Ereignis (einzeln) und im Kalender-Abo (SP-0416)', () => {
+  const plan = { bloecke: [{ id: 'b1', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }] };
+  const { plan: neu, id } = M.einzelnVerschieben(plan, 'b1', '2030-10-31', { datum: '2030-11-01', start: '14:00', ende: '16:00' });
+  const vk = M.rechnen(angebot(), neu).vorkommen.filter((v) => v.quelle === 'block');
+  assert.deepEqual(vk.filter((v) => v.serie).map((v) => [v.block, v.serie, v.datum]), [[id, 'b1', '2030-11-01']]);
+  const ev = M.ereignisse(angebot(), neu).filter((e) => e.quelle === 'block');
+  assert.deepEqual(ev.filter((e) => e.einzeln).map((e) => e.datum), ['2030-11-01']);
+  assert.ok(ev.filter((e) => !e.einzeln).length > 5, 'die Reihe bleibt ungekennzeichnet');
+  const ics = K.ics(ev, { kalender: 'lernen', jetzt: new Date('2030-10-01T00:00:00Z') }).replace(/\r\n /g, '');
+  const ein = ics.split('BEGIN:VEVENT').find((x) => x.includes(`UID:${id}@2030-11-01`));
+  assert.match(ein, /DESCRIPTION:Nur in dieser Woche verschoben/);
+  assert.equal((ics.match(/Nur in dieser Woche verschoben/g) || []).length, 1);
 });
