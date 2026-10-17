@@ -12,6 +12,14 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas: Auch festgelegt lässt sich ein Block in einer echten Woche ziehen (SP-0415)
+
+- Silas versuchte nach SP-0414 im echten Plan (W01, TGI VL-Nachbereitung) einen Block zu schieben — es ging nicht:
+  Festgelegt waren Blöcke nur Knöpfe. *„Ich will nicht vorher erst auf Bearbeiten klicken müssen, sondern es soll
+  direkt funktionieren mit dem Rumschieben.“*
+- Festgelegt, in einer echten Woche: jeder eigene Block zieht, nur dieses Vorkommen (wie die Mittagspause, V-0345). Ein
+  Klick bleibt Klick; die Standardwoche bleibt festgelegt gesperrt.
+
 ## 17.10.2026 — /silas: In einer echten Woche verschiebt Ziehen nur dieses eine Vorkommen (SP-0414)
 
 - Silas: In der Standardwoche soll Ziehen bleiben, wie es ist: Alle Termine der Reihe ziehen mit. In einer echten

@@ -758,7 +758,7 @@ function moduleZeichnen() {
         : h('button', { type: 'button', class: 'knopf haupt', 'data-act': 'festlegen' }, sym('ok'), 'Stundenplan festlegen'))
     : b === 'frei' || b === 'pruefplan'
       ? kasten('Prüfungen und Unregelmäßiges', schrittFort(M.PRUEFUNGEN), 'Je Prüfung ihr Kontingent (Prüfungs-Topf), dazu was an einzelne Termine gebunden ist (Quicktests, Vorbereitung auf die Übungen, Literatur). Eine wählen, dann im Kalender: ein Tipp legt einen Lernblock, Ziehen nach unten wählt die Stunden.')
-      : kasten('Dein Stundenplan', fortVon([...Z.erg.teile.values()].filter((z) => M.schrittVon(z.teil) <= 4)), 'Festgelegt — die Schritte 1–4. Die Prüfungen und das Unregelmäßige zählen unter „Prüfungen“. Vergangenes bekommt ✓ oder ✗ (Klick auf die Kachel). Ändern: oben „Stundenplan bearbeiten“.');
+      : kasten('Dein Stundenplan', fortVon([...Z.erg.teile.values()].filter((z) => M.schrittVon(z.teil) <= 4)), 'Festgelegt — die Schritte 1–4. Die Prüfungen und das Unregelmäßige zählen unter „Prüfungen“. Vergangenes bekommt ✓ oder ✗ (Klick auf die Kachel). Einen Block nur in einer Woche verschieben: in der echten Woche ziehen. Sonst ändern: oben „Bearbeiten“.');
   // Am Telefon stehen die Hauptreiter oben (festgelegt) oder fehlen (im Ablauf gibt es nur die Woche), und Fortschritt und
   // „Weiter“ stehen über dem Raster (dranZeichnen) — hier unten wären sie unter Raster und Legende (V-0391).
   const kopf = h('div', { class: 'links-kopf' }, SCHMAL.matches ? null : hauptreiterEl(), SCHMAL.matches && !fertig() ? null : tun,
@@ -1412,6 +1412,7 @@ function spalten(kacheln) {
 }
 
 let geo = null; // die Geometrie des gezeichneten Rasters (für das Ziehen)
+let kachelGezogen = false; // eben gezogen: der folgende Klick ist keiner (SP-0415)
 
 function rasterZeichnen() {
   const lage = rasterLage();
@@ -1768,6 +1769,10 @@ function kachelEl(k) {
     class: kl.join(' '), type: act && act !== 'block' ? 'button' : null, 'data-act': act, 'data-teil': k.teil || null,
     'data-block': k.block || null, 'data-option': k.option || null, 'data-datum': k.datum || null, 'data-schritt': act === 'kurz-zurueck' ? String(k.schritt) : null,
     'data-vk': act === 'ist' ? k.v.id : null,
+    // Festgelegt, in einer echten Woche (SP-0415, Silas, 17.10.: „Ich will nicht vorher erst auf Bearbeiten klicken
+    // müssen, sondern es soll direkt funktionieren mit dem Rumschieben“): jeder eigene Block lässt sich ziehen — nur
+    // dieses Vorkommen (SP-0414), wie die Mittagspause (V-0345). Ein Klick bleibt, was er war (Bestandteil, ✓/✗).
+    'data-ziehen': k.art === 'block' && act !== 'block' && fertig() && !geo.std && Z.ansicht.bereich === 'plan' && k.block ? '1' : null,
     title: ist ? `${tip}\n${{ ja: '✓ erledigt', nein: '✗ nicht gemacht', teil: 'teilweise', verschoben: 'verschoben', offen: 'vorbei — noch ohne ✓ oder ✗' }[ist]} — Klick: ✓, ✗ oder …` : tip, tabindex: act === 'block' ? '0' : null,
   }, h('b', { text: titel }), h('span', { class: 'k-zwei' }, tags.anzahl, zeile2), tags.etikett, marke ? h('span', { class: `k-marke ${markeKl}`, text: marke }) : null,
   ist ? h('span', { class: `k-ist i-${ist}`, text: { ja: '✓', nein: '✗', teil: '½', verschoben: '→', offen: '?' }[ist] }) : null);
@@ -3421,6 +3426,7 @@ function verdrahten() {
   if (verdrahtet) return;
   verdrahtet = true;
   document.addEventListener('click', (e) => {
+    if (kachelGezogen && e.target.closest('#raster')) return; // das Ziehen einer festgelegten Kachel war kein Klick (SP-0415)
     const el = e.target.closest('[data-act]');
     if (!el || el.closest('#karte') && !el.dataset.act) return;
     const a = el.dataset.act, teil = el.dataset.teil;
@@ -3921,6 +3927,7 @@ function zeigerRunter(e) {
     return;
   }
   if (kachel && kachel.dataset.act === 'block') return blockZiehen(e, kachel, rect);
+  if (kachel && kachel.dataset.ziehen) return blockZiehen(e, kachel, rect, { nurZiehen: true });
   if (kachel && kachel.dataset.act) return; // Termine, Gruppen und Blöcke früherer Schritte sind Knöpfe (click)
   if (!e.target.closest('.r-tag')) return;
   // Ein Klick auf eine leere Stelle hebt die Auswahl auf (V-0338, Silas: „wenn man rausklickt, einfach auf irgendeinen
@@ -3938,10 +3945,12 @@ function zeigerRunter(e) {
         : 'Links oben „Block legen“: Dann hängt der Block am Zeiger, und ein Klick legt ihn ab.');
 }
 
-function blockZiehen(e, kachel, rect) {
+/** nurZiehen (SP-0415, festgelegt): Ohne Bewegung tut das Ziehen nichts — der Klick der Kachel gilt (Bestandteil, ✓/✗);
+ *  nach einer Bewegung schluckt `kachelGezogen` ihn. Am Telefon zieht es nicht (dort tippt man). */
+function blockZiehen(e, kachel, rect, { nurZiehen = false } = {}) {
   const b = (Z.stand.plan.bloecke || []).find((x) => x.id === kachel.dataset.block);
   if (!b) return;
-  if (e.pointerType === 'touch') { blockKarte(b.id, kachel, kachel.dataset.datum); return; }
+  if (e.pointerType === 'touch') { if (!nurZiehen) blockKarte(b.id, kachel, kachel.dataset.datum); return; }
   e.preventDefault();
   const griff = !!e.target.closest('[data-griff]');
   const s0 = M.min(b.start), e0 = M.min(b.ende);
@@ -3981,12 +3990,13 @@ function blockZiehen(e, kachel, rect) {
   // jeden Zeigerdruck mit „Cannot access 'fertig' before initialization“ abbrechen (Test „keine Schatten“).
   const loslassen = () => {
     removeEventListener('pointermove', weiter); removeEventListener('pointerup', loslassen);
-    if (!bewegt) { blockKarte(b.id, kachel, kachel.dataset.datum); return; }
+    if (!bewegt) { if (!nurZiehen) blockKarte(b.id, kachel, kachel.dataset.datum); return; }
+    kachelGezogen = true; setTimeout(() => { kachelGezogen = false; }, 0);
     if (gesperrtMelden(ziel(neu))) { rasterZeichnen(); return; }
     if (einzeln) {
       const z = ziel(neu);
       aendern((s) => { s.plan = M.einzelnVerschieben(s.plan, b.id, kachel.dataset.datum, { datum: z.datum, start: M.hhmm(neu.start), ende: M.hhmm(neu.ende) }).plan; });
-      melden(`Nur diese Woche: ${datumMitTag(z.datum)} ${zeitspanne(neu.start, neu.ende)} — die anderen Wochen bleiben ${M.TAGE_LANG[tag0]} ${zeitspanne(s0, e0)}. Für alle Wochen in der Standardwoche ziehen.`);
+      melden(`Nur diese Woche: ${datumMitTag(z.datum)} ${zeitspanne(neu.start, neu.ende)} — die anderen Wochen bleiben ${M.TAGE_LANG[tag0]} ${zeitspanne(s0, e0)}. Für alle Wochen in der Standardwoche ziehen${fertig() ? ' (nach „Bearbeiten“)' : ''}.`);
       if (Z.sprung) sprungEnde();
       return;
     }
