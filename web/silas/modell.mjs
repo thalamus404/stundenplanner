@@ -16,7 +16,7 @@
 import {
   REGELN, TAGE, min, hhmm, plusTage, wochentag, montagVon, tageZwischen, istDatum, datumKurz, aufRaster, stunden,
   istFrei, istGeschlossen, wochen, muster, termineAus, zaehltMin, nurOnline, einheiten, videoBlockMin, pruefungsTermin,
-  freieFenster, isoZeit, vorOrt, phasen,
+  freieFenster, naechsterPlatz, isoZeit, vorOrt, phasen,
 } from './grund.mjs';
 import { kontingentRechnen, istEintrag, wochenBedarf as bedarfJeWoche, STUFEN, toleranz } from './kontingent.mjs';
 
@@ -905,24 +905,35 @@ export function fortschrittVon(erg, zs, uListe = null) {
 }
 
 /** Die Fahrzeit eines Tages (V-0338): vor dem frühesten und nach dem spätesten Termin vor Ort — Online-Termine zählen
- *  nicht. termine: [{start, ende, ort?, online?}] eines Tages. Ergebnis: [[start, ende] davor, [start, ende] danach]. */
-export function fahrzeiten(termine, regeln = REGELN) {
+ *  nicht. termine: [{start, ende, ort?, online?}] eines Tages. Ergebnis: [[start, ende] davor, [start, ende] danach].
+ *  Sie überdeckt nichts (SP-0418, Silas: „die überschneiden sich manchmal mit irgendwelchen Modulkacheln, aber das geht
+ *  ja nicht“): belegt sind alle Kacheln des Tages; liegt dort etwas, rückt die Hinfahrt früher und die Rückfahrt später,
+ *  in die nächste Lücke. fest: {hin, zurueck} (Minuten), wohin Silas sie für diesen Tag gezogen hat (plan.fahrt) — die
+ *  Hinfahrt endet trotzdem spätestens beim ersten Termin, die Rückfahrt beginnt frühestens nach dem letzten. */
+export function fahrzeiten(termine, regeln = REGELN, belegt = [], fest = {}) {
   const da = termine.filter(vorOrt);
   if (!da.length) return [];
+  const p = regeln.pendeln_min;
   const a = Math.min(...da.map((t) => t.start)), b = Math.max(...da.map((t) => t.ende));
-  return [[a - regeln.pendeln_min, a], [b, b + regeln.pendeln_min]];
+  const ziel = (x, sonst) => (Number.isFinite(x) ? x : sonst);
+  const hin = naechsterPlatz(belegt, p, 0, a, ziel(fest && fest.hin, a - p)) ?? a - p;
+  const zurueck = naechsterPlatz(belegt, p, b, 24 * 60, ziel(fest && fest.zurueck, b)) ?? b;
+  return [[hin, hin + p], [zurueck, zurueck + p]];
 }
 
-/** Die Mittagspause eines Tages (V-0340): das erste freie Fenster von mittag_min im mittag_fenster; sonst die längste
- *  Lücke darin, sonst 12:30. belegt: [[start, ende], …] mit den Fahrzeiten des Tages. fest: der Anfang, den Silas für
- *  diesen Tag gezogen hat (plan.mittag, Minuten) — er gilt ohne Rücksicht auf das Belegte. */
+/** Die Mittagspause eines Tages (SP-0418, Silas: „im besten Fall 30 Minuten … 12 Uhr die optimale Uhrzeit und je näher
+ *  an 12 …, desto besser … nicht vor 11 … nicht nach 15 Uhr“): mittag_min am nächsten an mittag_ziel im mittag_fenster,
+ *  ohne etwas zu überdecken (Kacheln und Fahrzeit). Passt sie nirgends ganz, die größte Lücke darin (ab mittag_rest_min),
+ *  bei gleicher Größe die nähere — kürzer als mittag_min, die Oberfläche sagt, wie viel Zeit bleibt. Ohne jede Lücke:
+ *  null. fest: der Anfang, den Silas für diesen Tag gezogen hat (plan.mittag, Minuten) — er ersetzt 12 Uhr als Ziel. */
 export function mittagspause(belegt, regeln = REGELN, fest = null) {
-  if (Number.isFinite(fest)) return [fest, fest + regeln.mittag_min];
-  const [a, b] = regeln.mittag_fenster.map(min);
-  const frei = freieFenster(belegt, regeln.mittag_min, a, b)[0];
-  const luecke = frei ? null : freieFenster(belegt, 15, a, b).sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]))[0];
-  const start = frei ? frei[0] : luecke ? luecke[0] : min('12:30');
-  return [start, start + regeln.mittag_min];
+  const [von, bis] = regeln.mittag_fenster.map(min);
+  const ziel = Number.isFinite(fest) ? fest : min(regeln.mittag_ziel);
+  const s = naechsterPlatz(belegt, regeln.mittag_min, von, bis, ziel);
+  if (s != null) return [s, s + regeln.mittag_min];
+  const abstand = ([a, b]) => Math.abs(Math.max(a, Math.min(b, ziel)) - ziel);
+  const luecken = freieFenster(belegt, regeln.mittag_rest_min, von, bis);
+  return luecken.sort((x, y) => (y[1] - y[0]) - (x[1] - x[0]) || abstand(x) - abstand(y))[0] || null;
 }
 
 /** Wie voll ein Tag ist: alles, was im Kalender liegt (Termine als Doppelstunde, Blöcke, geltende Prüfungen). */

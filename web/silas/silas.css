@@ -846,12 +846,16 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .mittag { border: 2px dotted var(--hinweis); background: color-mix(in srgb, var(--hinweis) 10%, transparent); }
 .fahrt span, .mittag span { font-size: 9.5px; font-weight: 700; line-height: 12px; padding: 0 4px; margin: 1px 15px 1px 0; border-radius: 3px; background: var(--grau-1); color: var(--grau-9); letter-spacing: .03em; }
 .mittag span { color: var(--hinweis-text); }
-/* V-0345: Das Schild der Mittagspause ist ihr Griff — nur es nimmt den Zeiger (die Kacheln darunter bleiben klickbar),
-   nicht, solange ein Block am Zeiger hängt. Gezogen (plan.mittag) ist sie durchgezogen statt gepunktet. */
-.mittag > span { pointer-events: auto; cursor: grab; touch-action: none; }
-.mittag.zieht > span { cursor: grabbing; }
-.mittag.fest { border-style: solid; }
-.raster.legen .mittag > span { pointer-events: none; }
+/* V-0345, SP-0418: Das Schild von Mittag und Fahrzeit (in echten Wochen) ist ihr Griff — nur es nimmt den Zeiger (die
+   Kacheln darunter bleiben klickbar), nicht, solange ein Block am Zeiger hängt. Gezogen (plan.mittag, plan.fahrt) sind
+   sie durchgezogen statt gepunktet. */
+.mittag > span, .fahrt.ziehbar > span { pointer-events: auto; cursor: grab; touch-action: none; }
+.mittag.zieht > span, .fahrt.zieht > span { cursor: grabbing; }
+.mittag.fest, .fahrt.fest { border-style: solid; }
+.raster.legen .mittag > span, .raster.legen .fahrt > span { pointer-events: none; }
+/* SP-0418: Ohne 30 freie Minuten liegt der Mittag in der größten Lücke; das „!“ am Schild sagt beim Zeigen, wie viel
+   Zeit bleibt. */
+.mittag .knapp-zeichen { display: inline-block; width: 10px; height: 10px; margin-right: 3px; border-radius: 50%; background: var(--hinweis); color: var(--grau-1); font-style: normal; font-size: 8px; line-height: 10px; text-align: center; vertical-align: 0; cursor: help; }
 
 /* Zeitleiste: EINE Spur für alle Prüfungen, Vorlauf als Linie mit Strich am Anfang. */
 .zl-kopf .zl-satz { margin-right: auto; }
@@ -1303,10 +1307,10 @@ body.mit-unten .links-fuss { position: static; }
   .schleier { background: rgb(0 0 0 / .28); }
   .karte .knopf { min-height: 40px; }
   .leiste .l-kopf { position: static; }
-  /* Fahrzeit ohne Schild (es lag in 68 px Breite über dem Titel der nächsten Kachel), Mittag mit kleinerem zum Ziehen. */
-  .fahrt span { display: none; }
+  /* Fahrzeit und Mittag mit kleinerem Schild zum Ziehen. (Bis SP-0418 hatte die Fahrzeit hier keins, es lag in 68 px
+     Breite über dem Titel der nächsten Kachel — jetzt liegt sie über keiner Kachel mehr.) */
   .fahrt, .mittag { left: 1px; right: 1px; border-width: 1.5px; }
-  .mittag span { margin-right: 6px; }
+  .fahrt span, .mittag span { margin-right: 6px; }
   .fertig-leiste { flex-wrap: nowrap; padding: 4px 4px 4px 10px; }
   .fertig-leiste .knopf { flex: none; }
   .an-kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); }
