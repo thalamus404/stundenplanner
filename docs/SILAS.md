@@ -642,6 +642,14 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
     gerechnet, Zurücksetzen.
   - **Die Semester-Leiste rechts** klappt auf eine Schiene, die „Semester“ sagt (`ansicht.leiste`); eingeklappt hat
     das Raster bei 1440 px rund 190 px je Tag, und die Kacheln zeigen Titel, Zeit und Raum ganz.
+  - **Das Wochenende an der Seite** (SP-0417, Silas, 17.10.: *„da an der Seite, wo man auch das Semester aufklappen
+    kann, soll man auch aufklappen können, dass man das Wochenende für die jeweilige ausgewählte Woche sehen kann und
+    da auch Sachen hin verschieben kann“*): Neben „Semester“ steht „Wochenende“ — aufgeklappt im Kopf der Leiste,
+    eingeklappt als zweite Schiene darunter (`wochenendeKnopf()`, gemerkt als `ansicht.wochenende`). Er hängt Sa und So
+    der gezeigten Woche an das Raster; dort legt und zieht man wie an jedem Tag — in einer echten Woche nur dieses
+    Vorkommen (SP-0414), in der Standardwoche die Reihe. Wo das Wochenende ohnehin dasteht (Prüfungsvorbereitung,
+    außerhalb der Vorlesungszeit, schon etwas am Sa/So), ist der Knopf gedrückt und blass und sagt beim Klick, warum.
+    Am Telefon gibt es ihn nicht (sieben Spalten in 390 px).
   - „Analytics“ unten links deckt bis zur Kante; die Hauptreiter sagen „Topf 632 h“ und „Topf 268 h“.
   - Unter „Prüfungen“ sagt eine Zeile, wenn für eine Prüfung mehr gelegt ist als ihr Kontingent (`zu_viel_min`, §2.9).
   Das Raster hat so bei 1440 × 830 rund 40 px je Stunde (mit Leiste), 865 px und das Telefon bleiben, wie sie waren.
