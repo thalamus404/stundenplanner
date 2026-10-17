@@ -12,6 +12,17 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas: Fahrzeit und Mittag über keiner Kachel, Mittag 30 min nahe 12 (SP-0418)
+
+- Silas: *„Fahrzeitlogik und Mittaglogik … überschneiden sich manchmal mit irgendwelchen Modulkacheln, aber das geht ja
+  nicht.“* Ursache: Die Fahrzeit hing fest am ersten und letzten Termin vor Ort, auch wenn dort ein Online-Termin oder
+  ein Block lag; der Mittag lag ohne Lücke um 12:30 und gezogen genau dort, wohin er gezogen war — beides über dem, was
+  dort stand. Jetzt sucht beides mit einer Funktion (`naechsterPlatz()`) die nächste Lücke, die nichts überdeckt.
+- **Mittag**: 30 min, so nah an 12 Uhr wie möglich, nie vor 11 und nie nach 15 Uhr, nicht in der Fahrzeit. Ohne 30 freie
+  Minuten die größte Lücke (näher an 12 bei gleicher Größe) mit einem „!“, das beim Zeigen die Minuten nennt.
+- **Fahrzeit** lässt sich wie der Mittag am Schild ziehen, je Tag und nur in dieser Woche (`plan.fahrt`), Doppelklick
+  löst sie wieder. Am Telefon hat sie dafür wieder ein Schild. Beim Ziehen folgen beide derselben Regel.
+
 ## 17.10.2026 — /silas: Das Wochenende klappt an der Seite auf (SP-0417)
 
 - Silas: *„… da an der Seite, wo man auch das Semester aufklappen kann, soll man auch aufklappen können, dass man das

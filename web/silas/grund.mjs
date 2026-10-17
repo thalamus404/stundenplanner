@@ -40,7 +40,9 @@ export const REGELN = {
   evl_fenster: ['10:00', '18:00'], // freie Plätze dazwischen sind bevorzugt („alles zwischen 10 und 18 Uhr preferred“)
   tag_fenster: ['08:00', '20:00'], // wo freie Plätze überhaupt gesucht werden
   pruef_fenster: ['07:00', '22:00'], // Prüfungsvorbereitung: auch früh und abends (V-0337)
-  mittag_min: 45, mittag_fenster: ['11:30', '14:30'], // Silas, V-0340: 45 min Mittagspause, nur gezeigt
+  mittag_min: 30, mittag_fenster: ['11:00', '15:00'], // Silas, 17.10. (SP-0418): „im besten Fall 30 Minuten“, „nicht
+  mittag_ziel: '12:00', mittag_rest_min: 10,         // vor 11“, „nicht nach 15 Uhr“, „je näher an 12, desto besser“;
+                                                     // ohne 30 min die größte Lücke ab 10 min, sonst keine
   bezug_direkt_min: 120, // V-0342: ein Lernblock höchstens 2 h nach seinem Stoff (oder vor einer Präsenz) = „direkt“ …
   bezug_nah_tage: 3,     // … bis 3 Tage danach „nah“, später „fern“
 };
@@ -281,4 +283,16 @@ export function freieFenster(belegt, dauer, von, bis) {
     cursor = Math.max(cursor, e);
   }
   return aus;
+}
+
+/** Der Platz für etwas der Länge dauer zwischen von und bis, der nichts überdeckt und mit seinem Anfang am nächsten an
+ *  ziel liegt (SP-0418: Mittag nahe 12, Fahrzeit nahe dem Termin oder dort, wohin Silas sie gezogen hat). Gleich nah:
+ *  der frühere. null, wenn nirgends Platz ist. */
+export function naechsterPlatz(belegt, dauer, von, bis, ziel) {
+  let best = null;
+  for (const [a, b] of freieFenster(belegt, dauer, von, bis)) {
+    const s = Math.max(a, Math.min(b - dauer, ziel));
+    if (best == null || Math.abs(s - ziel) < Math.abs(best - ziel)) best = s;
+  }
+  return best;
 }

@@ -1426,12 +1426,27 @@ function rasterZeichnen() {
   const wochenende = Z.ansicht.wochenende || !!grund;
   const tage = wochenende ? 7 : 5;
   let h0 = 8, h1 = 20;
-  // Die Fahrzeit vor dem ersten Termin (8:15 − 40 min) soll noch im Raster stehen.
-  const fahrt = (k) => (['termin', 'pruefung', 'einzel'].includes(k.art) ? Z.erg.regeln.pendeln_min : 0);
-  for (const k of kacheln) { h0 = Math.min(h0, Math.floor((k.start - fahrt(k)) / 60)); h1 = Math.max(h1, Math.ceil((k.ende + fahrt(k)) / 60)); }
+  // Fahrzeit (V-0338): 45 min vor dem ersten und nach dem letzten Termin vor Ort — über keiner Kachel (SP-0418, Silas:
+  // „die überschneiden sich manchmal mit irgendwelchen Modulkacheln, aber das geht ja nicht“): Liegt dort etwas, rückt
+  // sie in die nächste Lücke davor oder danach (M.fahrzeiten). In einer echten Woche lässt sie sich je Tag am Schild
+  // ziehen, wie der Mittag; gezogen steht sie in plan.fahrt[datum] {hin, zurueck}. Sie soll noch im Raster stehen.
+  const fahrten = [];
+  const kbelegt = [];
+  for (let d = 0; d < tage; d++) {
+    const amTag = kacheln.filter((k) => k.tag === d && k.art !== 'option');
+    const termine = amTag.filter((k) => ['termin', 'pruefung', 'einzel'].includes(k.art))
+      .map((k) => ({ start: k.start, ende: k.ende, ort: k.ort, online: k.v && k.v.online })).filter(M.vorOrt);
+    const datum = std ? null : M.plusTage(w.von, d);
+    const fest = datum ? (Z.stand.plan.fahrt || {})[datum] || {} : {};
+    kbelegt[d] = amTag.map((k) => [k.start, k.ende]);
+    const grenze = { hin: Math.min(...termine.map((t) => t.start)) - Z.erg.regeln.pendeln_min, zurueck: Math.max(...termine.map((t) => t.ende)) };
+    M.fahrzeiten(termine, Z.erg.regeln, kbelegt[d], { hin: fest.hin ? M.min(fest.hin) : null, zurueck: fest.zurueck ? M.min(fest.zurueck) : null })
+      .forEach(([a, b], i) => { const r = i ? 'zurueck' : 'hin'; fahrten.push({ tag: d, datum, richtung: r, grenze: grenze[r], fest: !!fest[r], start: a, ende: b }); });
+  }
+  for (const k of [...kacheln, ...fahrten]) { h0 = Math.min(h0, Math.floor(k.start / 60)); h1 = Math.max(h1, Math.ceil(k.ende / 60)); }
   if (pruefplan()) { h0 = Math.min(h0, 7); h1 = Math.max(h1, 22); } // auch früh und abends
   h0 = Math.max(6, h0); h1 = Math.min(23, h1);
-  geo = { h0, h1, tage, std, woche: w, wochenende: { an: wochenende, grund } };
+  geo = { h0, h1, tage, std, woche: w, wochenende: { an: wochenende, grund }, kbelegt, belegt: [] };
   for (const id of ['raster', 'r-kopf', 'ganztag']) $(id).style.setProperty('--tage', String(tage));
   const raster = $('raster');
   raster.style.setProperty('--stunde', `calc(100% / ${h1 - h0})`);
@@ -1512,14 +1527,6 @@ function rasterZeichnen() {
     spaltenEl.push(h('div', { class: `r-tag${frei ? ' frei' : ''}${d >= 5 ? ' wochenende' : ''}`, 'data-tag': String(d) }));
   }
   spalten(kacheln);
-  // Fahrzeit (V-0338): 40 min vor dem ersten und nach dem letzten Termin vor Ort, nur zum Sehen — grau gestrichelt,
-  // ohne Klick, sie sperrt nichts (M.fahrzeiten).
-  const fahrten = [];
-  for (let d = 0; d < tage; d++) {
-    const vorOrt = kacheln.filter((k) => k.tag === d && ['termin', 'pruefung', 'einzel'].includes(k.art))
-      .map((k) => ({ start: k.start, ende: k.ende, ort: k.ort, online: k.v && k.v.online }));
-    for (const [a, b] of M.fahrzeiten(vorOrt, Z.erg.regeln)) fahrten.push({ tag: d, start: Math.max(a, h0 * 60), ende: Math.min(b, h1 * 60) });
-  }
   const pos = (el, k) => {
     el.style.top = `${((k.start - h0 * 60) / ((h1 - h0) * 60)) * 100}%`;
     el.style.height = `calc(${((k.ende - k.start) / ((h1 - h0) * 60)) * 100}% - 1px)`;
@@ -1534,25 +1541,37 @@ function rasterZeichnen() {
   // Fahrzeit und Mittagspause liegen ÜBER den Kacheln (durchsichtig, ohne Klick): Die Fahrt nach Hause lag sonst unter
   // dem Block, der direkt nach der letzten Vorlesung beginnt, und war nicht zu sehen (V-0340, Silas: „nach den
   // Präsenzmodulen kommt keine mehr“).
-  const zeigen = (d, a, b, kl, text, titel, attrs = {}) => {
+  const zeigen = (d, a, b, kl, text, titel, attrs = {}, zeichen = null) => {
+    a = Math.max(a, h0 * 60); b = Math.min(b, h1 * 60);
     if (b - a < 10) return;
-    const el = h('div', { class: kl, title: titel, 'aria-hidden': 'true', ...attrs }, h('span', { text }));
+    const el = h('div', { class: kl, title: titel, 'aria-hidden': 'true', ...attrs }, h('span', {}, zeichen, text));
     el.style.top = `${((a - h0 * 60) / ((h1 - h0) * 60)) * 100}%`;
     el.style.height = `${((b - a) / ((h1 - h0) * 60)) * 100}%`;
     spaltenEl[d].append(el);
   };
-  for (const f of fahrten) zeigen(f.tag, f.start, f.ende, 'fahrt', 'Fahrzeit', `Fahrzeit ${Z.erg.regeln.pendeln_min} min`);
-  // Mittagspause (V-0340): Mo–Fr 45 min im ersten freien Fenster 11:30–14:30, sonst um 12:30 — nur zum Erinnern. Nicht
-  // in der Fahrzeit und nur in echten Wochen; dort lässt sie sich am Schild ziehen, je Tag, auch festgelegt (V-0345,
-  // Silas: „leicht verschieben, auch wenn man gerade nicht den Stundenplan bearbeitet … pro Woche einzeln … in der
-  // Standardwoche gar nicht“). Gezogen steht sie in plan.mittag[datum]; ein Doppelklick aufs Schild lässt sie wieder frei.
+  const p = Z.erg.regeln.pendeln_min;
+  for (const f of fahrten) {
+    zeigen(f.tag, f.start, f.ende, `fahrt${std ? '' : ' ziehbar'}${f.fest ? ' fest' : ''}`, 'Fahrzeit',
+      `${f.richtung === 'hin' ? 'Hinfahrt' : 'Rückfahrt'} ${p} min${std ? '' : ` — am Schild ziehen zum Verschieben, nur an diesem Tag${f.fest ? '; Doppelklick: wieder automatisch' : ''}`}`,
+      std ? {} : { 'data-datum': f.datum, 'data-richtung': f.richtung, 'data-start': String(f.start), 'data-grenze': String(f.grenze) });
+  }
+  // Mittagspause (V-0340, SP-0418): Mo–Fr 30 min, so nah an 12 Uhr wie möglich, nie vor 11 und nie nach 15 Uhr, über
+  // keiner Kachel und nicht in der Fahrzeit (M.mittagspause). Ohne 30 freie Minuten die größte Lücke, mit einem „!“ am
+  // Schild, das sagt, wie viel Zeit bleibt; ohne jede Lücke kein Mittag. Nur in echten Wochen; dort lässt sie sich am
+  // Schild ziehen, je Tag (V-0345, Silas: „leicht verschieben … pro Woche einzeln … in der Standardwoche gar nicht“).
+  // Gezogen steht sie in plan.mittag[datum]; ein Doppelklick aufs Schild lässt sie wieder frei.
   for (let d = 0; d < Math.min(5, tage) && !std; d++) {
     const datum = M.plusTage(w.von, d);
-    const belegt = [...kacheln.filter((k) => k.tag === d && k.art !== 'option').map((k) => [k.start, k.ende]),
-      ...fahrten.filter((f) => f.tag === d).map((f) => [f.start, f.ende])];
+    geo.belegt[d] = [...geo.kbelegt[d], ...fahrten.filter((f) => f.tag === d).map((f) => [f.start, f.ende])];
     const fest = (Z.stand.plan.mittag || {})[datum];
-    const [a, b] = M.mittagspause(belegt, Z.erg.regeln, fest ? M.min(fest) : null);
-    if (a >= h0 * 60 && b <= h1 * 60) zeigen(d, a, b, `mittag${fest ? ' fest' : ''}`, 'Mittag', `Mittagspause ${Z.erg.regeln.mittag_min} min — am Schild ziehen zum Verschieben${fest ? ', Doppelklick: wieder automatisch' : ''}; darf überplant werden`, { 'data-datum': datum, 'data-start': String(a) });
+    const mt = M.mittagspause(geo.belegt[d], Z.erg.regeln, fest ? M.min(fest) : null);
+    if (!mt) continue;
+    const [a, b] = mt;
+    const knapp = b - a < Z.erg.regeln.mittag_min;
+    const satz = `Nur ${b - a} min Zeit fürs Mittagessen — zwischen ${Z.erg.regeln.mittag_fenster.join(' und ')} Uhr sind keine ${Z.erg.regeln.mittag_min} min frei`;
+    zeigen(d, a, b, `mittag${fest ? ' fest' : ''}${knapp ? ' knapp' : ''}`, 'Mittag',
+      `${knapp ? satz : `Mittagspause ${b - a} min`} — am Schild ziehen zum Verschieben${fest ? ', Doppelklick: wieder automatisch' : ''}`,
+      { 'data-datum': datum, 'data-start': String(a) }, knapp ? h('i', { class: 'knapp-zeichen', title: satz, text: '!' }) : null);
   }
   if (!std && heute() >= w.von && heute() <= w.bis) {
     const d = M.wochentag(heute()), m = jetztMin();
@@ -3711,13 +3730,23 @@ function verdrahten() {
   $('raster').addEventListener('pointerdown', zeigerRunter);
   // Ziehen im Prüfungskalender (V-0349): auf einem Tag drücken und nach unten ziehen wählt die Stunden.
   $('bereich').addEventListener('pointerdown', (e) => { const zelle = e.target.closest('.kal-tag[data-act="frei-tag"]'); if (zelle) kalenderZiehen(e, zelle); });
-  // Doppelklick aufs Schild einer gezogenen Mittagspause: wieder automatisch (V-0345).
+  // Doppelklick aufs Schild einer gezogenen Mittagspause oder Fahrzeit: wieder automatisch (V-0345, SP-0418).
   $('raster').addEventListener('dblclick', (e) => {
-    const el = e.target.closest('.mittag.fest > span')?.parentElement;
+    const el = e.target.closest('.mittag.fest > span, .fahrt.fest > span')?.parentElement;
     if (!el) return;
-    const datum = el.dataset.datum;
-    aendern((s) => { const m = { ...(s.plan.mittag || {}) }; delete m[datum]; s.plan.mittag = m; });
-    melden(`Mittag am ${datumMitTag(datum)} liegt wieder automatisch.`);
+    const datum = el.dataset.datum, richtung = el.dataset.richtung;
+    if (!richtung) {
+      aendern((s) => { const m = { ...(s.plan.mittag || {}) }; delete m[datum]; s.plan.mittag = m; });
+      melden(`Mittag am ${datumMitTag(datum)} liegt wieder automatisch.`);
+      return;
+    }
+    aendern((s) => {
+      const f = { ...(s.plan.fahrt || {}) }, tag = { ...(f[datum] || {}) };
+      delete tag[richtung];
+      if (Object.keys(tag).length) f[datum] = tag; else delete f[datum];
+      s.plan.fahrt = f;
+    });
+    melden(`${richtung === 'hin' ? 'Hinfahrt' : 'Rückfahrt'} am ${datumMitTag(datum)} liegt wieder automatisch.`);
   });
   $('raster').addEventListener('pointermove', legenZeigen);
   $('raster').addEventListener('pointerleave', () => { const g = $('raster').querySelector('.entwurf.legen'); if (g) g.remove(); });
@@ -3925,33 +3954,52 @@ function ablegen(tag, y, rect) {
   melden(`${M.kurz(z.modul)} · ${z.teil.titel}: ${l.woechentlich ? M.TAGE[tag] : datumMitTag(b.datum)} ${zeitspanne(l.start, l.ende)}${!l.woechentlich ? '' : alle > 1 ? `, alle ${alle} Wochen` : `, jede Woche${bis && z.teil.art === 'pruefung' ? ` bis ${M.datumKurz(bis)}` : ''}`}${b.ab ? ` ab ${datumMitTag(b.ab)}` : ''} — damit ${M.stunden(z.ist_min)} von ${M.stunden(z.soll_min)}.${bz ? ` Meist ${bz.text}.` : ''}${sf ? ` Achtung: ${sf.text}.` : ''}${weiter ? ` Noch ${Z.legen.rest} ${Z.legen.rest > 1 ? 'Blöcke' : 'Block'} legen.` : ''}`);
 }
 
-/** Die Mittagspause eines Tages am Schild ziehen (V-0345): auf Viertelstunden, innerhalb des Rasters; beim Loslassen steht
- *  sie in plan.mittag[datum]. Geht auch festgelegt — sie plant nichts, sie erinnert nur. */
-function mittagZiehen(e, el) {
+/** Mittag oder Fahrzeit eines Tages am Schild ziehen (V-0345, SP-0418): Sie folgt dem Zeiger mit derselben Regel, nach
+ *  der sie von selbst liegt — nur dorthin, wo nichts liegt (M.mittagspause, M.naechsterPlatz), der Mittag nur zwischen
+ *  11 und 15 Uhr, die Hinfahrt nie hinter den ersten Termin, die Rückfahrt nie vor den letzten. Beim Loslassen steht
+ *  sie für diesen Tag in plan.mittag[datum] bzw. plan.fahrt[datum][richtung]. Sie plant nichts, sie erinnert nur. */
+function schildZiehen(e, el) {
   e.preventDefault(); e.stopPropagation();
   const rect = $('raster').getBoundingClientRect();
-  const datum = el.dataset.datum, start = Number(el.dataset.start), dauer = Z.erg.regeln.mittag_min;
+  const R = Z.erg.regeln;
+  const datum = el.dataset.datum, start = Number(el.dataset.start), d = M.wochentag(datum);
+  const mittag = el.classList.contains('mittag'), richtung = el.dataset.richtung, grenze = Number(el.dataset.grenze);
   const m0 = minutenBei(e.clientY, rect);
-  let neu = start;
+  // Wohin es bei einem Ziel z käme: [anfang, ende] oder null.
+  const lage = mittag ? (z) => M.mittagspause(geo.belegt[d], R, z)
+    : (z) => {
+      const s = richtung === 'hin' ? M.naechsterPlatz(geo.kbelegt[d], R.pendeln_min, 0, grenze + R.pendeln_min, z)
+        : M.naechsterPlatz(geo.kbelegt[d], R.pendeln_min, grenze, 24 * 60, z);
+      return s == null ? null : [s, s + R.pendeln_min];
+    };
+  let neu = null;
   el.classList.add('zieht');
   const bewegen = (ev) => {
-    neu = Math.max(geo.h0 * 60, Math.min(geo.h1 * 60 - dauer, start + minutenBei(ev.clientY, rect) - m0));
-    el.style.top = `${((neu - geo.h0 * 60) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
+    const l = lage(Math.max(geo.h0 * 60, Math.min(geo.h1 * 60, start + minutenBei(ev.clientY, rect) - m0)));
+    if (!l) return;
+    neu = l;
+    el.style.top = `${((l[0] - geo.h0 * 60) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
+    el.style.height = `${((l[1] - l[0]) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
   };
   const los = () => {
     removeEventListener('pointermove', bewegen); removeEventListener('pointerup', los); removeEventListener('pointercancel', los);
     el.classList.remove('zieht');
-    if (neu === start) return;
-    aendern((s) => { s.plan.mittag = { ...(s.plan.mittag || {}), [datum]: M.hhmm(neu) }; });
-    melden(`Mittag am ${datumMitTag(datum)}: ${zeitspanne(neu, neu + dauer)}`);
+    if (!neu || neu[0] === start) return;
+    if (mittag) {
+      aendern((s) => { s.plan.mittag = { ...(s.plan.mittag || {}), [datum]: M.hhmm(neu[0]) }; });
+      melden(`Mittag am ${datumMitTag(datum)}: ${zeitspanne(neu[0], neu[1])}`);
+    } else {
+      aendern((s) => { const f = { ...(s.plan.fahrt || {}) }; f[datum] = { ...(f[datum] || {}), [richtung]: M.hhmm(neu[0]) }; s.plan.fahrt = f; });
+      melden(`${richtung === 'hin' ? 'Hinfahrt' : 'Rückfahrt'} am ${datumMitTag(datum)}: ${zeitspanne(neu[0], neu[1])} — nur an diesem Tag`);
+    }
   };
   addEventListener('pointermove', bewegen); addEventListener('pointerup', los); addEventListener('pointercancel', los);
 }
 
 function zeigerRunter(e) {
   if (e.button !== 0) return;
-  const schild = !Z.legen && e.target.closest('.mittag > span');
-  if (schild) return mittagZiehen(e, schild.parentElement);
+  const schild = !Z.legen && e.target.closest('.mittag > span, .fahrt.ziehbar > span');
+  if (schild) return schildZiehen(e, schild.parentElement);
   const raster = $('raster');
   const rect = raster.getBoundingClientRect();
   const kachel = e.target.closest('.kachel');
