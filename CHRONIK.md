@@ -12,6 +12,16 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 17.10.2026 — /silas: In einer echten Woche verschiebt Ziehen nur dieses eine Vorkommen (SP-0414)
+
+- Silas: In der Standardwoche soll Ziehen bleiben, wie es ist: Alle Termine der Reihe ziehen mit. In einer echten
+  Woche dagegen *„soll das für diese Woche halt verschoben werden, aber nicht für die anderen Termine … es gilt nur für
+  diese eine Instanz des Termins“*. Bis dahin verschob Ziehen eines Wochenblocks in jeder Ansicht die ganze Reihe.
+- Die Reihe lässt diese Woche aus (`ohne`, nach Montag, damit es auch einen neuen Wochentag übersteht und `alle: n`
+  nicht verrutscht), und das Vorkommen wird ein Datumsblock mit `serie`. Die Blockkarte fragt in einer echten Woche
+  „Gilt für: nur diese Woche / jede Woche“ (das Telefon zieht nicht), Löschen ebenso; eine Reihe zu löschen nimmt
+  ihre einzeln verschobenen Wochen mit.
+
 ## 17.10.2026 — /silas: Probeplan zum echten Plan machen (SP-0413)
 
 - Silas: Im Probeplan soll man sagen können *„Probeplan zum echten Plan machen und damit wird quasi der echte Plan

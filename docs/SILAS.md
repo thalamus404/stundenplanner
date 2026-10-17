@@ -144,7 +144,8 @@ sich nicht legen.
    Modulbeschreibung rechnet 2 SWS als 2 h Präsenzzeit. s.t.-Zeiten (10:00–11:00) zählen ihre echte Dauer.
 2. **Ein Wochenblock gilt in jeder Vorlesungswoche**, nicht in der Pause (außer `pause: true`) und nicht in der
    Prüfungszeit; mit `ab`/`bis` nur in einem Zeitraum, mit `alle: n` in jeder n-ten. Für die Prüfungszeit gibt es
-   Datumsblöcke.
+   Datumsblöcke. Wochen in `ohne` (je ihr Montag) lässt die Reihe aus: Dort wurde ihr Vorkommen einzeln verschoben
+   und liegt als Datumsblock mit `serie` (SP-0414, §3).
 3. **Videos zählen je Woche, nach ihrer echten Länge** (V-0328). Die Videos einer Woche gehören zusammen: Die Woche
    braucht ihre Summe plus Puffer, aufgerundet (80 + 15 min → 2 h). Silas' Blöcke füllen die Wochen der Reihe nach; ein
    Block ohne Video zählt nicht (`leer`). **Quiz, Abgaben, Vorbereitung** (`selbst` mit Einheiten): mit Dauer
@@ -524,6 +525,13 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   die Knöpfe mit „Details“ in einer Zeile; der Satz der Vorgabe („2 × 1 h jede Woche — 15× = 30 h …“) und bei Gruppen
   der Satz zur Wahl stehen oben in den Details (Silas: *„das soll ganz oben in die Details, aber nicht jedes Mal
   angezeigt werden“*).
+- **Standardwoche oder echte Woche entscheidet, wie weit Ziehen reicht** (SP-0414, Silas, 17.10.: *„wenn man nicht auf
+  Standardwoche, sondern auf echte Woche … etwas verschiebt, dann soll das für diese Woche halt verschoben werden, aber
+  nicht für die anderen Termine“*): In der Standardwoche zieht ein Wochenblock die ganze Reihe mit. In einer echten
+  Woche verschiebt Ziehen (auch am Griff länger machen) nur dieses Vorkommen: `einzelnVerschieben()` trägt die Woche
+  in `ohne` der Reihe ein und legt das Vorkommen als Datumsblock mit `serie` ab; ein ✓ zieht mit. Die Blockkarte fragt
+  dort „Gilt für: nur diese Woche (vorgewählt) / jede Woche“, für Ändern und Löschen — am Telefon, wo man nicht zieht.
+  Eine Reihe zu löschen nimmt ihre einzeln verschobenen Wochen mit (`blockLoeschen()`).
 - **Ein Modul anklicken** (V-0356, Silas: *„wenn man ein Modul anklickt, egal in welchem Schritt, dann sollen alle Blöcke,
   die diesem Modul zugeordnet sind, aufleuchten … die Vorlesung, Vor- und Nachbereitung, die Videos, Übungen, Tutorium“*):
   Der Kopf eines Moduls (eingeklappt oder offen) lässt alles, was das Raster von ihm zeigt, aufleuchten (`m-hell`, kurz
@@ -676,8 +684,9 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   `angemeldet {element- oder prüfungs-id: true}`, `zugeteilt {element: option | 'keine'}`, `pruefungstermin {prüfung:
   datum}`, `pruefung {prüfung: {status, termin?, punkte?, note_am?, kontingent_h?}}`, `ist {vorkommen-id | element#nr:
   'ja' | 'nein' | 'ausgefallen' | 'verschoben' | {s: 'teil', min} | {s: 'nein', nachgeholt: true}}`, `bloecke [{id,
-  teil|null, tag | datum, start, ende, ab?, bis?, pause?, alle?, versatz?, titel?, aus? (verschoben von), vorschlag?
-  (aus dem Vorschlag übernommen)}]`, `bestaetigt {annahme-id: true}`, `festgelegt` (Zeitpunkt), `mittag {datum:
+  teil|null, tag | datum, start, ende, ab?, bis?, pause?, alle?, versatz?, ohne? [Montag] (Wochen, die die Reihe
+  auslässt), serie? (aus welcher Reihe einzeln verschoben), titel?, aus? (verschoben von), vorschlag? (aus dem
+  Vorschlag übernommen)}]`, `bestaetigt {annahme-id: true}`, `festgelegt` (Zeitpunkt), `mittag {datum:
   "HH:MM"}`, `zurueckgesetzt {am, ab, wahl, bloecke}`. Nicht mehr gelesen: `umwidmungen` (seit V-0349 ersetzt G5 sie),
   `lernplan: true` an alten Blöcken.
 - `pruefeAngebot()` lehnt ab, was formal nicht stimmt (doppelte Ids, unbekannte Art oder Topf, kaputtes Muster); die
