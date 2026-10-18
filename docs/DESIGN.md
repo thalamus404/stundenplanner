@@ -8,7 +8,8 @@
 > die Vorlesungsverzeichnisse anderer Hochschulen. Der Code sperrt selbst (`abruf/zugang.py`).
 
 > **Stand: 05.10.2026, nach Silas' Test am Handy und seinem Blick auf den Rechner** (V-0218,
-> gebaut in V-0220, Bedienung neu in V-0225, Startbildschirm in V-0234, Silas' zweiter Test in V-0237, sein dritter Blick in V-0243). Diese Datei ist die geschlossene Menge an
+> gebaut in V-0220, Bedienung neu in V-0225, Startbildschirm in V-0234, Silas' zweiter Test in V-0237, sein dritter Blick in V-0243;
+> seit dem 18.10.2026 im Styleguide des Study OS, SP-0420, §9 Punkt 55). Diese Datei ist die geschlossene Menge an
 > Entscheidungen, nach der die Seite (`web/`) gebaut ist. Silas' Entscheidungen stehen in §9, was
 > der Bau begründet anders macht, steht an seiner Stelle und gesammelt in §10. Was hier nicht
 > steht, wird nicht erfunden. Wer abweichen will, ändert zuerst diese Datei, mit Vorgang und Grund.
@@ -46,24 +47,30 @@
 6. **Tag oder Woche** über einen Umschalter: am Handy schwebend unten mittig, Vorgabe Woche (seit V-0247, vorher Tag); am
    Rechner in der Werkzeugzeile, Vorgabe Woche. Darunter eine Legende der Formate (§3.3).
 7. **Farbe trägt Bedeutung, sonst nichts.** Grautreppe für alles Gerüst, acht Modulfarben als
-   Kategorie, Rot für Überschneidung, Bernstein für Hinweise. Der eine Akzent ist die **Tinte**
-   (fast schwarz, im dunklen Schema fast weiß), keine Markenfarbe (§5).
+   Kategorie, Rot für Überschneidung, Bernstein für Hinweise. Im Plan ist der eine Akzent die **Tinte**
+   (fast schwarz, im dunklen Schema fast weiß). Seit SP-0420 (Silas, 18.10.2026, §9 Punkt 55) trägt
+   die Seite den **Styleguide des Study OS**: dessen Flächen (hell Papier, dunkel Tiefblau-Schwarz)
+   und sein **Neon** (Violett) für Marke und Navigation, nie im Plan (§5.1).
 8. **Schnell auch auf alten Handys.** Keine Bibliothek, keine Webfont, kein Build. Die Höhe rechnet
    CSS, nicht JavaScript (§6).
 9. **Am Anfang der Startbildschirm** (Silas, 05.10.2026, §9; neu in V-0243): Wer noch keinen Plan
    gewählt hat, sieht oben mittig den Schriftzug, darunter eine schlanke Fortschrittslinie und eine
    ruhige Spalte, mittig im Raum darunter: Hochschule (die Karte in der Farbe der Hochschule), dann
    Studiengang, dann Fachsemester; die Wahl des Fachsemesters öffnet den Plan (V-0251; §3.6, §4.5).
-10. **Kein Zeichen, nur der Schriftzug** (Silas, 05.10.2026): „stundenplanner“ in Sora, zwei Gewichte,
+10. **Das Zeichen „Raster“ des Study OS und der Schriftzug** (Silas, 18.10.2026, SP-0420: „Logo einfügen“; bis
+    dahin, Silas 05.10.2026: kein Zeichen, nur der Schriftzug). Das Zeichen sind die drei versetzten Balken des Study OS
+    (kopiert aus thalamus404/studyOS, `app/static/brand/logo.svg`, Silas' Wahl dort vom 15.09.2026), im Neon, so hoch
+    wie der Schriftzug und links davor; „stunden“ steht in Tinte, „planner“ im Neon, wie „Study“ und „OS“ in der Marke
+    des Study OS. Der Schriftzug: „stundenplanner“ in Sora, zwei Gewichte,
     „stunden“ ExtraBold (800), „planner“ Light (300), ohne Leerzeichen, Laufweite -0,03 em, als Pfad
     (V-0250, Entwurf 10 der zehn; vorher Barlow Condensed ExtraBold Italic in Versalien, V-0248, davor
     Rubik 600 aus V-0239). Am Rechner und Tablet mittig in der Kopfzeile (22 px von Ober- bis
-    Unterlänge), am Handy links (18 px), im Startbildschirm oben mittig (34 px, am Handy 28). In Tinte.
+    Unterlänge), am Handy links (18 px), im Startbildschirm oben mittig (34 px, am Handy 28).
     Sora steht unter der SIL Open Font License 1.1; die Seite selbst bleibt bei der Systemschrift (§5.7)
     und lädt keine.
     **Favicon und App-Symbol** (V-0254, Entwurf 2 von fünf, Silas: „das ist das beste Favicon“): „sp“, „s“ schwer und
     „p“ leicht wie im Schriftzug, genau mittig auf einer Kachel; hell Tinte auf `#f7f8fb`, dunkel hell auf tiefem
-    Schwarz `#000`.
+    Schwarz `#000`. In SP-0420 nicht geändert: Ob es das Zeichen „Raster“ wird, entscheidet Silas.
 
 ---
 
@@ -166,7 +173,7 @@ Zeile Höhe; er bleibt, bis der Umbau fertig ist, und geht dann ganz (index.html
 
 | Zone | Inhalt |
 |---|---|
-| **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter; am Handy steht der Schriftzug links (V-0247). Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie in Tinte darunter. Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
+| **Kopf** | Drei Spalten (V-0243): links der **Studiengang-Reiter**, in der Mitte der **Schriftzug** (§0 Punkt 10, 22 px hoch, am Handy 18), rechts die Knöpfe. Unter 1024 px zwei Zeilen: oben Schriftzug und Knöpfe, darunter der Reiter; am Handy steht der Schriftzug links (V-0247). Der Reiter: der offene Plan, Zeile 1 Studiengang mit ausgeschriebenem Abschluss und einem Winkel unten („Wirtschaftsinformatik, Bachelor of Science“), Zeile 2 Vertiefung (wenn es eine gibt), „1. Fachsemester nach Studienverlaufsplan“ (am Handy ohne „nach Studienverlaufsplan“, damit die Zeile eine Zeile bleibt), Semester und Ordnung („WiSe 2026/27, StuPO 2025“), mit einer Linie darunter, seit SP-0420 im Neon (vorher Tinte). Ein Tipp öffnet den Startbildschirm zum Wechseln (V-0234, §3.6); dort stehen alle Pläne, „Weitere folgen“ steht dort statt im Kopf. Der Code nennt keinen Studiengang. Rechts der Datenstand (ab 1440 px, sonst im Fuß), „In Kalender übernehmen“ und **„Stundenplan speichern“** (bis V-0243 „Teilen“; unter 1200 px „Kalender“ und „Speichern“, am Handy nur die Symbole, der Name im `aria-label`) |
 | **Hinweise oben** (V-0234) | nur wenn nötig, je eine Zeile über die volle Breite: ein deutliches Schild in Bernstein, wenn die Termine Ersatz aus dem Vorjahr sind („Termine aus dem Vorjahr, Ersatz.“ mit Semester und wofür), und ein ruhiger Satz auf neutraler Fläche mit rotem Warnsymbol, wenn es keine Wahl ohne Überschneidung gibt („Mit den veröffentlichten Terminen gibt es keine Wahl ohne Überschneidung.“, unsicher mit „vermutlich“). „Warum“ öffnet eine Karte mit dem Grund aus dem Lesemodell (Zeiten, Tage), dem Verdacht und fehlenden Modulen. Der Grund steht nicht in der Zeile: Er ist bis 400 Zeichen lang und nähme der Woche am Rechner die Höhe |
 | **Module** | je Modul eine **Modulkachel**: Farbkreis und Kurzname (der Knopf filtert auf das Modul), darunter klein die **Formate** in Studienordnungs-Reihenfolge, je mit der Zahl der Gruppen, auch bei einer („VL 1“, „TUT 20“). Der Farbkreis ist ein Ring und füllt sich, wenn das Modul aufgeschlagen ist; dazu trägt die Kachel wieder einen Rahmen in Tinte (2 px, hell dunkel, dunkel weiß; V-0237 entfernt, V-0245 zurück: sonst sah man schlecht, welches Modul offen ist) und rechts oben ein **Info-Symbol**, das die Modulkarte öffnet (V-0251, statt „Modul-Infos“ in der Lage) |
 | **Werkzeugzeile** | links die **Lage**: was gezeigt wird und wie man zurückkommt (§4.2), mit „Filter aufheben“, sobald gefiltert ist (bis V-0251 auch „Modul-Infos“, jetzt das Info-Symbol der Modulkachel), und den Marken für Überschneidungen und Hinweise. Rechts Zeitraum (‹ „Alle Wochen“ › bzw. „Woche ab …“), A/B, Umschalter Tag/Woche |
@@ -423,10 +430,11 @@ aus `index.json` (`stufen`, `wahl`, ARCHITEKTUR §5); die Seite kennt keinen Stu
   mit einer Option (Regel `waehlen`, ARCHITEKTUR §5). Stufen, die entfallen oder nur eine gültige
   Option haben (Vertiefung, Ordnung), erscheinen nicht; die Seite setzt sie (die Ordnung steht danach
   im Reiter des Plans). Es gibt keinen „Weiter“-, keinen „Zurück“-Knopf und kein „Weitere folgen“.
-- **Je Stufe** ein kleiner Titel (13 px 600, Zweittext) und große Karten (`--grau-1`, Rand `--grau-5`,
+- **Je Stufe** ein kleiner Titel, seit SP-0420 ein Etikett des Study OS (12 px Mono, Versalien, Laufweite 0,12 em,
+  Zweittext, §5.7), und große Karten (`--grau-1`, Rand `--grau-5`,
   Radius 14, mindestens 72 px, am Handy 68 px): Zeile 1 `label` 17 px 600, Zeile 2 `zusatz` 14 px.
   Teilen sich mindestens zwei Optionen einen Zusatz, stehen sie darunter gruppiert.
-- **Gewählte Stufen bleiben stehen** als eine Karte mit Haken und Rand in Tinte. Ein Tipp öffnet die
+- **Gewählte Stufen bleiben stehen** als eine Karte mit Haken und Rand im Neon (bis SP-0420 Tinte). Ein Tipp öffnet die
   Stufe wieder mit allen Optionen; wählt man eine andere, fallen die späteren Wahlen weg. Die Stufe, an
   der man gerade ist, zeigt alle Optionen, spätere noch nichts.
 - **Die Farbe einer Hochschule** (`farbe` in `katalog/hochschulen/*.json`, TU Berlin `#c50e1f`) füllt
@@ -434,7 +442,7 @@ aus `index.json` (`stufen`, `wahl`, ARCHITEKTUR §5); die Seite kennt keinen Stu
   4,5:1 hat (TU-Rot 5,9:1). Kein Logo der Hochschule, keine Nachahmung: nur die Farbe. Die Seite setzt
   sie über das CSSOM (`--h-farbe`), nie als `style`-Attribut.
 - **Die Fortschrittslinie** (`data-sicht="fortschritt"`): je Stufe, an der jemand wählt, ein Strich
-  28 × 4 px, erledigt Tinte, die aktuelle `--grau-7`, offen `--grau-5`. Keine Wörter (vorher:
+  28 × 4 px, erledigt Neon (bis SP-0420 Tinte), die aktuelle `--grau-7`, offen `--grau-5`. Keine Wörter (vorher:
   Stufe, Wert, „entfällt“, „automatisch“ unter jedem Balken, eine Leiste, die unten klebte); was sie
   sagt, hört ein Screenreader („Noch 2 Angaben bis zum Stundenplan“).
 - **Die letzte Wahl öffnet den Plan** (Silas, V-0251: „sobald man das Fachsemester richtig gewählt
@@ -445,6 +453,9 @@ aus `index.json` (`stufen`, `wahl`, ARCHITEKTUR §5); die Seite kennt keinen Stu
   „Zurück zum Plan“ 64).
 - **Fuß:** „Kein offizielles Angebot der Hochschulen. Deine Wahl bleibt in diesem Browser.“,
   Impressum, Datenschutz, mittig, 12 px in `--fuss-text`.
+- **Der Raum des Study OS** (SP-0420): hinter dem Startbildschirm das 46-px-Raster des Study OS (`--raum-linie`) und
+  oben mittig ein ruhiges Licht im Neon (`--raum-licht`), beides still. Nur hier: Im Plan tragen die Stundenlinien
+  die Zeit, ein zweites Raster stünde ihnen im Weg.
 - **Tokens** nur aus §5.2 „Für neue Ansichten“ und die Farbe der Hochschule; im dunklen Schema
   dieselben Regeln.
 
@@ -660,57 +671,71 @@ Alle Werte sind Variablen auf `:root`. Die Quelle ist OKLCH (gleiche Helligkeit 
 aus). **Ins CSS kommen die Hex-Werte**, weil OKLCH erst ab iOS 15.4 und Chrome 111 geht und die
 Seite auch auf alten Handys laufen muss (ARCHITEKTUR §8). Das Schema folgt
 `prefers-color-scheme`. Einen Umschalter gibt es nicht, `color-scheme: light dark` passt die
-eingebauten Bedienelemente an. `theme-color` hell `#f7f8fb`, dunkel `#111213`.
+eingebauten Bedienelemente an. `theme-color` hell `#f1f2f6`, dunkel `#06070a` (seit SP-0420; vorher `#f7f8fb`, `#111213`).
 
 ### 5.1 Farbe hat Aufgaben
 
 | Farbe | Aufgabe | nie |
 |---|---|---|
 | Grautreppe | Flächen, Linien, Text, Symbole, Bedienelemente | — |
-| **Tinte** (`--grau-10`) | Text. Als Fläche nur für das eine, das gerade gilt: die Hauptaktion einer Karte, das gedrückte Format, die Meldung, den Ring um die gefilterte Modulkachel, die Fläche der gewählten Kachel im Farbton ihres Moduls (`tinte`: hell dunkel, dunkel hell). Fokusring | nicht als Fläche einer Zone, nicht für mehr als eine Aktion je Karte |
+| **Tinte** (`--grau-10`) | Text. Als Fläche nur für das eine, das im Plan gerade gilt: das gedrückte Format, die Meldung, den Ring um die gefilterte Modulkachel, die Fläche der gewählten Kachel im Farbton ihres Moduls (`tinte`: hell dunkel, dunkel hell). Fokusring (wie an den Knöpfen des Study OS) | nicht als Fläche einer Zone, nicht für mehr als eine Aktion je Karte |
+| **Neon** (SP-0420, das Violett des Study OS: `--neon`, `--neon-schrift`, `--neon-flaeche`, `--neon-text`) | **Marke und Navigation:** das Zeichen, „planner“ im Schriftzug, die Linie unter dem Studiengang-Reiter, das gewählte Segment (Tag, Woche) und der gewählte Tag, die Fortschrittslinie und die gewählte Stufe des Startbildschirms, die Hauptaktion einer Karte (`--neon-flaeche`, Schrift `--neon-text`), Wege nach draußen in Karten, die Markierung beim Auswählen | nie im Plan: nicht auf Kacheln, Formaten, Modulkacheln, in der Legende (`web/tests/farben.test.mjs`) |
 | Modulfarben | **Kategorie Modul:** Kacheln, Formate, Farbpunkt vor dem Modulnamen, Legende | nicht für Knöpfe, Links, Überschriften, Hintergründe von Zonen |
 | Rot (Konflikt) | Überschneidung: Ring, Symbol auf neutraler Fläche, Text in Hinweisen | nicht für Löschen oder Fehler beim Laden |
 | Bernstein (Hinweis) | geändert, nicht mehr im Angebot, veraltet, Abruffehler, Speicher fehlt, der Umbau-Hinweis (V-0338) | nicht als Dekoration |
 
-**Warum Tinte statt einer Akzentfarbe:** Die Seite braucht acht Farbtöne für Module und zwei für
-Signale. Ein farbiger Akzent wäre der elfte und würde mit einem Modul verwechselt. Die Tinte ist
-eindeutig, kontraststark und lässt den Modulen die Farbe. Violett und Indigo als Akzent sind
-ohnehin ausgeschlossen (§7).
+**Warum im Plan Tinte und daneben das Neon:** Die Seite braucht acht Farbtöne für Module und zwei für
+Signale. Ein farbiger Akzent im Plan wäre der elfte und würde mit einem Modul verwechselt, das Violett mit
+der sechsten Modulfarbe. Deshalb bleibt im Plan die Tinte: eindeutig, kontraststark, sie lässt den Modulen
+die Farbe. Bis SP-0420 galt das für die ganze Seite (Silas, 05.10.2026, §9 Punkt 1). Seit Silas den Styleguide
+des Study OS will (18.10.2026, §9 Punkt 55), trägt das Neon, was um den Plan herum steht: wer die Seite ist
+(Zeichen, Schriftzug) und wo man ist (Reiter, Segment, Fortschritt, Hauptaktion). Es ist gesättigter als
+jede Modulfarbe (Chroma 0,21–0,24 gegen höchstens 0,12) und steht nie auf einer Kachel. Ein Test hält das fest:
+Keine Regel für Kachel, Format, Modul oder Legende liest `--neon`.
 
 ### 5.2 Grautreppe und Flächen
 
-Ein Hauch kühl (Ton 260, Chroma 0,004), keine Creme. Zehn Stufen und eine schwebende Fläche, jede
-mit einer Aufgabe. Dunkel neu gerechnet in V-0236 (Silas, 05.10.2026: „im Darkmode irgendwie etwas
+Die Flächen des Study Style (SP-0420; vorher ein Hauch kühles Grau, Ton 260, Chroma 0,004): hell „dieselbe
+Ordnung auf Papier“, dunkel das Tiefblau-Schwarz des Study OS, beide mit einem Hauch Blau (Ton 265–275,
+Chroma bis 0,03). Zehn Stufen und eine schwebende Fläche, jede mit einer Aufgabe. Hell sind es die Werte des
+Obsidian-Themes „Study Style“, dunkel seine Ebenen E0 (Seite), E2 (erhöht) und E3 (schwebend); wo eine Stufe für
+einen Kontrast aus §5.5 nicht reicht, ist sie nachgestellt (Zweittext dunkel `#a4acbd` statt `#9aa2b4`, damit er
+auf der Karte 7:1 hält). Dunkel neu gerechnet in V-0236 (Silas, 05.10.2026: „im Darkmode irgendwie etwas
 unstimmig“): vorher lagen Seite, Schiene, getönte Kacheln und Karten auf 0,18/0,225/0,235/0,285
 ohne Ordnung, die Karte auf derselben Stufe wie die Modulkachel.
 
 | Token | Aufgabe | hell OKLCH L | hell | dunkel OKLCH L | dunkel |
 |---|---|---|---|---|---|
-| `--grau-1` | erhöhte Fläche in der Seite: Modulkachel, mögliche Kachel (`hauch`), gewähltes Segment, Auswahl- und Eingabefeld | 0,995 | `#fdfdff` | 0,27 | `#252628` |
-| `--ebene` | schwebende Flächen: Karte, Blatt, Dialog. Hell gleich `--grau-1`, die Höhe macht der Schatten | 0,995 | `#fdfdff` | 0,315 | `#303234` |
-| `--grau-2` | Seite | 0,980 | `#f7f8fb` | 0,18 | `#111213` |
-| `--grau-3` | eingelassen: Segment-Schiene, Leiste, zurückgenommene Kachel | 0,955 | `#eef0f3` | 0,225 | `#1b1c1e` |
-| `--grau-4` | Stunden- und Tageslinien | 0,925 | `#e5e6e9` | 0,25 | `#202224` |
-| `--grau-5` | Trennlinien, Rand der Modulkachel und der zurückgenommenen Kachel | 0,885 | `#d7d9dc` | 0,31 | `#2f3032` |
-| `--grau-6` | Rand von Knöpfen ohne Modul (Segmente, Teilen); dunkel die Fläche der Kontextkachel | 0,800 | `#bcbec0` | 0,40 | `#46484a` |
-| `--grau-7` | Rand von Eingabefeldern und Auswahlfeldern (3:1) | 0,600 | `#7f8083` | 0,56 | `#737477` |
-| `--grau-8` | Symbole | 0,540 | `#6d6f71` | 0,64 | `#8b8c8f` |
-| `--grau-9` | Zweittext: Zeitachse, Zähler, Datenstand, Fußzeile; hell die Fläche der Kontextkachel | 0,450 | `#545557` | 0,81 | `#bfc1c3` |
-| `--grau-10` | Text, Tinte, Fokusring, Hauptaktion | 0,235 | `#1d1e20` | 0,93 | `#e6e8ea` |
+| `--grau-1` | erhöhte Fläche in der Seite: Modulkachel, mögliche Kachel (`hauch`), gewähltes Segment, Auswahl- und Eingabefeld | 0,991 | `#fcfcfd` | 0,191 | `#11141b` |
+| `--ebene` | schwebende Flächen: Karte, Blatt, Dialog. Hell weiß, die Höhe macht der Schatten | 1,0 | `#ffffff` | 0,223 | `#181b24` |
+| `--grau-2` | Seite | 0,962 | `#f1f2f6` | 0,129 | `#06070a` |
+| `--grau-3` | eingelassen: Segment-Schiene, Leiste, zurückgenommene Kachel | 0,937 | `#e8eaf0` | 0,174 | `#0e1016` |
+| `--grau-4` | Stunden- und Tageslinien | 0,916 | `#e1e3e8` | 0,232 | `#1a1d26` |
+| `--grau-5` | Trennlinien, Rand der Modulkachel und der zurückgenommenen Kachel | 0,882 | `#d6d8de` | 0,274 | `#232733` |
+| `--grau-6` | Rand von Knöpfen ohne Modul (Segmente, Teilen); dunkel die Fläche der Kontextkachel | 0,811 | `#bec1c8` | 0,383 | `#3d4352` |
+| `--grau-7` | Rand von Eingabefeldern und Auswahlfeldern (3:1) | 0,603 | `#7a8192` | 0,51 | `#5e6678` |
+| `--grau-8` | Symbole | 0,552 | `#6b7283` | 0,613 | `#7c8496` |
+| `--grau-9` | Zweittext: Zeitachse, Zähler, Datenstand, Fußzeile; hell die Fläche der Kontextkachel | 0,432 | `#4a5060` | 0,744 | `#a4acbd` |
+| `--grau-10` | Text, Tinte, Fokusring, die Meldung, das gedrückte Format | 0,201 | `#14161c` | 0,943 | `#e9ecf2` |
+| `--neon` (SP-0420) | Zeichen, „planner“, Linien | 0,540 | `#7a44e0` | 0,654 | `#a06bff` |
+| `--neon-schrift` | Schrift im Neon: gewähltes Segment, Wege in Karten | 0,496 | `#6a34d6` | 0,763 | `#c29bff` |
+| `--neon-flaeche`, `--neon-text` | die Hauptaktion: Fläche und Schrift (7:1) | 0,479 | `#6529d4`, `#ffffff` | 0,722 | `#b48aff`, `#120621` |
 
-**Dunkel: je höher, desto heller, vier Stufen im Abstand 0,045** — Seite 0,18 (Ton 6, nie reines
-Schwarz), eingelassen 0,225, erhöht 0,27, schwebend 0,315. Schwebende Flächen tragen dunkel keinen
-Schatten, sondern 1 px `--rand-ebene` (`rgb(255 255 255 / .1)`). **Schrift** 0,93 und 0,81 statt
-etwa 87/60 % Weiß aus dem Masterfile: Bei 60 % (L ≈ 0,70) fiele der Zweittext auf der Karte unter
-7:1 (5,0); mit 0,81 hält er 7,13:1 auf `--ebene` und bleibt deutlich unter der Hauptschrift.
+**Dunkel: je höher, desto heller** — seit SP-0420 die Ebenen des Study OS: Seite 0,129 (E0, Tiefblau-Schwarz,
+nie reines Schwarz), eingelassen 0,174, erhöht 0,191 (E2), schwebend 0,223 (E3); bis SP-0420 vier Stufen im Abstand
+0,045 ab 0,18. Schwebende Flächen tragen dunkel keinen
+Schatten, sondern 1 px `--rand-ebene` (`rgb(255 255 255 / .1)`). **Schrift** 0,943 und 0,744 (die Schrift des
+Study OS, der Zweittext eine Spur heller): Mit `#9aa2b4` des Study OS hielte der Zweittext auf der Karte nur 6,8:1,
+mit `#a4acbd` 7,55:1, und er bleibt deutlich unter der Hauptschrift.
 
 **Rollen-Tokens** (V-0236): Wo ein Zustand je Schema eine andere Stufe braucht, steht eine Rolle
 statt einer Stufe in der Regel, und Kachel und Legende lesen dieselbe:
 
 | Token | Aufgabe | hell | dunkel |
 |---|---|---|---|
-| `--fuss-text` (V-0237, V-0243, V-0246) | Fuß, Legende, Startbildschirm-Fuß: tritt so weit zurück, wie es geht (Silas: „noch ein bisschen blasser“), und hält gerade 4,5:1 | `#707274` (4,55:1) | `#7c7d80` (4,56:1) |
-| `--ebene`, `--rand-ebene`, `--schatten` | schwebende Ebene | `#fdfdff`, `--grau-5`, zweilagig | `#303234`, `rgb(255 255 255 / .1)`, keiner |
+| `--fuss-text` (V-0237, V-0243, V-0246, SP-0420) | Fuß, Legende, Startbildschirm-Fuß: tritt so weit zurück, wie es geht (Silas: „noch ein bisschen blasser“), und hält 4,5:1, dunkel auch auf `--grau-1` | `#676e7f` (4,56:1) | `#768092` (5,06:1) |
+| `--ebene`, `--rand-ebene`, `--schatten` | schwebende Ebene | `#ffffff`, `--grau-5`, zweilagig, in Tiefblau statt Schwarz | `#181b24`, `rgb(255 255 255 / .1)`, keiner |
+| `--neon-weich`, `--raum-linie`, `--raum-licht` (SP-0420) | Markierung beim Auswählen; Raster und Licht hinter dem Startbildschirm | Violett 16 %, Tiefblau 3,5 %, Violett 7 % | Violett 28 %, Weiß 1,9 %, Violett 14 % |
 
 **Für neue Ansichten** (der Hello-Screen, V-0234): nur diese Tokens benutzen, keine Hex-Werte in
 Regeln. Seite `--grau-2`; Karte oder Zeile in der Seite `--grau-1` mit Rand `--grau-5`; schwebend
@@ -732,7 +757,7 @@ folgt dem Schema, so dass ein Modul in beiden gleich erkennbar ist.
 
 | Rolle | Aufgabe | hell L / C | dunkel L / C |
 |---|---|---|---|
-| `hauch` | Fläche der möglichen Kachel, **neutral**: gleich `--grau-1`, in beiden Schemata ohne Tönung (hell seit V-0225, Silas: weniger blasse Pastellflächen; dunkel seit V-0236, vorher je Modul getönt, ein Flickenteppich) | 0,995 / 0 | 0,27 / 0 |
+| `hauch` | Fläche der möglichen Kachel, **neutral**: gleich `--grau-1`, in beiden Schemata ohne Tönung (hell seit V-0225, Silas: weniger blasse Pastellflächen; dunkel seit V-0236, vorher je Modul getönt, ein Flickenteppich) | 0,991 / 0 | 0,191 / 0,015 |
 | `rand` | Rand der möglichen Kachel und des offenen Formats, Farbpunkt | 0,62 / ≤ 0,12 | 0,70 / 0,095 |
 | `flaeche` | Fläche des gewählten Formats und der Vorschlagskachel | 0,87 / ≤ 0,075 | 0,35 / 0,055 |
 | `tinte` | Schrift und Symbole auf `flaeche`, gestrichelter Rand der Vorschlagskachel, Fläche des Plus-Knopfs; dunkel auch die Fläche der gewählten Kachel | 0,33 / ≤ 0,08 | 0,87 / 0,055 |
@@ -741,14 +766,14 @@ folgt dem Schema, so dass ein Modul in beiden gleich erkennbar ist.
 
 | | Ton | hell `hauch` | `rand` | `flaeche` | `tinte` | dunkel `hauch` | `rand` | `flaeche` | `tinte` |
 |---|---|---|---|---|---|---|---|---|---|
-| `--m1` Blau | 250 | `#fdfdff` | `#488acb` | `#b4d8ff` | `#0e375c` | `#252628` | `#70a3d8` | `#233c56` | `#bad8f8` |
-| `--m2` Sand | 80 | `#fdfdff` | `#ac7d1b` | `#eecf9c` | `#483000` | `#252628` | `#bd9857` | `#4a3716` | `#e8d1ac` |
-| `--m3` Grün | 150 | `#fdfdff` | `#4a9a5e` | `#b2e3bb` | `#0d401e` | `#252628` | `#72af7f` | `#24432b` | `#bcdfc2` |
-| `--m4` Rosé | 350 | `#fdfdff` | `#bb6690` | `#fbc1db` | `#53223b` | `#252628` | `#cb86a7` | `#502e3f` | `#f2c6d9` |
-| `--m5` Türkis | 200 | `#fdfdff` | `#03999f` | `#98e4e8` | `#003e41` | `#252628` | `#48b0b6` | `#0a4346` | `#aae0e2` |
-| `--m6` Violett | 300 | `#fdfdff` | `#9274c3` | `#dbcaff` | `#3c2a58` | `#252628` | `#a791d1` | `#3f3453` | `#d9cdf4` |
-| `--m7` Orange | 50 | `#fdfdff` | `#bf6e3e` | `#fec7a9` | `#552707` | `#252628` | `#ce8d68` | `#52321f` | `#f3cbb5` |
-| `--m8` Oliv | 115 | `#fdfdff` | `#848e2d` | `#d2dba2` | `#343900` | `#252628` | `#9ca65f` | `#3a3e1a` | `#d2d9b0` |
+| `--m1` Blau | 250 | `#fcfcfd` | `#488acb` | `#b4d8ff` | `#0e375c` | `#11141b` | `#70a3d8` | `#233c56` | `#bad8f8` |
+| `--m2` Sand | 80 | `#fcfcfd` | `#ac7d1b` | `#eecf9c` | `#483000` | `#11141b` | `#bd9857` | `#4a3716` | `#e8d1ac` |
+| `--m3` Grün | 150 | `#fcfcfd` | `#4a9a5e` | `#b2e3bb` | `#0d401e` | `#11141b` | `#72af7f` | `#24432b` | `#bcdfc2` |
+| `--m4` Rosé | 350 | `#fcfcfd` | `#bb6690` | `#fbc1db` | `#53223b` | `#11141b` | `#cb86a7` | `#502e3f` | `#f2c6d9` |
+| `--m5` Türkis | 200 | `#fcfcfd` | `#03999f` | `#98e4e8` | `#003e41` | `#11141b` | `#48b0b6` | `#0a4346` | `#aae0e2` |
+| `--m6` Violett | 300 | `#fcfcfd` | `#9274c3` | `#dbcaff` | `#3c2a58` | `#11141b` | `#a791d1` | `#3f3453` | `#d9cdf4` |
+| `--m7` Orange | 50 | `#fcfcfd` | `#bf6e3e` | `#fec7a9` | `#552707` | `#11141b` | `#ce8d68` | `#52321f` | `#f3cbb5` |
+| `--m8` Oliv | 115 | `#fcfcfd` | `#848e2d` | `#d2dba2` | `#343900` | `#11141b` | `#9ca65f` | `#3a3e1a` | `#d2d9b0` |
 
 **Zustandslogik, in beiden Schemata dieselbe Regel** (V-0236; vorher hatte das dunkle Schema eigene
 Regeln, dort waren eingeplant und automatisch gleich gefüllt und kaum von wählbar zu trennen). Ein
@@ -790,30 +815,41 @@ gerechnet am 05.10.2026 (V-0236), nicht gerundet. Ziel für Text 7:1, Pflicht 4,
 
 | Paar | hell | dunkel | Ziel |
 |---|---|---|---|
-| Text `--grau-10` auf Seite `--grau-2` | 15,71 | 15,27 | 7 |
-| Text auf Karte `--ebene` | 16,42 | 10,48 | 7 |
-| Text auf erhöhter Fläche `--grau-1` | 16,42 | 12,33 | 7 |
-| Zweittext `--grau-9` auf Seite | 7,03 | 10,39 | 7 |
-| Zweittext auf Karte `--ebene` | 7,35 | 7,13 | 7 |
-| Zweittext auf `--grau-1` | 7,35 | 8,39 | 7 |
-| zurückgenommene Kachel: `--grau-9` auf `--grau-3` | 6,54 | 9,45 | 4,5 |
-| Hinweis im Fuß: `--fuss-text` auf Seite (V-0246; die Kontextkachel ist seit V-0237 durchscheinend und kein Lesetext) | 4,55 | 4,56 | 4,5 |
-| `--grau-1` auf `--grau-9` (Paar in sicht.py) | 7,35 | 8,39 | 7 |
-| `--grau-10` auf `--grau-6` (Paar in sicht.py) | 8,95 | 7,48 | 7 |
-| gewählte Kachel: `--grau-1` auf `tinte` | 11,68 | 9,99 | 7 |
-| Text `--grau-10` auf `hauch` (mögliche Kachel) | 16,42 | 12,33 | 7 |
+| Text `--grau-10` auf Seite `--grau-2` | 16,16 | 17,02 | 7 |
+| Text auf Karte `--ebene` | 18,08 | 14,53 | 7 |
+| Text auf erhöhter Fläche `--grau-1` | 17,64 | 15,57 | 7 |
+| Zweittext `--grau-9` auf Seite | 7,20 | 8,84 | 7 |
+| Zweittext auf Karte `--ebene` | 8,05 | 7,55 | 7 |
+| Zweittext auf `--grau-1` | 7,85 | 8,08 | 7 |
+| zurückgenommene Kachel: `--grau-9` auf `--grau-3` | 6,70 | 8,34 | 4,5 |
+| Hinweis im Fuß: `--fuss-text` auf Seite (V-0246; die Kontextkachel ist seit V-0237 durchscheinend und kein Lesetext) | 4,56 | 5,06 | 4,5 |
+| `--grau-1` auf `--grau-9` (Paar in sicht.py) | 7,85 | 8,08 | 7 |
+| `--grau-10` auf `--grau-6` (Paar in sicht.py) | 10,03 | 8,36 | 7 |
+| gewählte Kachel: `--grau-1` auf `tinte` | 11,58 | 12,16 | 7 |
+| Text `--grau-10` auf `hauch` (mögliche Kachel) | 17,64 | 15,57 | 7 |
 | `tinte` auf `flaeche` (Vorschlagskachel, gewähltes Format) | 8,25 | 7,57 | 7 |
-| `rand` auf Seite (Kachelrand, Chiprand, Farbpunkt) | 3,26 | 6,70 | 3 |
-| `rand` auf `--grau-1` (Modulkachel, mögliche Kachel) | 3,40 | 5,41 | 3 |
-| Rand der Eingabefelder `--grau-7` auf Seite | 3,72 | 4,01 | 3 |
-| Symbole `--grau-8` auf Seite | 4,75 | 5,58 | 3 |
-| Fokusring `--grau-10` auf Seite | 15,71 | 15,27 | 3 |
-| Hauptaktion: `--grau-1` auf `--grau-10` | 16,42 | 12,33 | 7 |
-| Konfliktring auf Seite | 5,07 | 6,04 | 3 |
-| Konflikttext auf Seite | 7,03 | 9,69 | 4,5 |
+| `rand` auf Seite (Kachelrand, Chiprand, Farbpunkt) | 3,09 | 7,20 | 3 |
+| `rand` auf `--grau-1` (Modulkachel, mögliche Kachel) | 3,37 | 6,59 | 3 |
+| Rand der Eingabefelder `--grau-7` auf Seite | 3,49 | 3,50 | 3 |
+| Symbole `--grau-8` auf Seite | 4,31 | 5,37 | 3 |
+| Fokusring `--grau-10` auf Seite | 16,16 | 17,02 | 3 |
+| Meldung, gedrücktes Format: `--grau-1` auf `--grau-10` | 17,64 | 15,57 | 7 |
+| Neon (Zeichen, Reiter, Fortschritt) auf `--grau-1` | 5,49 | 5,30 | 3 |
+| Neonschrift auf Seite | 6,10 | 9,04 | 4,5 |
+| Neonschrift auf `--grau-1` (gewähltes Segment) | 6,66 | 8,27 | 4,5 |
+| Neonschrift auf Karte `--ebene` (Wege nach draußen) | 6,83 | 7,72 | 4,5 |
+| Hauptaktion: `--neon-text` auf `--neon-flaeche` | 7,44 | 7,47 | 7 |
+| Konfliktring auf Seite | 4,81 | 6,49 | 3 |
+| Konflikttext auf Seite | 6,67 | 10,40 | 4,5 |
 | Konflikttext auf Konfliktfläche | 6,50 | 7,94 | 4,5 |
-| Hinweissymbol auf Seite | 3,27 | 9,93 | 3 |
+| Hinweissymbol auf Seite | 3,10 | 10,66 | 3 |
 | Hinweistext auf Hinweisfläche | 6,48 | 9,55 | 4,5 |
+
+Gerechnet am 18.10.2026 (SP-0420) mit den neuen Flächen. Die Seite ist hell etwas dunkler als vorher (`#f1f2f6`
+statt `#f7f8fb`); am knappsten sind deshalb der Kachelrand (3,09) und das Hinweissymbol (3,10), beide über 3:1.
+Das Neon als Schrift hält 4,5:1 wie die Signaltexte, als Fläche der Hauptaktion 7:1: Dafür ist es dort hell
+eine Stufe tiefer (`#6529d4`) und dunkel eine heller (`#b48aff`) als das Neon der Linien. Das Violett des Study OS
+(`#a06bff`) mit dunkler Schrift hielte höchstens 6,0:1.
 
 Zwei Folgerungen stehen schon in §3.2: Der Konfliktring liegt **außen mit 1 px Luft** in
 Seitenfarbe, weil Rot neben der gefüllten Kachel nur 2,20:1 (hell) bzw. 2,05:1 (dunkel) hätte.
@@ -834,8 +870,12 @@ gelten für Werbeseiten, nicht für dieses Werkzeug.
 ### 5.7 Schrift
 
 - **Systemschrift**, keine Webfont: `system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
-  "Helvetica Neue", Arial, sans-serif`. Kein Monospace, auch nicht für Zeiten: Ziffern sind
-  gleich breit über `font-variant-numeric: tabular-nums`.
+  "Helvetica Neue", Arial, sans-serif`. Ziffern sind gleich breit über `font-variant-numeric: tabular-nums`.
+- **Mono nur, wo das Study OS sie setzt** (SP-0420): die Ziffern der Zeitachse („08“ … „20“) und die Etiketten.
+  Die Schrift des Geräts (`--mono`: SF Mono, Menlo, Cascadia Mono, Consolas …), keine Webfont. Nicht in Kacheln,
+  Formaten, Knöpfen: Mono ist breiter, und die Breiten dort sind gemessen.
+- **Etikett** (SP-0420, das Etikett des Study OS): 12 px Mono, Versalien, Laufweite 0,12 em, 400, Zweittext. Heute
+  nur die Titel der Stufen im Startbildschirm („Hochschule“, „Studiengang“, „Fachsemester“).
 - **Eine Skala, drei Größen:** 12 / 14 / 16 px, Zeilenhöhe 16 / 20 / 24 px. Keine Ansicht nutzt
   mehr als diese drei.
 
@@ -846,18 +886,22 @@ gelten für Werbeseiten, nicht für dieses Werkzeug.
 | 16 px | Optionen des Startbildschirms, Kartentitel, Lesetext in Hilfe und Modulhinweisen. Auf Touch-Geräten alle Auswahl- und Eingabefelder (sonst vergrößert iOS beim Antippen) |
 
 - **Zwei Gewichte:** 400 und 600. Hierarchie zuerst über Gewicht und Farbe, nicht über Größe.
-- Laufweite 0 (alle Größen ≤ 16 px). Keine Versalien, auch nicht für Beschriftungen.
+- Laufweite 0 (alle Größen ≤ 16 px). Keine Versalien. Die eine Ausnahme ist das Etikett (oben).
 - Lesetext höchstens 66 Zeichen je Zeile.
 
 ### 5.8 Radien und Tiefe
 
-- **Radien:** 4 px (Kacheln), 6 px (Formate), 8 px (Knöpfe, Segmente, Auswahlfelder, Meldung),
-  12 px (Modulkacheln, Karten, Dialog, obere Ecken des Blatts), rund (Farbpunkt). Verschachtelt gilt:
-  innen = außen − Innenabstand (Segment in einer Schiene mit 8 px und 2 px Rand: 6 px).
+- **Radien** (seit SP-0420 die drei des Study OS, `--r-1`, `--r-2`, `--r-3`): 4 px (Kacheln, Segment in seiner
+  Schiene, Wege im Text), 6 px `--r-1` (Knöpfe, Formate, Schienen, Auswahlfelder, Tagesreiter, Hinweise), 10 px
+  `--r-2` (Modulkacheln, Meldung, das Bild im Dialog), 14 px `--r-3` (Karten, Dialog, obere Ecken des Blatts, Tipp,
+  Optionen des Startbildschirms), rund (Farbpunkt). Der Knopf auf der Kachel bleibt 8 px (§3.2). Verschachtelt gilt:
+  innen = außen − Innenabstand (Segment in einer Schiene mit 6 px und 2 px Rand: 4 px). Bis SP-0420: 4, 6, 8, 12.
 - **Ringe** (Überschneidung rot, Hinweis Bernstein, Gruppe beim Zeigen Tinte) sind `outline` mit
   1 px Abstand, kein Schatten: Schatten gehören nur den schwebenden Ebenen.
 - **Tiefe:** Die Seite ist flach. Schatten haben nur schwebende Ebenen (Karte, Blatt, Dialog,
-  Meldung), zweilagig aus einer Lichtquelle: `0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12)`,
+  Meldung), zweilagig aus einer Lichtquelle, seit SP-0420 in Tiefblau wie im Study Style:
+  `0 1px 2px rgb(16 20 32 / .06), 0 8px 24px rgb(16 20 32 / .12)`. Nicht die Unschärfe der Überlagerungen des Study
+  OS (56 px): Der schwebende Umschalter am Handy würfe sie über die unteren Formate (`ops/sicht.py` #3, gemessen),
   dazu 1 px Rand `--grau-5`. Dunkel: kein Schatten, Höhe über die hellere Fläche `--ebene` und den
   hellen 1-px-Rand `rgb(255 255 255 / .1)` (§5.2).
   Kein Schein, kein Glas, keine Unschärfe.
@@ -944,10 +988,10 @@ zugänglichen Namen tragen. Keine Emoji und keine Unicode-Zeichen als Symbole
 | | Budget | Begründung |
 |---|---|---|
 | Bibliotheken, Frameworks, Webfonts, CDN | **keine** | ARCHITEKTUR §8 |
-| HTML | ≤ 17 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms, der Schriftzug als Pfad (3,9 KB, inline statt einer eigenen Anfrage vor der ersten Kachel; V-0243), der Pfeiltasten-Tipp (V-0246). Bis V-0234: 10 KB, bis V-0243: 11 KB, bis V-0246: 16 KB |
-| CSS | ≤ 56 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, bis V-0246: 44 KB, bis V-0250: 47 KB, bis V-0251: 53 KB, dazu in V-0253 der Dialog mit dem Bild des Plans; dazu kamen Startbildschirm, Legende links, Fuß und Tipp, in V-0251 die Tokens für eingeplant und Vorschlag je Schema, 48 Zeilen, siehe unten) |
+| HTML | ≤ 18 KB | Rahmen mit Kopf- und Fußzeile, SVG-Symbole inline, der Rahmen des Startbildschirms, der Schriftzug als Pfad (3,9 KB, inline statt einer eigenen Anfrage vor der ersten Kachel; V-0243), der Pfeiltasten-Tipp (V-0246), das Zeichen des Study OS (SP-0420). Bis V-0234: 10 KB, bis V-0243: 11 KB, bis V-0246: 16 KB, bis SP-0420: 17 KB |
+| CSS | ≤ 59 KB | eine Datei, Tokens §5 (bis V-0225: 28 KB, bis V-0234: 32 KB, bis V-0237: 40 KB, bis V-0246: 44 KB, bis V-0250: 47 KB, bis V-0251: 53 KB, bis SP-0420: 56 KB, dazu in V-0253 der Dialog mit dem Bild des Plans, in SP-0420 die Tokens und Regeln des Study OS; dazu kamen Startbildschirm, Legende links, Fuß und Tipp, in V-0251 die Tokens für eingeplant und Vorschlag je Schema, 48 Zeilen, siehe unten) |
 | JavaScript | ≤ 138 KB, in höchstens 6 Dateien | Module ohne Build-Schritt, mit Kommentaren, die das Warum tragen (bis V-0225: 80 KB, bis V-0234: 90 KB, bis V-0237: 120 KB). `ics.mjs` und `bild.mjs` (V-0253) laden erst bei der ersten Bedienung und zählen hier nicht |
-| Code zusammen, komprimiert | **≤ 72 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB, bis V-0246: 64 KB, bis V-0250: 66 KB; dazu kamen der Schriftzug, 1,9 KB, der Verlauf der Ansichten und der Tipp, in V-0251 die Farben je Schema, das Info-Symbol und die Pfeile nach einem Klick) |
+| Code zusammen, komprimiert | **≤ 74 KB** | die Auslieferung (Cloudflare Pages) komprimiert (bis V-0225: 40 KB, bis V-0234: 45 KB, bis V-0237: 58 KB, bis V-0245: 62 KB, bis V-0246: 64 KB, bis V-0250: 66 KB, bis SP-0420: 72 KB; dazu kamen der Schriftzug, 1,9 KB, der Verlauf der Ansichten und der Tipp, in V-0251 die Farben je Schema, das Info-Symbol und die Pfeile nach einem Klick) |
 | Datendatei des Plans | ≤ 600 KB, komprimiert ≤ 60 KB | heute 407 KB / 28 KB. Wird es mehr, ist das ein Befund fürs Lesemodell |
 | Anfragen bis zum fertigen Raster | ≤ 10, alle vom eigenen Ort und **ohne Kaskade**: Das HTML nennt CSS und jedes Modul (`modulepreload`), sie laden parallel | HTML, CSS, die Module, `index.json`, Plan-Datei (bis 05.10.2026: 6) |
 | Erstes Bild | Rahmen und Raster-Gerüst aus HTML und CSS, ohne JS | kein leerer weißer Schirm |
@@ -1030,6 +1074,11 @@ mit Bild). CSS ≤ 56 KB, JS ≤ 138 KB, gzip ≤ 72 KB; LCP, CLS und TBT unver�
 sechsmal gestiegen, jedes Mal wegen Kommentaren und Bedienung, nie wegen der Wirkung: Die Frage nach dem
 Auslieferschritt (§9 Punkt 4) ist reif.
 
+**SP-0420 (der Styleguide des Study OS), technisch; Silas kann es ändern:** Das Zeichen, der Schriftzug in zwei Pfaden
+und die Sätze dazu kosten 0,8 KB HTML (17,7 KB), die Tokens des Study Style, das Neon an seinen Stellen, die Radien, das
+Etikett und der Raum des Startbildschirms 3,8 KB CSS (58,6 KB), komprimiert zusammen etwa 1 KB (gemessen 72,5 KB, eine
+halbe über der alten Grenze). HTML ≤ 18 KB, CSS ≤ 59 KB, komprimiert ≤ 74 KB; die Grenzen der Wirkung bleiben. Die Frage nach dem Auslieferschritt (§9 Punkt 4) bleibt offen.
+
 Zwei Dinge, die die Blockierzeit gedrückt haben und so bleiben müssen: **kein `Intl`** (ein
 `Intl.Collator` und ein `Intl.DateTimeFormat` mit Zeitzone kosteten beim Laden zusammen 90 ms im
 längsten Block; `raster.mjs` vergleicht Namen selbst, `text.mjs` rechnet die Berliner Zeit nach
@@ -1044,7 +1093,7 @@ hier konkret droht, viele davon trägt das Vorbild.
 
 | Stufe | Tell | wo es hier droht | was wir tun |
 |---|---|---|---|
-| S | violetter/indigo Akzent | das Vorbild ist violett | Akzent ist die Tinte. Violett gibt es nur als sechste Modulfarbe, blass |
+| S | violetter/indigo Akzent | das Vorbild ist violett | Im Plan ist der Akzent die Tinte, Violett dort nur als sechste Modulfarbe, blass. Seit SP-0420 Silas' Entscheidung (§9 Punkt 55): das Neon des Study OS an Marke und Navigation, an den Stellen aus §5.1 und nur dort (`ops/sicht.py` kennt sie als `NEON_OK`, `web/tests/farben.test.mjs` hält es aus dem Plan) |
 | S | Emoji oder Zeichen als Symbole | ✓ ○ ↻ ↗ im Vorbild | ein SVG-Satz (§5.12) |
 | S | erfundene Zahlen, Platzhalter | Statuszeile mit Zählern, Beispieldaten | nur echte Zahlen, und nur dort, wo man sie braucht. Testdaten sind erkennbar erfunden |
 | A | Werbezeile als Überschrift („Deine Woche. Dein Plan.“), Hilfstext unter jeder Überschrift | Kopf und Erklärsatz im Vorbild | kein Kopfbereich, kein Slogan, keine Erklärsätze auf der Seite. Hilfe liegt in der Hilfe |
@@ -1053,8 +1102,8 @@ hier konkret droht, viele davon trägt das Vorbild.
 | A | Einblenden beim Scrollen, Anheben beim Zeigen | Kacheln, Formate | keine Bewegung im Raster außer der kurzen Wahl-Animation, Zeigen ist eine 8-%-Überlage (§5.10) |
 | A | Floskeln („nahtlos“, „Entdecke …“) | Leerzustände, Hilfe | Wörter der Quelle, Verben auf Knöpfen (§5.13) |
 | B | nur dunkel, gedämpfter Zweittext unter 7:1 | Vorbild nur dunkel | beide Schemata, Zweittext 7,03:1 hell, 9,35:1 dunkel |
-| B | Versalien-Zeile über Überschriften | „WINTERSEMESTER 2026/27 · 1. FACHSEMESTER“ | keine Versalien |
-| B | Monospace für Daten, Terminal-Anmutung | Zeiten, SWS, Nummern im Vorbild | Systemschrift mit gleich breiten Ziffern |
+| B | Versalien-Zeile über Überschriften | „WINTERSEMESTER 2026/27 · 1. FACHSEMESTER“ | keine Versalien, außer dem Etikett des Study OS an den Stufen des Startbildschirms (SP-0420, §5.7; `ETIKETT_OK` in `ops/sicht.py`) |
+| B | Monospace für Daten, Terminal-Anmutung | Zeiten, SWS, Nummern im Vorbild | Systemschrift mit gleich breiten Ziffern; Mono seit SP-0420 nur an der Zeitachse und im Etikett (§5.7) |
 | B | Regenbogen aus Farben, pulsierende Punkte | acht Modulfarben, Hinweismarken | Modulfarben nur auf Kacheln, Formaten, Farbpunkt, Legende. Gerüst grau. Nichts pulsiert |
 | B | die Gegen-Masche: fast schwarz mit einem grellen Akzent, Haarlinien, null Radius | ein dichtes Raster verführt dazu | hell als Grundfall, Radien 4/8/12, Linien nur wo sie Zeit und Tag tragen |
 | B | Inhalt hängt an einer Animation | Laden | Rahmen sofort sichtbar, nichts wird eingeblendet |
@@ -1127,7 +1176,8 @@ Die Grundentscheidungen, die der Entwurf vorschlug. **Silas hat sie am 05.10.202
 so ist es gebaut (V-0220):
 
 1. **Keine Markenfarbe.** Der Akzent ist nur die Tinte, Farbe tragen nur die Module, Rot steht für
-   Überschneidungen, Bernstein für Hinweise (§5.1).
+   Überschneidungen, Bernstein für Hinweise (§5.1). *Für die Seite um den Plan herum abgelöst durch Punkt 55
+   (SP-0420): Marke und Navigation tragen das Neon des Study OS; im Plan gilt Punkt 1 weiter.*
 2. **Startansicht „Noch offen“, und die gewählten Gruppen bleiben darin sichtbar** (§4.1). Das
    Vorbild startete mit „Alle Möglichkeiten“ und blendete in „Noch offen“ das Gewählte aus.
    *Abgelöst durch Punkt 21 (V-0237): Die Startansicht ist „Mein Stundenplan“.*
@@ -1272,9 +1322,38 @@ machen.“
 54. **Favicon „Schwer und leicht“** (Punkt 8376683f, gebaut in V-0254): „sp“ mittig, dunkel auf tiefem Schwarz
     (§0 Punkt 10). Aus fünf Entwürfen gewählt.
 
+**Silas, 18.10.2026: der Styleguide des Study OS** (Punkt e8a23554, gebaut in SP-0420):
+
+55. *„… mach einen Design-Rehaul … lass alle Elemente so, wie sie sind, aber füg bitte irgendwie ein Style-Guide vom
+    Study-OS hinzu, sodass du sowohl das Logo als auch die … Style-Guide-Geschichten, die auch im Study-Cockpit in
+    Obsidian oder in den Study-Cards in Obsidian kommen … nach diesen Style-Vorgaben den Stundenplaner umändern, aber
+    bitte dabei das Layout nicht verändern, sondern wirklich nur die Akzente setzen, Logo einfügen … Die Bedienung sollte
+    darunter nicht leiden.“* Danach: *„Es geht mir vor allem um den Semesterplan, also den Stundenplanner unter /silas“*;
+    die öffentliche Seite geht mit (Silas' Antwort: „Beides“). Gebaut: das Zeichen „Raster“ vor dem Schriftzug,
+    „planner“ im Neon (§0 Punkt 10); die Flächen des Study Style, hell Papier, dunkel Tiefblau-Schwarz (§5.2); das Neon
+    an Marke und Navigation, nie im Plan (§5.1); die Radien 6/10/14 (§5.8); das Etikett und Mono an der Zeitachse
+    (§5.7); der Raum des Study OS hinter dem Startbildschirm (§3.6). Zonen, Größen, Abstände und Bedienung bleiben;
+    `/silas` ebenso (docs/SILAS.md §3).
+
 ---
 
 ## 10. Was der Bau anders macht als oben, gesammelt
+
+- **SP-0420, der Styleguide des Study OS** (technisch; Silas kann es ändern):
+  - **Rot und Bernstein bleiben** die des Stundenplanners, nicht `--fehl` (`#ff5c7c`) und `--warn` (`#ff7a45`) des Study
+    OS: Das Rosa-Rot läge neben der vierten Modulfarbe (Rosé), das Orange neben der siebten.
+  - **Das Neon hell eine Stufe tiefer** wie im Obsidian-Theme (`#7a44e0`), die Hauptaktion hell noch eine (`#6529d4`)
+    und dunkel eine heller (`#b48aff`), damit ihre Schrift 7:1 hält (§5.5).
+  - **Keine Schatten und kein Glas auf der flachen Seite**, auch wenn die Instrumente des Study OS sie tragen: Die Seite
+    bleibt flach (§5.8), Schatten haben nur schwebende Ebenen. Die wandernden Lichter des Study OS stehen still und nur
+    hinter dem Startbildschirm (§3.6).
+  - **Mono nicht in Kacheln, Formaten und am Stand im Kopf**: breiter als die Systemschrift; ab 1440 px reichte der
+    Platz neben dem Schriftzug nicht mehr.
+  - **Der Fokusring bleibt Tinte**, wie an den Knöpfen des Study OS (`outline: 2px solid var(--text)`): Im Neon hielt
+    er an seinen geglätteten Kanten keine 3:1, am Modulnamen fehlten 7 % der Ringfläche (§8 #10, gemessen).
+  - **Der Schatten schwebender Ebenen behält seine Größe** (24 px Unschärfe), nur die Farbe ist Tiefblau (§5.8).
+  - **Favicon und App-Symbol unverändert** („sp“, §0 Punkt 10): Silas hat es am 05.10. aus fünf Entwürfen gewählt; ob
+    es das Zeichen „Raster“ wird, entscheidet er.
 
 Jede Abweichung steht mit ihrem Grund an ihrer Stelle; hier nur die Liste, damit Silas' Test sie
 findet.

@@ -56,7 +56,7 @@ Ohne Haken lässt sich nicht zählen, was ein Chip oder eine Kachel ist; dann he
 Schwebende Ebenen (Karte, Blatt, Dialog) sind `role="dialog"` oder `<dialog>`. Die Tokens aus §5
 stehen als Variablen auf :root: `--grau-1` … `--grau-10`, `--m1-hauch|rand|flaeche|tinte` …
 `--m8-…`, `--konflikt`, `--konflikt-text`, `--konflikt-flaeche`, `--hinweis`, `--hinweis-text`,
-`--hinweis-flaeche`. Die erfundene Auswahl kommt über den Speicherschlüssel aus ARCHITEKTUR §6.
+`--hinweis-flaeche`, seit SP-0420 `--neon`, `--neon-schrift`, `--neon-flaeche`, `--neon-text`, `--ebene`. Die erfundene Auswahl kommt über den Speicherschlüssel aus ARCHITEKTUR §6.
 
 Was gemessen wird (je Lauf = Fenster × Schema × Auswahl, Standardansicht ohne Klick)
 -------------------------------------------------------------------------------------
@@ -259,7 +259,14 @@ KONTRAST_PAARE = [
     ('Rand der Eingabefelder --grau-7 auf Seite', '--grau-7', '--grau-2', 3),
     ('Symbole --grau-8 auf Seite', '--grau-8', '--grau-2', 3),
     ('Fokusring --grau-10 auf Seite', '--grau-10', '--grau-2', 3),
-    ('Hauptaktion: --grau-1 auf --grau-10', '--grau-1', '--grau-10', 7),
+    ('Meldung, gedrücktes Format: --grau-1 auf --grau-10', '--grau-1', '--grau-10', 7),
+    # Das Neon des Study OS (SP-0420): Zeichen und Linien 3:1, Schrift 4,5:1 wie die Signaltexte, die
+    # Hauptaktion 7:1 wie jeder Text auf einer Fläche, die gilt.
+    ('Neon (Zeichen, Reiter, Fortschritt) auf erhöhter Fläche', '--neon', '--grau-1', 3),
+    ('Neonschrift auf Seite', '--neon-schrift', '--grau-2', 4.5),
+    ('Neonschrift auf erhöhter Fläche (gewähltes Segment)', '--neon-schrift', '--grau-1', 4.5),
+    ('Neonschrift auf Karte (Wege nach draußen)', '--neon-schrift', '--ebene', 4.5),
+    ('Hauptaktion: --neon-text auf --neon-flaeche', '--neon-text', '--neon-flaeche', 7),
     ('Konfliktring auf Seite', '--konflikt', '--grau-2', 3),
     ('Konflikttext auf Seite', '--konflikt-text', '--grau-2', 4.5),
     ('Konflikttext auf Konfliktfläche', '--konflikt-text', '--konflikt-flaeche', 4.5),
@@ -624,6 +631,13 @@ const schwebend = (el) => {
   _sw.set(el, v); return v;
 };
 const MODULFARBE_OK = '[data-sicht="chip"], [data-sicht="kachel"], [data-sicht="module"], [data-sicht="legende"]';
+// Der Styleguide des Study OS (SP-0420, Silas 18.10.2026; DESIGN §5.1, §5.7, §3.6). Was er bringt, ist
+// dort ein Tell und hier eine Entscheidung, aber nur an den Stellen, die der Brief nennt: das Neon an
+// Marke und Navigation (nie im Plan, das hält web/tests/farben.test.mjs fest), die Etiketten und Ziffern
+// in Mono, der Raum des Startbildschirms. Überall sonst bleiben es Tells.
+const NEON_OK = '.zeichen, .wortmarke, .sg-reiter, .h-striche, .h-option, .knopf.haupt, .seg, .tag, .extern';
+const ETIKETT_OK = '.h-titel, .stunde';
+const RAUM_OK = '.hallo';
 const STOPP = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT', 'HEAD', 'META', 'LINK', 'TITLE', 'BR', 'WBR']);
 for (const el of [de, body]) {
   const s = cs(el);
@@ -675,11 +689,12 @@ for (const el of alle) {
   }
   // AI tells (§7), soweit sie im berechneten Stil stehen
   if (s.boxShadow !== 'none' && !schwebend(el) && !el.matches(':focus')) tell('Schatten auf der flachen Seite', el, s.boxShadow);
-  if (/gradient\(/.test(s.backgroundImage)) tell('Verlauf', el);
+  if (/gradient\(/.test(s.backgroundImage) && !el.matches(RAUM_OK)) tell('Verlauf', el);
   if ((s.backdropFilter && s.backdropFilter !== 'none') || /blur\(/.test(s.filter)) tell('Glas oder Unschärfe', el);
-  if (text && s.textTransform === 'uppercase') tell('Versalien', el);
-  if (text && s.letterSpacing !== 'normal' && parseFloat(s.letterSpacing) !== 0) tell('Laufweite ≠ 0', el, s.letterSpacing);
-  if (text && /mono|courier|consolas|menlo|monaco/i.test(s.fontFamily)) tell('Monospace', el, s.fontFamily);
+  const etikett = text && el.closest(ETIKETT_OK);
+  if (text && s.textTransform === 'uppercase' && !etikett) tell('Versalien', el);
+  if (text && s.letterSpacing !== 'normal' && parseFloat(s.letterSpacing) !== 0 && !etikett) tell('Laufweite ≠ 0', el, s.letterSpacing);
+  if (text && /mono|courier|consolas|menlo|monaco/i.test(s.fontFamily) && !etikett) tell('Monospace', el, s.fontFamily);
   if (text && /^["']?inter["']?$/i.test(s.fontFamily.split(',')[0].trim())) tell('Inter', el);
   if (s.animationName !== 'none' && /infinite/.test(s.animationIterationCount)) tell('dauernde Animation (Pulsieren)', el, s.animationName);
   const tp = s.transitionProperty.split(',').map((x) => x.trim()), td = s.transitionDuration.split(',').map((x) => parseFloat(x) || 0);
@@ -689,9 +704,9 @@ for (const el of alle) {
   if (breitest >= 2 && seiten === 1 && breitest >= 2 * Math.max(zweit, 0.5)) {
     const k = ['Top', 'Right', 'Bottom', 'Left'][bw.indexOf(breitest)];
     const c = farbe(s['border' + k + 'Color']);
-    if (c && c[3] > 0.2 && oklch(c)[1] >= 0.05) tell('farbiger Streifen am Rand', el, k.toLowerCase() + ' ' + breitest + ' px');
+    if (c && c[3] > 0.2 && oklch(c)[1] >= 0.05 && !el.closest(NEON_OK)) tell('farbiger Streifen am Rand', el, k.toLowerCase() + ' ' + breitest + ' px');
   }
-  if (!el.closest(MODULFARBE_OK)) {
+  if (!el.closest(MODULFARBE_OK) && !el.closest(NEON_OK)) {
     const pruef = [];
     if (text) pruef.push(['Schrift', s.color]);
     pruef.push(['Fläche', s.backgroundColor]);
