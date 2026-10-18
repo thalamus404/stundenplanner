@@ -1,35 +1,43 @@
 /* /silas — der persönliche Semesterplaner (V-0321, docs/SILAS.md). Die Tokens sind dieselben wie in
    web/stil.css (Farben je Modul, Grautöne, hell und dunkel); web/tests/silas.test.mjs hält sie gleich.
+   Seit SP-0420 im Styleguide des Study OS: Flächen des Study Style, Neon für Marke und Navigation, Etiketten.
    Ein Schema ändert nur Tokens, nie eine Regel (wie stil.css, V-0236). Alles Übrige ist neu: Raster,
    Leisten und Karten dieser Seite teilen keine Regel mit dem öffentlichen Planer. */
 
 :root {
   color-scheme: light dark;
-  --grau-1: #fdfdff; --grau-2: #f7f8fb; --grau-3: #eef0f3; --grau-4: #e5e6e9; --grau-5: #d7d9dc;
-  --grau-6: #bcbec0; --grau-7: #7f8083; --grau-8: #6d6f71; --grau-9: #545557; --grau-10: #1d1e20;
+  --grau-1: #fcfcfd; --grau-2: #f1f2f6; --grau-3: #e8eaf0; --grau-4: #e1e3e8; --grau-5: #d6d8de;
+  --grau-6: #bec1c8; --grau-7: #7a8192; --grau-8: #6b7283; --grau-9: #4a5060; --grau-10: #14161c;
   --konflikt: #cc2827; --konflikt-text: #a51f1e; --konflikt-flaeche: #ffebe8;
   --hinweis: #c17a00; --hinweis-text: #7b4c00; --hinweis-flaeche: #fef0d4;
   /* Rollen (V-0236, §5.2). Der Fuß tritt zurück (V-0237), seit V-0243 und V-0246 noch blasser (Silas:
      „noch ein bisschen blasser“): hell #707274 (4,55:1), dunkel #7c7d80 (4,56:1). Blasser geht nicht:
      Darunter fiele kleiner Text unter 4,5:1 (WCAG AA, §5.5), und ops/sicht.py würde rot. */
-  --fuss-text: #707274;
-  --ebene: #fdfdff;
+  --fuss-text: #676e7f;
+  --ebene: #ffffff;
   --rand-ebene: var(--grau-5);
-  --schatten: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .12);
+  --schatten: 0 1px 2px rgb(16 20 32 / .06), 0 8px 24px rgb(16 20 32 / .12);
+  /* Der Styleguide des Study OS (SP-0420, Silas 18.10.2026), wie in web/stil.css: das Neon für Marke und
+     Navigation (Zeichen, „planner“, Schild, der Schritt, an dem du bist, gewählte Reiter, Hauptaktion; der Fokus bleibt Tinte),
+     nie für Blöcke, Module oder Arten im Plan — dort trägt Farbe Bedeutung (die Videos sind schon violett). */
+  --neon: #7a44e0; --neon-schrift: #6a34d6; --neon-flaeche: #6529d4; --neon-text: #ffffff;
+  --neon-weich: rgb(122 68 224 / .16); --neon-tief: rgb(122 68 224 / .07); --neon-rand: rgb(122 68 224 / .4);
+  --raum-linie: rgb(16 20 32 / .035); --raum-licht: rgb(122 68 224 / .07);
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", Consolas, monospace;
   --ein: cubic-bezier(.2, 0, 0, 1);
   --aus: cubic-bezier(.3, 0, 1, 1);
   --h-min: 20.5px;
   --ziel: 32px;
   --zm: 28px;
   --rand-x: 24px;
-  --m1-hauch: #fdfdff; --m1-rand: #488acb; --m1-flaeche: #b4d8ff; --m1-tinte: #0e375c;
-  --m2-hauch: #fdfdff; --m2-rand: #ac7d1b; --m2-flaeche: #eecf9c; --m2-tinte: #483000;
-  --m3-hauch: #fdfdff; --m3-rand: #4a9a5e; --m3-flaeche: #b2e3bb; --m3-tinte: #0d401e;
-  --m4-hauch: #fdfdff; --m4-rand: #bb6690; --m4-flaeche: #fbc1db; --m4-tinte: #53223b;
-  --m5-hauch: #fdfdff; --m5-rand: #03999f; --m5-flaeche: #98e4e8; --m5-tinte: #003e41;
-  --m6-hauch: #fdfdff; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
-  --m7-hauch: #fdfdff; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
-  --m8-hauch: #fdfdff; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
+  --m1-hauch: #fcfcfd; --m1-rand: #488acb; --m1-flaeche: #b4d8ff; --m1-tinte: #0e375c;
+  --m2-hauch: #fcfcfd; --m2-rand: #ac7d1b; --m2-flaeche: #eecf9c; --m2-tinte: #483000;
+  --m3-hauch: #fcfcfd; --m3-rand: #4a9a5e; --m3-flaeche: #b2e3bb; --m3-tinte: #0d401e;
+  --m4-hauch: #fcfcfd; --m4-rand: #bb6690; --m4-flaeche: #fbc1db; --m4-tinte: #53223b;
+  --m5-hauch: #fcfcfd; --m5-rand: #03999f; --m5-flaeche: #98e4e8; --m5-tinte: #003e41;
+  --m6-hauch: #fcfcfd; --m6-rand: #9274c3; --m6-flaeche: #dbcaff; --m6-tinte: #3c2a58;
+  --m7-hauch: #fcfcfd; --m7-rand: #bf6e3e; --m7-flaeche: #fec7a9; --m7-tinte: #552707;
+  --m8-hauch: #fcfcfd; --m8-rand: #848e2d; --m8-flaeche: #d2dba2; --m8-tinte: #343900;
   /* Eingeplant und Vorschlag je Schema (Silas, 05.10.2026, V-0251): Hell war eingeplant die Tinte, eine
      dunkle, „matschige“ Fläche mit weißer Schrift; jetzt die Pastellfläche wie die Formate links, mit
      Tinte als Schrift, und der Vorschlag noch heller (halb Fläche, halb Weiß). Dunkel bleibt, wie es war. */
@@ -64,22 +72,25 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --grau-1: #252628; --grau-2: #111213; --grau-3: #1b1c1e; --grau-4: #202224; --grau-5: #2f3032;
-    --grau-6: #46484a; --grau-7: #737477; --grau-8: #8b8c8f; --grau-9: #bfc1c3; --grau-10: #e6e8ea;
+    --grau-1: #11141b; --grau-2: #06070a; --grau-3: #0e1016; --grau-4: #1a1d26; --grau-5: #232733;
+    --grau-6: #3d4352; --grau-7: #5e6678; --grau-8: #7c8496; --grau-9: #a4acbd; --grau-10: #e9ecf2;
     --konflikt: #ef675c; --konflikt-text: #f8a59b; --konflikt-flaeche: #3b1c19;
     --hinweis: #e9b452; --hinweis-text: #e9ca89; --hinweis-flaeche: #31240e;
-    --fuss-text: #7c7d80;
-    --ebene: #303234;
+    --fuss-text: #768092;
+    --ebene: #181b24;
     --rand-ebene: rgb(255 255 255 / .1);
     --schatten: none;
-    --m1-hauch: #252628; --m1-rand: #70a3d8; --m1-flaeche: #233c56; --m1-tinte: #bad8f8;
-    --m2-hauch: #252628; --m2-rand: #bd9857; --m2-flaeche: #4a3716; --m2-tinte: #e8d1ac;
-    --m3-hauch: #252628; --m3-rand: #72af7f; --m3-flaeche: #24432b; --m3-tinte: #bcdfc2;
-    --m4-hauch: #252628; --m4-rand: #cb86a7; --m4-flaeche: #502e3f; --m4-tinte: #f2c6d9;
-    --m5-hauch: #252628; --m5-rand: #48b0b6; --m5-flaeche: #0a4346; --m5-tinte: #aae0e2;
-    --m6-hauch: #252628; --m6-rand: #a791d1; --m6-flaeche: #3f3453; --m6-tinte: #d9cdf4;
-    --m7-hauch: #252628; --m7-rand: #ce8d68; --m7-flaeche: #52321f; --m7-tinte: #f3cbb5;
-    --m8-hauch: #252628; --m8-rand: #9ca65f; --m8-flaeche: #3a3e1a; --m8-tinte: #d2d9b0;
+    --neon: #a06bff; --neon-schrift: #c29bff; --neon-flaeche: #b48aff; --neon-text: #120621;
+    --neon-weich: rgb(160 107 255 / .28); --neon-tief: rgb(160 107 255 / .1); --neon-rand: rgb(160 107 255 / .4);
+    --raum-linie: rgb(255 255 255 / .019); --raum-licht: rgb(160 107 255 / .14);
+    --m1-hauch: #11141b; --m1-rand: #70a3d8; --m1-flaeche: #233c56; --m1-tinte: #bad8f8;
+    --m2-hauch: #11141b; --m2-rand: #bd9857; --m2-flaeche: #4a3716; --m2-tinte: #e8d1ac;
+    --m3-hauch: #11141b; --m3-rand: #72af7f; --m3-flaeche: #24432b; --m3-tinte: #bcdfc2;
+    --m4-hauch: #11141b; --m4-rand: #cb86a7; --m4-flaeche: #502e3f; --m4-tinte: #f2c6d9;
+    --m5-hauch: #11141b; --m5-rand: #48b0b6; --m5-flaeche: #0a4346; --m5-tinte: #aae0e2;
+    --m6-hauch: #11141b; --m6-rand: #a791d1; --m6-flaeche: #3f3453; --m6-tinte: #d9cdf4;
+    --m7-hauch: #11141b; --m7-rand: #ce8d68; --m7-flaeche: #52321f; --m7-tinte: #f3cbb5;
+    --m8-hauch: #11141b; --m8-rand: #9ca65f; --m8-flaeche: #3a3e1a; --m8-tinte: #d2d9b0;
     --m1-wahl: var(--m1-tinte); --m1-wahl-text: var(--grau-1); --m1-vor: var(--m1-flaeche);
     --m2-wahl: var(--m2-tinte); --m2-wahl-text: var(--grau-1); --m2-vor: var(--m2-flaeche);
     --m3-wahl: var(--m3-tinte); --m3-wahl-text: var(--grau-1); --m3-vor: var(--m3-flaeche);
@@ -91,7 +102,7 @@
     --lg-wahl: var(--grau-10);
     --gruen: #6cc183;
     --blau: #6ea4f0; --blau-text: #a9c9f7; --blau-flaeche: #172a44;
-    --linie-wahl: #111213;
+    --linie-wahl: #06070a;
     --k-praesenz-f: #24304d; --k-praesenz-t: #c8d6f6; --k-praesenz-r: #7f9be0;
     --k-video-f: #36284a; --k-video-t: #e2d1f7; --k-video-r: #b08be0;
     --k-lernen-f: #3d3218; --k-lernen-t: #f0dfb5; --k-lernen-r: #d2b061;
@@ -128,6 +139,7 @@ button:disabled { opacity: .4; cursor: default; }
 button:disabled::after { display: none; }
 a { color: inherit; text-underline-offset: 2px; }
 :focus-visible { outline: 2px solid var(--grau-10); outline-offset: 2px; }
+::selection { background: var(--neon-weich); }
 .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .symbole { position: fixed; top: 0; left: 0; width: 0; height: 0; overflow: hidden; }
 .nur-sr { position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -137,16 +149,23 @@ a { color: inherit; text-underline-offset: 2px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; background: var(--grau-1);
   text-decoration: none; position: relative;
 }
-.knopf.haupt { background: var(--grau-10); border-color: var(--grau-10); color: var(--grau-1); font-weight: 600; }
+.knopf.haupt { background: var(--neon-flaeche); border-color: var(--neon-flaeche); color: var(--neon-text); font-weight: 600; }
 .knopf.klein { height: 28px; padding: 0 10px; font-size: 13px; }
 .knopf.rot { color: var(--rot-text); border-color: var(--rot); }
 .knopf.leise { border-color: transparent; background: none; }
 .knopf.an { background: var(--grau-10); color: var(--grau-1); border-color: var(--grau-10); }
 
 /* ── Der Schlüssel (ohne ihn zeigt die Seite nichts) */
-.tor { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+/* Der Raum des Study OS hinter dem Tor (SP-0420): sein 46-px-Raster und oben ein ruhiges Licht im Neon, still. */
+.tor {
+  min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+  background-image: radial-gradient(ellipse 720px 360px at 50% 0, var(--raum-licht), transparent),
+    linear-gradient(var(--raum-linie) 1px, transparent 1px), linear-gradient(90deg, var(--raum-linie) 1px, transparent 1px);
+  background-size: auto, 46px 46px, 46px 46px; background-position: 0 0, 50% 0, 50% 0;
+}
 .tor-karte { width: min(420px, 100%); display: flex; flex-direction: column; gap: 16px; text-align: center; }
-.tor-karte .wortmarke { height: 24px; margin: 0 auto 8px; }
+.tor-marke { display: flex; justify-content: center; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.tor-karte .wortmarke, .tor-karte .zeichen { height: 24px; }
 .tor-karte p { color: var(--grau-9); }
 .tor-karte form { display: flex; gap: 8px; }
 .tor-karte input { flex: 1; min-width: 0; height: var(--ziel); padding: 0 10px; border-radius: 8px; border: 1px solid var(--grau-6); background: var(--grau-1); }
@@ -158,9 +177,15 @@ a { color: inherit; text-underline-offset: 2px; }
 .k-links { display: flex; flex-direction: column; min-width: 0; }
 .k-links b { font-size: 15px; }
 .k-links span { color: var(--grau-8); font-size: 12px; line-height: 16px; }
-.name { display: flex; align-items: center; gap: 10px; color: var(--grau-10); text-decoration: none; }
+.name { display: flex; align-items: center; gap: 8px; color: var(--grau-10); text-decoration: none; }
+.name .marke-zusatz { margin-left: 2px; }
 .wortmarke { display: block; height: 22px; width: auto; aspect-ratio: 7669 / 930; fill: currentColor; }
-.name .marke-zusatz { font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--grau-9); border: 1px solid var(--grau-6); border-radius: 6px; padding: 1px 6px; }
+/* Wie web/stil.css (SP-0420): das Zeichen so hoch wie der Schriftzug, 9 % nach oben, damit die Balken von der
+   Oberlänge bis zur Grundlinie stehen (der Schriftzug reicht bis zur Unterlänge des p). */
+.wm-planner { fill: var(--neon); }
+.zeichen { display: block; flex: none; width: auto; height: 22px; aspect-ratio: 1; fill: var(--neon); transform: translateY(-9%); }
+/* Das Schild „silas“ ist ein Marker des Study OS: Mono, Neon auf Neon-Tief, eine Kante im Neon (SP-0420). */
+.name .marke-zusatz { font-family: var(--mono); font-size: 12px; font-weight: 400; letter-spacing: .05em; color: var(--neon-schrift); background: var(--neon-tief); border: 1px solid var(--neon-rand); border-radius: 4px; padding: 1px 6px; }
 /* Probepläne (V-0345): Wer in /silas/<n> ist, sieht es am Schild; links oben wählt man den Plan. */
 .name .marke-zusatz.probe { color: var(--hinweis-text); background: var(--hinweis-flaeche); border-color: var(--hinweis); }
 .k-links .k-unter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -264,7 +289,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .p-nav { display: flex; gap: 4px; align-items: center; }
 .umschalter { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--grau-4); gap: 2px; }
 .umschalter button { height: calc(var(--ziel) - 4px); padding: 0 10px; border-radius: 8px; font-size: 13px; }
-.umschalter button[aria-pressed="true"] { background: var(--grau-1); box-shadow: 0 1px 2px rgb(0 0 0 / .12); font-weight: 600; }
+.umschalter button[aria-pressed="true"] { background: var(--grau-1); box-shadow: 0 1px 2px rgb(0 0 0 / .12); font-weight: 600; color: var(--neon-schrift); }
 .banner { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--grau-10); color: var(--grau-1); font-size: 13px; }
 .banner .knopf { height: 26px; background: transparent; border-color: rgb(255 255 255 / .35); color: inherit; }
 .banner.warn { background: var(--rot-flaeche); color: var(--rot-text); }
@@ -290,7 +315,7 @@ a { color: inherit; text-underline-offset: 2px; }
 .r-kopf div .last.voll { color: var(--rot-text); }
 .raster { flex: 1; min-height: 280px; position: relative; display: grid; grid-template-columns: var(--zeit) repeat(var(--tage), minmax(0, 1fr)); border-top: 1px solid var(--grau-5); user-select: none; -webkit-user-select: none; }
 .r-zeiten { position: relative; }
-.r-zeiten span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 11px; color: var(--grau-8); }
+.r-zeiten span { position: absolute; right: 8px; transform: translateY(-50%); font-family: var(--mono); font-size: 11px; color: var(--grau-8); }
 .r-tag { position: relative; border-left: 1px solid var(--grau-5); background-image: linear-gradient(var(--grau-4) 1px, transparent 1px); background-size: 100% var(--stunde); touch-action: pan-y; }
 .r-tag:last-child { border-right: 1px solid var(--grau-5); }
 .r-tag.frei { background-color: var(--grau-3); }
@@ -397,7 +422,7 @@ a { color: inherit; text-underline-offset: 2px; }
 /* ── Schwebende Karte (Block bearbeiten, Wofür?, Kalender) */
 .karte {
   position: fixed; z-index: 20; width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
-  background: var(--ebene); border: 1px solid var(--rand-ebene); border-radius: 12px; box-shadow: var(--schatten);
+  background: var(--ebene); border: 1px solid var(--rand-ebene); border-radius: 14px; box-shadow: var(--schatten);
   padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 13px;
 }
 .karte h3 { font-size: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -446,7 +471,7 @@ a { color: inherit; text-underline-offset: 2px; }
   .kopf { display: flex; flex-wrap: wrap; gap: 8px 12px; grid-template-areas: none; }
   .module { position: static; max-height: none; }
   .name { order: 1; flex: 1; min-width: 0; }
-  .name .wortmarke { height: 18px; }
+  .name .wortmarke, .name .zeichen { height: 18px; }
   .k-rechts { display: contents; }
   .k-rechts > .knopf { order: 2; }
   .bilanz { order: 3; flex: 1 1 100%; flex-wrap: wrap; }
@@ -465,7 +490,7 @@ a { color: inherit; text-underline-offset: 2px; }
 
 /* ── Herkunft und Einheiten in der Karte eines Bestandteils (V-0328) */
 .herkunft { font-size: 12px; line-height: 17px; color: var(--grau-9); border-left: 2px solid var(--rand); padding: 2px 0 2px 8px; display: flex; flex-direction: column; gap: 2px; }
-.herkunft b { color: var(--grau-10); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.herkunft b { color: var(--grau-10); font-family: var(--mono); font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .1em; }
 .herkunft .gelb, .gelb { color: var(--gelb-text); }
 .herkunft .quelle, .quelle { color: var(--grau-8); }
 .einheiten { display: flex; flex-direction: column; gap: 1px; font-size: 12px; max-height: 320px; overflow: auto; }
@@ -534,7 +559,8 @@ a { color: inherit; text-underline-offset: 2px; }
 .erkl-tabelle tr.summe td { font-weight: 600; border-bottom: 0; }
 
 /* ── Minimap (rechte Leiste, V-0328): je Modul eine Summenzeile, darunter jeder Bestandteil */
-.l-zwischen { font-size: 13px; margin-top: 4px; }
+/* Etikett des Study OS (SP-0420): Mono, Versalien, gesperrt, leise. */
+.l-zwischen { font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--grau-8); margin-top: 4px; }
 .mu-phasen .mu-phase { height: 3px; border-radius: 2px; background: var(--grau-10); }
 .mu-phasen .mu-phase.frei { background: var(--grau-5); }
 .mu-phasen .mu-phase.pruefung { background: var(--grau-7); }
@@ -666,8 +692,9 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .schritte { display: flex; gap: 4px; flex: 1 1 520px; min-width: 0; }
 .schritt { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--grau-5); background: var(--grau-1); text-align: left; }
 .schritt .s-nr { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--grau-4); color: var(--grau-9); flex: none; }
-.schritt.jetzt { border-color: var(--grau-10); box-shadow: inset 0 0 0 1px var(--grau-10); }
-.schritt.jetzt .s-nr { background: var(--grau-10); color: var(--grau-1); }
+/* Der Schritt, an dem du bist, im Neon wie der offene Ort im Study OS (SP-0420; vorher Tinte). */
+.schritt.jetzt { border-color: var(--neon); box-shadow: inset 0 0 0 1px var(--neon); }
+.schritt.jetzt .s-nr { background: var(--neon-flaeche); color: var(--neon-text); }
 .schritt .s-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
 .schritt .s-text b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .schritt .s-text small { font-size: 11px; color: var(--grau-8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -675,14 +702,14 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .schritt .s-stand.fertig { background: var(--grau-3); color: var(--grau-8); }
 .p-weitere { display: flex; gap: 2px; align-items: center; flex-wrap: wrap; }
 .p-weitere .knopf { height: 32px; padding: 0 8px; font-size: 13px; gap: 6px; }
-.p-weitere .knopf.an { background: var(--grau-4); color: var(--grau-10); border-color: transparent; font-weight: 600; }
+.p-weitere .knopf.an { background: var(--neon-tief); color: var(--neon-schrift); border-color: var(--neon-rand); font-weight: 600; }
 .schritt-tun { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--grau-1); border: 1px solid var(--grau-5); }
 .schritt-tun b { font-size: 13px; }
 .links-kopf .schritt-tun span { font-size: 12px; color: var(--grau-9); padding: 0; line-height: 1.35; }
 .links-kopf .links-satz { font-size: 11px; color: var(--grau-8); padding: 0 4px; }
 .modul.leer { opacity: .6; padding-bottom: 10px; }
 .modul.leer .m-kopf { pointer-events: auto; }
-.m-unter { font-size: 11px; font-weight: 600; color: var(--grau-8); text-transform: uppercase; letter-spacing: .04em; margin: 4px 0 -4px; }
+.m-unter { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--grau-8); text-transform: uppercase; letter-spacing: .1em; margin: 4px 0 -4px; }
 .plan-flaggen { padding: 10px; }
 .gruppen-wahl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .gruppen-wahl .t-zahlen { flex-basis: 100%; }
@@ -835,7 +862,8 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .hauptreiter button span { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .hauptreiter button b { font-size: 15px; color: var(--grau-10); }
 .hauptreiter button small { font-size: 11px; color: var(--grau-8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hauptreiter button[aria-selected="true"] { background: var(--grau-1); box-shadow: 0 1px 3px rgb(0 0 0 / .14); color: var(--grau-10); }
+.hauptreiter button[aria-selected="true"] { background: var(--grau-1); box-shadow: 0 1px 3px rgb(0 0 0 / .14); color: var(--neon-schrift); }
+.hauptreiter button[aria-selected="true"] b { color: var(--neon-schrift); }
 .hauptreiter button:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Fahrzeit: nur zum Sehen, grau gestrichelt, sperrt nichts. */
@@ -968,7 +996,7 @@ details.zeitraum > .kal { padding: 0 10px 10px; }
 .t-zustand.z-pruef { background: var(--k-pruefung-f); color: var(--k-pruefung-t); }
 .m-postenliste { display: flex; flex-direction: column; gap: 6px; }
 .m-posten { display: flex; flex-direction: column; gap: 1px; }
-.mp-kopf { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--grau-8); text-transform: uppercase; letter-spacing: .03em; width: 100%; text-align: left; border-radius: 6px; padding: 1px 0; }
+.mp-kopf { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--grau-8); text-transform: uppercase; letter-spacing: .08em; width: 100%; text-align: left; border-radius: 6px; padding: 1px 0; }
 .mp-kopf > span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mp-k { color: var(--grau-9); font-weight: 600; text-transform: none; letter-spacing: 0; }
 .m-pruef .mp-kopf { color: var(--k-pruefung-t); padding: 4px 6px; background: color-mix(in srgb, var(--k-pruefung-f) 55%, transparent); }
