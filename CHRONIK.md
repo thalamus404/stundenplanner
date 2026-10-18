@@ -12,6 +12,23 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 18.10.2026 — Der Styleguide des Study OS: /silas und die öffentliche Seite (SP-0420)
+
+- Silas: *„… mach einen Design-Rehaul … lass alle Elemente so, wie sie sind, aber füg bitte irgendwie ein Style-Guide
+  vom Study-OS hinzu … das Logo … nach diesen Style-Vorgaben … aber bitte dabei das Layout nicht verändern, sondern
+  wirklich nur die Akzente setzen … Die Bedienung sollte darunter nicht leiden.“* Danach: *„Es geht mir vor allem um
+  den Semesterplan, also den Stundenplanner unter /silas“*; die öffentliche Seite geht mit („Beides“).
+- Übernommen, kopiert und nicht verlinkt (AGENTS.md §2 ④): das Zeichen „Raster“ aus thalamus404/studyOS
+  (`app/static/brand/logo.svg`), die Flächen, das Neon, die Radien und das Etikett aus dem Study OS (`app/static/os.css`)
+  und seinem Obsidian-Theme „Study Style“. Hell Papier, dunkel Tiefblau-Schwarz; das Neon an Marke und Navigation
+  (Zeichen, „planner“, Reiter, Segment, Schritt, Hauptaktion), nie im Plan — ein Test hält es dort heraus.
+- Silas' Entscheidung „keine Markenfarbe“ (05.10.2026) gilt seitdem nur noch im Plan (docs/DESIGN.md §9 Punkte 1
+  und 55). `ops/sicht.py` kennt die Stellen, an denen Neon, Etikett, Mono und der Raum des Startbildschirms jetzt
+  gewollt sind; überall sonst bleiben es Tells.
+- Gemessen, nicht geschätzt: Der Neon-Fokusring hielt an den Kanten keine 3:1 und der große Schatten der Überlagerungen
+  verdeckte am Handy Formate unter dem Umschalter; beides ist zurück (Fokus Tinte, Schatten 24 px, Tiefblau). Das
+  Byte-Budget steigt (HTML 18, CSS 59, komprimiert 74 KB). Favicon und App-Symbol sind unverändert.
+
 ## 17.10.2026 — /silas: Festgelegt zeigen die Modulbalken, was getan ist (SP-0419)
 
 - Silas: *„… wenn der Stundenplaner fertig ist, dann soll es die Progress Bar sein bei ganzes Semester: Wie viel hast du

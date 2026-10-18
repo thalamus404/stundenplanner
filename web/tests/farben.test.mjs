@@ -55,7 +55,8 @@ test('Die mögliche Kachel ist in jedem Schema neutral: alle --mN-hauch gleich',
 });
 
 test('Jedes Schema setzt dieselben Tokens', () => {
-  const h = Object.keys(hell(stil)).filter((k) => !['--ein', '--aus', '--h-min', '--ziel', '--zm', '--rand-x'].includes(k)).sort();
+  // Maße, Kurven und die Mono-Schrift gelten in beiden Schemata gleich (die Radien des Study OS seit SP-0420).
+  const h = Object.keys(hell(stil)).filter((k) => !['--ein', '--aus', '--h-min', '--ziel', '--zm', '--rand-x', '--r-1', '--r-2', '--r-3', '--mono'].includes(k)).sort();
   assert.deepEqual(Object.keys(dunkel(stil)).sort(), h);
 });
 
@@ -73,5 +74,26 @@ test('Legende und Kachel teilen sich die Regel (durchscheinend, blass)', () => {
 test('Impressum und Datenschutz tragen dieselben Werte wie die Seite', () => {
   for (const [schema, r, s] of [['hell', hell(recht), hell(stil)], ['dunkel', dunkel(recht), dunkel(stil)]]) {
     for (const [k, v] of Object.entries(r)) assert.equal(v, s[k], `${schema} ${k}: recht.css ${v}, stil.css ${s[k]}`);
+  }
+});
+
+// Das Neon des Study OS (SP-0420, Silas 18.10.2026) gehört der Marke und der Navigation, nie dem Plan:
+// Auf Kacheln, Formaten, Modulkacheln und in der Legende trägt Farbe das Modul (DESIGN §5.1). Ein violetter
+// Akzent dort wäre von der sechsten Modulfarbe (Violett) nicht zu trennen und sagte etwas, das nicht stimmt.
+test('Das Neon steht nie im Plan: keine Regel für Kachel, Format, Modul oder Legende liest --neon', () => {
+  const plan = /\.(kachel|k-[\w-]+|format|f-pille|modul|modul-name|m-kopf|m-info|punkt|formate|lg-[\w-]+|legende|stunde|spalte|innen|koerper)\b/;
+  for (const m of stil.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const [, sel, rumpf] = m;
+    if (!/var\(--neon/.test(rumpf)) continue;
+    for (const s of sel.split(',').map((x) => x.trim())) {
+      assert.doesNotMatch(s, plan, `${s} liest --neon — das Neon gehört nicht in den Plan`);
+    }
+  }
+});
+
+test('Die Marke trägt das Neon: Zeichen, „planner“ und der Reiter', () => {
+  const regeln = [...stil.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => [m[1].split(',').map((s) => s.trim()), m[2]]);
+  for (const sel of ['.wm-planner', '.zeichen', '.sg-reiter']) {
+    assert.ok(regeln.some(([s, rumpf]) => s.includes(sel) && /var\(--neon\)/.test(rumpf)), `${sel} ohne var(--neon)`);
   }
 });

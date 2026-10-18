@@ -605,6 +605,17 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   und Sättigung (OKLCH), eigene Blöcke etwas gedämpfter (`--k-*-b`), Etiketten kräftig; keine Streifen (Silas: *„die als
   dein Block markierten sind hinten so gestreift … das macht es komischer“*). Die mit stil.css geteilten Tokens (grau,
   m1–m8) bleiben gleich (Test).
+- **Der Styleguide des Study OS** (SP-0420, Silas 18.10.2026: *„Es geht mir vor allem um den Semesterplan, also den
+  Stundenplanner unter /silas“*; der Wortlaut in docs/DESIGN.md §9 Punkt 55): Das Layout und jede Bedienung bleiben.
+  Neu sind die Flächen des Study Style (hell Papier, dunkel Tiefblau-Schwarz, dieselben Tokens wie stil.css), im Kopf
+  das Zeichen „Raster“ des Study OS vor dem Schriftzug, „planner“ im Neon und das Schild „silas“ als Marker des Study
+  OS (Mono, Neon auf Neon-Tief). Das **Neon** (Violett, `--neon*`) steht nur an Marke und Navigation: der Schritt, an
+  dem du bist (Rahmen und Nummer), die gewählten Reiter („Woche“, „Prüfungen“, „Standardwoche“, „Ganzes Semester“),
+  „Offen“, „Abgleich“, „So wird gerechnet“, wenn sie offen sind, und die Hauptaktion („Weiter“, „Bearbeiten“,
+  „Öffnen“). Nie an Blöcken, Arten, Modulen oder Balken: Die Videos sind schon violett, und die Farben dort tragen
+  Bedeutung. Der Fokusring bleibt Tinte (wie an den Knöpfen des Study OS). Etiketten in Mono, Versalien und gesperrt:
+  „Unregelmäßig, ab heute“, die Posten der Aufwandstabelle (`.mp-kopf`), `.m-unter`, `.herkunft`; die Ziffern der
+  Zeitachse in Mono. Hinter dem Tor der Raum des Study OS (sein 46-px-Raster und ein stilles Licht im Neon).
 - **Farben nach Art** (V-0332, Silas: „Präsenzveranstaltung sollte das gleiche Farbschema haben bei allen Modulen“; V-0349:
   „ISIS-Quiz soll auch als Lernen markiert sein“): Präsenz, Videos, Vor- und Nachbereitung mit Quizzen, Aufgaben und Labs, Prüfung —
   je eine Farbe (`kategorie()`), das Modul als Streifen links an jeder Kachel. Formen: fester Termin (gefüllt), **zur
