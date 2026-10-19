@@ -351,6 +351,18 @@ a { color: inherit; text-underline-offset: 2px; }
 .kachel .k-marke.hinweis { background: var(--hinweis); color: var(--grau-1); }
 /* Nur in dieser Woche verschoben (SP-0416): eine blaue Marke — kein gestrichelter Rand, der heißt „zur Wahl“. */
 .kachel .k-marke.einzeln { background: var(--blau); color: var(--grau-1); }
+/* SP-0421: Die Marke ist ein Ziel — ein Tipp öffnet „Zurücksetzen“. Die Fläche um sie fängt den Finger mit. */
+.kachel .k-marke[data-act] { cursor: pointer; overflow: visible; }
+.kachel .k-marke[data-act]::after { content: ""; position: absolute; inset: -8px -6px; }
+.kachel .k-marke[data-act]:hover { filter: brightness(1.1); text-decoration: underline; }
+/* Ausweichen, nur diese Woche (SP-0421, Silas: „nicht nur in blass … sondern in grau“): die Termine der anderen Gruppen
+   dunkelgrau gefüllt, gestrichelt — kein Grau früherer Schritte (das ist heller und durchgezogen).
+   !important wie bei lage-frueher: Die Farben der Arten (.kachel[class*=" k-"] …) sind spezifischer. */
+.kachel.ausweich { background: var(--grau-8) !important; color: var(--grau-1) !important; border: 1.5px dashed var(--grau-9) !important; outline: none !important; box-shadow: none; cursor: pointer; z-index: 3; }
+.kachel.ausweich:hover, .kachel.ausweich:focus-visible { background: var(--grau-9) !important; }
+.kachel.ausweich .k-etikett { background: var(--grau-9) !important; }
+.kachel.ausweich .k-anzahl { display: none; }
+.kachel.ausweich .k-marke { background: var(--grau-1); color: var(--grau-10); }
 .kachel.pruefung { background: var(--grau-10); color: var(--grau-1); border-color: var(--grau-10); }
 .kachel.einzel { background: var(--grau-4); color: var(--grau-10); border-color: var(--grau-6); }
 .kachel.zaehlt-nicht { opacity: .45; }
@@ -1326,6 +1338,7 @@ body.mit-unten .links-fuss { position: static; }
   .kachel .k-etikett { width: 4px; font-size: 0; padding: 0; }
   .kachel .k-anzahl { font-size: 9px; padding: 0 2px; margin-right: 2px; }
   .kachel .k-marke { position: static; align-self: flex-start; margin-top: 2px; font-size: 9px; padding: 0 3px; }
+  .kachel .k-marke[data-act] { position: relative; }
   .ganztag .chip { font-size: 10px; padding: 1px 3px; }
   .bedarf { gap: 6px; }
   .bd { white-space: normal; }

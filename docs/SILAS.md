@@ -569,7 +569,26 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   nicht. **Gekennzeichnet** (SP-0416, Silas, 17.10.: *„Sobald ein Termin … für eine einzelne Woche verschoben wird, muss
   der … eine Kennzeichnung tragen“*): Ein Block mit `serie` trägt in der echten Woche die blaue Marke „nur diese Woche“
   (am Telefon „einzeln“), Tooltip und Blockkarte sagen, wo die Reihe sonst liegt; im Kalender-Abo steht es in der
-  Beschreibung, im Ereignis als `einzeln`.
+  Beschreibung, im Ereignis als `einzeln`. **Die Marke setzt zurück** (SP-0421, Silas, 19.10.: *„wenn man auf dieses
+  kleine Schildchen nur diese Woche rauftippt, dass dann ein kleines Fenster aufploppt, wo man sagt, zurücksetzen“*):
+  Ein Tipp auf sie öffnet „Nur diese Woche“ mit „Zurücksetzen“ — `einzelnZuruecksetzen()` nimmt den Datumsblock weg,
+  gibt der Reihe ihre Woche zurück (`ohne`) und den Eintrag im Lebenslauf mit; liegt die Reihe inzwischen woanders,
+  kommt das Vorkommen dorthin. Für einen getauschten Termin (unten) dasselbe Fenster.
+- **Präsenz nur diese Woche bei einer anderen Gruppe** (SP-0421, Silas, 19.10.: *„wenn ich auf Statistik 1 Tutorium am
+  Montag raufklicke, dass dann in dunkelgrau alle anderen Termine diese Woche angezeigt werden, die es dazu noch gibt.
+  Und wenn ich auf einen anderen, dann noch grauen Termin raufdrücke, dann kommt quasi die Abfrage für diese Woche
+  ändern, Fragezeichen, und dann sage ich ja“*): Festgelegt, in einer echten Woche, macht ein Klick auf eine gewählte
+  Gruppe ihr Element zum Fokus (der Rest blass, wie bisher) und stellt die Termine der **anderen Gruppen dieser Woche**
+  (Mo–So) **dunkelgrau** daneben (`ausweichTermine()`: was das Element dort schon hat und was ausfällt nicht; „trifft
+  einen Termin“, wenn dort etwas Festes liegt). Ein Klick fragt „Für diese Woche ändern?“; „Ja, nur diese Woche“ legt
+  nur dieses Vorkommen dorthin (`tauschen()`, `plan.tausch`). Es trägt die Marke „nur diese Woche“, zählt weiter als
+  Termin der eigenen Gruppe (Reihe, „13×“), und ein ✓/✗ zieht mit. Ist es schon getauscht, steht sein ursprünglicher
+  Platz als „zurück“ unter den grauen. Vorbei (Klick öffnet ✓/✗) hat die Karte „Andere Gruppe in dieser Woche“. Noch
+  ein Klick auf die Kachel, ins Leere oder Esc nimmt das Grau weg. Wer die Gruppe ganz wechselt (Schritt 2), verliert
+  die Täusche der alten — die Meldung sagt es; „Zurücksetzen ab Schritt 2“ legt sie mit der Wahl beiseite
+  (`zurueckgesetzt.tausch`), „Wiederherstellen“ holt sie, wo die Gruppe dieselbe ist. Gibt es den Termin der anderen
+  Gruppe nicht mehr (Angebot geändert), liegt das Vorkommen wieder bei der eigenen, und „Offen“ meldet es
+  (`tausch_fehlt`, Achtung).
 - **Ein Modul anklicken** (V-0356, Silas: *„wenn man ein Modul anklickt, egal in welchem Schritt, dann sollen alle Blöcke,
   die diesem Modul zugeordnet sind, aufleuchten … die Vorlesung, Vor- und Nachbereitung, die Videos, Übungen, Tutorium“*):
   Der Kopf eines Moduls (eingeklappt oder offen) lässt alles, was das Raster von ihm zeigt, aufleuchten (`m-hell`, kurz
@@ -745,8 +764,9 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   'ja' | 'nein' | 'ausgefallen' | 'verschoben' | {s: 'teil', min} | {s: 'nein', nachgeholt: true}}`, `bloecke [{id,
   teil|null, tag | datum, start, ende, ab?, bis?, pause?, alle?, versatz?, ohne? [Montag] (Wochen, die die Reihe
   auslässt), serie? (aus welcher Reihe einzeln verschoben), titel?, aus? (verschoben von), vorschlag? (aus dem
-  Vorschlag übernommen)}]`, `bestaetigt {annahme-id: true}`, `festgelegt` (Zeitpunkt), `mittag {datum:
-  "HH:MM"}`, `fahrt {datum: {hin?: "HH:MM", zurueck?: "HH:MM"}}` (SP-0418), `zurueckgesetzt {am, ab, wahl, bloecke}`. Nicht mehr gelesen: `umwidmungen` (seit V-0349 ersetzt G5 sie),
+  Vorschlag übernommen)}]`, `tausch {vorkommen-id der gewählten Gruppe: {option, datum, start: "HH:MM"}}` (nur diese
+  Woche bei einer anderen Gruppe, SP-0421), `bestaetigt {annahme-id: true}`, `festgelegt` (Zeitpunkt), `mittag {datum:
+  "HH:MM"}`, `fahrt {datum: {hin?: "HH:MM", zurueck?: "HH:MM"}}` (SP-0418), `zurueckgesetzt {am, ab, wahl, bloecke, tausch?}`. Nicht mehr gelesen: `umwidmungen` (seit V-0349 ersetzt G5 sie),
   `lernplan: true` an alten Blöcken.
 - `pruefeAngebot()` lehnt ab, was formal nicht stimmt (doppelte Ids, unbekannte Art oder Topf, kaputtes Muster); die
   API speichert dann nicht (422).
@@ -762,7 +782,8 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   `<prüfung>@<datum>`), `schicht` (A/B/C/D/R), `quelle`, `art`, `modul`, `modulnummer`, `titel` („TECHGI · VL“), `datum`,
   `bis`, `start`/`ende` als ISO mit Zeitzone (`2026-10-29T12:15:00+01:00`), `ganztag`, `uhrzeit` (Fristen mit
   Zeitpunkt), `ort`, `online`, `wichtig` (bei einer Prüfung: dieser Termin gilt), `unsicher`, `teil`, `zaehlt_min`,
-  `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den Kalender-Abos), `ist` (Lebenslauf), `einzeln` (nur in dieser Woche verschoben, SP-0416). Die Fristen der
+  `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den Kalender-Abos), `ist` (Lebenslauf), `einzeln` (nur in dieser Woche verschoben, SP-0416, oder bei einer anderen Gruppe, SP-0421 — dann `sonst {datum, start,
+  ende}`: wo der Termin sonst liegt). Die Fristen der
   Prüfungen (Verweise nach § 63) kommen mit (`<prüfung>-anmeldung`). Die Ereignisse rechnen ohne `heute` (wie seit V-0321).
 - **`pruefungen[]`** (SP-0412, Silas, 17.10.: *„die Termine und Intervalle und auch die Daten vom Prüfungstab“*) ist der
   Reiter „Prüfungen“ als Daten, aus `pruefungenExport(rechnen(…, { heute }))` mit dem Berliner Tag (`heute`): je Prüfung

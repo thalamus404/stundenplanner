@@ -1105,3 +1105,103 @@ test('Einzeln verschoben ist gekennzeichnet: am Vorkommen (serie), im Ereignis (
   assert.match(ein, /DESCRIPTION:Nur in dieser Woche verschoben/);
   assert.equal((ics.match(/Nur in dieser Woche verschoben/g) || []).length, 1);
 });
+
+// ── SP-0421: nur diese Woche zu einer anderen Gruppe; die Marke „nur diese Woche“ setzt zurück ──────
+
+test('einzelnZuruecksetzen: der Block geht zurück in seine Reihe, der Eintrag zieht mit (SP-0421)', () => {
+  const plan = { bloecke: [{ id: 'b1', teil: 'bsp-vn', tag: 'Do', start: '09:00', ende: '11:00' }], ist: { 'b1@2030-10-31': 'ja' } };
+  const { plan: neu, id } = M.einzelnVerschieben(plan, 'b1', '2030-10-31', { datum: '2030-11-01', start: '14:00', ende: '16:00' });
+  const r = M.einzelnZuruecksetzen(neu, id);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.plan.bloecke, plan.bloecke, 'die Reihe ist wieder ganz, der Einzelblock weg');
+  assert.deepEqual(r.plan.ist, { 'b1@2030-10-31': 'ja' }, 'der Eintrag gehört wieder der Reihe');
+  assert.deepEqual(neu.bloecke.length, 2, 'der alte Plan bleibt unberührt');
+  // Seitdem in der Standardwoche auf Freitag gezogen: Das Vorkommen kommt an den Platz, den die Reihe jetzt hat.
+  neu.bloecke.find((b) => b.id === 'b1').tag = 'Fr';
+  const r2 = M.einzelnZuruecksetzen(neu, id);
+  assert.ok(M.rechnen(angebot(), r2.plan).vorkommen.some((v) => v.block === 'b1' && v.datum === '2030-11-01'));
+  // Ein Block ohne Reihe bleibt.
+  assert.equal(M.einzelnZuruecksetzen(plan, 'b1').ok, false);
+});
+
+function mitDritterGruppe() {
+  const a = angebot();
+  a.module[0].teile[3].optionen.push({ id: 'g3', label: 'G3 · Do 12', termine: { typ: 'serie', tag: 'Do', start: '12:15', ende: '13:45', von: '2030-10-17', bis: '2031-02-13', ort: 'Z 3' } });
+  return a;
+}
+
+test('ausweichTermine: die Termine der anderen Gruppen in dieser Woche, nur für eine gewählte Gruppe (SP-0421)', () => {
+  const a = mitDritterGruppe();
+  const e = M.rechnen(a, { wahl: { 'bsp-ue': 'g2' } });
+  // Woche ab Mo 04.11.: G1 Mo 14:15 (Reihe), G3 Do 12:15; die eigene Gruppe G2 (Mi) nicht.
+  const aus = M.ausweichTermine(e, 'bsp-ue@2030-11-06@08:15');
+  assert.deepEqual(aus.map((x) => [x.option, x.datum, x.start, x.zurueck]), [['g1', '2030-11-04', 14 * 60 + 15, false], ['g3', '2030-11-07', 12 * 60 + 15, false]]);
+  assert.equal(aus[1].ort, 'Z 3');
+  // Eine Woche ohne G1: nur G3.
+  assert.deepEqual(M.ausweichTermine(e, 'bsp-ue@2030-10-23@08:15').map((x) => x.option), ['g3']);
+  // Ein fester Termin (die VL) hat keine Gruppen zum Ausweichen.
+  assert.deepEqual(M.ausweichTermine(e, 'bsp-ue@2030-11-05@10:15'), []);
+  assert.deepEqual(M.ausweichTermine(e, e.vorkommen.find((v) => v.teil === 'bsp-vl').id), []);
+});
+
+test('tauschen: nur dieses Vorkommen liegt bei der anderen Gruppe — gezählt, gekennzeichnet, im Kalender (SP-0421)', () => {
+  const a = mitDritterGruppe();
+  const plan = { wahl: { 'bsp-ue': 'g2' } };
+  const vorher = M.rechnen(a, plan).vorkommen.filter((v) => v.teil === 'bsp-ue');
+  const neu = M.tauschen(plan, 'bsp-ue', 'bsp-ue@2030-11-06@08:15', { option: 'g3', datum: '2030-11-07', start: '12:15' });
+  assert.equal(plan.tausch, undefined, 'der alte Plan bleibt unberührt');
+  assert.deepEqual(neu.tausch, { 'bsp-ue@2030-11-06@08:15': { option: 'g3', datum: '2030-11-07', start: '12:15' } });
+  const e = M.rechnen(a, neu);
+  const vk = e.vorkommen.filter((v) => v.teil === 'bsp-ue');
+  assert.equal(vk.length, vorher.length, 'kein Termin mehr und keiner weniger');
+  assert.ok(!vk.some((v) => v.datum === '2030-11-06'), 'am Mittwoch liegt die eigene Gruppe in dieser Woche nicht');
+  const x = vk.find((v) => v.datum === '2030-11-07');
+  assert.deepEqual([x.id, x.option, x.start, x.ort, x.schicht, x.hart], ['bsp-ue@2030-11-07@12:15', 'g3', 12 * 60 + 15, 'Z 3', 'B', true]);
+  assert.deepEqual(x.tausch, { von: 'bsp-ue@2030-11-06@08:15', option: 'g2', datum: '2030-11-06', start: 8 * 60 + 15, ende: 9 * 60 + 45 });
+  assert.equal(x.zaehlt_min, 120, 'zählt wie ein Termin der eigenen Gruppe');
+  assert.equal(x.gesamt, vorher[0].gesamt, 'es bleibt ein Vorkommen der Reihe der eigenen Gruppe, kein „1×“');
+  assert.equal(vk.filter((v) => v.tausch).length, 1, 'die anderen Wochen bleiben');
+  // Getauscht: Ausweichen kann es zurück an seinen Platz oder zu G1, nicht noch einmal zu G3 am Donnerstag.
+  assert.deepEqual(M.ausweichTermine(e, x.id).map((y) => [y.option, y.datum, y.zurueck]), [['g1', '2030-11-04', false], ['g2', '2030-11-06', true]]);
+  // Ereignis und Kalender-Abo sagen, wo der Termin sonst liegt.
+  const ev = M.ereignisse(a, neu).find((y) => y.id === x.id);
+  assert.equal(ev.einzeln, true);
+  assert.equal(ev.sonst.datum, '2030-11-06');
+  assert.match(ev.sonst.start, /^2030-11-06T08:15:00\+01:00$/);
+  const ics = K.ics(M.ereignisse(a, neu), { kalender: 'termine', jetzt: new Date('2030-10-01T00:00:00Z') }).replace(/\r\n /g, '');
+  assert.match(ics.split('BEGIN:VEVENT').find((y) => y.includes(`UID:${x.id}@`)), /DESCRIPTION:Nur in dieser Woche bei einer anderen Gruppe — sonst am 06\.11\.2030 um 08:15/);
+});
+
+test('tauschen: zurück an den Platz, der Eintrag zieht mit; ein Ziel, das es nicht mehr gibt, meldet sich (SP-0421)', () => {
+  const a = mitDritterGruppe();
+  const von = 'bsp-ue@2030-11-06@08:15';
+  const neu = M.tauschen({ wahl: { 'bsp-ue': 'g2' }, ist: { [von]: 'ja' } }, 'bsp-ue', von, { option: 'g1', datum: '2030-11-04', start: '14:15' });
+  assert.deepEqual(neu.ist, { 'bsp-ue@2030-11-04@14:15': 'ja' }, 'der Eintrag gehört dem Termin, an dem Silas war');
+  // Von G1 weiter zu G3: der Tausch zeigt weiter auf das ursprüngliche Vorkommen, der Eintrag zieht weiter.
+  const weiter = M.tauschen(neu, 'bsp-ue', von, { option: 'g3', datum: '2030-11-07', start: '12:15' });
+  assert.deepEqual(Object.keys(weiter.tausch), [von]);
+  assert.deepEqual(weiter.ist, { 'bsp-ue@2030-11-07@12:15': 'ja' });
+  const zurueck = M.tauschen(weiter, 'bsp-ue', von, null);
+  assert.equal(zurueck.tausch, undefined);
+  assert.deepEqual(zurueck.ist, { [von]: 'ja' });
+  // Das Angebot ändert sich (G3 gibt es am 07.11. nicht mehr): Der Termin liegt wieder bei G2, eine Meldung sagt es.
+  a.module[0].teile[3].optionen[2].termine.ausser = ['2030-11-07'];
+  const e = M.rechnen(a, M.tauschen({ wahl: { 'bsp-ue': 'g2' } }, 'bsp-ue', von, { option: 'g3', datum: '2030-11-07', start: '12:15' }));
+  assert.ok(e.vorkommen.some((v) => v.id === von && !v.tausch));
+  assert.ok(e.teile.get('bsp-ue').flags.some((f) => f.art === 'tausch_fehlt' && f.stufe === 'achtung'));
+});
+
+test('Zurücksetzen ab Schritt 2 legt die Täusche mit der Wahl beiseite, Wiederherstellen holt sie zurück (SP-0421)', () => {
+  const a = mitDritterGruppe();
+  const plan = M.tauschen({ wahl: { 'bsp-ue': 'g2' } }, 'bsp-ue', 'bsp-ue@2030-11-06@08:15', { option: 'g3', datum: '2030-11-07', start: '12:15' });
+  const weg = M.zuruecksetzen(plan, a, 2);
+  assert.equal(weg.tausch, undefined);
+  assert.deepEqual(weg.zurueckgesetzt.tausch, plan.tausch);
+  assert.deepEqual(M.wiederherstellen(weg).tausch, plan.tausch);
+  // Ist inzwischen eine andere Gruppe gewählt, gilt der Tausch nicht mehr.
+  assert.equal(M.wiederherstellen({ ...weg, wahl: { 'bsp-ue': 'g1' } }).tausch, undefined);
+  // Ab Schritt 3 bleibt er, wo er ist.
+  assert.deepEqual(M.zuruecksetzen(plan, a, 3).tausch, plan.tausch);
+  assert.deepEqual(Object.keys(M.tauschVon(plan, 'bsp-ue')), ['bsp-ue@2030-11-06@08:15']);
+  assert.deepEqual(M.tauschVon(plan, 'bsp-vl'), {});
+});
