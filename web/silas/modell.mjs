@@ -127,6 +127,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   const wo = wochen(sem);
   const wahl = plan.wahl || {};
   const ist = plan.ist || {};
+  const tausch = plan.tausch || {};
   const vorkommen = [];
   const teile = new Map();
   const heute = optionen.heute || null;
@@ -161,17 +162,27 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
       annahme = !!t.zuteilung && (plan.zugeteilt || {})[t.id] !== option.id;
     }
     for (const [mi, mu] of muster(quelle).entries()) {
-      for (const x of termineAus(mu, sem)) {
-        const id = `${t.id}@${x.datum}@${hhmm(x.start)}`;
-        const ort = x.ort || quelle.ort || t.ort || null;
+      for (const x0 of termineAus(mu, sem)) {
+        const id0 = `${t.id}@${x0.datum}@${hhmm(x0.start)}`;
+        // Nur in dieser Woche bei einer anderen Gruppe (SP-0421, plan.tausch, tauschen()): Das Vorkommen der gewählten
+        // Gruppe liegt dann am Termin der anderen. Gibt es den Termin nicht mehr (Angebot geändert), bleibt es an
+        // seinem Platz, und eine Meldung sagt es.
+        const ts = option ? tausch[id0] : null;
+        const ziel = ts ? tauschZiel(t, ts, sem) : null;
+        if (ts && !ziel) flagge(z, 'tausch_fehlt', `${t.titel}: Der Tausch am ${datumKurz(x0.datum)} passt zu keinem Termin mehr — der Termin liegt wieder an seinem Platz`, { stufe: 'achtung', datum: x0.datum });
+        const x = ziel ? ziel.x : x0;
+        const q = ziel ? ziel.option : quelle;
+        const id = ziel ? `${t.id}@${x.datum}@${hhmm(x.start)}` : id0;
+        const ort = x.ort || q.ort || t.ort || null;
         const ausgefallen = istGeschlossen(sem, x.datum) && !nurOnline(ort) ? 'geschlossen' : (istEintrag(ist[id]) || {}).s === 'ausgefallen' ? 'gemeldet' : null;
         // hart: Auf einem Termin kann kein Block liegen (Silas, 11.10.: „die Sachen sind ganz sicher geblockt“).
         const v = {
           id, quelle: 'termin', schicht, schritt: schrittVon(t), hart: !ausgefallen, muster: mi,
-          teil: t.id, modul: z.modul.id, option: option && option.id, datum: x.datum, start: x.start, ende: x.ende,
-          ort, online: quelle.online || t.online || null, ausgefallen, annahme,
+          teil: t.id, modul: z.modul.id, option: ziel ? ziel.option.id : option && option.id, datum: x.datum, start: x.start, ende: x.ende,
+          ort, online: q.online || t.online || null, ausgefallen, annahme,
           titel: x.titel, ct: t.ct !== false, zaehlt_min: 0, flags: [], mit: [],
-          herkunft: x.quelle || quelle.quelle || t.quelle || null, unsicher: !!x.unsicher,
+          herkunft: x.quelle || q.quelle || t.quelle || null, unsicher: !!x.unsicher,
+          tausch: ziel ? { von: id0, option: option.id, datum: x0.datum, start: x0.start, ende: x0.ende } : null,
         };
         vorkommen.push(v); z.vk.push(v);
       }
@@ -530,7 +541,8 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   // Vorkommen das wievielte (nr), wie viele insgesamt (gesamt) und wie viele ab ihm noch kommen (rest).
   const reihen = new Map();
   for (const v of vorkommen) {
-    const k = v.quelle === 'termin' ? `t|${v.teil}|${v.option || ''}|${v.muster ?? 0}` : v.quelle === 'block' ? `b|${v.block}` : `e|${v.id}`;
+    // Ein getauschtes Vorkommen (SP-0421) zählt in der Reihe seiner gewählten Gruppe, nicht als „1×“ der anderen.
+    const k = v.quelle === 'termin' ? `t|${v.teil}|${(v.tausch ? v.tausch.option : v.option) || ''}|${v.muster ?? 0}` : v.quelle === 'block' ? `b|${v.block}` : `e|${v.id}`;
     reihen.set(k, [...(reihen.get(k) || []), v]);
   }
   for (const vs of reihen.values()) vs.forEach((v, i) => { v.nr = i + 1; v.gesamt = vs.length; v.rest = vs.length - i; });
@@ -572,12 +584,15 @@ export function zuruecksetzen(plan, angebot, ab = 2, { am = null, erg = null } =
   const teil = new Map([...(erg || rechnen(angebot, plan || {})).teile.values()].map((z) => [z.teil.id, z.teil]));
   const weg = (b) => { const s = schrittVonBlock(b.teil ? teil.get(b.teil) : null); return s >= ab && s <= 4; };
   const fort = { am, ab, wahl: ab <= 2 ? neu.wahl || {} : {}, bloecke: (neu.bloecke || []).filter(weg) };
-  if (ab <= 2) delete neu.wahl;
+  // Die Täusche einer Woche (SP-0421) hängen an der Wahl: Sie gehen mit ihr beiseite und kommen mit ihr zurück.
+  if (ab <= 2 && neu.tausch) fort.tausch = neu.tausch;
+  if (ab <= 2) { delete neu.wahl; delete neu.tausch; }
   neu.bloecke = (neu.bloecke || []).filter((b) => !weg(b));
   delete neu.festgelegt;
   const alt = neu.zurueckgesetzt;
   if (Object.keys(fort.wahl).length || fort.bloecke.length) {
     neu.zurueckgesetzt = alt ? { ...fort, wahl: { ...alt.wahl, ...fort.wahl }, bloecke: [...alt.bloecke, ...fort.bloecke.filter((b) => !alt.bloecke.some((x) => x.id === b.id))] } : fort;
+    if (alt && (alt.tausch || fort.tausch)) neu.zurueckgesetzt.tausch = { ...(alt.tausch || {}), ...(fort.tausch || {}) };
   }
   return neu;
 }
@@ -588,6 +603,9 @@ export function wiederherstellen(plan) {
   const z = neu.zurueckgesetzt;
   if (!z) return neu;
   neu.wahl = { ...z.wahl, ...(neu.wahl || {}) };
+  // Ein Tausch nur, wo die Gruppe wieder dieselbe ist, für die er galt (SP-0421).
+  const tausch = Object.fromEntries(Object.entries(z.tausch || {}).filter(([id]) => { const teil = id.split('@')[0]; return (z.wahl || {})[teil] && neu.wahl[teil] === z.wahl[teil]; }));
+  if (Object.keys(tausch).length) neu.tausch = { ...tausch, ...(neu.tausch || {}) };
   const ids = new Set((neu.bloecke || []).map((b) => b.id));
   neu.bloecke = [...(neu.bloecke || []), ...z.bloecke.filter((b) => !ids.has(b.id))];
   delete neu.zurueckgesetzt;
@@ -628,6 +646,93 @@ export function einzelnVerschieben(plan, blockId, datum, ziel) {
   const alt = `${b.id}@${datum}`;
   if (alt in ist) { ist[`${id}@${ziel.datum}`] = ist[alt]; delete ist[alt]; neu.ist = ist; }
   return { plan: neu, id };
+}
+
+/** Ein einzeln verschobenes Vorkommen zurück in seine Reihe (SP-0421, Silas, 19.10.: „wenn man auf dieses kleine
+ *  Schildchen ‚nur diese Woche‘ rauftippt … zurücksetzen. Und dann wird das quasi wieder dahin zurückgeschoben, wo es
+ *  ursprünglich war“): das Gegenstück zu einzelnVerschieben(). Der Datumsblock geht, die Reihe nimmt ihre Woche wieder
+ *  (`ohne`), ein Eintrag im Lebenslauf zieht mit zurück. Liegt die Reihe inzwischen an einem anderen Wochentag, kommt
+ *  das Vorkommen dorthin. Rein: { plan, ok } — ok false, wenn der Block keiner Reihe (mehr) gehört. */
+export function einzelnZuruecksetzen(plan, blockId) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  const bl = neu.bloecke || [];
+  const b = bl.find((x) => x.id === blockId);
+  const r = b && b.serie ? bl.find((x) => x.id === b.serie && !x.datum) : null;
+  if (!r) return { plan: neu, ok: false };
+  // Welche Woche die Reihe ausließ: die des Blocks — oder, wenn er seitdem in eine andere Woche gezogen wurde, die aus
+  // seiner Id (einzelnVerschieben: <reihe>-JJJJMMTT).
+  const ohne = r.ohne || [];
+  const ausId = (blockId.slice(r.id.length).match(/^-(\d{4})(\d{2})(\d{2})/) || []).slice(1).join('-');
+  const montag = ohne.includes(montagVon(b.datum)) ? montagVon(b.datum) : ohne.includes(ausId) ? ausId : montagVon(b.datum);
+  r.ohne = ohne.filter((d) => d !== montag);
+  if (!r.ohne.length) delete r.ohne;
+  neu.bloecke = bl.filter((x) => x.id !== blockId);
+  const alt = `${b.id}@${b.datum}`;
+  if (neu.ist && alt in neu.ist) {
+    const ist = { ...neu.ist };
+    ist[`${r.id}@${plusTage(montag, TAGE.indexOf(r.tag))}`] = ist[alt]; delete ist[alt]; neu.ist = ist;
+  }
+  return { plan: neu, ok: true };
+}
+
+/** Der Termin einer anderen Gruppe, auf den ein Tausch zeigt (plan.tausch, SP-0421): { option, x } oder null. */
+function tauschZiel(t, ts, sem) {
+  const o = (t.optionen || []).find((y) => y.id === ts.option);
+  if (!o) return null;
+  for (const mu of muster(o)) for (const x of termineAus(mu, sem)) if (x.datum === ts.datum && hhmm(x.start) === ts.start) return { option: o, x };
+  return null;
+}
+
+/** Wohin ein Termin einer gewählten Gruppe in seiner Woche ausweichen kann (SP-0421, Silas, 19.10.: „wenn ich auf
+ *  Statistik 1 Tutorium am Montag raufklicke, dass dann in dunkelgrau alle anderen Termine diese Woche angezeigt werden,
+ *  die es dazu noch gibt“): die Termine der anderen Gruppen von Montag bis Sonntag — und, ist das Vorkommen schon
+ *  getauscht, sein ursprünglicher Platz (`zurueck`). Was das Element dort schon hat, und was ausfällt, nicht.
+ *  Ergebnis: [{ teil, modul, option, label, datum, start, ende, ort, zurueck, trifft: [Vorkommen-Ids] }]. */
+export function ausweichTermine(erg, vkId) {
+  const v = erg.vorkommen.find((x) => x.id === vkId);
+  const z = v && v.quelle === 'termin' && v.schicht === 'B' ? erg.teile.get(v.teil) : null;
+  if (!z || !istWahl(z.teil)) return [];
+  const von = montagVon(v.datum), bis = plusTage(von, 6);
+  const eigen = v.tausch ? v.tausch.option : v.option;
+  const da = new Set(z.vk.filter((x) => x.quelle === 'termin').map((x) => `${x.datum}@${x.start}`));
+  const aus = [];
+  for (const o of z.teil.optionen || []) {
+    for (const mu of muster(o)) {
+      for (const x of termineAus(mu, erg.sem)) {
+        if (x.datum < von || x.datum > bis || da.has(`${x.datum}@${x.start}`)) continue;
+        const zurueck = !!v.tausch && o.id === eigen && x.datum === v.tausch.datum && x.start === v.tausch.start;
+        if (o.id === eigen && !zurueck) continue;
+        const ort = x.ort || o.ort || z.teil.ort || null;
+        if (istGeschlossen(erg.sem, x.datum) && !nurOnline(ort)) continue;
+        const trifft = erg.vorkommen.filter((y) => y.hart && y.id !== v.id && y.datum === x.datum && !y.ganztag && y.start != null && y.start < x.ende && x.start < y.ende).map((y) => y.id);
+        aus.push({ teil: z.teil.id, modul: z.modul.id, option: o.id, label: o.label, datum: x.datum, start: x.start, ende: x.ende, ort, zurueck, trifft });
+      }
+    }
+  }
+  return aus.sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : a.start - b.start));
+}
+
+/** Ein Vorkommen einer gewählten Gruppe nur in dieser Woche zu einer anderen Gruppe legen (SP-0421) — oder mit
+ *  ziel null zurück an seinen Platz. `von` ist die Id des ursprünglichen Vorkommens (der gewählten Gruppe), `ziel`
+ *  { option, datum, start: "HH:MM" }. Ein Eintrag im Lebenslauf zieht mit, wie beim einzelnen Verschieben eines Blocks.
+ *  Rein: der neue Plan. */
+export function tauschen(plan, teil, von, ziel) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  const t = { ...(neu.tausch || {}) };
+  const jetzt = t[von] ? `${teil}@${t[von].datum}@${t[von].start}` : von;
+  const dann = ziel ? `${teil}@${ziel.datum}@${ziel.start}` : von;
+  if (ziel) t[von] = { option: ziel.option, datum: ziel.datum, start: ziel.start }; else delete t[von];
+  if (Object.keys(t).length) neu.tausch = t; else delete neu.tausch;
+  if (neu.ist && jetzt in neu.ist && jetzt !== dann) {
+    const ist = { ...neu.ist };
+    ist[dann] = ist[jetzt]; delete ist[jetzt]; neu.ist = ist;
+  }
+  return neu;
+}
+
+/** Die Täusche eines Teils (SP-0421) — sie gelten nur für seine gewählte Gruppe; wer umwählt, verliert sie. */
+export function tauschVon(plan, teil) {
+  return Object.fromEntries(Object.entries((plan && plan.tausch) || {}).filter(([id]) => id.startsWith(`${teil}@`)));
 }
 
 /** Einen Block löschen — eine Reihe mit allem, was einzeln aus ihr verschoben wurde (`serie`, SP-0414): Es sind ihre
@@ -1236,8 +1341,10 @@ export function ereignisse(angebot, plan, optionen = {}) {
       datum: v.datum, bis: v.bis || null, ort: v.ort || null, online: v.online || null,
       ganztag: !!v.ganztag || v.start == null, wichtig: !!v.wichtig, unsicher: !!v.unsicher,
       teil: v.teil || null, zaehlt_min: v.zaehlt_min, flags: v.flags, ausgefallen: v.ausgefallen || null, ist: v.ist || null,
-      einzeln: !!v.serie,
+      einzeln: !!v.serie || !!v.tausch,
     };
+    // Nur in dieser Woche bei einer anderen Gruppe (SP-0421): wo der Termin sonst liegt.
+    if (v.tausch) e.sonst = { datum: v.tausch.datum, start: isoZeit(v.tausch.datum, v.tausch.start), ende: isoZeit(v.tausch.datum, v.tausch.ende) };
     if (!e.ganztag) { e.start = isoZeit(v.datum, v.start); e.ende = isoZeit(v.datum, v.ende ?? v.start); }
     if (v.punkt != null) e.uhrzeit = hhmm(v.punkt);
     return e;
