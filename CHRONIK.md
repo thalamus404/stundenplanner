@@ -12,6 +12,20 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 19.10.2026 — /silas: Präsenz nur diese Woche bei einer anderen Gruppe, „nur diese Woche“ setzt zurück (SP-0421)
+
+- Silas: *„… wenn ich auf Statistik 1 Tutorium am Montag raufklicke, dass dann in dunkelgrau alle anderen Termine diese
+  Woche angezeigt werden, die es dazu noch gibt. Und wenn ich auf einen anderen, dann noch grauen Termin raufdrücke,
+  dann kommt quasi die Abfrage für diese Woche ändern?“* Festgelegt, in einer echten Woche, zeigt ein Klick auf eine
+  gewählte Gruppe das Element wie bisher farbig und die Termine der anderen Gruppen dieser Woche dunkelgrau
+  (`ausweichTermine()`); „Ja, nur diese Woche“ legt nur dieses Vorkommen dorthin (`plan.tausch`, `tauschen()`). Es
+  zählt weiter als Termin der eigenen Gruppe, ein ✓/✗ zieht mit, das Kalender-Abo sagt, wo er sonst liegt.
+- *„… wenn man auf dieses kleine Schildchen nur diese Woche rauftippt, dass dann ein kleines Fenster aufploppt, wo man
+  sagt, zurücksetzen.“* Die Marke ist jetzt ein Ziel, für getauschte Termine wie für einzeln verschobene Blöcke
+  (`einzelnZuruecksetzen()`, das Gegenstück zu SP-0414).
+- Wer die Gruppe ganz wechselt, verliert die Täusche der alten (die Meldung sagt es, ⌘Z holt sie); „Zurücksetzen ab
+  Schritt 2“ legt sie mit der Wahl beiseite.
+
 ## 18.10.2026 — Der Styleguide des Study OS: /silas und die öffentliche Seite (SP-0420)
 
 - Silas: *„… mach einen Design-Rehaul … lass alle Elemente so, wie sie sind, aber füg bitte irgendwie ein Style-Guide

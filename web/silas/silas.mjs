@@ -92,6 +92,7 @@ const Z = {
   auf: {},              // je Schritt das Modul, das Silas trotz „fertig“ aufgeklappt hat
   zrAuf: new Set(['zr-pause-0', 'zr-frei']), // Prüfungen: die aufgeklappten Zeiträume (anfangs die vorlesungsfreien)
   hell: null,           // Vorkommen-Id, die kurz hervorgehoben wird
+  ausweich: null,       // Vorkommen-Id einer gewählten Gruppe, deren Ausweichtermine dieser Woche dunkelgrau dastehen (SP-0421)
   leuchten: null,       // Teil-Id, deren Blöcke im Raster kurz aufleuchten („Block verschieben“, V-0354)
   modulPuls: 0,         // bis wann die Kacheln des angeklickten Moduls (fokus modul:…) pulsieren (V-0356)
   ansehen: null,        // Prüfungs-Id, deren Vorschlag gerade angesehen wird (nur seine Wochen im Kalender, V-0356)
@@ -1385,6 +1386,13 @@ function kachelnJetzt() {
       const vorbereitung = k.art === 'block' && k.schritt === M.PRUEFUNGEN;
       k.lage = vorbereitung ? 'jetzt' : pruefplan() && k.art !== 'pruefung' ? 'frueher' : 'fest';
     }
+    // Ausweichen, nur diese Woche (SP-0421, Silas, 19.10.: „wenn ich auf Statistik 1 Tutorium am Montag raufklicke, dass
+    // dann in dunkelgrau alle anderen Termine diese Woche angezeigt werden, die es dazu noch gibt“): Ist eine gewählte
+    // Gruppe angeklickt, stehen die Termine der anderen Gruppen dieser Woche dunkelgrau da — solange ihr Teil im Fokus ist.
+    const av = !std && !pruefplan() && Z.ausweich ? Z.erg.vorkommen.find((v) => v.id === Z.ausweich) : null;
+    if (av && Z.fokus === av.teil && av.datum >= w.von && av.datum <= w.bis) {
+      for (const a of M.ausweichTermine(Z.erg, av.id)) out.push({ ...a, art: 'ausweich', von: av.id, tag: M.wochentag(a.datum), schritt: 2, lage: 'fest' });
+    }
     return out;
   }
   // Was dran ist, ist farbig; was im selben Schritt schon gewählt oder gelegt ist, aber zu einer anderen Sache gehört,
@@ -1459,7 +1467,7 @@ function rasterZeichnen() {
   const fahrten = [];
   const kbelegt = [];
   for (let d = 0; d < tage; d++) {
-    const amTag = kacheln.filter((k) => k.tag === d && k.art !== 'option');
+    const amTag = kacheln.filter((k) => k.tag === d && k.art !== 'option' && k.art !== 'ausweich');
     const termine = amTag.filter((k) => ['termin', 'pruefung', 'einzel'].includes(k.art))
       .map((k) => ({ start: k.start, ende: k.ende, ort: k.ort, online: k.v && k.v.online })).filter(M.vorOrt);
     const datum = std ? null : M.plusTage(w.von, d);
@@ -1631,7 +1639,7 @@ function rasterZeichnen() {
         band(h0 * 60, h1 * 60, 'tag-zu', zl.einheiten ? 'nichts offen' : 'noch kein Stoff');
         continue;
       }
-      const belegt = kacheln.filter((k) => k.tag === d && k.art !== 'option').map((k) => [k.start, k.ende]);
+      const belegt = kacheln.filter((k) => k.tag === d && k.art !== 'option' && k.art !== 'ausweich').map((k) => [k.start, k.ende]);
       const fenster = M.freieFenster(belegt, Z.legen.dauer, Math.max(fa, h0 * 60), Math.min(fe, h1 * 60));
       geo.frei[d] = fenster;
       for (const [a, b] of fenster) {
@@ -1653,7 +1661,7 @@ function rasterZeichnen() {
         if (passt(nach, nach + dauer)) thema.push([nach, nach + dauer, `direkt nach ${name}`]);
         else {
           // Belegt: sagen, was dort liegt — vielleicht ist das das Verschiebbare (Silas' EINFWI-Video Di 12–14, danach Labs).
-          const im = kacheln.filter((x) => x.tag === d && x !== k && x.art !== 'option' && x.start < nach + dauer && nach < x.ende);
+          const im = kacheln.filter((x) => x.tag === d && x !== k && x.art !== 'option' && x.art !== 'ausweich' && x.start < nach + dauer && nach < x.ende);
           const wer = [...new Set(im.map((x) => { const zz = x.teil && Z.erg.teile.get(x.teil); return zz ? `${M.kurz(zz.modul)} · ${zz.teil.titel}` : (x.v && x.v.titel) || 'ein Termin'; }))];
           if (wer.length) geo.themaZu.push(`Direkt nach ${name} (${M.TAGE[d]} ${uhr(nach)}) liegt schon ${wer.join(', ')}`);
         }
@@ -1673,6 +1681,13 @@ function serieSatz(blockId) {
   const b = bl.find((x) => x.id === blockId);
   const r = b && bl.find((x) => x.id === b.serie);
   return r ? `Nur in dieser Woche verschoben — sonst ${M.TAGE_LANG[M.TAGE.indexOf(r.tag)]} ${r.start}–${r.ende}` : 'Nur in dieser Woche verschoben';
+}
+
+/** Der Satz zu einem Termin, der nur in dieser Woche bei einer anderen Gruppe liegt (SP-0421). */
+function tauschSatz(v) {
+  const z = Z.erg.teile.get(v.teil);
+  const o = z && (z.teil.optionen || []).find((x) => x.id === v.option);
+  return `Nur in dieser Woche bei einer anderen Gruppe${o ? ` (${o.label})` : ''} — sonst ${datumMitTag(v.tausch.datum)} ${zeitspanne(v.tausch.start, v.tausch.ende)}`;
 }
 
 /** Wo ein Block meistens zu seinem Stoff liegt (V-0342, M.rechnen 6b): die häufigste Lage seiner zählenden
@@ -1750,6 +1765,11 @@ function kachelEl(k) {
     act = k.lage === 'frueher' && k.schicht === 'B' && !fertig() ? 'kurz-zurueck' : k.lage === 'erledigt' ? 'jetzt' : 'kachel-teil';
     // Schritt 2: Die gewählte Gruppe der Sache, die dran ist, wählt ein Klick wieder ab (V-0345).
     if (!fertig() && schritt() === 2 && k.schicht === 'B' && k.lage === 'jetzt') { act = 'abwaehlen'; marke = null; }
+    // Festgelegt, in einer echten Woche (SP-0421): Ein Klick auf eine gewählte Gruppe zeigt dazu, wohin sie in dieser
+    // Woche ausweichen kann (M.ausweichTermine).
+    if (act === 'kachel-teil' && fertig() && !geo.std && k.schicht === 'B' && k.v && Z.ansicht.bereich === 'plan') act = 'ausweichen';
+    // Nur in dieser Woche bei einer anderen Gruppe: dieselbe Marke wie ein einzeln verschobener Block.
+    if (k.v && k.v.tausch && !geo.std) { marke = SCHMAL.matches ? 'einzeln' : 'nur diese Woche'; markeKl = 'einzeln'; }
   } else if (k.art === 'block') {
     const b = (Z.stand.plan.bloecke || []).find((x) => x.id === k.block);
     kl.push('block');
@@ -1792,6 +1812,15 @@ function kachelEl(k) {
     zeile2 = SCHMAL.matches ? k.label.split(' · ').filter((x) => !/^(Mo|Di|Mi|Do|Fr|Sa|So)\.? ?\d/.test(x)).join(' · ') || k.label : k.label;
     if (k.kollision) marke = SCHMAL.matches ? `⚠ ${k.kollision}×` : `trifft ${k.kollision}× einen Termin`;
     act = 'option';
+  } else if (k.art === 'ausweich') {
+    // Ein Termin einer anderen Gruppe in dieser Woche (SP-0421): dunkelgrau, nicht blass — ein Klick fragt, ob das
+    // Vorkommen nur in dieser Woche dorthin geht. Der ursprüngliche Platz eines getauschten heißt „zurück“.
+    kl.push('ausweich');
+    titel = `${M.kurz(m)} · ${z.teil.titel}`;
+    zeile2 = `${SCHMAL.matches ? uhr(k.start) : zeitspanne(k.start, k.ende)} · ${k.zurueck ? 'eigene Gruppe' : k.label}`;
+    if (k.zurueck) marke = 'zurück';
+    else if (k.trifft.length) marke = SCHMAL.matches ? '⚠' : 'trifft einen Termin';
+    act = 'ausweich';
   } else if (k.art === 'pruefung') {
     kl.push('pruefung'); titel = `${M.kurz(m)} · ${k.v.titel}`;
   } else {
@@ -1822,19 +1851,26 @@ function kachelEl(k) {
     act === 'abwaehlen' ? 'gewählt — ein Klick wählt ab, dann stehen alle Gruppen wieder da' : null,
     k.lage === 'frueher' ? `steht schon (Schritt ${k.schritt})${(k.art === 'block' || k.schicht === 'B') && !fertig() ? ' — Klick: kurz dorthin zurück' : ''}` : k.lage === 'erledigt' ? 'schon gewählt — Klick: ändern' : null,
     k.art === 'block' && (Z.stand.plan.bloecke || []).find((x) => x.id === k.block)?.serie && !geo.std ? serieSatz(k.block) : null,
+    k.v && k.v.tausch && !geo.std ? tauschSatz(k.v) : null,
+    act === 'ausweichen' ? 'Klick: die anderen Termine dieser Woche zum Ausweichen' : act === 'ausweich' ? 'Klick: nur in dieser Woche hierher' : null,
     bezug ? `${geo.std ? 'meist ' : ''}${bezug.text}` : null,
     ...(k.vk || []).flatMap((v) => v.flags).filter((x, i, a) => a.indexOf(x) === i).map((f) => ({ konflikt: 'Überschneidung', gesperrt: 'liegt auf einem Termin (gesperrt)', leer: 'kein Video in dieser Woche', vor_stoff: 'vor dem ersten Stoff des Moduls — zählt nicht', nach_pruefung: 'nach der Prüfung' }[f]))].filter(Boolean).join('\n');
   const tags = kachelTags(k);
   const el = h(act === 'block' ? 'div' : act ? 'button' : 'div', {
     class: kl.join(' '), type: act && act !== 'block' ? 'button' : null, 'data-act': act, 'data-teil': k.teil || null,
     'data-block': k.block || null, 'data-option': k.option || null, 'data-datum': k.datum || null, 'data-schritt': act === 'kurz-zurueck' ? String(k.schritt) : null,
-    'data-vk': act === 'ist' ? k.v.id : null,
+    'data-vk': act === 'ist' || act === 'ausweichen' ? k.v.id : act === 'ausweich' ? k.von : null,
+    'data-start': act === 'ausweich' ? M.hhmm(k.start) : null,
     // Festgelegt, in einer echten Woche (SP-0415, Silas, 17.10.: „Ich will nicht vorher erst auf Bearbeiten klicken
     // müssen, sondern es soll direkt funktionieren mit dem Rumschieben“): jeder eigene Block lässt sich ziehen — nur
     // dieses Vorkommen (SP-0414), wie die Mittagspause (V-0345). Ein Klick bleibt, was er war (Bestandteil, ✓/✗).
     'data-ziehen': k.art === 'block' && act !== 'block' && fertig() && !geo.std && Z.ansicht.bereich === 'plan' && k.block ? '1' : null,
     title: ist ? `${tip}\n${{ ja: '✓ erledigt', nein: '✗ nicht gemacht', teil: 'teilweise', verschoben: 'verschoben', offen: 'vorbei — noch ohne ✓ oder ✗' }[ist]} — Klick: ✓, ✗ oder …` : tip, tabindex: act === 'block' ? '0' : null,
-  }, h('b', { text: titel }), h('span', { class: 'k-zwei' }, tags.anzahl, zeile2), tags.etikett, marke ? h('span', { class: `k-marke ${markeKl}`, text: marke }) : null,
+  }, h('b', { text: titel }), h('span', { class: 'k-zwei' }, tags.anzahl, zeile2), tags.etikett,
+  // Die Marke „nur diese Woche“ ist selbst ein Ziel (SP-0421): Ein Tipp öffnet „Zurücksetzen“ (einzelnKarte).
+  marke ? h('span', markeKl === 'einzeln'
+    ? { class: 'k-marke einzeln', text: marke, 'data-act': 'einzeln', 'data-block': k.art === 'block' ? k.block : null, 'data-vk': k.art === 'termin' ? k.v.id : null, title: 'Tippen: zurücksetzen' }
+    : { class: `k-marke ${markeKl}`, text: marke }) : null,
   ist ? h('span', { class: `k-ist i-${ist}`, text: { ja: '✓', nein: '✗', teil: '½', verschoben: '→', offen: '?' }[ist] }) : null);
   if (act === 'block') el.append(h('span', { class: 'k-griff', 'data-griff': '1' }));
   return el;
@@ -3142,7 +3178,73 @@ function istKarte(vkId, nahe) {
     !termin && !v.ausgefallen ? h('details', { class: 'klappe' }, h('summary', { text: '… teilweise' }), teilForm) : null,
     schiebForm ? h('details', { class: 'klappe' }, h('summary', { text: '… verschieben' }), schiebForm) : null,
     v.quelle === 'block' && v.block ? h('div', { class: 'zeile' }, h('button', { type: 'button', class: 'knopf klein leise', onclick: () => { karteSchliessen(false); blockKarte(v.block, nahe, v.datum); }, text: 'Block bearbeiten' })) : null,
+    // Vorbei, aber bei einer anderen Gruppe dieser Woche gewesen (SP-0421): dieselben Ausweichtermine wie vor dem Termin.
+    termin && fertig() && !rasterLage().std && M.ausweichTermine(Z.erg, v.id).length ? h('div', { class: 'zeile' }, h('button', { type: 'button', class: 'knopf klein leise', onclick: () => { karteSchliessen(false); Z.ausweich = v.id; Z.fokus = v.teil; zeichnen(); }, text: 'Andere Gruppe in dieser Woche' })) : null,
+    v.tausch ? h('div', { class: 'zeile' }, h('button', { type: 'button', class: 'knopf klein leise', onclick: () => { karteSchliessen(false); aendern((s) => { s.plan = M.tauschen(s.plan, v.teil, v.tausch.von, null); }); melden('Zurückgesetzt.'); } }, sym('zurueck'), 'Zurück zu deiner Gruppe')) : null,
   ], nahe);
+}
+
+/** Die Täusche eines Teils aus dem Plan nehmen (SP-0421) — wenn seine Gruppe wechselt. Ändert `plan` selbst. */
+function tauschLoesen(plan, teil) {
+  if (!plan.tausch) return;
+  for (const id of Object.keys(M.tauschVon(plan, teil))) delete plan.tausch[id];
+  if (!Object.keys(plan.tausch).length) delete plan.tausch;
+}
+
+/** „Für diese Woche ändern?“ (SP-0421, Silas, 19.10.: „wenn ich auf einen anderen, dann noch grauen Termin raufdrücke, dann
+ *  kommt quasi die Abfrage für diese Woche ändern, Fragezeichen, und dann sage ich ja“). */
+function ausweichKarte(el) {
+  const v = Z.erg.vorkommen.find((x) => x.id === el.dataset.vk);
+  const a = v && M.ausweichTermine(Z.erg, v.id).find((x) => x.option === el.dataset.option && x.datum === el.dataset.datum && M.hhmm(x.start) === el.dataset.start);
+  if (!a) return;
+  const z = Z.erg.teile.get(v.teil);
+  const von = v.tausch ? v.tausch.von : v.id;
+  const wo = (datum, start, ende) => `${datumMitTag(datum)} ${zeitspanne(start, ende)}`;
+  const trifft = a.trifft.map((id) => Z.erg.vorkommen.find((y) => y.id === id)).filter(Boolean).map((y) => M.titelVon(y, Z.erg, Z.stand.angebot));
+  const ja = () => {
+    karteSchliessen(false);
+    Z.ausweich = null;
+    aendern((s) => { s.plan = M.tauschen(s.plan, v.teil, von, a.zurueck ? null : { option: a.option, datum: a.datum, start: M.hhmm(a.start) }); });
+    melden(a.zurueck ? `Zurück an seinem Platz: ${wo(a.datum, a.start, a.ende)}.` : `Nur in dieser Woche: ${wo(a.datum, a.start, a.ende)} (${a.label}). Die anderen Wochen bleiben, wie sie sind.`);
+  };
+  karteOeffnen([
+    h('h3', {}, h('span', { text: 'Für diese Woche ändern?' }), h('button', { class: 'knopf rund leise', type: 'button', 'aria-label': 'Schließen', onclick: () => karteSchliessen() }, sym('zu'))),
+    h('p', { class: 'satz', text: `${M.kurz(z.modul)} · ${z.teil.titel}: ${wo(v.datum, v.start, v.ende)} → ${wo(a.datum, a.start, a.ende)}${a.zurueck ? ' (deine Gruppe)' : ` (${a.label})`}.` }),
+    h('p', { class: 'satz', text: a.zurueck ? 'Damit liegt der Termin wieder bei deiner Gruppe.' : 'Nur in dieser Woche — die anderen Wochen bleiben bei deiner Gruppe.' }),
+    trifft.length ? h('p', { class: 'satz' }, h('span', { class: 'rot-text', text: `Dort liegt schon: ${trifft.join(', ')}.` })) : null,
+    h('div', { class: 'zeile' },
+      h('button', { type: 'button', class: 'knopf', onclick: () => karteSchliessen(), text: 'Abbrechen' }),
+      h('button', { type: 'button', class: 'knopf haupt', onclick: ja, text: 'Ja, nur diese Woche' })),
+  ], el);
+}
+
+/** Die Marke „nur diese Woche“ antippen (SP-0421, Silas, 19.10.: „dass dann ein kleines Fenster aufploppt, wo man sagt,
+ *  zurücksetzen. Und dann wird das quasi wieder dahin zurückgeschoben, wo es ursprünglich war“): für einen einzeln
+ *  verschobenen Block (M.einzelnZuruecksetzen) wie für einen Termin bei einer anderen Gruppe (M.tauschen ohne Ziel). */
+function einzelnKarte(el) {
+  const v = el.dataset.vk ? Z.erg.vorkommen.find((x) => x.id === el.dataset.vk) : null;
+  const b = el.dataset.block ? (Z.stand.plan.bloecke || []).find((x) => x.id === el.dataset.block) : null;
+  if (!(v && v.tausch) && !(b && b.serie)) return;
+  const satz = v ? tauschSatz(v) : serieSatz(b.id);
+  const zurueck = () => {
+    karteSchliessen(false);
+    if (v) {
+      aendern((s) => { s.plan = M.tauschen(s.plan, v.teil, v.tausch.von, null); });
+      melden(`Zurückgesetzt: wieder ${datumMitTag(v.tausch.datum)} ${zeitspanne(v.tausch.start, v.tausch.ende)}.`);
+      return;
+    }
+    const r = M.einzelnZuruecksetzen(Z.stand.plan, b.id);
+    if (!r.ok) { melden('Die Reihe, aus der dieser Block kam, gibt es nicht mehr — er bleibt, wo er ist.'); return; }
+    aendern((s) => { s.plan = M.einzelnZuruecksetzen(s.plan, b.id).plan; });
+    melden('Zurückgesetzt: Der Block liegt wieder an seinem Platz in der Reihe.');
+  };
+  karteOeffnen([
+    h('h3', {}, h('span', { text: 'Nur diese Woche' }), h('button', { class: 'knopf rund leise', type: 'button', 'aria-label': 'Schließen', onclick: () => karteSchliessen() }, sym('zu'))),
+    h('p', { class: 'satz', text: `${satz}.` }),
+    h('div', { class: 'zeile' },
+      h('button', { type: 'button', class: 'knopf', onclick: () => karteSchliessen(), text: 'Abbrechen' }),
+      h('button', { type: 'button', class: 'knopf haupt', onclick: zurueck }, sym('zurueck'), 'Zurücksetzen')),
+  ], el);
 }
 
 function blockKarte(blockId, nahe, datum) {
@@ -3392,6 +3494,7 @@ function bearbeitenKarte(nahe) {
 /** Einen Bestandteil wählen. In seinem Schritt heißt das zugleich: Blöcke für ihn setzen (Videos in 3, Lernen in 4) —
  *  Silas wird durch genau diese Entscheidung geführt. Ein Bestandteil aus einem anderen Schritt holt diesen Schritt. */
 function fokussieren(teilId) {
+  Z.ausweich = null; // die Ausweichtermine gehören zu der Kachel, die sie gezeigt hat (SP-0421)
   Z.fokus = Z.fokus === teilId ? null : teilId;
   const z = Z.fokus && Z.erg.teile.get(Z.fokus);
   Z.setzen = null;
@@ -3699,7 +3802,10 @@ function verdrahten() {
         // Die Wahl bleibt dran (V-0345, Silas: „man soll ja ein bisschen auch hin und her schieben können“): die anderen
         // Gruppen stehen blass daneben; weiter geht es links mit „Nächste Wahl“.
         if (!fertig()) Z.jetzt[2] = teil;
-        aendern((s) => { s.plan.wahl = { ...(s.plan.wahl || {}), [teil]: el.dataset.option }; });
+        // Die Täusche einzelner Wochen (SP-0421) gehörten zur alten Gruppe; mit der neuen gelten sie nicht mehr.
+        const getauscht = Object.keys(M.tauschVon(Z.stand.plan, teil)).length;
+        aendern((s) => { s.plan.wahl = { ...(s.plan.wahl || {}), [teil]: el.dataset.option }; tauschLoesen(s.plan, teil); });
+        if (getauscht) melden(`Gewählt. ${getauscht} ${getauscht > 1 ? 'Wochen, in denen' : 'Woche, in der'} du bei einer anderen Gruppe warst, ${getauscht > 1 ? 'gelten' : 'gilt'} nicht mehr (Rückgängig mit ⌘Z).`);
         if (t) { Z.fokus = null; zeichnen(); }
         // Die Gruppe ist ab jetzt gesperrt. Lag dort schon ein Block, muss er in seinem Schritt weichen.
         const neu = [...new Set(Z.erg.vorkommen.filter((v) => v.flags.includes('gesperrt') && !vorher.has(v.block)).map((v) => v.block))];
@@ -3710,8 +3816,18 @@ function verdrahten() {
       }
       // Abwählen — auch mit einem Klick auf die gewählte Gruppe im Raster (V-0345, Silas: „ein Select und gleichzeitig ein
       // Deselect, wenn sie vorher selected war“): Dann stehen alle Gruppen wieder in Farbe da.
-      case 'abwaehlen': if (!fertig()) Z.jetzt[2] = teil; aendern((s) => { const w = { ...(s.plan.wahl || {}) }; delete w[teil]; s.plan.wahl = w; }); break;
-      case 'kachel-teil': if (teil) { Z.fokus = teil; zeichnen(); document.querySelector(`[data-teil="${teil}"].teil`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } break;
+      case 'abwaehlen': if (!fertig()) Z.jetzt[2] = teil; aendern((s) => { const w = { ...(s.plan.wahl || {}) }; delete w[teil]; s.plan.wahl = w; tauschLoesen(s.plan, teil); }); break;
+      case 'ausweichen': {
+        // Festgelegt, echte Woche (SP-0421): wie „kachel-teil“ — und dazu die Ausweichtermine dieser Woche. Noch ein
+        // Klick auf dieselbe Kachel nimmt sie wieder weg.
+        const zu = Z.ausweich === el.dataset.vk && Z.fokus === teil;
+        Z.ausweich = zu ? null : el.dataset.vk; Z.fokus = zu ? null : teil; zeichnen();
+        if (!zu && !M.ausweichTermine(Z.erg, el.dataset.vk).length) melden('In dieser Woche gibt es keinen anderen Termin dieser Veranstaltung.');
+        break;
+      }
+      case 'ausweich': ausweichKarte(el); break;
+      case 'einzeln': einzelnKarte(el); break;
+      case 'kachel-teil': if (teil) { Z.ausweich = null; Z.fokus = teil; zeichnen(); document.querySelector(`[data-teil="${teil}"].teil`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } break;
       case 'erledigt': aendern((s) => { const t = teilIn(s, teil); delete t[el.dataset.feld]; if (el.dataset.feld === 'offen' && t.einheiten) delete t.einheiten.offen; }); break;
       default: break;
     }
@@ -3744,7 +3860,7 @@ function verdrahten() {
   }, true);
   document.addEventListener('keydown', (e) => {
     const inFeld = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
-    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.sprung && !Z.legen) sprungEnde(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; zeichnen(); bannerZeigen(); } return; }
+    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.sprung && !Z.legen) sprungEnde(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; Z.ausweich = null; zeichnen(); bannerZeigen(); } return; }
     if (inFeld) return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); rueckgaengig(); return; }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { if (!$('karte').hidden || !zeigtRaster()) return; e.preventDefault(); wocheSchritt(e.key === 'ArrowLeft' ? -1 : 1); }
@@ -4024,6 +4140,7 @@ function schildZiehen(e, el) {
 
 function zeigerRunter(e) {
   if (e.button !== 0) return;
+  if (e.target.closest('.k-marke[data-act]')) return; // die Marke „nur diese Woche“ ist ein Knopf, kein Griff (SP-0421)
   const schild = !Z.legen && e.target.closest('.mittag > span, .fahrt.ziehbar > span');
   if (schild) return schildZiehen(e, schild.parentElement);
   const raster = $('raster');
@@ -4045,7 +4162,7 @@ function zeigerRunter(e) {
   // die Silas links nach vorn geholt hat. Nur wenn nichts gewählt ist, erklärt der Klick, wie man legt.
   const n = schritt();
   if (Z.fokus || Z.setzen || (!fertig() && Z.jetzt[n])) {
-    Z.fokus = null; Z.setzen = null; if (!fertig()) Z.jetzt[n] = null; Z.auf[n] = null;
+    Z.fokus = null; Z.setzen = null; Z.ausweich = null; if (!fertig()) Z.jetzt[n] = null; Z.auf[n] = null;
     zeichnen(); bannerZeigen();
     return;
   }
