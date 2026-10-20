@@ -26,6 +26,14 @@
 //
 // Das Study OS liest später mit demselben Schlüssel (Kopfzeile Authorization: Bearer …). Der
 // Stundenplanner selbst fragt nie etwas von dort ab: Die Richtung ist Study OS → Stundenplanner.
+//
+// Gerechnet wird nur, wenn sich etwas geändert hat (SP-0422). Am 20.10.2026 meldete Cloudflare über 100 Überschreitungen
+// des CPU-Limits an einem Tag. Jeder Abruf eines Kalender-Abos (SILAS.OS alle 5 min, Apple Kalender) und der Ereignisse
+// (Study OS alle 4 min) rechnete rechnen() über das ganze Semester: 21 bis 49 ms bei 10 ms im Free-Plan, rund 1100 Mal
+// am Tag, obwohl sich nichts geändert hatte. Das Ergebnis hängt nur am Stand (version, geaendert), am Code (dem
+// ausgelieferten Commit, /api/stand) und bei den Ereignissen am Berliner Tag. Daraus wird ein Etikett (ETag); das
+// Ergebnis liegt unter ihm im Cache der Edge, und wer es schon hat (If-None-Match), bekommt 304. Ein neuer Weg, den ein
+// Abo oder das Study OS regelmäßig abfragt, geht deshalb durch einmalGerechnet(), nie direkt in rechnen().
 
 import * as M from '../../../web/silas/modell.mjs';
 import * as K from '../../../web/silas/kalender.mjs';
@@ -64,6 +72,56 @@ async function lesen(env, schluessel = 'stand') {
   return roh ? JSON.parse(roh) : null;
 }
 const PLAN = /^[1-9]$/;
+
+// ── Einmal rechnen (SP-0422, oben) ─────────────────────────────────────────────────────────────────
+
+const GERECHNET_SEKUNDEN = 86400;        // höchstens einen Tag; neu gerechnet wird ohnehin, sobald sich das Etikett ändert
+
+/** Der ausgelieferte Commit aus /api/stand (betrieb/lauf.py schreibt ihn bei jeder Auslieferung). Leer, wo es ihn nicht
+ *  gibt (Tests, eine Auslieferung von Hand): Dann wird nichts zwischengespeichert — ein Ergebnis aus altem Code darf
+ *  nach einer Auslieferung nicht stehen bleiben. */
+async function codeStand(env, url) {
+  if (!env.ASSETS) return '';
+  try {
+    const r = await env.ASSETS.fetch(new Request(new URL('/api/stand', url.origin)));
+    const d = r.ok ? await r.json() : null;
+    return d && typeof d.stand === 'string' ? d.stand : '';
+  } catch {
+    return '';
+  }
+}
+
+/** Das Etikett eines Ergebnisses: dieselben Teile, dasselbe Ergebnis. null ohne Code-Stand. */
+async function etikett(env, url, teile) {
+  const code = await codeStand(env, url);
+  return code ? (await sha256([code, ...teile].join('\n'))).slice(0, 32) : null;
+}
+
+/** Antwortet mit 304, wenn der Abrufende das Etikett schon hat, sonst aus dem Cache der Edge (je Rechenzentrum, ohne
+ *  Kontingent); erst wenn es dort nichts gibt, rechnet `erzeugen()` → { typ, text, kopf }. Der Schlüssel im Cache liegt
+ *  unter /silas/api/: Eine Anfrage von außen an diese Adresse landet in dieser Funktion (401), nie im Cache. */
+async function einmalGerechnet(request, url, marke, erzeugen) {
+  const etag = marke ? `"${marke}"` : null;
+  if (etag && (request.headers.get('if-none-match') || '').split(',').some((x) => x.trim().replace(/^W\//, '') === etag)) {
+    return new Response(null, { status: 304, headers: { ...KOPF, etag } });
+  }
+  const cache = etag && globalThis.caches ? globalThis.caches.default : null;
+  const ablage = cache ? new Request(new URL(`/silas/api/gerechnet/${marke}`, url.origin)) : null;
+  // Der Cache ist eine Abkürzung, kein Speicher: Scheitert er, wird gerechnet wie vor SP-0422.
+  const treffer = cache ? await cache.match(ablage).catch(() => null) : null;
+  if (treffer) {
+    const kopf = { 'content-type': treffer.headers.get('content-type') };
+    const anhang = treffer.headers.get('content-disposition');
+    if (anhang) kopf['content-disposition'] = anhang;
+    return new Response(treffer.body, { headers: { ...KOPF, ...kopf, etag } });
+  }
+  const { typ, text, kopf = {} } = erzeugen();
+  if (cache) {
+    await cache.put(ablage, new Response(text, { headers: { 'content-type': typ, ...kopf, 'cache-control': `max-age=${GERECHNET_SEKUNDEN}` } }))
+      .catch(() => {});
+  }
+  return new Response(text, { headers: { ...KOPF, 'content-type': typ, ...kopf, ...(etag ? { etag } : {}) } });
+}
 
 /** Der Kalendertag in Berlin (JJJJ-MM-TT) — der Worker läuft in UTC, Silas' Tag nicht. */
 const berlinTag = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
@@ -139,13 +197,20 @@ export async function silasApi(request, env, jetzt = new Date()) {
     const s = await lesen(env, ort);
     if (!s) return fehler(404, plan ? `Probeplan ${plan} ist leer.` : 'Noch kein Stand gespeichert.');
     // Die Ereignisse rechnen ohne `heute`, wie seit V-0321 (zaehlt_min bleibt, was das Study OS kennt). Die Prüfungen
-    // rechnen mit dem Berliner Tag: Ihr Vorschlag beginnt nie vor heute — so wie auf der Seite.
-    const ereignisse = M.ereignisse(s.angebot, s.plan);
+    // rechnen mit dem Berliner Tag: Ihr Vorschlag beginnt nie vor heute — so wie auf der Seite. Deshalb gehört der Tag
+    // zum Etikett.
     const heute = berlinTag(jetzt);
-    const erg = M.rechnen(s.angebot, s.plan, { heute });
-    return json(200, {
-      schema: 1, plan: plan ? Number(plan) : null, version: s.version, geaendert: s.geaendert, heute,
-      semester: s.angebot.semester, ereignisse, pruefungen: M.pruefungenExport(erg), zeitraeume: M.zeitraeume(s.angebot.semester),
+    const marke = await etikett(env, url, ['ereignisse', ort, s.version, s.geaendert, heute]);
+    return einmalGerechnet(request, url, marke, () => {
+      const ereignisse = M.ereignisse(s.angebot, s.plan);
+      const erg = M.rechnen(s.angebot, s.plan, { heute });
+      return {
+        typ: 'application/json; charset=utf-8',
+        text: JSON.stringify({
+          schema: 1, plan: plan ? Number(plan) : null, version: s.version, geaendert: s.geaendert, heute,
+          semester: s.angebot.semester, ereignisse, pruefungen: M.pruefungenExport(erg), zeitraeume: M.zeitraeume(s.angebot.semester),
+        }),
+      };
     });
   }
 
@@ -153,9 +218,13 @@ export async function silasApi(request, env, jetzt = new Date()) {
     if (!K.KALENDER.includes(ics[1])) return fehler(404, 'Diesen Kalender gibt es nicht (termine, lernen, alles).');
     const s = await lesen(env);
     if (!s) return fehler(404, 'Noch kein Stand gespeichert.');
-    return new Response(K.ics(M.ereignisse(s.angebot, s.plan), { kalender: ics[1], jetzt }), {
-      headers: { ...KOPF, 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `inline; filename="${ics[1]}.ics"` },
-    });
+    // DTSTAMP ist der Zeitpunkt der Rechnung, nicht des Abrufs: Unverändertes bleibt unverändert.
+    const marke = await etikett(env, url, ['kalender', ics[1], s.version, s.geaendert]);
+    return einmalGerechnet(request, url, marke, () => ({
+      typ: 'text/calendar; charset=utf-8',
+      text: K.ics(M.ereignisse(s.angebot, s.plan), { kalender: ics[1], jetzt }),
+      kopf: { 'content-disposition': `inline; filename="${ics[1]}.ics"` },
+    }));
   }
 
   if (weg === 'plaene' && request.method === 'GET') {
