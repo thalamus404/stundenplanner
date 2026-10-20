@@ -181,6 +181,19 @@ einem Klon oder Arbeitsbaum (der Schlüssel kommt aus `<hauptklon>/betrieb/.env`
   `GET /silas/api/verlauf/<id>` und mit `node ops/silas.mjs senden` wieder hochladen.
 - **Kontingent:** KV im Free-Plan 1000 Schreibvorgänge am Tag; ein Speichern sind zwei. Die Seite speichert 0,9 s
   nach der letzten Änderung, nicht bei jedem Ziehen.
+- **CPU: gerechnet wird nur bei einer Änderung** (SP-0422). Im Free-Plan darf ein Aufruf einer Function 10 ms CPU
+  brauchen. Am 20.10.2026 meldete Cloudflare über 100 Überschreitungen an einem Tag. Ein Mitschnitt zeigte: kein
+  fremder Verkehr, nur Silas' eigene Abrufer, alle von seinem Anschluss. SILAS.OS fragt die Kalender-Abos alle 5 min,
+  Apple Kalender ebenso, das Study OS fragt `ereignisse` alle 4 min. Jeder Abruf rechnete das ganze Semester neu
+  (21–49 ms), rund 1100 Mal am Tag. Seitdem tragen `kalender/*.ics` und `ereignisse` ein **ETag** aus Stand (`version`,
+  `geaendert`), ausgeliefertem Commit (`/api/stand`) und bei `ereignisse` dem Berliner Tag. Das Ergebnis liegt unter
+  diesem Etikett im Cache der Edge (`caches.default`, je Rechenzentrum, ohne Kontingent). Wer es mitschickt
+  (`If-None-Match`), bekommt 304. Fehlt `/api/stand` (Auslieferung von Hand), wird wie vorher jedes Mal gerechnet.
+  Ein Test hält fest, dass jeder rechnende GET-Weg durch `einmalGerechnet()` geht. **Nachsehen:** Ein Token mit „Account
+  Analytics: Read“ zeigt die CPU je Aufruf. Der Deploy-Token darf das nicht; live geht es mit der Tail-API von Pages
+  (`POST /accounts/<konto>/pages/projects/stundenplanner/deployments/<id>/tails`, dann WebSocket `trace-v1`, mit dem
+  Deploy-Token). Jedes Ereignis trägt `cpuTime`, `outcome` und die Kopfzeilen. Der Schlüssel steht in der Adresse
+  der Kalender-Abos (`?k=`): vor dem Speichern schwärzen, den Mitschnitt danach löschen.
 - **Abschalten** (§2 ③): die Namensräume löschen, die Bindung und das Geheimnis aus dem Pages-Projekt, `web/silas/`,
   `functions/silas/`, `ops/silas.mjs`, die Zeile in `betrieb/.env` und im Vault, docs/SILAS.md und diese Sätze.
 

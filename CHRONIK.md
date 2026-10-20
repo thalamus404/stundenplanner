@@ -12,6 +12,18 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 21.10.2026 — /silas/api rechnet nur noch bei einer Änderung (SP-0422)
+
+- Cloudflare meldete am 20.10. über 100 Überschreitungen des CPU-Limits in 24 Stunden. Silas: *„… wer die Seite
+  abruft, ob das legit Traffic ist oder Bot Traffic.“* Ein Mitschnitt von 15 Minuten (Tail-API, nur lesen) zeigte keinen
+  fremden Verkehr. Alle Aufrufe der Functions kamen von Silas' eigenem Anschluss: SILAS.OS und Apple Kalender holten
+  die Kalender-Abos von `/silas` alle 5 Minuten, das Study OS die Ereignisse alle 4 Minuten. Jeder Abruf brauchte 21–49 ms
+  CPU, erlaubt sind im Free-Plan 10 ms. Hochgerechnet waren das rund 1100 am Tag, weil jedes Mal das ganze Semester
+  neu gerechnet wurde. Die öffentliche Seite war nicht betroffen, sie ist statisch.
+- Seitdem gibt es ein ETag und den Cache der Edge. Neu gerechnet wird nur, wenn sich Stand, Code oder (bei den
+  Ereignissen) der Tag ändert. Silas stellt das Abo im Apple Kalender auf „automatisch“ (die Abos schlagen stündlich
+  vor). Die Takte von SILAS.OS und Study OS bleiben dort (AGENTS.md §2 ④).
+
 ## 19.10.2026 — /silas: Präsenz nur diese Woche bei einer anderen Gruppe, „nur diese Woche“ setzt zurück (SP-0421)
 
 - Silas: *„… wenn ich auf Statistik 1 Tutorium am Montag raufklicke, dass dann in dunkelgrau alle anderen Termine diese

@@ -805,6 +805,10 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   liest, liest auch dessen Angebot.
 - **Kalender-Abos:** `/silas/api/kalender/termine.ics?k=…` („TU · Termine“: A, B, C) und `…/lernen.ics?k=…`
   („TU · Lernen“: D), so wie Silas' Semesterplan es vorschlägt. `alles.ics` vereint beide. Stündlich aktualisiert.
+- **Gerechnet wird nur bei einer Änderung** (SP-0422): `ereignisse` und die Kalender-Abos tragen ein `ETag`. Es ändert
+  sich, wenn der Stand gespeichert wird, eine Auslieferung neuen Code bringt oder (nur `ereignisse`) der Berliner Tag
+  wechselt. Wer es als `If-None-Match` mitschickt, bekommt `304` ohne Körper. Sonst kommt das Ergebnis aus dem Cache der
+  Edge. Der `DTSTAMP` der Abos ist deshalb der Zeitpunkt der Rechnung, nicht des Abrufs. Warum: docs/BETRIEB.md, „/silas“.
 
 ## 7. Privat
 

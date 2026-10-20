@@ -790,6 +790,112 @@ test('API: Ereignisse für das Study OS und das Kalender-Abo (Schlüssel in der 
   assert.equal((await silasApi(new Request(`https://www.stundenplanner.de/silas/api/kalender/fremd.ics?k=${SCHLUESSEL}`), e)).status, 404);
 });
 
+// ── Einmal rechnen (SP-0422): Abos und Study OS fragen alle paar Minuten, gerechnet wird nur bei einer Änderung ──────
+
+/** Der Cache der Edge als Attrappe (caches.default: match, put). */
+function edgeCache({ kaputt = false } = {}) {
+  const ablage = new Map();
+  const nein = async () => { throw Error('Cache kaputt'); };
+  return {
+    ablage,
+    default: kaputt ? { match: nein, put: nein } : {
+      match: async (r) => { const x = ablage.get(r.url); return x ? new Response(x.text, { headers: x.kopf }) : undefined; },
+      put: async (r, antwort) => { ablage.set(r.url, { text: await antwort.text(), kopf: [...antwort.headers] }); },
+    },
+  };
+}
+async function mitCache(f, optionen) {
+  const c = edgeCache(optionen);
+  globalThis.caches = c;
+  try { await f(c); } finally { delete globalThis.caches; }
+}
+/** Eine Auslieferung: /api/stand nennt den Commit (betrieb/lauf.py). */
+function ausgeliefert(e, commit = 'a1b2c3d') {
+  e.ASSETS = { fetch: async (r) => (new URL(r.url).pathname === '/api/stand' ? new Response(JSON.stringify({ stand: commit, zweig: 'main' })) : new Response('', { status: 404 })) };
+  return e;
+}
+const aboAnfrage = (k = 'termine', kopf = {}) => new Request(`https://www.stundenplanner.de/silas/api/kalender/${k}.ics?k=${SCHLUESSEL}`, { headers: kopf });
+const stempel = (t) => /DTSTAMP:(\S+)/.exec(t)[1];
+const anfangsStand = (e) => silasApi(anfrage('stand', { methode: 'PUT', body: { basis: null, angebot: angebot(), plan: {} } }), e);
+
+test('API: das Kalender-Abo rechnet nur nach einer Änderung von Stand oder Code (SP-0422)', () => mitCache(async (c) => {
+  const e = ausgeliefert(env());
+  await anfangsStand(e);
+  const r1 = await silasApi(aboAnfrage(), e, new Date('2030-10-01T10:00:00Z'));
+  const etag = r1.headers.get('etag');
+  assert.match(etag, /^"[0-9a-f]{32}"$/);
+  assert.equal(r1.headers.get('cache-control'), 'no-store');
+  const t1 = await r1.text();
+  assert.equal(c.ablage.size, 1);
+  assert.ok([...c.ablage.keys()][0].startsWith('https://www.stundenplanner.de/silas/api/gerechnet/'));
+  // Eine Stunde später, nichts geändert: dieselbe Antwort (der Stempel der ersten Rechnung), dasselbe Etikett.
+  const r2 = await silasApi(aboAnfrage(), e, new Date('2030-10-01T11:00:00Z'));
+  assert.equal(r2.headers.get('etag'), etag);
+  assert.equal(await r2.text(), t1);
+  assert.match(r2.headers.get('content-type'), /text\/calendar/);
+  assert.equal(r2.headers.get('content-disposition'), 'inline; filename="termine.ics"');
+  assert.equal(r2.headers.get('cache-control'), 'no-store');
+  // Wer das Etikett schon hat, bekommt 304 ohne Körper.
+  const r3 = await silasApi(aboAnfrage('termine', { 'if-none-match': `W/${etag}` }), e);
+  assert.equal(r3.status, 304);
+  assert.equal(await r3.text(), '');
+  // Jeder Kalender hat sein eigenes Etikett.
+  assert.notEqual((await silasApi(aboAnfrage('lernen'), e)).headers.get('etag'), etag);
+  // Nach dem Speichern: neues Etikett, neu gerechnet — auch für den, der das alte mitschickt.
+  await silasApi(anfrage('stand', { methode: 'PUT', body: { basis: 1, angebot: angebot(), plan: { wahl: { 'bsp-ue': 'g1' } } } }), e);
+  const r4 = await silasApi(aboAnfrage('termine', { 'if-none-match': etag }), e, new Date('2030-10-01T12:00:00Z'));
+  assert.equal(r4.status, 200);
+  assert.notEqual(r4.headers.get('etag'), etag);
+  assert.equal(stempel(await r4.text()), '20301001T120000Z');
+  // Eine neue Auslieferung (anderer Commit), derselbe Stand: neu gerechnet, sonst bliebe ein Ergebnis aus altem Code stehen.
+  ausgeliefert(e, 'e4f5a6b');
+  assert.equal(stempel(await (await silasApi(aboAnfrage(), e, new Date('2030-10-01T13:00:00Z'))).text()), '20301001T130000Z');
+}));
+
+test('API: die Ereignisse rechnen einmal je Stand und Berliner Tag (SP-0422)', () => mitCache(async () => {
+  const e = ausgeliefert(env());
+  await anfangsStand(e);
+  const a = await silasApi(anfrage('ereignisse'), e, new Date('2030-10-01T10:00:00Z'));
+  const b = await silasApi(anfrage('ereignisse'), e, new Date('2030-10-01T21:30:00Z'));   // 23:30 in Berlin, derselbe Tag
+  assert.equal(a.headers.get('etag'), b.headers.get('etag'));
+  assert.deepEqual(await b.json(), await a.json());
+  const morgen = await silasApi(anfrage('ereignisse'), e, new Date('2030-10-01T22:30:00Z')); // 00:30 in Berlin
+  assert.notEqual(morgen.headers.get('etag'), a.headers.get('etag'));
+  const m = await morgen.json();
+  assert.equal(m.heute, '2030-10-02');
+  assert.ok(m.ereignisse.length > 10);
+  assert.match(morgen.headers.get('content-type'), /application\/json/);
+}));
+
+test('API: ohne Code-Stand und mit kaputtem Cache wird gerechnet wie vor SP-0422', async () => {
+  await mitCache(async (c) => {
+    const e = env();                     // keine Auslieferung: kein /api/stand
+    await anfangsStand(e);
+    const r = await silasApi(aboAnfrage(), e);
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('etag'), null);
+    assert.equal(c.ablage.size, 0);
+  });
+  await mitCache(async () => {
+    const e = ausgeliefert(env());
+    await anfangsStand(e);
+    const r = await silasApi(aboAnfrage(), e);
+    assert.equal(r.status, 200);
+    assert.match(await r.text(), /BEGIN:VCALENDAR/);
+    assert.equal((await silasApi(anfrage('ereignisse'), e)).status, 200);
+  }, { kaputt: true });
+});
+
+test('jeder GET-Weg der API, der rechnet, geht durch einmalGerechnet (SP-0422)', () => {
+  // Axiom 0: Ein neuer Weg, den ein Abo oder das Study OS alle paar Minuten fragt, soll nicht wieder bei jedem Abruf
+  // das ganze Semester rechnen. Gerechnet ohne Zwischenspeicher wird nur beim Speichern (PUT, zur Prüfung).
+  const quelle = readFileSync(new URL('../../functions/silas/api/[[pfad]].js', import.meta.url), 'utf8');
+  const wege = quelle.slice(quelle.indexOf('export async function silasApi')).split(/\n {2}if \(/).slice(1);
+  const rechnende = wege.filter((w) => /request\.method === 'GET'/.test(w) && /M\.(rechnen|ereignisse)\(/.test(w));
+  assert.equal(rechnende.length, 2);
+  for (const w of rechnende) assert.match(w, /einmalGerechnet\(/, w.slice(0, 60));
+});
+
 // ── Was nicht ins Repo darf, und was gleich bleiben muss ─────────────────────────────────────────
 
 test('web/silas enthält nur Werkzeug, keine Daten (Silas’ Semester liegt nur im KV)', () => {
