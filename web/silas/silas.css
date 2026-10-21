@@ -339,7 +339,10 @@ a { color: inherit; text-underline-offset: 2px; }
   border: 1px solid var(--rand); border-left-width: 4px; cursor: grab;
 }
 .kachel.block.puffer { --vor: var(--grau-3); --hauch: var(--grau-1); --rand: var(--grau-6); --tinte: var(--grau-9); }
-.kachel.block.zieht { cursor: grabbing; opacity: .85; z-index: 6; box-shadow: 0 6px 18px rgb(0 0 0 / .18); }
+.kachel.zieht { cursor: grabbing; opacity: .85; z-index: 6; box-shadow: 0 6px 18px rgb(0 0 0 / .18); }
+/* Festgelegt, in einer echten Woche lässt sich ein Termin ziehen, nur diese Woche (SP-0423). */
+.kachel[data-ziehen="termin"] { cursor: grab; }
+.kachel[data-ziehen="termin"].zieht { cursor: grabbing; }
 .kachel.block .k-griff { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
 .kachel.option { background: var(--grau-1); color: var(--grau-10); border: 1.5px dashed var(--rand); cursor: pointer; z-index: 3; }
 .kachel.option:hover { background: var(--vor); }
@@ -1029,6 +1032,30 @@ details.zeitraum > .kal { padding: 0 10px 10px; }
 .kachel.wunsch { border-style: dashed; opacity: .85; }
 .kachel.ausgefallen { opacity: .4; outline: none; }
 .kachel.ausgefallen b { text-decoration: line-through; }
+/* Fällt aus, gemeldet (SP-0423, Silas, 21.10.: „dann wird die Veranstaltung in der Woche als ‚Fällt aus‘ rot markiert“):
+   rot statt blass — rote Fläche, rot gestrichelt umrandet, der Titel durchgestrichen; der Streifen links bleibt das
+   Modul. Über dem roten Bereich sieht die gezogene Kachel schon so aus (faellt-ziel). Keine Streifen in der Fläche
+   (Silas, V-0340). !important wie bei lage-frueher: Die Farben der Arten (.kachel[class*=" k-"]) sind spezifischer. */
+.kachel.faellt-aus, .kachel.faellt-ziel { opacity: 1; background: var(--rot-flaeche) !important; color: var(--rot-text) !important; outline: 2px dashed var(--rot) !important; outline-offset: -2px; }
+.kachel.faellt-aus b, .kachel.faellt-ziel b { text-decoration: line-through; text-decoration-color: var(--rot); }
+.kachel.faellt-aus .k-zwei, .kachel.faellt-ziel .k-zwei { font-weight: 600; opacity: 1; }
+.kachel .k-marke.aus { background: var(--rot); color: var(--grau-1); }
+.legende .lg-x { background: var(--rot-flaeche); outline: 1.5px dashed var(--rot); outline-offset: -1.5px; }
+
+/* Der rote Bereich beim Ziehen eines Termins (SP-0423): unten am Fenster, mittig unter dem Raster (terminZiehen() setzt
+   `left`), wo sonst die Meldung steht — dort losgelassen fällt der Termin in dieser Woche aus. Fest am Fenster, nicht an
+   der Seite: In einem schmalen Fenster ist die Seite lang, ihr Ende läge außer Sicht. Er fängt keinen Zeiger;
+   terminZiehen() misst, ob er darüber ist. */
+.ausfall-zone {
+  position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 21;
+  display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 12px;
+  border: 2px dashed var(--rot); background: var(--rot-flaeche); color: var(--rot-text);
+  font-size: 13px; font-weight: 600; white-space: nowrap; box-shadow: var(--schatten); pointer-events: none;
+  animation: ausfall-auf .16s ease-out; transition: background .12s, color .12s, transform .12s;
+}
+.ausfall-zone.an { background: var(--rot); color: var(--grau-1); border-style: solid; transform: translateX(-50%) scale(1.06); }
+@keyframes ausfall-auf { from { opacity: 0; transform: translate(-50%, 10px); } }
+@media (prefers-reduced-motion: reduce) { .ausfall-zone { animation: none; } }
 .kachel .k-ist { position: absolute; right: 16px; bottom: 2px; font-size: 11px; font-weight: 800; line-height: 14px; min-width: 14px; text-align: center; border-radius: 4px; opacity: 1; }
 .k-ist.i-ja { color: var(--gruen); }
 .k-ist.i-nein { color: var(--rot-text); }

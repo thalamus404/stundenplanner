@@ -1468,7 +1468,8 @@ function rasterZeichnen() {
   const kbelegt = [];
   for (let d = 0; d < tage; d++) {
     const amTag = kacheln.filter((k) => k.tag === d && k.art !== 'option' && k.art !== 'ausweich');
-    const termine = amTag.filter((k) => ['termin', 'pruefung', 'einzel'].includes(k.art))
+    // Was ausfällt (TU geschlossen, oder gemeldet, SP-0423), braucht keine Fahrt; seinen Platz belegt es trotzdem.
+    const termine = amTag.filter((k) => ['termin', 'pruefung', 'einzel'].includes(k.art) && !(k.v && k.v.ausgefallen))
       .map((k) => ({ start: k.start, ende: k.ende, ort: k.ort, online: k.v && k.v.online })).filter(M.vorOrt);
     const datum = std ? null : M.plusTage(w.von, d);
     const fest = datum ? (Z.stand.plan.fahrt || {})[datum] || {} : {};
@@ -1690,6 +1691,17 @@ function tauschSatz(v) {
   return `Nur in dieser Woche bei einer anderen Gruppe${o ? ` (${o.label})` : ''} — sonst ${datumMitTag(v.tausch.datum)} ${zeitspanne(v.tausch.start, v.tausch.ende)}`;
 }
 
+/** Der Satz zu einem Termin, der nur in dieser Woche verlegt ist (SP-0423). */
+function verlegtSatz(v) {
+  return `Nur in dieser Woche verlegt — sonst ${datumMitTag(v.verlegt.datum)} ${zeitspanne(v.verlegt.start, v.verlegt.ende)}`;
+}
+
+/** Lässt sich diese Termin-Kachel ziehen (SP-0423)? Festgelegt, in einer echten Woche unter „Woche“ — wie ein eigener
+ *  Block seit SP-0415. Nicht, was ausfällt, weil die TU zu ist. */
+function terminZiehbar(k) {
+  return k.art === 'termin' && !!k.v && !!geo && !geo.std && fertig() && Z.ansicht.bereich === 'plan' && k.v.ausgefallen !== 'geschlossen';
+}
+
 /** Wo ein Block meistens zu seinem Stoff liegt (V-0342, M.rechnen 6b): die häufigste Lage seiner zählenden
  *  Vorkommen, mit dem Satz einer Woche in dieser Lage. null, wenn nichts zählt oder der Bezug offen ist (die Übung,
  *  die er nachbereitet, hat noch keine Zeiten). */
@@ -1759,8 +1771,19 @@ function kachelEl(k) {
     if (k.unsicher) kl.push('unsicher');
     // Gewünscht, aber noch nicht zugeteilt (MOSES): steht als Arbeitsannahme da, zählt nicht als verplant (V-0349).
     if ((k.v && k.v.annahme) || (geo.std && k.annahme)) { kl.push('wunsch'); marke = 'Wunsch'; markeKl = 'hinweis'; }
-    // Fällt aus (TU geschlossen, abgesagt): durchgestrichen, sperrt nichts.
-    if (k.v && k.v.ausgefallen) { kl.push('ausgefallen'); zeile2 = k.v.ausgefallen === 'geschlossen' ? 'fällt aus — TU geschlossen' : 'fällt aus'; }
+    // Fällt aus: durchgestrichen, sperrt nichts. TU geschlossen steht blass da; was Silas als ausgefallen meldet — vorab
+    // im roten Bereich beim Ziehen (SP-0423, Silas, 21.10.: „dann wird die Veranstaltung in der Woche als ‚Fällt aus‘
+    // rot markiert“) oder nachher in der Ist-Karte —, rot, mit der Marke „fällt aus“, die ihn wieder stattfinden lässt.
+    if (k.v && k.v.ausgefallen) {
+      kl.push('ausgefallen');
+      if (k.v.ausgefallen === 'gemeldet') {
+        const e = M.istEintrag((Z.stand.plan.ist || {})[k.v.id]);
+        const wort = k.v.vergangen ? 'fiel aus' : 'fällt aus';
+        kl.push('faellt-aus');
+        zeile2 = `${wort}${e && e.grund ? ` · ${e.grund}` : ''}`;
+        marke = SCHMAL.matches ? 'aus' : wort; markeKl = 'aus';
+      } else zeile2 = 'fällt aus — TU geschlossen';
+    }
     // Eine gewählte Gruppe aus einem früheren Schritt: Klick springt kurz zurück; hellgrau im selben Schritt: wird dran.
     act = k.lage === 'frueher' && k.schicht === 'B' && !fertig() ? 'kurz-zurueck' : k.lage === 'erledigt' ? 'jetzt' : 'kachel-teil';
     // Schritt 2: Die gewählte Gruppe der Sache, die dran ist, wählt ein Klick wieder ab (V-0345).
@@ -1768,8 +1791,9 @@ function kachelEl(k) {
     // Festgelegt, in einer echten Woche (SP-0421): Ein Klick auf eine gewählte Gruppe zeigt dazu, wohin sie in dieser
     // Woche ausweichen kann (M.ausweichTermine).
     if (act === 'kachel-teil' && fertig() && !geo.std && k.schicht === 'B' && k.v && Z.ansicht.bereich === 'plan') act = 'ausweichen';
-    // Nur in dieser Woche bei einer anderen Gruppe: dieselbe Marke wie ein einzeln verschobener Block.
-    if (k.v && k.v.tausch && !geo.std) { marke = SCHMAL.matches ? 'einzeln' : 'nur diese Woche'; markeKl = 'einzeln'; }
+    // Nur in dieser Woche bei einer anderen Gruppe (SP-0421) oder verlegt (SP-0423): dieselbe Marke wie ein einzeln
+    // verschobener Block — außer er fällt aus; dann sagt die Marke das.
+    if (k.v && (k.v.tausch || k.v.verlegt) && !geo.std && markeKl !== 'aus') { marke = SCHMAL.matches ? 'einzeln' : 'nur diese Woche'; markeKl = 'einzeln'; }
   } else if (k.art === 'block') {
     const b = (Z.stand.plan.bloecke || []).find((x) => x.id === k.block);
     kl.push('block');
@@ -1852,6 +1876,8 @@ function kachelEl(k) {
     k.lage === 'frueher' ? `steht schon (Schritt ${k.schritt})${(k.art === 'block' || k.schicht === 'B') && !fertig() ? ' — Klick: kurz dorthin zurück' : ''}` : k.lage === 'erledigt' ? 'schon gewählt — Klick: ändern' : null,
     k.art === 'block' && (Z.stand.plan.bloecke || []).find((x) => x.id === k.block)?.serie && !geo.std ? serieSatz(k.block) : null,
     k.v && k.v.tausch && !geo.std ? tauschSatz(k.v) : null,
+    k.v && k.v.verlegt && !geo.std ? verlegtSatz(k.v) : null,
+    terminZiehbar(k) ? 'Ziehen: nur in dieser Woche verlegen — unten in den roten Bereich: fällt aus' : null,
     act === 'ausweichen' ? 'Klick: die anderen Termine dieser Woche zum Ausweichen' : act === 'ausweich' ? 'Klick: nur in dieser Woche hierher' : null,
     bezug ? `${geo.std ? 'meist ' : ''}${bezug.text}` : null,
     ...(k.vk || []).flatMap((v) => v.flags).filter((x, i, a) => a.indexOf(x) === i).map((f) => ({ konflikt: 'Überschneidung', gesperrt: 'liegt auf einem Termin (gesperrt)', leer: 'kein Video in dieser Woche', vor_stoff: 'vor dem ersten Stoff des Moduls — zählt nicht', nach_pruefung: 'nach der Prüfung' }[f]))].filter(Boolean).join('\n');
@@ -1859,18 +1885,20 @@ function kachelEl(k) {
   const el = h(act === 'block' ? 'div' : act ? 'button' : 'div', {
     class: kl.join(' '), type: act && act !== 'block' ? 'button' : null, 'data-act': act, 'data-teil': k.teil || null,
     'data-block': k.block || null, 'data-option': k.option || null, 'data-datum': k.datum || null, 'data-schritt': act === 'kurz-zurueck' ? String(k.schritt) : null,
-    'data-vk': act === 'ist' || act === 'ausweichen' ? k.v.id : act === 'ausweich' ? k.von : null,
+    'data-vk': act === 'ist' || act === 'ausweichen' || terminZiehbar(k) ? k.v.id : act === 'ausweich' ? k.von : null,
     'data-start': act === 'ausweich' ? M.hhmm(k.start) : null,
     // Festgelegt, in einer echten Woche (SP-0415, Silas, 17.10.: „Ich will nicht vorher erst auf Bearbeiten klicken
     // müssen, sondern es soll direkt funktionieren mit dem Rumschieben“): jeder eigene Block lässt sich ziehen — nur
     // dieses Vorkommen (SP-0414), wie die Mittagspause (V-0345). Ein Klick bleibt, was er war (Bestandteil, ✓/✗).
-    'data-ziehen': k.art === 'block' && act !== 'block' && fertig() && !geo.std && Z.ansicht.bereich === 'plan' && k.block ? '1' : null,
+    'data-ziehen': k.art === 'block' && act !== 'block' && fertig() && !geo.std && Z.ansicht.bereich === 'plan' && k.block ? '1' : terminZiehbar(k) ? 'termin' : null,
     title: ist ? `${tip}\n${{ ja: '✓ erledigt', nein: '✗ nicht gemacht', teil: 'teilweise', verschoben: 'verschoben', offen: 'vorbei — noch ohne ✓ oder ✗' }[ist]} — Klick: ✓, ✗ oder …` : tip, tabindex: act === 'block' ? '0' : null,
   }, h('b', { text: titel }), h('span', { class: 'k-zwei' }, tags.anzahl, zeile2), tags.etikett,
   // Die Marke „nur diese Woche“ ist selbst ein Ziel (SP-0421): Ein Tipp öffnet „Zurücksetzen“ (einzelnKarte).
   marke ? h('span', markeKl === 'einzeln'
     ? { class: 'k-marke einzeln', text: marke, 'data-act': 'einzeln', 'data-block': k.art === 'block' ? k.block : null, 'data-vk': k.art === 'termin' ? k.v.id : null, title: 'Tippen: zurücksetzen' }
-    : { class: `k-marke ${markeKl}`, text: marke }) : null,
+    // „fällt aus“ (SP-0423) ist ein Ziel wie „nur diese Woche“: Ein Tipp öffnet „Findet doch statt“ (ausfallKarte).
+    : markeKl === 'aus' ? { class: 'k-marke aus', text: marke, 'data-act': 'faellt-aus', 'data-vk': k.v.id, title: `Tippen: ${k.v.vergangen ? 'fand' : 'findet'} doch statt` }
+      : { class: `k-marke ${markeKl}`, text: marke }) : null,
   ist ? h('span', { class: `k-ist i-${ist}`, text: { ja: '✓', nein: '✗', teil: '½', verschoben: '→', offen: '?' }[ist] }) : null);
   if (act === 'block') el.append(h('span', { class: 'k-griff', 'data-griff': '1' }));
   return el;
@@ -1892,6 +1920,7 @@ function fussZeichnen() {
     h('span', { class: 'legende' }, h('i', { class: 'k-anzahl', text: '12×' }), 'so oft noch bis Semesterende', h('i', { class: 'k-anzahl einmal', text: '1×' }), 'einmalig'),
     ...M.KATEGORIEN.map(([k, text]) => h('span', { class: `legende k-${k}` }, h('i', { class: 'lg-k' }), text)),
     form('lg-a', 'fester Termin'),
+    fertig() ? form('lg-x', 'fällt aus (in den roten Bereich gezogen)') : null,
     rasterLage().std && zeigtRaster() ? form('lg-u', 'unregelmäßig (seltener als jede 2. Woche)') : null,
     !fertig() && n === 2 ? form('lg-w', 'zur Wahl') : null,
     fertig() || n >= 2 ? form('lg-g', 'gewählt') : null,
@@ -3181,14 +3210,18 @@ function istKarte(vkId, nahe) {
     // Vorbei, aber bei einer anderen Gruppe dieser Woche gewesen (SP-0421): dieselben Ausweichtermine wie vor dem Termin.
     termin && fertig() && !rasterLage().std && M.ausweichTermine(Z.erg, v.id).length ? h('div', { class: 'zeile' }, h('button', { type: 'button', class: 'knopf klein leise', onclick: () => { karteSchliessen(false); Z.ausweich = v.id; Z.fokus = v.teil; zeichnen(); }, text: 'Andere Gruppe in dieser Woche' })) : null,
     v.tausch ? h('div', { class: 'zeile' }, h('button', { type: 'button', class: 'knopf klein leise', onclick: () => { karteSchliessen(false); aendern((s) => { s.plan = M.tauschen(s.plan, v.teil, v.tausch.von, null); }); melden('Zurückgesetzt.'); } }, sym('zurueck'), 'Zurück zu deiner Gruppe')) : null,
+    v.verlegt ? h('div', { class: 'zeile' }, h('button', { type: 'button', class: 'knopf klein leise', onclick: () => { karteSchliessen(false); aendern((s) => { s.plan = M.verlegen(s.plan, v.verlegt.von, null); }); melden('Zurückgesetzt.'); } }, sym('zurueck'), 'Zurück an seinen Platz')) : null,
   ], nahe);
 }
 
-/** Die Täusche eines Teils aus dem Plan nehmen (SP-0421) — wenn seine Gruppe wechselt. Ändert `plan` selbst. */
+/** Was in einem Teil nur in einer Woche gilt, aus dem Plan nehmen — wenn seine Gruppe wechselt: die Täusche (SP-0421)
+ *  und die verlegten Termine (SP-0423); beide hängen an den Terminen der alten Gruppe. Ändert `plan` selbst. */
 function tauschLoesen(plan, teil) {
-  if (!plan.tausch) return;
-  for (const id of Object.keys(M.tauschVon(plan, teil))) delete plan.tausch[id];
-  if (!Object.keys(plan.tausch).length) delete plan.tausch;
+  const weg = M.nurDieseWocheVon(plan, teil);
+  for (const feld of ['tausch', 'verlegt']) {
+    for (const id of weg[feld]) delete plan[feld][id];
+    if (plan[feld] && !Object.keys(plan[feld]).length) delete plan[feld];
+  }
 }
 
 /** „Für diese Woche ändern?“ (SP-0421, Silas, 19.10.: „wenn ich auf einen anderen, dann noch grauen Termin raufdrücke, dann
@@ -3198,7 +3231,7 @@ function ausweichKarte(el) {
   const a = v && M.ausweichTermine(Z.erg, v.id).find((x) => x.option === el.dataset.option && x.datum === el.dataset.datum && M.hhmm(x.start) === el.dataset.start);
   if (!a) return;
   const z = Z.erg.teile.get(v.teil);
-  const von = v.tausch ? v.tausch.von : v.id;
+  const von = v.tausch ? v.tausch.von : v.verlegt ? v.verlegt.von : v.id;
   const wo = (datum, start, ende) => `${datumMitTag(datum)} ${zeitspanne(start, ende)}`;
   const trifft = a.trifft.map((id) => Z.erg.vorkommen.find((y) => y.id === id)).filter(Boolean).map((y) => M.titelVon(y, Z.erg, Z.stand.angebot));
   const ja = () => {
@@ -3224,13 +3257,14 @@ function ausweichKarte(el) {
 function einzelnKarte(el) {
   const v = el.dataset.vk ? Z.erg.vorkommen.find((x) => x.id === el.dataset.vk) : null;
   const b = el.dataset.block ? (Z.stand.plan.bloecke || []).find((x) => x.id === el.dataset.block) : null;
-  if (!(v && v.tausch) && !(b && b.serie)) return;
-  const satz = v ? tauschSatz(v) : serieSatz(b.id);
+  if (!(v && (v.tausch || v.verlegt)) && !(b && b.serie)) return;
+  const satz = v ? (v.verlegt ? verlegtSatz(v) : tauschSatz(v)) : serieSatz(b.id);
   const zurueck = () => {
     karteSchliessen(false);
     if (v) {
-      aendern((s) => { s.plan = M.tauschen(s.plan, v.teil, v.tausch.von, null); });
-      melden(`Zurückgesetzt: wieder ${datumMitTag(v.tausch.datum)} ${zeitspanne(v.tausch.start, v.tausch.ende)}.`);
+      const her = v.verlegt || v.tausch;
+      aendern((s) => { s.plan = v.verlegt ? M.verlegen(s.plan, her.von, null) : M.tauschen(s.plan, v.teil, her.von, null); });
+      melden(`Zurückgesetzt: wieder ${datumMitTag(her.datum)} ${zeitspanne(her.start, her.ende)}.`);
       return;
     }
     const r = M.einzelnZuruecksetzen(Z.stand.plan, b.id);
@@ -3244,6 +3278,38 @@ function einzelnKarte(el) {
     h('div', { class: 'zeile' },
       h('button', { type: 'button', class: 'knopf', onclick: () => karteSchliessen(), text: 'Abbrechen' }),
       h('button', { type: 'button', class: 'knopf haupt', onclick: zurueck }, sym('zurueck'), 'Zurücksetzen')),
+  ], el);
+}
+
+/** Die Marke „fällt aus“ antippen (SP-0423): Der Termin findet doch statt — oder bekommt einen Grund, wenn Silas ihn
+ *  weiß (wie „… ausgefallen“ in der Ist-Karte, V-0357; dort ist er Pflicht, hier nicht: Vorab weiß man ihn oft nicht). */
+function ausfallKarte(el) {
+  const v = Z.erg.vorkommen.find((x) => x.id === el.dataset.vk);
+  if (!v || v.ausgefallen !== 'gemeldet') return;
+  const e = M.istEintrag((Z.stand.plan.ist || {})[v.id]) || {};
+  const wann = `${datumMitTag(v.datum)} ${zeitspanne(v.start, v.ende)}`;
+  const statt = () => {
+    karteSchliessen(false);
+    aendern((s) => { s.plan = M.ausfallen(s.plan, v.id, false); });
+    melden(`${v.vergangen ? 'Fand' : 'Findet'} doch statt: ${wann}.`);
+  };
+  const f = h('form', { class: 'formular ausfall' },
+    h('label', {}, 'Grund (wenn du ihn weißt)', h('input', { name: 'grund', maxlength: '120', value: e.grund || '', placeholder: 'z. B. Dozent krank, abgesagt' })),
+    h('div', { class: 'zeile' }, h('button', { class: 'knopf klein', type: 'submit', text: 'Grund speichern' })));
+  f.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const grund = String(new FormData(f).get('grund') || '').trim();
+    karteSchliessen(false);
+    aendern((s) => { s.plan = M.ausfallen(s.plan, v.id, true, grund || null); });
+    melden(grund ? `Grund gespeichert: ${grund}.` : 'Ohne Grund gespeichert.');
+  });
+  karteOeffnen([
+    h('h3', {}, h('span', { text: v.vergangen ? 'Fiel aus' : 'Fällt aus' }), h('button', { class: 'knopf rund leise', type: 'button', 'aria-label': 'Schließen', onclick: () => karteSchliessen() }, sym('zu'))),
+    h('p', { class: 'satz', text: `${M.titelVon(v, Z.erg, Z.stand.angebot)}, ${wann} — nur in dieser Woche. Der Termin zählt nicht, sperrt nichts und steht nicht im Kalender-Abo.` }),
+    f,
+    h('div', { class: 'zeile' },
+      h('button', { type: 'button', class: 'knopf', onclick: () => karteSchliessen(), text: 'Abbrechen' }),
+      h('button', { type: 'button', class: 'knopf haupt', onclick: statt }, sym('zurueck'), v.vergangen ? 'Fand doch statt' : 'Findet doch statt')),
   ], el);
 }
 
@@ -3803,9 +3869,10 @@ function verdrahten() {
         // Gruppen stehen blass daneben; weiter geht es links mit „Nächste Wahl“.
         if (!fertig()) Z.jetzt[2] = teil;
         // Die Täusche einzelner Wochen (SP-0421) gehörten zur alten Gruppe; mit der neuen gelten sie nicht mehr.
-        const getauscht = Object.keys(M.tauschVon(Z.stand.plan, teil)).length;
+        const einzeln = M.nurDieseWocheVon(Z.stand.plan, teil);
+        const getauscht = einzeln.tausch.length + einzeln.verlegt.length;
         aendern((s) => { s.plan.wahl = { ...(s.plan.wahl || {}), [teil]: el.dataset.option }; tauschLoesen(s.plan, teil); });
-        if (getauscht) melden(`Gewählt. ${getauscht} ${getauscht > 1 ? 'Wochen, in denen' : 'Woche, in der'} du bei einer anderen Gruppe warst, ${getauscht > 1 ? 'gelten' : 'gilt'} nicht mehr (Rückgängig mit ⌘Z).`);
+        if (getauscht) melden(`Gewählt. ${getauscht} ${getauscht > 1 ? 'Wochen, in denen' : 'Woche, in der'} du bei einer anderen Gruppe warst oder der Termin verlegt war, ${getauscht > 1 ? 'gelten' : 'gilt'} nicht mehr (Rückgängig mit ⌘Z).`);
         if (t) { Z.fokus = null; zeichnen(); }
         // Die Gruppe ist ab jetzt gesperrt. Lag dort schon ein Block, muss er in seinem Schritt weichen.
         const neu = [...new Set(Z.erg.vorkommen.filter((v) => v.flags.includes('gesperrt') && !vorher.has(v.block)).map((v) => v.block))];
@@ -3827,6 +3894,7 @@ function verdrahten() {
       }
       case 'ausweich': ausweichKarte(el); break;
       case 'einzeln': einzelnKarte(el); break;
+      case 'faellt-aus': ausfallKarte(el); break;
       case 'kachel-teil': if (teil) { Z.ausweich = null; Z.fokus = teil; zeichnen(); document.querySelector(`[data-teil="${teil}"].teil`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } break;
       case 'erledigt': aendern((s) => { const t = teilIn(s, teil); delete t[el.dataset.feld]; if (el.dataset.feld === 'offen' && t.einheiten) delete t.einheiten.offen; }); break;
       default: break;
@@ -4154,6 +4222,7 @@ function zeigerRunter(e) {
     return;
   }
   if (kachel && kachel.dataset.act === 'block') return blockZiehen(e, kachel, rect);
+  if (kachel && kachel.dataset.ziehen === 'termin') return terminZiehen(e, kachel, rect);
   if (kachel && kachel.dataset.ziehen) return blockZiehen(e, kachel, rect, { nurZiehen: true });
   if (kachel && kachel.dataset.act) return; // Termine, Gruppen und Blöcke früherer Schritte sind Knöpfe (click)
   if (!e.target.closest('.r-tag')) return;
@@ -4170,6 +4239,100 @@ function zeigerRunter(e) {
     : schritt() === 1 ? 'Schritt 1 ist die Grundlage — hier legst du nichts.'
       : schritt() === 2 ? 'In Schritt 2 wählst du Gruppen: links oben steht, was dran ist; die Gruppen sind im Raster gestrichelt.'
         : 'Links oben „Block legen“: Dann hängt der Block am Zeiger, und ein Klick legt ihn ab.');
+}
+
+/** Einen Termin in einer echten Woche ziehen (SP-0423, Silas, 21.10.: „dass man einen Präsenztermin in der
+ *  Wochenansicht für eine bestimmte Woche auch verschieben kann. Und sobald man einen Termin verschiebt, soll unten ein
+ *  kleiner roter Bereich auftauchen, und wenn man das, was man grad verschiebt, dorthin schiebt und loslässt, dann wird
+ *  die Veranstaltung in der Woche als ‚Fällt aus‘ rot markiert“). Wie ein festgelegter Block (SP-0415): Ohne Bewegung
+ *  gilt der Klick der Kachel (Bestandteil, Ausweichen, ✓/✗); nach einer Bewegung liegt nur dieses Vorkommen woanders
+ *  (M.verlegen) — oder, im roten Bereich losgelassen, fällt es aus (M.ausfallen) und bleibt rot an seinem Platz. Wohin
+ *  schon ein Termin desselben Elements gehört, geht er nicht (seine Id gäbe es zweimal); einen anderen Termin darf er
+ *  treffen, das ist dann ein Konflikt. Ein ausgefallener Termin, an einen neuen Platz gezogen, findet dort statt.
+ *  Esc bricht ab. Am Telefon zieht es nicht (dort tippt man). */
+function terminZiehen(e, kachel, rect) {
+  const v = Z.erg.vorkommen.find((x) => x.id === kachel.dataset.vk);
+  if (!v || e.pointerType === 'touch') return;
+  e.preventDefault();
+  const her = v.verlegt || v.tausch || null;
+  const von = her ? her.von : v.id;
+  const platz = her || v; // wo der Termin ohne diese Woche läge
+  const s0 = v.start, e0 = v.ende, dauer = e0 - s0, tag0 = M.wochentag(v.datum);
+  const y0 = minutenBei(e.clientY, rect), x0 = e.clientX, yy0 = e.clientY;
+  const titel = M.titelVon(v, Z.erg, Z.stand.angebot);
+  const zone = $('ausfall-zone'), zwei = kachel.querySelector('.k-zwei');
+  const datumVon = (tag) => M.plusTage(geo.woche.von, tag);
+  const idBei = (x) => `${v.teil}@${datumVon(x.tag)}@${M.hhmm(x.start)}`;
+  // Ein Platz, den schon ein Termin desselben Elements hat — oder hatte, bevor er in dieser Woche woanders hinkam.
+  const doppelt = (x) => { const id = idBei(x); return id !== von && Z.erg.vorkommen.some((y) => y !== v && y.teil === v.teil && y.quelle === 'termin' && (y.id === id || (y.verlegt || y.tausch || {}).von === id)); };
+  const trifft = (x) => Z.erg.vorkommen.filter((y) => y !== v && y.hart && y.quelle !== 'block' && !y.ganztag && y.start != null && y.ende != null && y.datum === datumVon(x.tag) && y.start < x.ende && x.start < y.ende);
+  const imRoten = (ev) => { const r = zone.getBoundingClientRect(), p = 12; return ev.clientX >= r.left - p && ev.clientX <= r.right + p && ev.clientY >= r.top - p && ev.clientY <= r.bottom + p; };
+  const setzen = (x) => {
+    kachel.style.top = `${((x.start - geo.h0 * 60) / ((geo.h1 - geo.h0) * 60)) * 100}%`;
+    const spalte = $('raster').querySelector(`.r-tag[data-tag="${x.tag}"]`);
+    if (spalte && kachel.parentElement !== spalte) spalte.append(kachel);
+  };
+  let neu = { start: s0, ende: e0, tag: tag0 }, bewegt = false, aus = false;
+  const weiter = (ev) => {
+    if (!bewegt && Math.hypot(ev.clientX - x0, ev.clientY - yy0) < 4) return;
+    if (!bewegt) {
+      bewegt = true; kachel.classList.add('zieht');
+      // Der rote Bereich unten, solange ein Termin am Zeiger hängt — die letzte Meldung steht an derselben Stelle und geht.
+      $('meldung').hidden = true;
+      zone.style.left = `${rect.left + rect.width / 2}px`;
+      zone.hidden = false;
+    }
+    aus = imRoten(ev);
+    zone.classList.toggle('an', aus);
+    zone.lastChild.textContent = aus ? 'Loslassen: fällt diese Woche aus' : 'Hierher ziehen: fällt diese Woche aus';
+    kachel.classList.toggle('faellt-ziel', aus);
+    if (aus) {
+      // Über dem Roten steht die Kachel wieder an ihrem Platz — dort bleibt sie, rot, wenn Silas loslässt.
+      neu = { start: s0, ende: e0, tag: tag0 }; setzen(neu);
+      kachel.classList.remove('ziel-gesperrt');
+      zwei.textContent = 'loslassen: fällt diese Woche aus';
+      return;
+    }
+    const s = Math.max(geo.h0 * 60, Math.min(geo.h1 * 60 - dauer, s0 + minutenBei(ev.clientY, rect) - y0));
+    neu = { start: s, ende: s + dauer, tag: tagBei(ev.clientX, rect) };
+    setzen(neu);
+    const gleich = doppelt(neu), im = gleich ? [] : trifft(neu);
+    kachel.classList.toggle('ziel-gesperrt', gleich);
+    zwei.textContent = gleich ? 'dort liegt dieser Termin schon'
+      : `${zeitspanne(neu.start, neu.ende)}${im.length ? ` · trifft ${M.titelVon(im[0], Z.erg, Z.stand.angebot)}` : ''}`;
+  };
+  const aufraeumen = () => {
+    removeEventListener('pointermove', weiter); removeEventListener('pointerup', los); removeEventListener('pointercancel', abbruch); removeEventListener('keydown', taste, true);
+    zone.hidden = true; zone.classList.remove('an');
+  };
+  // Abgebrochen ist auch kein Klick: kachelGezogen schluckt den, den das Loslassen danach noch auslöst.
+  const abbruch = () => { aufraeumen(); if (bewegt) { kachelGezogen = true; setTimeout(() => { kachelGezogen = false; }, 0); rasterZeichnen(); } };
+  const taste = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); abbruch(); } };
+  function los() {
+    aufraeumen();
+    if (!bewegt) return;
+    kachelGezogen = true; setTimeout(() => { kachelGezogen = false; }, 0);
+    if (aus) {
+      if (v.ausgefallen === 'gemeldet') { rasterZeichnen(); melden('Dieser Termin fällt schon aus.'); return; }
+      aendern((st) => { st.plan = M.ausfallen(st.plan, v.id); });
+      melden(`Fällt aus: ${titel} am ${datumMitTag(v.datum)} ${zeitspanne(s0, e0)} — nur in dieser Woche. Zurück: die Marke „fällt aus“ antippen oder ⌘Z.`);
+      return;
+    }
+    if (neu.tag === tag0 && neu.start === s0) { rasterZeichnen(); return; }
+    if (doppelt(neu)) { rasterZeichnen(); melden(`Dort liegt schon ein Termin von ${titel} — er bleibt an seinem Platz.`); return; }
+    const datum = datumVon(neu.tag), id = idBei(neu), im = trifft(neu);
+    aendern((st) => {
+      let p = M.verlegen(st.plan, von, { datum, start: M.hhmm(neu.start), ende: M.hhmm(neu.ende) });
+      if (v.ausgefallen === 'gemeldet') p = M.ausfallen(p, id, false);
+      st.plan = p;
+    });
+    melden(id === von ? `Zurück an seinem Platz: ${datumMitTag(datum)} ${zeitspanne(neu.start, neu.ende)}.`
+      : `Nur diese Woche: ${titel} ${datumMitTag(datum)} ${zeitspanne(neu.start, neu.ende)} — sonst ${datumMitTag(platz.datum)} ${zeitspanne(platz.start, platz.ende)}.${v.ausgefallen === 'gemeldet' ? ' Er findet dort statt.' : ''}${im.length ? ` Achtung: Dort liegt schon ${M.titelVon(im[0], Z.erg, Z.stand.angebot)}.` : ''}`);
+  }
+  addEventListener('pointermove', weiter);
+  addEventListener('pointerup', los);
+  addEventListener('pointercancel', abbruch);
+  addEventListener('keydown', taste, true);
 }
 
 /** nurZiehen (SP-0415, festgelegt): Ohne Bewegung tut das Ziehen nichts — der Klick der Kachel gilt (Bestandteil, ✓/✗);

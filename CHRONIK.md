@@ -12,6 +12,21 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 21.10.2026 — /silas: Präsenztermin nur diese Woche verlegen, roter Bereich „fällt aus“ (SP-0423)
+
+- Silas: *„… dass man einen Präsenztermin in der Wochenansicht für eine bestimmte Woche auch verschieben kann. Und
+  sobald man einen Termin verschiebt, soll unten ein kleiner roter Bereich auftauchen, und wenn man das, was man grad
+  verschiebt, dorthin schiebt und loslässt, dann wird die Veranstaltung in der Woche als ‚Fällt aus‘ rot markiert.“*
+- Festgelegt, in einer echten Woche, lässt sich jeder Termin mit der Maus ziehen, wie seit SP-0415 ein eigener Block.
+  Nur dieses Vorkommen liegt dann woanders (`plan.verlegt`, `verlegen()`). Es bleibt ein Termin seiner Reihe, sperrt
+  seinen neuen Platz und trägt die Marke „nur diese Woche“, die zurücksetzt. Das Kalender-Abo sagt, wo er sonst liegt.
+- Beim Ziehen steht unten ein roter Bereich. Wer dort loslässt, trägt `{s: 'ausgefallen'}` in den Lebenslauf ein
+  (`ausfallen()`), denselben Eintrag wie „… ausgefallen“ in der Ist-Karte (V-0357), nur auch vorab. Der Termin steht
+  rot an seinem Platz, zählt nicht, sperrt nichts, braucht keine Fahrzeit und fehlt im Kalender-Abo. Die Marke
+  „fällt aus“ öffnet „Findet doch statt“ und ein Feld für den Grund. Was Silas schon als ausgefallen gemeldet hatte,
+  steht seitdem auch rot da statt blass. Blass bleibt nur, was ausfällt, weil die TU geschlossen ist.
+- Am Telefon zieht man nicht; dort gibt es das Verlegen noch nicht.
+
 ## 21.10.2026 — /silas/api rechnet nur noch bei einer Änderung (SP-0422)
 
 - Cloudflare meldete am 20.10. über 100 Überschreitungen des CPU-Limits in 24 Stunden. Silas: *„… wer die Seite

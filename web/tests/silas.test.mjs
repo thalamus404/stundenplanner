@@ -1308,6 +1308,105 @@ test('Zurücksetzen ab Schritt 2 legt die Täusche mit der Wahl beiseite, Wieder
   assert.equal(M.wiederherstellen({ ...weg, wahl: { 'bsp-ue': 'g1' } }).tausch, undefined);
   // Ab Schritt 3 bleibt er, wo er ist.
   assert.deepEqual(M.zuruecksetzen(plan, a, 3).tausch, plan.tausch);
-  assert.deepEqual(Object.keys(M.tauschVon(plan, 'bsp-ue')), ['bsp-ue@2030-11-06@08:15']);
-  assert.deepEqual(M.tauschVon(plan, 'bsp-vl'), {});
+  assert.deepEqual(M.nurDieseWocheVon(plan, 'bsp-ue'), { tausch: ['bsp-ue@2030-11-06@08:15'], verlegt: [] });
+  assert.deepEqual(M.nurDieseWocheVon(plan, 'bsp-vl'), { tausch: [], verlegt: [] });
+});
+
+// ── SP-0423: einen Termin nur in dieser Woche verlegen; „fällt aus“ ──────────────────────────────
+
+test('verlegen: nur dieses Vorkommen liegt woanders — gezählt, gesperrt, gekennzeichnet, im Kalender (SP-0423)', () => {
+  const a = angebot();
+  const vorher = M.rechnen(a, {}).vorkommen.filter((v) => v.teil === 'bsp-vl');
+  const von = 'bsp-vl@2030-11-05@10:15';
+  const plan = M.verlegen({}, von, { datum: '2030-11-07', start: '14:15', ende: '15:45' });
+  assert.deepEqual(plan.verlegt, { [von]: { datum: '2030-11-07', start: '14:15', ende: '15:45' } });
+  const e = M.rechnen(a, plan);
+  const vk = e.vorkommen.filter((v) => v.teil === 'bsp-vl');
+  assert.equal(vk.length, vorher.length, 'kein Termin mehr und keiner weniger');
+  assert.ok(!vk.some((v) => v.datum === '2030-11-05'), 'am Dienstag liegt die VL in dieser Woche nicht');
+  const x = vk.find((v) => v.datum === '2030-11-07');
+  assert.deepEqual([x.id, x.start, x.ende, x.ort, x.schicht, x.hart, x.zaehlt_min], ['bsp-vl@2030-11-07@14:15', 14 * 60 + 15, 15 * 60 + 45, 'X 1', 'A', true, 120]);
+  assert.deepEqual(x.verlegt, { von, datum: '2030-11-05', start: 10 * 60 + 15, ende: 11 * 60 + 45 });
+  assert.equal(x.gesamt, vorher[0].gesamt, 'es bleibt ein Vorkommen seiner Reihe');
+  // Er sperrt seinen neuen Platz, nicht mehr den alten.
+  assert.ok(M.gesperrtDurch(a, plan, e, { datum: '2030-11-07', start: 14 * 60 + 30, ende: 15 * 60 }).length > 0);
+  assert.deepEqual(M.gesperrtDurch(a, plan, e, { datum: '2030-11-05', start: 10 * 60 + 15, ende: 11 * 60 + 45 }), []);
+  // Die Standardwoche zählt ihn weiter an seinem Platz.
+  const std = M.standardwoche(a, plan, e).find((k) => k.teil === 'bsp-vl');
+  assert.deepEqual([std.tag, std.start, std.anzahl], [1, 10 * 60 + 15, vorher.length]);
+  // Ereignis und Kalender-Abo sagen, wo der Termin sonst liegt.
+  const ev = M.ereignisse(a, plan).find((y) => y.id === x.id);
+  assert.deepEqual([ev.einzeln, ev.verlegt, ev.sonst.datum], [true, true, '2030-11-05']);
+  assert.match(ev.sonst.start, /^2030-11-05T10:15:00\+01:00$/);
+  const ics = K.ics(M.ereignisse(a, plan), { kalender: 'termine', jetzt: new Date('2030-10-01T00:00:00Z') }).replace(/\r\n /g, '');
+  assert.match(ics.split('BEGIN:VEVENT').find((y) => y.includes(`UID:${x.id}@`)), /DESCRIPTION:Nur in dieser Woche verlegt — sonst am 05\.11\.2030 um 10:15/);
+});
+
+test('verlegen: weiter und zurück, der Eintrag zieht mit; ein Tausch weicht; ein doppelter Platz gilt nicht (SP-0423)', () => {
+  const a = angebot();
+  const von = 'bsp-vl@2030-11-05@10:15';
+  const eins = M.verlegen({ ist: { [von]: 'ja' } }, von, { datum: '2030-11-04', start: '12:15', ende: '13:45' });
+  assert.deepEqual(eins.ist, { 'bsp-vl@2030-11-04@12:15': 'ja' });
+  const zwei = M.verlegen(eins, von, { datum: '2030-11-08', start: '08:15', ende: '09:45' });
+  assert.deepEqual(Object.keys(zwei.verlegt), [von], 'der Schlüssel bleibt das ursprüngliche Vorkommen');
+  assert.deepEqual(zwei.ist, { 'bsp-vl@2030-11-08@08:15': 'ja' });
+  // Zurück: mit null — oder an den alten Platz gezogen.
+  for (const ziel of [null, { datum: '2030-11-05', start: '10:15', ende: '11:45' }]) {
+    const z = M.verlegen(zwei, von, ziel);
+    assert.equal(z.verlegt, undefined);
+    assert.deepEqual(z.ist, { [von]: 'ja' });
+  }
+  assert.equal(eins.ist[von], undefined, 'der alte Plan bleibt unberührt');
+  // Eine getauschte Gruppe (SP-0421) gezogen: Der Tausch weicht, der Termin liegt dort, wohin er gezogen wurde.
+  const vonUe = 'bsp-ue@2030-11-06@08:15';
+  const getauscht = M.tauschen({ wahl: { 'bsp-ue': 'g2' }, ist: { 'bsp-ue@2030-11-04@14:15': 'nein' } }, 'bsp-ue', vonUe, { option: 'g1', datum: '2030-11-04', start: '14:15' });
+  assert.deepEqual(getauscht.ist, { 'bsp-ue@2030-11-04@14:15': 'nein' }, 'Vorbedingung');
+  const gezogen = M.verlegen({ ...getauscht, ist: { 'bsp-ue@2030-11-04@14:15': 'ja' } }, vonUe, { datum: '2030-11-07', start: '16:15', ende: '17:45' });
+  assert.equal(gezogen.tausch, undefined);
+  assert.deepEqual(gezogen.ist, { 'bsp-ue@2030-11-07@16:15': 'ja' });
+  const x = M.rechnen(a, gezogen).vorkommen.find((v) => v.id === 'bsp-ue@2030-11-07@16:15');
+  assert.deepEqual([x.option, x.verlegt.von, x.tausch], ['g2', vonUe, null]);
+  // Und umgekehrt: Ein verlegter Termin, der getauscht wird, ist danach nur noch getauscht.
+  assert.equal(M.tauschen(gezogen, 'bsp-ue', vonUe, { option: 'g1', datum: '2030-11-04', start: '14:15' }).verlegt, undefined);
+  // Auf den Platz eines anderen Termins desselben Elements (die VL der Vorwoche hat dieselbe Id-Form): gilt nicht.
+  const doppelt = M.verlegen({}, von, { datum: '2030-11-12', start: '10:15', ende: '11:45' });
+  const e = M.rechnen(a, doppelt);
+  assert.ok(e.vorkommen.some((v) => v.id === von && !v.verlegt), 'er liegt wieder an seinem Platz');
+  assert.equal(e.vorkommen.filter((v) => v.id === 'bsp-vl@2030-11-12@10:15').length, 1, 'keine Id doppelt');
+  assert.ok(e.teile.get('bsp-vl').flags.some((f) => f.art === 'verlegt_fehlt' && f.stufe === 'achtung'));
+  // Kaputte Einträge zählen nicht (Ende vor Anfang, kein Datum).
+  for (const kaputt of [{ datum: '2030-11-07', start: '15:00', ende: '14:00' }, { datum: 'morgen', start: '10:00', ende: '11:00' }]) {
+    assert.ok(M.rechnen(a, { verlegt: { [von]: kaputt } }).vorkommen.some((v) => v.id === von && !v.verlegt));
+  }
+});
+
+test('ausfallen: rot statt verplant — zählt nicht, sperrt nichts, fehlt im Abo; findet doch statt (SP-0423)', () => {
+  const a = angebot();
+  const id = 'bsp-vl@2030-11-05@10:15';
+  const plan = M.ausfallen({}, id);
+  assert.deepEqual(plan.ist, { [id]: { s: 'ausgefallen' } });
+  const e = M.rechnen(a, plan, { heute: '2030-10-20' });
+  const x = e.vorkommen.find((v) => v.id === id);
+  assert.deepEqual([x.ausgefallen, x.hart, x.zaehlt_min, x.ist], ['gemeldet', false, 0, 'ausgefallen']);
+  assert.deepEqual(M.gesperrtDurch(a, plan, e, { datum: '2030-11-05', start: 10 * 60 + 15, ende: 11 * 60 + 45 }), []);
+  const ics = K.ics(M.ereignisse(a, plan), { kalender: 'termine', jetzt: new Date('2030-10-01T00:00:00Z') });
+  assert.ok(!ics.includes(`UID:${id}@`), 'nicht im Kalender-Abo');
+  assert.ok(ics.includes('UID:bsp-vl@2030-11-12@10:15@'), 'die Woche danach schon');
+  // Mit Grund; und zurück: Nur „ausgefallen“ geht, ein anderer Eintrag bleibt.
+  assert.deepEqual(M.ausfallen(plan, id, true, 'Dozent krank').ist, { [id]: { s: 'ausgefallen', grund: 'Dozent krank' } });
+  assert.equal(M.ausfallen(plan, id, false).ist, undefined);
+  assert.deepEqual(M.ausfallen({ ist: { [id]: 'ja' } }, id, false).ist, { [id]: 'ja' });
+  assert.deepEqual(plan.ist, { [id]: { s: 'ausgefallen' } }, 'der alte Plan bleibt unberührt');
+  // Verlegt fällt er mit aus (der Eintrag zieht mit) — und ausfallen() am neuen Platz lässt ihn dort stattfinden.
+  const verlegt = M.verlegen(plan, id, { datum: '2030-11-07', start: '14:15', ende: '15:45' });
+  assert.equal(M.rechnen(a, verlegt).vorkommen.find((v) => v.id === 'bsp-vl@2030-11-07@14:15').ausgefallen, 'gemeldet');
+  assert.equal(M.rechnen(a, M.ausfallen(verlegt, 'bsp-vl@2030-11-07@14:15', false)).vorkommen.find((v) => v.id === 'bsp-vl@2030-11-07@14:15').ausgefallen, null);
+});
+
+test('Gruppe gewechselt: Täusche und verlegte Termine der alten Gruppe gehören zu ihr (SP-0423)', () => {
+  const plan = M.verlegen(M.tauschen({ wahl: { 'bsp-ue': 'g2' } }, 'bsp-ue', 'bsp-ue@2030-11-06@08:15', { option: 'g1', datum: '2030-11-04', start: '14:15' }),
+    'bsp-ue@2030-11-13@08:15', { datum: '2030-11-14', start: '08:15', ende: '09:45' });
+  plan.verlegt['bsp-vl@2030-11-05@10:15'] = { datum: '2030-11-07', start: '14:15', ende: '15:45' };
+  assert.deepEqual(M.nurDieseWocheVon(plan, 'bsp-ue'), { tausch: ['bsp-ue@2030-11-06@08:15'], verlegt: ['bsp-ue@2030-11-13@08:15'] });
+  assert.deepEqual(M.nurDieseWocheVon(plan, 'bsp-vl'), { tausch: [], verlegt: ['bsp-vl@2030-11-05@10:15'] });
 });
