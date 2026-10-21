@@ -12,6 +12,22 @@ nicht jeden Commit: Die Commits stehen in git, die Vorgänge im TOWER.
 
 ---
 
+## 21.10.2026 — /silas am Surface und MacBook: ein Ganztägiges je Tag, Seiten einklappbar (SP-0424)
+
+- Silas: *„Kannst du bitte den stundenplanner vom layout nochmal aufs surface (zusätzlich zu macbook) screen
+  optimieren? Um mehr platz zu haben sollen maximal 1 ganztags termine angezeigt werden und darunter +X … Außerdem soll
+  man das linke Seitenmenü … einklappbar sein so wie semester und wochenende auf der rechten seite. … Das Feld oben
+  Festgelegt am ... und bearbeiten und daneben offen abgleich so wird gerechnet und zurücksetzen soll standardmäßig
+  eingeklappt sein“*.
+- Über dem Raster steht je Tag nur noch das wichtigste Ganztägige, darunter „+n“; Darüberfahren oder Antippen zeigt
+  die übrigen der ganzen Woche in einem Feld über dem Raster. Die Zeile „Festgelegt am … / Offen / Abgleich …“ ist
+  zugeklappt hinter „✓ Festgelegt“ neben dem Titel. Die linke Spalte klappt auf eine Schiene mit „Menü“, „Woche“ und
+  „Prüfungen“, standardmäßig ist sie offen. Der Titel der Woche braucht zwei Zeilen statt drei bis vier, die Seiten
+  sind zwischen 1281 und 1599 px etwas schmaler.
+- Mit Silas' Stand: am Surface (1440 × 830) 533 statt 390 px Raster, im halben MacBook-Fenster (865 × 1021) beginnt
+  das Raster 145 px weiter oben, im ganzen (1728 × 1000) 703 statt 588 px. `ops/sicht_silas.py` misst jetzt auch diese
+  drei Fenster (docs/SILAS.md §3).
+
 ## 21.10.2026 — /silas: Präsenztermin nur diese Woche verlegen, roter Bereich „fällt aus“ (SP-0423)
 
 - Silas: *„… dass man einen Präsenztermin in der Wochenansicht für eine bestimmte Woche auch verschieben kann. Und

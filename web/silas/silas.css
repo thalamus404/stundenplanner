@@ -211,8 +211,10 @@ a { color: inherit; text-underline-offset: 2px; }
 .zaehler.rot { background: var(--rot-flaeche); color: var(--rot-text); }
 .zaehler.gut { background: var(--grau-3); color: var(--grau-9); }
 
-.buehne { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--links) minmax(0, 1fr) var(--rechts); gap: 20px; }
-.buehne.ohne-leiste { grid-template-columns: var(--links) minmax(0, 1fr) 44px; }
+/* Beide Seiten klappen auf eine Schiene von 44 px: rechts das Semester (SP-0411), links Module und Navigation (SP-0424). */
+.buehne { --l: var(--links); --r: var(--rechts); flex: 1; min-height: 0; display: grid; grid-template-columns: var(--l) minmax(0, 1fr) var(--r); gap: 20px; }
+.buehne.ohne-leiste { --r: 44px; }
+.buehne.ohne-links { --l: 44px; }
 
 /* ── Links: die Module mit allen Bestandteilen */
 .module { overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 2px 6px 24px 2px; scrollbar-width: thin; }
@@ -296,9 +298,19 @@ a { color: inherit; text-underline-offset: 2px; }
 .banner.warn .knopf { border-color: var(--rot); }
 .banner span { flex: 1; }
 
-.ganztag { flex: none; display: grid; grid-template-columns: var(--zeit) repeat(var(--tage), minmax(0, 1fr)); gap: 0; }
+/* Ganztägiges (SP-0424): je Tag höchstens eins, darunter „+n“. Das Feld mit den übrigen der Woche geht über dem Raster
+   auf (absolut, ohne Lücke unter der Zeile — sonst verlöre die Maus auf dem Weg dorthin den Halt). */
+.ganztag { flex: none; position: relative; z-index: 8; }
 .ganztag:empty { display: none; }
+.gt-zeile, .gt-weitere { display: grid; grid-template-columns: var(--zeit) repeat(var(--tage), minmax(0, 1fr)); gap: 0; }
 .gt-tag { display: flex; flex-direction: column; gap: 2px; padding: 0 3px; min-width: 0; }
+.gt-mehr { align-self: flex-start; font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 8px; border-radius: 6px; background: var(--grau-3); box-shadow: inset 0 0 0 1px var(--grau-5); color: var(--grau-9); }
+.gt-mehr[aria-expanded="true"], .ganztag.zeigt .gt-mehr { background: var(--grau-4); color: var(--grau-10); }
+.gt-weitere {
+  display: none; position: absolute; top: 100%; left: 0; right: 0; padding: 6px 0;
+  background: var(--ebene); border: 1px solid var(--rand-ebene); border-radius: 10px; box-shadow: var(--schatten);
+}
+.ganztag.auf .gt-weitere, .ganztag.zeigt .gt-weitere { display: grid; }
 .chip { display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 15px; padding: 2px 6px; border-radius: 6px; background: var(--grau-3); color: var(--grau-9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .chip.frist { background: var(--gelb-flaeche); color: var(--gelb-text); font-weight: 600; }
 .chip.wichtig { background: var(--rot-flaeche); color: var(--rot-text); }
@@ -456,7 +468,18 @@ a { color: inherit; text-underline-offset: 2px; }
 
 /* ── Schmale Fenster: alles untereinander (am Telefon passt die Woche in die Breite, unten „Am Telefon“) */
 @media (min-width: 1600px) { :root { --rechts: 372px; } }
-@media (max-width: 1280px) { :root { --links: 276px; --rechts: 300px; } }
+/* Surface (1440 × 830) und MacBook im ganzen Fenster (SP-0424): schmalere Seiten, damit Titel, Umschalter und Wochenwahl
+   der Mitte in eine Zeile passen und jeder Tag breiter wird. */
+@media (max-width: 1599px) {
+  :root { --links: 292px; --rechts: 312px; }
+  /* Neben dem Knopf zum Einklappen passte „Prüfungen“ sonst nicht ganz (bei 865 px, am Touchschirm auch bei 1440 px). */
+  .hauptreiter button { padding: 8px 6px; gap: 6px; }
+}
+@media (max-width: 1280px) {
+  :root { --links: 276px; --rechts: 300px; }
+  /* Bei 865 px nimmt die Spalte noch ihre Scrollleiste weg: Die Reiter tragen dort nur Wort und Topf (SP-0424). */
+  .links-oben .hauptreiter button .i { display: none; }
+}
 /* Bis 1100 px (Silas' Fenster ist 865 px breit): Die Seite scrollt, statt alles in eine Bildschirmhöhe zu
    pressen — sonst wurde das Raster flach und die Legende lag darüber. Das Raster hat eine feste Höhe, die
    Modulspalte scrollt für sich, das Unregelmäßige steht darunter in voller Breite. Der Kopf hat zwei Zeilen. */
@@ -470,7 +493,7 @@ a { color: inherit; text-underline-offset: 2px; }
   .bilanz { grid-area: bilanz; }
   .bilanz .balken { flex: 1; width: auto; }
   .sync { grid-area: sync; justify-self: end; }
-  .buehne, .buehne.ohne-leiste { flex: none; grid-template-columns: var(--links) minmax(0, 1fr); align-items: start; }
+  .buehne, .buehne.ohne-leiste { flex: none; grid-template-columns: var(--l) minmax(0, 1fr); align-items: start; }
   .module { position: sticky; top: 8px; max-height: calc(100dvh - 16px); }
   .raster { flex: none; height: clamp(520px, calc(100dvh - 190px), 900px); }
   /* Die Modulspalte klebt (sticky) — ihr Halt ist die ganze Bühne, also auch die Zeile der Semester-Übersicht darunter:
@@ -624,6 +647,18 @@ a { color: inherit; text-underline-offset: 2px; }
 .m-phase { font-size: 12px; color: var(--grau-8); text-align: left; display: flex; gap: 6px; align-items: center; padding: 4px 4px 2px; border-top: 1px dashed var(--grau-5); margin-top: 2px; border-radius: 0 0 6px 6px; }
 .m-phase .i { width: 12px; height: 12px; }
 .links-kopf { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; z-index: 2; background: var(--grau-2); padding-bottom: 6px; }
+/* Neben den Hauptreitern der Knopf zum Einklappen; eingeklappt die Schiene (SP-0424). */
+.links-oben { display: flex; align-items: center; gap: 4px; }
+.links-oben .hauptreiter { flex: 1; }
+.i.spiegel { transform: scaleX(-1); }
+.ohne-links .module { padding: 2px 0 24px; }
+.links-schiene { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.links-schiene .ls-zu, .ls-reiter { height: auto; width: 36px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; border-radius: 10px; }
+.links-schiene .ls-zu { border: 1px solid var(--grau-5); }
+.links-schiene .l-wort { writing-mode: vertical-rl; font-size: 12px; color: var(--grau-9); }
+.ls-reiter { background: var(--grau-4); color: var(--grau-9); }
+.ls-reiter.an { background: var(--grau-1); color: var(--neon-schrift); box-shadow: 0 1px 3px rgb(0 0 0 / .14); }
+.ls-reiter.an .l-wort { color: var(--neon-schrift); font-weight: 600; }
 .links-kopf .umschalter { width: 100%; }
 .links-kopf .umschalter button { flex: 1; }
 .links-kopf span { font-size: 11px; color: var(--grau-8); padding: 0 4px; }
@@ -774,6 +809,19 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .p-fuss { gap: 4px 12px; font-size: 11px; }
 .p-fuss .legende { gap: 4px; }
 .p-zeile .p-titel { flex: 1 1 220px; }
+/* Am Rechner zwei Zeilen statt drei bis vier (SP-0424, am Surface 1440 × 830): oben Titel, „✓ Festgelegt“ und rechts die
+   Wochenwahl, darunter über die volle Breite die Zahlen der Woche mit Rückgängig und „n× ✓“. Der Titelblock löst sich
+   dazu in die Zeile auf (display: contents); ::after ist der Zeilenumbruch vor der zweiten Zeile. */
+@media (min-width: 821px) {
+  .p-kopf > .p-zeile { row-gap: 0; }
+  .p-kopf > .p-zeile::after { content: ""; order: 8; flex-basis: 100%; height: 0; }
+  .p-kopf > .p-zeile > .p-titel { display: contents; }
+  .p-kopf > .p-zeile > .p-titel > b, .p-kopf > .p-zeile > .p-titel > .p-titel-oben { flex: 1 1 auto; min-width: 0; white-space: nowrap; }
+  .p-kopf > .p-zeile > .p-titel > b, .p-titel-oben > b { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .p-kopf > .p-zeile > .p-titel > span { order: 9; flex: 0 1 auto; min-width: 0; margin-top: 2px; }
+  .p-kopf > .p-zeile > [data-act="rueck"], .p-kopf > .p-zeile > [data-act="woche-bestaetigen"] { order: 10; height: 24px; padding: 0 8px; font-size: 12px; margin-top: 2px; }
+  .p-kopf > .p-zeile > [data-act="rueck"] .i, .p-kopf > .p-zeile > [data-act="woche-bestaetigen"] .i { width: 14px; height: 14px; }
+}
 @media (max-width: 600px) {
   /* Am Handy: der gezeigte Schritt mit Namen, die anderen nur mit Nummer und Stand. */
   .schritt { padding: 6px; gap: 6px; }
@@ -788,6 +836,15 @@ details.offen-gruppe > summary { font-size: 14px; font-weight: 600; cursor: poin
 .fertig-text { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; font-size: 13px; }
 .fertig-text .i { width: 16px; height: 16px; color: var(--gruen); }
 .fertig-text span { color: var(--grau-8); }
+/* Festgelegt zugeklappt (SP-0424): eine Pille neben dem Titel; aufgeklappt am Ende der Zeile ein Pfeil nach oben. */
+.p-titel-oben { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.fest-pille { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 6px 0 7px; border-radius: 11px; border: 1px solid var(--grau-5); background: var(--grau-1); font-size: 12px; font-weight: 600; color: var(--grau-9); }
+.fest-pille .i { width: 13px; height: 13px; }
+.fest-pille .i:first-child { color: var(--gruen); }
+.fest-pille .zahl { font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--rot); color: #fff; display: inline-grid; place-items: center; }
+.p-titel > .fest-pille { align-self: flex-start; margin-bottom: 2px; }
+.fest-zu { padding: 0; width: var(--ziel); }
+.links-oben .ls-zu { padding: 0; width: 28px; min-width: 0; }
 .schritt-tun .knopf { align-self: flex-start; margin-top: 6px; height: 32px; font-size: 13px; gap: 6px; }
 .modul.filter { border-color: var(--grau-10); box-shadow: inset 0 0 0 1px var(--grau-10); }
 .t-stand.t-wahl { font-size: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
@@ -1328,6 +1385,8 @@ body.mit-unten .links-fuss { position: static; }
 .dr-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; }
 .dr-knoepfe .knopf.klein { height: 36px; padding: 0 12px; }
 .legende-knopf { align-self: flex-start; }
+.bedarf > .legende-knopf { align-self: center; margin-left: auto; height: 24px; font-size: 12px; color: var(--grau-8); }
+.p-fuss:empty { display: none; }
 @media (max-width: 820px) {
   :root { --zeit: 28px; }
   .seite { padding: 8px 10px 24px; gap: 10px; }

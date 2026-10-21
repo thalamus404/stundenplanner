@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""/silas am Telefon messen (V-0391, Silas, 16.10.2026: „die app bitte einmal für jeden schritt auch für mobile
-optimieren“). Öffnet web/silas/ in Chromium bei 390 × 844 und 360 × 740, hell und dunkel, mit Touch, in jedem Schritt
-(1–4), festgelegt (Woche, Prüfungen) und unter Offen und Abgleich. Die API ist eine Attrappe mit einem ERFUNDENEN Stand
-(Beispielmodule im WiSe 2030/31) — Silas' Semester liegt nur im KV und nie im Repo (docs/SILAS.md §7); nichts geht
-ins Netz außer an 127.0.0.1.
+"""/silas am Telefon und am Rechner messen (V-0391, SP-0424). Öffnet web/silas/ in Chromium. Die API ist eine Attrappe
+mit einem ERFUNDENEN Stand (Beispielmodule im WiSe 2030/31) — Silas' Semester liegt nur im KV und nie im Repo
+(docs/SILAS.md §7); nichts geht ins Netz außer an 127.0.0.1.
 
-Geprüft wird, was bis V-0391 schiefging (Sichtung 390 × 844: Raster 640 px breit und seitlich zu schieben, die Seite
-9 000 px lang, was dran war, stand unter Raster und Legende):
+Am Telefon (V-0391, Silas, 16.10.2026: „die app bitte einmal für jeden schritt auch für mobile optimieren“): 390 × 844
+und 360 × 740, hell und dunkel, mit Touch, in jedem Schritt (1–4), festgelegt (Woche, Prüfungen) und unter Offen und
+Abgleich. Geprüft wird, was bis V-0391 schiefging (Sichtung 390 × 844: Raster 640 px breit und seitlich zu schieben,
+die Seite 9 000 px lang, was dran war, stand unter Raster und Legende):
   · die Seite scrollt nie seitlich, und das Raster ist nicht breiter als das Fenster
   · in den Schritten 1–4 steht #dran (was dran ist, mit Knöpfen) direkt über dem Raster
   · die Semester-Übersicht ist zugeklappt, die Seite bleibt unter 4 000 px (Schritte 1–4)
   · kein Fehler auf der Seite
+
+Am Rechner (SP-0424, Silas, 21.10.2026: „nochmal aufs surface (zusätzlich zu macbook) screen optimieren“): das
+Surface im größten Fenster (1440 × 830), das MacBook im halben (865 × 1021) und im ganzen (1728 × 1000), hell und
+dunkel, festgelegt in einer echten Woche mit vier Fristen an einem Tag, unter Prüfungen und mit eingeklappter linker
+Spalte. Geprüft wird:
+  · nichts scrollt seitlich; ab 1101 px auch nicht nach unten, und das Raster hat dort ≥ 38 px je Stunde
+  · über dem Raster je Tag höchstens EIN Ganztägiges, darunter „+n“; Darüberfahren zeigt die übrigen der Woche
+  · „Festgelegt am … / Offen / Abgleich …“ ist zugeklappt, „✓ Festgelegt“ steht neben dem Titel
+  · eingeklappt ist die linke Spalte eine Schiene (≤ 44 px) mit „Woche“ und „Prüfungen“
 
   python3 ops/sicht_silas.py [--web web] [--bilder <ordner>]      (braucht Playwright, wie ops/sicht.py)
 """
@@ -47,7 +56,12 @@ def modul(kurz, nr, farbe, tag, gruppen_tage):
 def stand(festgelegt=False):
     angebot = {'semester': SEM, 'module': [modul('AAA', 90001, 1, 'Mo', [('Di', 8), ('Mi', 12), ('Fr', 10)]),
                                            modul('BBB', 90002, 3, 'Do', [('Mo', 14), ('Di', 16), ('Do', 8), ('Fr', 12)])],
-               'termine': [{'id': 'f1', 'modul': 'AAA', 'art': 'frist', 'datum': '2030-11-29', 'start': '23:59', 'titel': 'Anmeldung endet', 'wichtig': True}]}
+               # Vier Fristen am Fr 29.11. (SP-0424): über dem Raster steht eine, darunter „+3“.
+               'termine': [{'id': 'f1', 'modul': 'AAA', 'art': 'frist', 'datum': '2030-11-29', 'start': '23:59', 'titel': 'Anmeldung endet', 'wichtig': True},
+                           {'id': 'f2', 'modul': 'BBB', 'art': 'frist', 'datum': '2030-11-29', 'start': '12:00', 'titel': 'Abgabe Blatt 3'},
+                           {'id': 'f3', 'modul': 'AAA', 'art': 'frist', 'datum': '2030-11-29', 'start': '18:00', 'titel': 'Quiz 4 schließt'},
+                           {'id': 'f4', 'modul': 'BBB', 'art': 'rahmen', 'datum': '2030-11-29', 'titel': 'Tag der Lehre'},
+                           {'id': 'f5', 'modul': 'BBB', 'art': 'frist', 'datum': '2030-11-25', 'start': '10:00', 'titel': 'Rückmeldung'}]}
     plan = {'wahl': {'aaa-ue': 'aaa-g2'}, 'bloecke': [{'id': 'b1', 'teil': 'aaa-video', 'tag': 'Mi', 'start': '14:00', 'ende': '15:30'}]}
     if festgelegt:
         plan['festgelegt'] = '2030-10-12T08:00:00.000Z'
@@ -68,6 +82,11 @@ ANSICHTEN = [('schritt-1', {'schritt': 1}, False), ('schritt-2', {'schritt': 2},
              ('schritt-4', {'schritt': 4}, False), ('offen', {'bereich': 'offen'}, False), ('abgleich', {'bereich': 'abgleich'}, False),
              ('fest-woche', {}, True), ('fest-pruefungen', {'bereich': 'frei'}, True)]
 FENSTER = [(390, 844), (360, 740)]
+# Am Rechner (SP-0424): festgelegt in der echten Woche der vier Fristen, unter Prüfungen, und links eingeklappt.
+RECHNER = [(1440, 830), (865, 1021), (1728, 1000)]
+WOCHE_FRISTEN = '2030-11-25'
+ANSICHTEN_RECHNER = [('fest-echt', {'modus': 'woche', 'woche': WOCHE_FRISTEN}), ('fest-pruefungen', {'bereich': 'frei'}),
+                     ('links-zu', {'modus': 'woche', 'woche': WOCHE_FRISTEN, 'linksZu': True})]
 
 
 def main():
@@ -132,14 +151,63 @@ def main():
                         os.makedirs(a.bilder, exist_ok=True)
                         pg.screenshot(path=os.path.join(a.bilder, f'{breite}-{schema}-{name}.png'), full_page=True)
                     ctx.close()
+        for (breite, hoehe) in RECHNER:
+            for schema in ('light', 'dark'):
+                for name, ansicht in ANSICHTEN_RECHNER:
+                    ctx = b.new_context(viewport={'width': breite, 'height': hoehe}, device_scale_factor=1, color_scheme=schema)
+                    ctx.route('**/silas/api/**', attrappe(stand(True)))
+                    a_ = {'v': 334, 'modus': 'standard', 'leiste': True, 'bereich': 'plan', 'schritt': 1, **ansicht}
+                    ctx.add_init_script(f"localStorage.setItem('silas:v1:schluessel','x'); localStorage.setItem('silas:v1:ansicht', {json.dumps(json.dumps(a_))});")
+                    pg = ctx.new_page()
+                    seitenfehler = []
+                    pg.on('pageerror', lambda e: seitenfehler.append(str(e)))
+                    wo = f'{breite}×{hoehe} {schema} {name}'
+                    pg.goto(basis)
+                    try:
+                        pg.wait_for_selector('#seite:not([hidden])', timeout=8000)
+                    except Exception:
+                        pruefe(wo, False, f'die Seite erscheint nicht {seitenfehler[:1]}')
+                        ctx.close()
+                        continue
+                    pg.wait_for_timeout(300)
+                    m = pg.evaluate('''() => {
+                      const r = (sel) => { const e = document.querySelector(sel); if (!e || e.hidden || !e.offsetHeight) return null; const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, width: b.width, height: b.height }; };
+                      const zeiten = [...document.querySelectorAll('#raster .r-zeiten span')].length + 1;
+                      return { breit: document.documentElement.scrollWidth, hoch: document.documentElement.scrollHeight, raster: r('#raster'), stunden: zeiten,
+                               jeTag: [...document.querySelectorAll('#ganztag .gt-zeile .gt-tag')].map((t) => t.querySelectorAll('.chip').length),
+                               mehr: [...document.querySelectorAll('#ganztag .gt-zeile .gt-mehr')].map((x) => x.textContent),
+                               schritte: !!document.querySelector('#p-kopf .p-schritte'), pille: !!document.querySelector('#p-kopf .fest-pille'),
+                               module: r('#module'), schiene: [...document.querySelectorAll('#module .ls-reiter')].map((x) => x.textContent) };
+                    }''')
+                    pruefe(wo, not seitenfehler, f'Fehler auf der Seite: {seitenfehler[:1]}')
+                    pruefe(wo, m['breit'] <= breite, f'die Seite scrollt seitlich ({m["breit"]} px)')
+                    if breite > 1100:
+                        pruefe(wo, m['hoch'] <= hoehe, f'die Seite scrollt nach unten ({m["hoch"]} px)')
+                        if m['raster']:
+                            pruefe(wo, m['raster']['height'] / m['stunden'] >= 38, f'das Raster hat nur {m["raster"]["height"] / m["stunden"]:.0f} px je Stunde')
+                    pruefe(wo, not m['schritte'] and m['pille'], 'die Zeile „Festgelegt am … / Offen / Abgleich …“ ist nicht zugeklappt')
+                    if name != 'fest-pruefungen':
+                        pruefe(wo, m['jeTag'] and max(m['jeTag']) == 1, f'über dem Raster stehen je Tag {m["jeTag"]} Ganztägige statt höchstens einem')
+                        if pruefe(wo, '+3' in m['mehr'], f'„+3“ fehlt unter den vier Fristen des Freitags ({m["mehr"]})'):
+                            pg.hover('#ganztag .gt-mehr')
+                            pg.wait_for_timeout(100)
+                            pruefe(wo, pg.is_visible('#gt-weitere') and pg.locator('#gt-weitere .chip').count() >= 3, 'Darüberfahren über „+3“ zeigt die übrigen nicht')
+                    if name == 'links-zu':
+                        pruefe(wo, m['module'] and m['module']['width'] <= 44, f'die linke Spalte ist eingeklappt {m["module"] and round(m["module"]["width"])} px breit')
+                        pruefe(wo, m['schiene'] == ['Woche', 'Prüfungen'], f'die Schiene zeigt {m["schiene"]} statt Woche und Prüfungen')
+                    if a.bilder:
+                        os.makedirs(a.bilder, exist_ok=True)
+                        pg.screenshot(path=os.path.join(a.bilder, f'{breite}-{schema}-{name}.png'))
+                    ctx.close()
         b.close()
     srv.shutdown()
-    gesamt = len(FENSTER) * 2 * len(ANSICHTEN)
+    gesamt = len(FENSTER) * 2 * len(ANSICHTEN) + len(RECHNER) * 2 * len(ANSICHTEN_RECHNER)
     if fehler:
-        print(f'  ✗ /silas am Telefon: {len(fehler)} Befund(e) in {gesamt} Ansichten')
+        print(f'  ✗ /silas: {len(fehler)} Befund(e) in {gesamt} Ansichten')
         for f in fehler: print(f'    · {f}')
         return 1
-    print(f'  ✓ /silas am Telefon: {gesamt} Ansichten (390×844, 360×740, hell und dunkel) — nichts scrollt seitlich, #dran über dem Raster')
+    print(f'  ✓ /silas: {gesamt} Ansichten — am Telefon (390×844, 360×740) nichts seitlich, #dran über dem Raster; am Rechner '
+          f'(1440×830, 865×1021, 1728×1000) ein Ganztägiges je Tag mit „+n“, Festgelegt zugeklappt, links einklappbar')
     return 0
 
 
