@@ -93,6 +93,7 @@ const Z = {
   zrAuf: new Set(['zr-pause-0', 'zr-frei']), // Prüfungen: die aufgeklappten Zeiträume (anfangs die vorlesungsfreien)
   hell: null,           // Vorkommen-Id, die kurz hervorgehoben wird
   ausweich: null,       // Vorkommen-Id einer gewählten Gruppe, deren Ausweichtermine dieser Woche dunkelgrau dastehen (SP-0421)
+  ganztagAuf: null,     // Wochen-Id, deren übriges Ganztägiges nach einem Tipp auf „+n“ offen steht (SP-0424)
   leuchten: null,       // Teil-Id, deren Blöcke im Raster kurz aufleuchten („Block verschieben“, V-0354)
   modulPuls: 0,         // bis wann die Kacheln des angeklickten Moduls (fokus modul:…) pulsieren (V-0356)
   ansehen: null,        // Prüfungs-Id, deren Vorschlag gerade angesehen wird (nur seine Wochen im Kalender, V-0356)
@@ -400,6 +401,7 @@ function zeichnen() {
   fussZeichnen();
   untenZeichnen();
   $('buehne').classList.toggle('ohne-leiste', !Z.ansicht.leiste);
+  $('buehne').classList.toggle('ohne-links', linksZu());
 }
 
 const farbe = (modulId) => {
@@ -761,6 +763,7 @@ function moduleZeichnen() {
   // Festgelegt misst „Diese Woche“ den Vollzug einer echten Woche (SP-0419): in der Standardwoche die gewählte.
   const wid = bedarfsWoche() || (fertig() && woche ? Z.ansicht.woche : null);
   bedarf = new Map(M.wochenBedarf(Z.stand.angebot, Z.stand.plan, Z.erg, wid).map((b) => [b.z.teil.id, b]));
+  if (linksZu()) { fuellen(box, linksSchiene()); return; }
   const n = schritt();
   const sch = M.SCHRITTE[n - 1];
   const b = Z.ansicht.bereich;
@@ -777,7 +780,7 @@ function moduleZeichnen() {
       : kasten('Dein Stundenplan', fortVon([...Z.erg.teile.values()].filter((z) => M.schrittVon(z.teil) <= 4)), 'Festgelegt — die Schritte 1–4. Die Prüfungen und das Unregelmäßige zählen unter „Prüfungen“. Vergangenes bekommt ✓ oder ✗ (Klick auf die Kachel). Einen Block nur in einer Woche verschieben: in der echten Woche ziehen. Sonst ändern: oben „Bearbeiten“.');
   // Am Telefon stehen die Hauptreiter oben (festgelegt) oder fehlen (im Ablauf gibt es nur die Woche), und Fortschritt und
   // „Weiter“ stehen über dem Raster (dranZeichnen) — hier unten wären sie unter Raster und Legende (V-0391).
-  const kopf = h('div', { class: 'links-kopf' }, SCHMAL.matches ? null : hauptreiterEl(), SCHMAL.matches && !fertig() ? null : tun,
+  const kopf = h('div', { class: 'links-kopf' }, SCHMAL.matches ? null : h('div', { class: 'links-oben' }, hauptreiterEl(), linksKnopf()), SCHMAL.matches && !fertig() ? null : tun,
     (fertig() || n > 2) && b !== 'frei' && b !== 'pruefplan' ? h('div', { class: 'umschalter', role: 'group', 'aria-label': 'Zeitraum der Module' },
       h('button', { type: 'button', 'aria-pressed': String(!woche), 'data-act': 'links', 'data-wert': 'semester', text: 'Ganzes Semester' }),
       h('button', { type: 'button', 'aria-pressed': String(woche), 'data-act': 'links', 'data-wert': 'woche', text: 'Diese Woche' })) : null);
@@ -791,6 +794,29 @@ function moduleZeichnen() {
   if (fertig() && (b === 'frei' || b === 'pruefplan')) fuellen(box, kopf, pruefListe(), fuss);
   else fuellen(box, kopf, planFl, ...Z.erg.module.map(modulKarte), fuss);
   box.scrollTop = oben;
+}
+
+/** Die linke Spalte eingeklappt (SP-0424, Silas, 21.10.: „das linke Seitenmenü (navigation) wo man Woche Prüfungen und
+ *  Module usw. auswählt einklappbar … so wie semester und wochenende auf der rechten seite. Standardmäßig soll es aber
+ *  ausgeklappt sein“) — gemerkt als `ansicht.linksZu`. Am Telefon nicht: Dort steht die Spalte unter dem Raster. */
+const linksZu = () => !!Z.ansicht.linksZu && !SCHMAL.matches;
+
+function linksKnopf() {
+  const zu = linksZu();
+  return h('button', { class: 'knopf rund leise ls-zu', type: 'button', 'data-act': 'links-zu', 'aria-expanded': String(!zu), 'aria-controls': 'module',
+    'aria-label': zu ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen', title: zu ? 'Module und Navigation ausklappen' : 'Seitenleiste einklappen — mehr Platz für die Woche' },
+  sym('leiste', 'i spiegel'), zu ? h('span', { class: 'l-wort', text: 'Menü' }) : null);
+}
+
+/** Eingeklappt eine Schiene wie rechts (SP-0411, SP-0417): „Menü“ klappt aus, darunter die zwei Hauptansichten — Woche
+ *  und Prüfungen bleiben so einen Klick entfernt (ein Symbol allein fand man rechts nicht wieder, darum mit Wort). */
+function linksSchiene() {
+  const pr = ['frei', 'pruefplan'].includes(Z.ansicht.bereich);
+  const reiter = (bereich, symbol, wort, an, gesperrt = null) => h('button', { type: 'button', class: `ls-reiter${an ? ' an' : ''}`, 'data-act': 'bereich', 'data-bereich': bereich,
+    'aria-pressed': String(an), disabled: !!gesperrt, title: gesperrt || wort }, sym(symbol), h('span', { class: 'l-wort', text: wort }));
+  return h('div', { class: 'links-schiene' }, linksKnopf(),
+    reiter('plan', 'kalender', 'Woche', !pr),
+    reiter('frei', 'ziel', 'Prüfungen', pr, fertig() ? null : 'Erst nach „Stundenplan festlegen“'));
 }
 
 /** Die zwei Hauptansichten (V-0338): Woche und Prüfungen. Prüfungen gibt es erst, wenn der Stundenplan festgelegt ist. */
@@ -1309,7 +1335,22 @@ function planKopfZeichnen() {
     titel.append(h('b', { text: 'So wird gerechnet' }), h('span', { text: 'Leistungspunkte, Aufwandstabellen und die Regeln dieses Planers' }));
     dazu(titel);
   }
-  fuellen($('p-kopf'), SCHMAL.matches && fertig() ? hauptreiterEl() : null, h('div', { class: 'p-schritte' }, schritteEl, weitere), zeile);
+  // Festgelegt zugeklappt (SP-0424, Silas, 21.10.: „Das Feld oben Festgelegt am ... und bearbeiten und daneben offen
+  // abgleich so wird gerechnet und zurücksetzen soll standardmäßig eingeklappt sein“): Dann steht nur „✓ Festgelegt“ neben
+  // dem Titel und klappt die Zeile auf (gemerkt als ansicht.festAuf). Unter Offen, Abgleich und So wird gerechnet steht
+  // sie immer da — sie sagt dort, wo man ist, und führt zum Nachbarn.
+  const zwingt = ['offen', 'abgleich', 'erklaerung'].includes(b);
+  const festZu = fertig() && !Z.ansicht.festAuf && !zwingt;
+  if (festZu) {
+    const pille = h('button', { type: 'button', class: 'fest-pille', 'data-act': 'fest-auf', 'aria-expanded': 'false',
+      title: `Festgelegt am ${datumMitTag(Z.stand.plan.festgelegt.slice(0, 10))} — aufklappen: Bearbeiten, Offen, Abgleich, So wird gerechnet, Zurücksetzen` },
+    sym('ok'), 'Festgelegt', rot ? h('span', { class: 'zahl', title: `${rot} unter „Offen“`, text: String(rot) }) : null, sym('unten'));
+    const fett = titel.querySelector(':scope > b');
+    const oben = h('div', { class: 'p-titel-oben' });
+    if (fett) { fett.replaceWith(oben); oben.append(fett, pille); } else titel.prepend(pille);
+  }
+  const zuKnopf = fertig() && !zwingt ? h('button', { type: 'button', class: 'knopf rund leise fest-zu', 'data-act': 'fest-auf', 'aria-expanded': 'true', 'aria-label': 'Einklappen', title: 'Festgelegt, Offen, Abgleich … einklappen' }, sym('oben')) : null;
+  fuellen($('p-kopf'), SCHMAL.matches && fertig() ? hauptreiterEl() : null, festZu ? null : h('div', { class: 'p-schritte' }, schritteEl, weitere, zuKnopf), zeile);
 }
 
 function bannerZeigen() {
@@ -1445,6 +1486,15 @@ function spalten(kacheln) {
   }
 }
 
+/** Das übrige Ganztägige der Woche auf- oder zuklappen (SP-0424), ohne das Raster neu zu zeichnen. */
+function ganztagAuf(an) {
+  Z.ganztagAuf = an && geo && !geo.std ? geo.woche.id : null;
+  const gt = $('ganztag');
+  gt.classList.toggle('auf', !!Z.ganztagAuf);
+  if (!Z.ganztagAuf) gt.classList.remove('zeigt');
+  for (const k of gt.querySelectorAll('.gt-mehr')) k.setAttribute('aria-expanded', String(!!Z.ganztagAuf));
+}
+
 let geo = null; // die Geometrie des gezeichneten Rasters (für das Ziehen)
 let kachelGezogen = false; // eben gezogen: der folgende Klick ist keiner (SP-0415)
 
@@ -1506,8 +1556,10 @@ function rasterZeichnen() {
   const gt = $('ganztag');
   if (std) fuellen(gt);
   else {
-    const zellen = [h('div')];
-    for (let d = 0; d < tage; d++) zellen.push(h('div', { class: 'gt-tag' }));
+    // Je Tag gesammelt und nach Rang sortiert (SP-0424): Gezeigt wird nur das wichtigste, der Rest steht hinter „+n“.
+    const proTag = Array.from({ length: tage }, () => []);
+    // Rang: Prüfung, wichtige Frist, Frist, Einzeltermin, Freigabe, Ausweichtermin, Rahmen.
+    const dazu = (d, rang, el) => proTag[d].push({ rang, el });
     for (const v of Z.erg.vorkommen) {
       const ausweich = v.quelle === 'pruefung' && !v.wichtig && !v.ganztag && v.start != null;
       if (!(v.ganztag || v.start == null || ausweich)) continue;
@@ -1519,7 +1571,7 @@ function rasterZeichnen() {
       if (d >= tage) continue;
       if (ausweich) {
         const m = modulVon(v.modul);
-        zellen[d + 1].append(h('span', { class: 'chip rahmen', title: `${M.titelVon(v, Z.erg, Z.stand.angebot)} — Ausweich- oder Zweittermin, nicht gewählt` }, `${uhr(v.start)} ${M.kurz(m)} · ${v.titel} (Ausweich)`));
+        dazu(d, 5, h('span', { class: 'chip rahmen', title: `${M.titelVon(v, Z.erg, Z.stand.angebot)} — Ausweich- oder Zweittermin, nicht gewählt` }, `${uhr(v.start)} ${M.kurz(m)} · ${v.titel} (Ausweich)`));
         continue;
       }
       const kl = v.quelle === 'pruefung' ? 'pruefung' : v.quelle === 'frist' ? `frist${v.wichtig ? ' wichtig' : ''}` : v.quelle === 'rahmen' ? 'rahmen' : '';
@@ -1527,7 +1579,8 @@ function rasterZeichnen() {
       // Ein Termin mit Datum, aber ohne Uhrzeit (Silas: „soll über dem Plan erscheinen, und wenn man draufklickt, soll
       // man dort eine Uhrzeit eintragen können“): Prüfungen und Einzeltermine lassen sich hier ergänzen.
       const zeitlos = v.punkt == null && (v.quelle === 'pruefung' || v.quelle === 'einzel' || v.quelle === 'frist');
-      zellen[d + 1].append(h(zeitlos ? 'button' : 'span', { type: zeitlos ? 'button' : null, class: `chip ${kl}${zeitlos ? ' zeitlos' : ''}`, 'data-act': zeitlos ? 'zeit' : null, 'data-vk': zeitlos ? v.id : null,
+      const rang = v.quelle === 'pruefung' ? 0 : v.quelle === 'frist' ? (v.wichtig ? 1 : 2) : v.quelle === 'rahmen' ? 6 : 3;
+      dazu(d, rang, h(zeitlos ? 'button' : 'span', { type: zeitlos ? 'button' : null, class: `chip ${kl}${zeitlos ? ' zeitlos' : ''}`, 'data-act': zeitlos ? 'zeit' : null, 'data-vk': zeitlos ? v.id : null,
         title: `${M.titelVon(v, Z.erg, Z.stand.angebot)}${zeitlos ? ' — Uhrzeit eintragen' : ''}` },
         `${v.punkt != null ? `${uhr(v.punkt)} ` : ''}${m ? `${M.kurz(m)} · ` : ''}${v.titel}${v.unsicher ? ' ?' : ''}`));
     }
@@ -1538,18 +1591,37 @@ function rasterZeichnen() {
       // mehr in Schritt 1 — dort steht nur, was fest ist).
       const sch = M.schrittVon(z.teil);
       if (!fertig() && sch !== schritt()) continue;
-      const proTag = new Map();
-      for (const e of z.einheiten || []) if (e.ab >= w.von && e.ab <= w.bis) proTag.set(e.ab, [...(proTag.get(e.ab) || []), e]);
-      for (const [ab, es] of proTag) {
+      const jeTag = new Map();
+      for (const e of z.einheiten || []) if (e.ab >= w.von && e.ab <= w.bis) jeTag.set(e.ab, [...(jeTag.get(e.ab) || []), e]);
+      for (const [ab, es] of jeTag) {
         const d = M.wochentag(ab);
         if (d >= tage) continue;
         const wort = z.teil.art === 'video' ? (es.length > 1 ? 'Videos' : 'Video') : (es.length > 1 ? 'Einheiten' : 'Einheit');
         const nr = es.length > 1 ? `${es[0].nr}–${es[es.length - 1].nr}` : es[0].nr;
-        zellen[d + 1].append(h('button', { type: 'button', class: `chip freigabe k-${M.kategorie(z.teil)}`, 'data-act': 'teil', 'data-teil': z.teil.id, title: es.map((e) => `${e.nr}: ${e.titel || ''}${e.laenge_min ? ` (${e.laenge_min} min)` : ''}`).join('\n') },
+        dazu(d, 4, h('button', { type: 'button', class: `chip freigabe k-${M.kategorie(z.teil)}`, 'data-act': 'teil', 'data-teil': z.teil.id, title: es.map((e) => `${e.nr}: ${e.titel || ''}${e.laenge_min ? ` (${e.laenge_min} min)` : ''}`).join('\n') },
           `${M.kurz(z.modul)} · ${wort} ${nr}${es.some((e) => !e.block) ? ' · ohne Block' : ''}`));
       }
     }
-    fuellen(gt, ...(zellen.slice(1).some((z) => z.childElementCount) ? zellen : []));
+    // Höchstens einer je Tag (SP-0424, Silas, 21.10.: „Um mehr platz zu haben sollen maximal 1 ganztags termine angezeigt
+    // werden und darunter +X … beim hovern oder drücken von dem +X sollen die weitern für die woche angezeigt werden“):
+    // am Surface waren es vier Zeilen, 82 px über dem Raster. „+n“ zeigt die übrigen ALLER Tage der Woche in einem Feld,
+    // das über dem Raster aufgeht — das Raster springt nicht. Maus: solange der Zeiger auf „+n“ oder dem Feld ist;
+    // Tipp oder Klick: bis zum nächsten Tipp daneben (ganztagAuf).
+    for (const l of proTag) l.sort((a, b) => a.rang - b.rang);
+    const mehr = proTag.reduce((s, l) => s + Math.max(0, l.length - 1), 0);
+    const auf = !!mehr && Z.ganztagAuf === w.id;
+    if (!auf && Z.ganztagAuf) Z.ganztagAuf = null;
+    gt.classList.toggle('auf', auf);
+    gt.classList.remove('zeigt');
+    if (!proTag.some((l) => l.length)) fuellen(gt);
+    else {
+      const leer = () => h('div');
+      fuellen(gt,
+        h('div', { class: 'gt-zeile' }, leer(), ...proTag.map((l) => h('div', { class: 'gt-tag' }, l.length ? l[0].el : null,
+          l.length > 1 ? h('button', { type: 'button', class: 'gt-mehr', 'data-act': 'ganztag-mehr', 'aria-expanded': String(auf), 'aria-controls': 'gt-weitere',
+            title: `${l.length - 1} weitere an diesem Tag — zeigt alle der Woche`, 'aria-label': `${l.length - 1} weitere ganztägige Einträge` }, `+${l.length - 1}`) : null))),
+        mehr ? h('div', { class: 'gt-weitere', id: 'gt-weitere' }, leer(), ...proTag.map((l) => h('div', { class: 'gt-tag' }, ...l.slice(1).map((x) => x.el)))) : null);
+    }
   }
 
   // Raster
@@ -1913,6 +1985,11 @@ function fussZeichnen() {
   // dem, was dran ist (V-0391), am Surface (1440 × 830) drei Zeilen, die dem Raster fehlten (SP-0411).
   const zu = !Z.ansicht.legende;
   const klappe = h('button', { type: 'button', class: 'knopf klein leise legende-knopf', 'data-act': 'legende', 'aria-expanded': String(!zu) }, zu ? 'Legende zeigen' : 'Legende einklappen');
+  // Zugeklappt rückt der Knopf am Rechner ans Ende der Zeile „noch nicht im Plan“ darüber, wenn dort etwas steht
+  // (SP-0424: am Surface eine Zeile mehr für das Raster). Gezeichnet wird #bedarf vor dem Fuß (zeichnen).
+  const bd = $('bedarf');
+  bd.querySelector(':scope > .legende-knopf')?.remove();
+  if (zu && !SCHMAL.matches && zeigtRaster() && bd.childElementCount) { bd.append(klappe); fuellen($('p-fuss')); return; }
   if (zu) { fuellen($('p-fuss'), klappe); return; }
   fuellen($('p-fuss'), [klappe,
     h('span', { class: 'legende' }, h('i', { class: 'k-etikett e-praesenz', text: 'Präsenz' }), h('i', { class: 'k-etikett e-video', text: 'Video' }), h('i', { class: 'k-etikett e-evl', text: 'EVL' }), fertig() ? h('i', { class: 'k-etikett e-pruefung', text: 'Prüfung' }) : null),
@@ -3845,6 +3922,9 @@ function verdrahten() {
       case 'woche-vor': wocheSchritt(Number(el.dataset.schritt)); break;
       case 'zur-woche': zurWoche(el.dataset.woche, el.dataset.hell); break;
       case 'leiste': Z.ansicht.leiste = !Z.ansicht.leiste; ansichtMerken(); zeichnen(); break;
+      case 'links-zu': Z.ansicht.linksZu = !Z.ansicht.linksZu; ansichtMerken(); zeichnen(); break;
+      case 'fest-auf': Z.ansicht.festAuf = !Z.ansicht.festAuf; ansichtMerken(); zeichnen(); break;
+      case 'ganztag-mehr': ganztagAuf(!Z.ganztagAuf); break;
       case 'wochenende':
         if (geo && geo.wochenende && geo.wochenende.grund) { melden(`${geo.wochenende.grund} — es bleibt aufgeklappt.`); break; }
         Z.ansicht.wochenende = !Z.ansicht.wochenende; ansichtMerken(); zeichnen(); break;
@@ -3902,6 +3982,13 @@ function verdrahten() {
     amTelefonHin(a, von, teil);
   });
   $('schleier').addEventListener('click', () => karteSchliessen());
+  // „+n“ über dem Raster (SP-0424): Mit der Maus zeigt schon das Darüberfahren die übrigen der Woche, bis der Zeiger Zeile
+  // und Feld verlässt. Ein Tipp (Surface, Telefon) hält es offen, bis daneben getippt wird — nicht über :hover, das am
+  // Touchschirm kleben bleibt.
+  const gt = $('ganztag');
+  gt.addEventListener('pointerover', (e) => { if (e.pointerType === 'mouse' && e.target.closest('.gt-mehr')) gt.classList.add('zeigt'); });
+  gt.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') gt.classList.remove('zeigt'); });
+  document.addEventListener('pointerdown', (e) => { if (Z.ganztagAuf && !e.target.closest('#ganztag, #karte')) ganztagAuf(false); });
   // Über die Grenze von 820 px (Telefon drehen, Fenster ziehen): neu zeichnen — Tageskopf, Kacheln und #dran hängen daran.
   SCHMAL.addEventListener('change', () => { if (Z.stand) { zeichnen(); bannerZeigen(); } });
   document.addEventListener('change', (e) => {
@@ -3928,7 +4015,7 @@ function verdrahten() {
   }, true);
   document.addEventListener('keydown', (e) => {
     const inFeld = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
-    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.sprung && !Z.legen) sprungEnde(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; Z.ausweich = null; zeichnen(); bannerZeigen(); } return; }
+    if (e.key === 'Escape') { if (!$('karte').hidden) karteSchliessen(); else if (Z.ganztagAuf) ganztagAuf(false); else if (Z.sprung && !Z.legen) sprungEnde(); else if (Z.legen || Z.setzen || Z.fokus) { Z.legen = null; Z.setzen = null; Z.fokus = null; Z.ausweich = null; zeichnen(); bannerZeigen(); } return; }
     if (inFeld) return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); rueckgaengig(); return; }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { if (!$('karte').hidden || !zeigtRaster()) return; e.preventDefault(); wocheSchritt(e.key === 'ArrowLeft' ? -1 : 1); }
