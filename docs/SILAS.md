@@ -171,7 +171,8 @@ sich nicht legen.
    `offen` (unbestätigt). `plan.ist[vorkommen-id]`: `'ja'` (✓ erledigt/besucht), `'nein'` (✗ — bei einem Termin wird
    daraus **Nacharbeit** im selben Posten bis zum nächsten Termin; `nachgeholt: true` hakt sie ab), `{s:'teil', min}`,
    `'verschoben'` (der Block liegt jetzt als Datumsblock mit `aus` woanders) und `'ausgefallen'` bzw. seit V-0357
-   `{s:'ausgefallen', grund}` (Termin, der nicht stattfand). Auch ein ✗-Block kann `nachgeholt: true` tragen: Dann ist er
+   `{s:'ausgefallen', grund}` (Termin, der nicht stattfand). Seit SP-0423 auch vorab und ohne Grund (`ausfallen()`, der
+   rote Bereich beim Ziehen, §3): Ein Termin, der ausfallen wird, zählt nicht und sperrt nichts. Auch ein ✗-Block kann `nachgeholt: true` tragen: Dann ist er
    im Modulbalken nicht mehr rot (`verpasst()`, §3).
    `erledigt_min` bucht nur ✓ und „teil“ ab; `plan_min` ist, was der Kalender als Plan trägt (vergangen ✗ nicht, eine
    gewünschte Gruppe nicht). Einheiten einer Quote (TECHGI-Quiz) bekommen `plan.ist['<element>#<nr>']`.
@@ -388,7 +389,8 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
 - **Präsenz rot umrandet, Wunsch gestrichelt, Ausfall durchgestrichen** (V-0349, Silas: *„Präsenztermine sollen im
   Planner eine leicht rote Outline bekommen, sodass man sie besser erkennt“*): Termine des Semester-Topfs tragen
   `t-praesenz` (nicht `k-praesenz` — Kachel-Klassen dürfen keine Regel ohne `.kachel` haben, Test). Eine gewünschte Gruppe
-  ohne Zuteilung trägt die Marke „Wunsch“; was ausfällt (TU geschlossen), steht blass und durchgestrichen da.
+  ohne Zuteilung trägt die Marke „Wunsch“; was ausfällt, weil die TU geschlossen ist, steht blass und durchgestrichen
+  da. Was Silas als ausgefallen meldet, steht seit SP-0423 rot da (unten, „fällt aus“).
 - **Zwei Hauptansichten** (V-0338, Silas: *„Woche und Prüfungen noch etwas prominenter oben links … die zwei
   Hauptfenster von diesem Tool“*): oben links „Woche“ und „Prüfungen“; Prüfungen erst nach dem Festlegen.
 - **Prüfungen, oben die Zeitleiste** (V-0337, umgebaut V-0338): das Semester mit Monaten, heute und den Zeiträumen
@@ -589,6 +591,26 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   (`zurueckgesetzt.tausch`), „Wiederherstellen“ holt sie, wo die Gruppe dieselbe ist. Gibt es den Termin der anderen
   Gruppe nicht mehr (Angebot geändert), liegt das Vorkommen wieder bei der eigenen, und „Offen“ meldet es
   (`tausch_fehlt`, Achtung).
+- **Präsenz nur diese Woche verlegen, und der rote Bereich „fällt aus“** (SP-0423, Silas, 21.10.: *„dass man einen
+  Präsenztermin in der Wochenansicht für eine bestimmte Woche auch verschieben kann. Und sobald man einen Termin
+  verschiebt, soll unten ein kleiner roter Bereich auftauchen, und wenn man das, was man grad verschiebt, dorthin schiebt
+  und loslässt, dann wird die Veranstaltung in der Woche als ‚Fällt aus‘ rot markiert“*): Festgelegt, in einer echten
+  Woche, trägt jede Termin-Kachel `data-ziehen="termin"` und lässt sich mit der Maus ziehen (`terminZiehen()`), wie ein
+  eigener Block seit SP-0415. Ein Klick ohne Bewegung bleibt, was er war (Bestandteil, Ausweichen, ✓/✗). Losgelassen
+  liegt nur dieses Vorkommen am neuen Platz (`verlegen()`, `plan.verlegt`). Es bleibt ein Termin seiner Reihe („13×“),
+  sperrt seinen neuen Platz, ein ✓/✗ zieht mit, und es trägt die Marke „nur diese Woche“, die zurücksetzt (dieselbe
+  Karte wie SP-0421). Wohin schon ein Termin desselben Elements gehört, geht er nicht (seine Id gäbe es zweimal;
+  `verlegt_fehlt`, falls doch); einen anderen Termin darf er treffen, die Meldung sagt es. Ein getauschter Termin
+  (SP-0421), gezogen, ist danach verlegt, nicht mehr getauscht. Die Standardwoche zählt ihn an seinem Platz.
+  **Sobald ein Termin am Zeiger hängt, steht unten ein roter Bereich** (`#ausfall-zone`, fest am unteren Fensterrand,
+  mittig unter dem Raster). Darüber steht die Kachel wieder an ihrem Platz und sieht schon aus wie „fällt aus“.
+  Losgelassen trägt `ausfallen()` `{s: 'ausgefallen'}` in `plan.ist` ein. Der Termin steht dann rot an seinem Platz
+  (`faellt-aus`: rote Fläche, rot gestrichelt, Titel durchgestrichen, Marke „fällt aus“, am Telefon „aus“). Er zählt
+  nicht, sperrt nichts, braucht keine Fahrzeit (`rasterZeichnen()`) und fehlt im Kalender-Abo. Ein Tipp auf die Marke
+  öffnet „Fällt aus“ (`ausfallKarte()`) mit „Findet doch statt“ und einem Feld für den Grund (vorab freiwillig, in der
+  Ist-Karte Pflicht). Ein ausgefallener Termin, an einen neuen Platz gezogen, findet dort statt. Esc bricht das Ziehen
+  ab, ⌘Z macht rückgängig. Wer die Gruppe wechselt, verliert mit den Täuschen auch die verlegten Termine der alten
+  Gruppe. In der Standardwoche und am Telefon zieht man keine Termine.
 - **Ein Modul anklicken** (V-0356, Silas: *„wenn man ein Modul anklickt, egal in welchem Schritt, dann sollen alle Blöcke,
   die diesem Modul zugeordnet sind, aufleuchten … die Vorlesung, Vor- und Nachbereitung, die Videos, Übungen, Tutorium“*):
   Der Kopf eines Moduls (eingeklappt oder offen) lässt alles, was das Raster von ihm zeigt, aufleuchten (`m-hell`, kurz
@@ -765,7 +787,8 @@ Ein **Stand** ist ein JSON-Dokument `{schema: 1, version, geaendert, angebot, pl
   teil|null, tag | datum, start, ende, ab?, bis?, pause?, alle?, versatz?, ohne? [Montag] (Wochen, die die Reihe
   auslässt), serie? (aus welcher Reihe einzeln verschoben), titel?, aus? (verschoben von), vorschlag? (aus dem
   Vorschlag übernommen)}]`, `tausch {vorkommen-id der gewählten Gruppe: {option, datum, start: "HH:MM"}}` (nur diese
-  Woche bei einer anderen Gruppe, SP-0421), `bestaetigt {annahme-id: true}`, `festgelegt` (Zeitpunkt), `mittag {datum:
+  Woche bei einer anderen Gruppe, SP-0421), `verlegt {vorkommen-id: {datum, start: "HH:MM", ende: "HH:MM"}}` (nur
+  diese Woche an einem anderen Platz, SP-0423; der Schlüssel ist das ursprüngliche Vorkommen), `bestaetigt {annahme-id: true}`, `festgelegt` (Zeitpunkt), `mittag {datum:
   "HH:MM"}`, `fahrt {datum: {hin?: "HH:MM", zurueck?: "HH:MM"}}` (SP-0418), `zurueckgesetzt {am, ab, wahl, bloecke, tausch?}`. Nicht mehr gelesen: `umwidmungen` (seit V-0349 ersetzt G5 sie),
   `lernplan: true` an alten Blöcken.
 - `pruefeAngebot()` lehnt ab, was formal nicht stimmt (doppelte Ids, unbekannte Art oder Topf, kaputtes Muster); die
@@ -782,8 +805,8 @@ Die Richtung ist **Study OS → Stundenplanner**: Das Study OS liest, der Stunde
   `<prüfung>@<datum>`), `schicht` (A/B/C/D/R), `quelle`, `art`, `modul`, `modulnummer`, `titel` („TECHGI · VL“), `datum`,
   `bis`, `start`/`ende` als ISO mit Zeitzone (`2026-10-29T12:15:00+01:00`), `ganztag`, `uhrzeit` (Fristen mit
   Zeitpunkt), `ort`, `online`, `wichtig` (bei einer Prüfung: dieser Termin gilt), `unsicher`, `teil`, `zaehlt_min`,
-  `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den Kalender-Abos), `ist` (Lebenslauf), `einzeln` (nur in dieser Woche verschoben, SP-0416, oder bei einer anderen Gruppe, SP-0421 — dann `sonst {datum, start,
-  ende}`: wo der Termin sonst liegt). Die Fristen der
+  `flags`, `ausgefallen` (TU geschlossen, abgesagt — fehlt in den Kalender-Abos), `ist` (Lebenslauf), `einzeln` (nur in dieser Woche verschoben, SP-0416, bei einer anderen Gruppe, SP-0421, oder verlegt, SP-0423, dann
+  zusätzlich `verlegt: true` — bei beiden Terminen `sonst {datum, start, ende}`: wo der Termin sonst liegt). Die Fristen der
   Prüfungen (Verweise nach § 63) kommen mit (`<prüfung>-anmeldung`). Die Ereignisse rechnen ohne `heute` (wie seit V-0321).
 - **`pruefungen[]`** (SP-0412, Silas, 17.10.: *„die Termine und Intervalle und auch die Daten vom Prüfungstab“*) ist der
   Reiter „Prüfungen“ als Daten, aus `pruefungenExport(rechnen(…, { heute }))` mit dem Berliner Tag (`heute`): je Prüfung
