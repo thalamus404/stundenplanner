@@ -357,7 +357,8 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   „Wiederherstellen“).
 - **Festgelegt** ruhen die Schritte: „Stundenplan festgelegt am …“ und **Stundenplan bearbeiten** (welcher Schritt?).
   Reiter *Woche* (Semester-Topf), *Prüfungen* (Prüfungs-Topf, §2.6–2.7), dazu *Offen*, *Abgleich*, *So wird
-  gerechnet*.
+  gerechnet*. Diese Zeile ist seit SP-0424 zugeklappt, bis man „✓ Festgelegt“ neben dem Titel antippt (unten, „Am
+  Surface und am MacBook“).
 - **Festgelegt, links je Modul** (V-0349): die Töpfe („Semester 107,5 h · Prüfungen 72,5 h“) und darunter die Elemente
   **nach Posten der Aufwandstabelle** — je Posten Titel, Kontingent und das Ergebnis des Abgleichs als Chip (passt, +30 h,
   −6,5 h, offen); je Element ein Chip mit seinem Weg durch den Baum („fest · 15×, 1 fällt aus“, „Info fehlt · bis
@@ -707,11 +708,12 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   - **Zugeklappt:** die Legende („Legende zeigen“) und die Semester-Übersicht („Zeigen“, gemerkt als
     `ansicht.leisteHandy`). Werkzeugzeile in einer Zeile (Zurücksetzen und Rückgängig nur als Symbol), Umschalter und
     Wochenwahl je über die volle Breite, ohne die Überschrift „Standardwoche“ (der Umschalter sagt es), Bilanz ohne
-    „erledigt zählt erst mit ✓“, der Plan ohne Studiengang, festgelegt „Festgelegt am … [Bearbeiten]“ in einer Zeile.
+    „erledigt zählt erst mit ✓“, der Plan ohne Studiengang, festgelegt nur „✓ Festgelegt“ über den Zahlen der Woche
+    (aufgeklappt „Festgelegt am … [Bearbeiten]“ in einer Zeile, SP-0424).
   - **Karten** (✓/✗, Block bearbeiten, Lerntag) kommen als Blatt von unten über die volle Breite, mit Schleier.
   - Am Rechner ändert sich nichts (865 und 1440 px pixelgleich gegen V-0361). Ein Tipp legt den hängenden Block ab
     (auch er nicht auf Präsenz). Die Schritte zeigen nur den gezeigten mit Namen, die anderen mit Nummer und Stand.
-  - **Messen:** `python3 ops/sicht_silas.py` — 32 Ansichten; Befund, wenn die Seite oder das Raster seitlich
+  - **Messen:** `python3 ops/sicht_silas.py` — 32 Ansichten am Telefon (dazu 18 am Rechner, SP-0424, unten); Befund, wenn die Seite oder das Raster seitlich
     übersteht, `#dran` nicht direkt über dem Raster steht, die Übersicht aufgeklappt ist oder ein Schritt über 4 000 px
     lang wird. Gegen den Stand vor V-0391 meldet sie 52 Befunde.
 - **Am Surface Pro 11, im größten Browserfenster** (SP-0411, Silas, 16.10.: *„dass es da auch perfekt aussieht und dass
@@ -722,7 +724,7 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   Jetzt, auf jeder Breite:
   - **Die Legende ist zugeklappt**, bis Silas sie aufklappt, und bleibt so (`ansicht.legende`, im Browser gemerkt).
   - **Festgelegt** steht kurz da („✓ Festgelegt am … [Bearbeiten]“) und teilt die Zeile mit Offen, Abgleich, So wird
-    gerechnet, Zurücksetzen.
+    gerechnet, Zurücksetzen. Seit SP-0424 ist diese Zeile zugeklappt (unten).
   - **Die Semester-Leiste rechts** klappt auf eine Schiene, die „Semester“ sagt (`ansicht.leiste`); eingeklappt hat
     das Raster bei 1440 px rund 190 px je Tag, und die Kacheln zeigen Titel, Zeit und Raum ganz.
   - **Das Wochenende an der Seite** (SP-0417, Silas, 17.10.: *„da an der Seite, wo man auch das Semester aufklappen
@@ -736,6 +738,32 @@ Dauer je Einheit (`einheiten.dauer_min`) — änderbar unter „Offen“. `lueck
   - „Analytics“ unten links deckt bis zur Kante; die Hauptreiter sagen „Topf 632 h“ und „Topf 268 h“.
   - Unter „Prüfungen“ sagt eine Zeile, wenn für eine Prüfung mehr gelegt ist als ihr Kontingent (`zu_viel_min`, §2.9).
   Das Raster hat so bei 1440 × 830 rund 40 px je Stunde (mit Leiste), 865 px und das Telefon bleiben, wie sie waren.
+- **Am Surface und am MacBook, noch einmal** (SP-0424, Silas, 21.10.: *„nochmal aufs surface (zusätzlich zu macbook)
+  screen optimieren? Um mehr platz zu haben …“*). Gemessen mit seinem Stand vorher: Bei 1440 × 830 hatte das Raster
+  390 px (32 px je Stunde), darüber standen 82 px Ganztägiges (vier Zeilen am Montag) und 118 px Kopf; im halben
+  MacBook-Fenster (865 × 1021) begann das Raster erst bei 460 px, unter 188 px Kopf. Jetzt, auf jeder Breite:
+  - **Je Tag höchstens ein Ganztägiges** über dem Raster, das wichtigste (Prüfung, wichtige Frist, Frist, Einzeltermin,
+    Freigabe, Ausweichtermin, Rahmen), darunter **„+n“**. Mit der Maus zeigt schon das Darüberfahren die übrigen ALLER
+    Tage der Woche in einem Feld, das über dem Raster aufgeht (das Raster springt nicht); ein Tipp oder Klick hält es
+    offen, bis man daneben tippt, Esc drückt oder die Woche wechselt (`Z.ganztagAuf`, `ganztagAuf()`). Kein :hover:
+    Am Touchschirm bliebe es kleben.
+  - **„Festgelegt am … · Bearbeiten · Offen · Abgleich · So wird gerechnet · Zurücksetzen“ ist zugeklappt.** Neben dem
+    Titel steht „✓ Festgelegt ▾“ (mit der Zahl von „Offen“, wenn dort etwas ist); es klappt die Zeile auf, der Pfeil am
+    Ende der Zeile wieder zu (`ansicht.festAuf`). Unter Offen, Abgleich und So wird gerechnet steht sie immer da.
+  - **Die linke Spalte klappt ein** wie die Semester-Leiste rechts (`ansicht.linksZu`, Knopf neben „Woche/Prüfungen“),
+    standardmäßig ausgeklappt. Eingeklappt ist sie eine Schiene von 44 px: „Menü“ klappt aus, darunter „Woche“ und
+    „Prüfungen“, damit die zwei Hauptansichten einen Klick entfernt bleiben. Am Telefon gibt es das nicht.
+  - **Der Titel der Woche in zwei Zeilen statt drei bis vier:** oben Titel, „✓ Festgelegt“, Standardwoche/Echte Woche
+    und die Wochenwahl, darunter über die volle Breite die Zahlen der Woche mit Rückgängig und „n× ✓“ (ab 821 px).
+  - **Schmalere Seiten** zwischen 1281 und 1599 px (links 292, rechts 312 px), damit diese obere Zeile in die Mitte
+    passt; unter 1280 px tragen die zwei Reiter links nur Wort und Topf. „Legende zeigen“ steht am Ende der Zeile
+    „noch nicht im Plan“, wenn dort etwas steht.
+  - **Messen:** `python3 ops/sicht_silas.py` misst dazu 1440 × 830, 865 × 1021 und 1728 × 1000 (18 Ansichten): nichts
+    scrollt seitlich, ab 1101 px auch nicht nach unten, das Raster hat dort ≥ 38 px je Stunde, je Tag ein Ganztägiges
+    mit „+n“, das beim Darüberfahren aufgeht, Festgelegt zugeklappt, die eingeklappte Spalte ≤ 44 px mit Woche und
+    Prüfungen. Gegen den Stand vor SP-0424 meldet sie 58 Befunde.
+  Mit Silas' Stand hat das Raster bei 1440 × 830 jetzt 533 px (44 px je Stunde) bei offenen Seiten, im halben
+  MacBook-Fenster beginnt es 145 px weiter oben, bei 1728 × 1000 hat es 703 statt 588 px.
 
 ## 4. Stellschrauben (`REGELN` in `grund.mjs`, im Angebot unter `regeln` überschreibbar)
 
