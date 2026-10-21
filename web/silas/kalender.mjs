@@ -54,7 +54,8 @@ export function ics(ereignisse, { kalender = 'termine', jetzt = new Date() } = {
     const beschreibung = [];
     if (e.online) beschreibung.push(e.online);
     if (e.unsicher) beschreibung.push('Angabe unsicher — prüfen');
-    if (e.einzeln) beschreibung.push(e.sonst ? `Nur in dieser Woche bei einer anderen Gruppe — sonst am ${e.sonst.datum.split('-').reverse().join('.')} um ${e.sonst.start.slice(11, 16)}` : 'Nur in dieser Woche verschoben — sonst liegt der Block an seinem Platz in der Woche');
+    // Woanders nur in dieser Woche: ein Block (SP-0416), eine andere Gruppe (SP-0421) oder ein verlegter Termin (SP-0423).
+    if (e.einzeln) beschreibung.push(e.sonst ? `Nur in dieser Woche ${e.verlegt ? 'verlegt' : 'bei einer anderen Gruppe'} — sonst am ${e.sonst.datum.split('-').reverse().join('.')} um ${e.sonst.start.slice(11, 16)}` : 'Nur in dieser Woche verschoben — sonst liegt der Block an seinem Platz in der Woche');
     if (e.zaehlt_min === 0 && e.quelle === 'block' && e.teil) beschreibung.push('Zählt nicht für die Leistungspunkte (siehe stundenplanner.de/silas)');
     z.push('BEGIN:VEVENT', `UID:${text(e.id)}@stundenplanner.de`, `DTSTAMP:${stempel}`);
     if (e.ganztag) {

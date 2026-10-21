@@ -128,6 +128,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
   const wahl = plan.wahl || {};
   const ist = plan.ist || {};
   const tausch = plan.tausch || {};
+  const verlegt = plan.verlegt || {};
   const vorkommen = [];
   const teile = new Map();
   const heute = optionen.heute || null;
@@ -161,18 +162,31 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
       quelle = option; schicht = 'B';
       annahme = !!t.zuteilung && (plan.zugeteilt || {})[t.id] !== option.id;
     }
+    // Nur in dieser Woche verlegt (SP-0423, plan.verlegt, verlegen()): Die Plätze, die das Element ohnehin hat, und die
+    // schon vergebenen — ein verlegter Termin darf keinen davon treffen, sonst gäbe es seine Id zweimal.
+    const verlegtHier = Object.keys(verlegt).some((k) => k.startsWith(`${t.id}@`));
+    const basis = verlegtHier ? new Set(muster(quelle).flatMap((mu) => termineAus(mu, sem).map((x) => `${t.id}@${x.datum}@${hhmm(x.start)}`))) : null;
+    const vergeben = new Set();
     for (const [mi, mu] of muster(quelle).entries()) {
       for (const x0 of termineAus(mu, sem)) {
         const id0 = `${t.id}@${x0.datum}@${hhmm(x0.start)}`;
+        // Nur in dieser Woche verlegt (SP-0423, Silas, 21.10.: „dass man einen Präsenztermin in der Wochenansicht für
+        // eine bestimmte Woche auch verschieben kann“): Das Vorkommen liegt an dem Platz, an den Silas es gezogen hat,
+        // und bleibt ein Termin seiner Reihe. Trifft der Platz einen anderen Termin desselben Elements, gilt er nicht.
+        const vl = verlegtGueltig(verlegt[id0]) ? verlegt[id0] : null;
+        const vid = vl ? `${t.id}@${vl.datum}@${vl.start}` : null;
+        const vlFrei = !!vl && vid !== id0 && !basis.has(vid) && !vergeben.has(vid);
+        if (vl && vid !== id0 && !vlFrei) flagge(z, 'verlegt_fehlt', `${t.titel}: Der Termin vom ${datumKurz(x0.datum)} ist auf einen anderen Termin desselben Elements verlegt — er liegt wieder an seinem Platz`, { stufe: 'achtung', datum: x0.datum });
         // Nur in dieser Woche bei einer anderen Gruppe (SP-0421, plan.tausch, tauschen()): Das Vorkommen der gewählten
         // Gruppe liegt dann am Termin der anderen. Gibt es den Termin nicht mehr (Angebot geändert), bleibt es an
-        // seinem Platz, und eine Meldung sagt es.
-        const ts = option ? tausch[id0] : null;
+        // seinem Platz, und eine Meldung sagt es. Verlegt geht vor (verlegen() nimmt den Tausch ohnehin heraus).
+        const ts = option && !vlFrei ? tausch[id0] : null;
         const ziel = ts ? tauschZiel(t, ts, sem) : null;
         if (ts && !ziel) flagge(z, 'tausch_fehlt', `${t.titel}: Der Tausch am ${datumKurz(x0.datum)} passt zu keinem Termin mehr — der Termin liegt wieder an seinem Platz`, { stufe: 'achtung', datum: x0.datum });
-        const x = ziel ? ziel.x : x0;
+        const x = vlFrei ? { ...x0, datum: vl.datum, start: min(vl.start), ende: min(vl.ende) } : ziel ? ziel.x : x0;
         const q = ziel ? ziel.option : quelle;
-        const id = ziel ? `${t.id}@${x.datum}@${hhmm(x.start)}` : id0;
+        const id = vlFrei ? vid : ziel ? `${t.id}@${x.datum}@${hhmm(x.start)}` : id0;
+        vergeben.add(id);
         const ort = x.ort || q.ort || t.ort || null;
         const ausgefallen = istGeschlossen(sem, x.datum) && !nurOnline(ort) ? 'geschlossen' : (istEintrag(ist[id]) || {}).s === 'ausgefallen' ? 'gemeldet' : null;
         // hart: Auf einem Termin kann kein Block liegen (Silas, 11.10.: „die Sachen sind ganz sicher geblockt“).
@@ -183,6 +197,7 @@ export function rechnen(angebot, plan = {}, optionen = {}) {
           titel: x.titel, ct: t.ct !== false, zaehlt_min: 0, flags: [], mit: [],
           herkunft: x.quelle || q.quelle || t.quelle || null, unsicher: !!x.unsicher,
           tausch: ziel ? { von: id0, option: option.id, datum: x0.datum, start: x0.start, ende: x0.ende } : null,
+          verlegt: vlFrei ? { von: id0, datum: x0.datum, start: x0.start, ende: x0.ende } : null,
         };
         vorkommen.push(v); z.vk.push(v);
       }
@@ -700,7 +715,9 @@ export function ausweichTermine(erg, vkId) {
     for (const mu of muster(o)) {
       for (const x of termineAus(mu, erg.sem)) {
         if (x.datum < von || x.datum > bis || da.has(`${x.datum}@${x.start}`)) continue;
-        const zurueck = !!v.tausch && o.id === eigen && x.datum === v.tausch.datum && x.start === v.tausch.start;
+        // Getauscht oder verlegt (SP-0423): Der eigene Platz steht als „zurück“ da.
+        const her = v.tausch || v.verlegt;
+        const zurueck = !!her && o.id === eigen && x.datum === her.datum && x.start === her.start;
         if (o.id === eigen && !zurueck) continue;
         const ort = x.ort || o.ort || z.teil.ort || null;
         if (istGeschlossen(erg.sem, x.datum) && !nurOnline(ort)) continue;
@@ -718,11 +735,14 @@ export function ausweichTermine(erg, vkId) {
  *  Rein: der neue Plan. */
 export function tauschen(plan, teil, von, ziel) {
   const neu = JSON.parse(JSON.stringify(plan || {}));
-  const t = { ...(neu.tausch || {}) };
-  const jetzt = t[von] ? `${teil}@${t[von].datum}@${t[von].start}` : von;
+  const t = { ...(neu.tausch || {}) }, vl = { ...(neu.verlegt || {}) };
+  const jetzt = vl[von] ? `${teil}@${vl[von].datum}@${vl[von].start}` : t[von] ? `${teil}@${t[von].datum}@${t[von].start}` : von;
   const dann = ziel ? `${teil}@${ziel.datum}@${ziel.start}` : von;
   if (ziel) t[von] = { option: ziel.option, datum: ziel.datum, start: ziel.start }; else delete t[von];
+  // Ein verlegter Termin (SP-0423) ist danach getauscht oder wieder an seinem Platz — nie beides.
+  delete vl[von];
   if (Object.keys(t).length) neu.tausch = t; else delete neu.tausch;
+  if (Object.keys(vl).length) neu.verlegt = vl; else delete neu.verlegt;
   if (neu.ist && jetzt in neu.ist && jetzt !== dann) {
     const ist = { ...neu.ist };
     ist[dann] = ist[jetzt]; delete ist[jetzt]; neu.ist = ist;
@@ -730,10 +750,55 @@ export function tauschen(plan, teil, von, ziel) {
   return neu;
 }
 
-/** Die Täusche eines Teils (SP-0421) — sie gelten nur für seine gewählte Gruppe; wer umwählt, verliert sie. */
-export function tauschVon(plan, teil) {
-  return Object.fromEntries(Object.entries((plan && plan.tausch) || {}).filter(([id]) => id.startsWith(`${teil}@`)));
+/** Ein Eintrag in plan.verlegt (SP-0423), der sich rechnen lässt: { datum, start: "HH:MM", ende: "HH:MM" }. */
+function verlegtGueltig(vl) {
+  const zeit = (s) => typeof s === 'string' && /^\d{2}:\d{2}$/.test(s);
+  return !!vl && istDatum(vl.datum) && zeit(vl.start) && zeit(vl.ende) && min(vl.start) < min(vl.ende);
 }
+
+/** Einen Termin nur in dieser Woche an einen anderen Platz legen (SP-0423, Silas, 21.10.: „dass man einen
+ *  Präsenztermin in der Wochenansicht für eine bestimmte Woche auch verschieben kann“) — oder mit ziel null, oder dem
+ *  ursprünglichen Platz als Ziel, zurück. `von` ist die Id des ursprünglichen Vorkommens (`v.verlegt.von`,
+ *  `v.tausch.von` oder `v.id`), `ziel` { datum, start: "HH:MM", ende: "HH:MM" }. Ein Tausch derselben Woche (SP-0421)
+ *  weicht. Ein Eintrag im Lebenslauf zieht mit, auch „fällt aus“ (ausfallen() nimmt es weg). Rein: der neue Plan. */
+export function verlegen(plan, von, ziel) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  const teil = von.split('@')[0];
+  const vl = { ...(neu.verlegt || {}) }, ts = { ...(neu.tausch || {}) };
+  const jetzt = vl[von] ? `${teil}@${vl[von].datum}@${vl[von].start}` : ts[von] ? `${teil}@${ts[von].datum}@${ts[von].start}` : von;
+  const dann = ziel ? `${teil}@${ziel.datum}@${ziel.start}` : von;
+  if (ziel && dann !== von) vl[von] = { datum: ziel.datum, start: ziel.start, ende: ziel.ende }; else delete vl[von];
+  delete ts[von];
+  if (Object.keys(vl).length) neu.verlegt = vl; else delete neu.verlegt;
+  if (Object.keys(ts).length) neu.tausch = ts; else delete neu.tausch;
+  if (neu.ist && jetzt in neu.ist && jetzt !== dann) {
+    const ist = { ...neu.ist };
+    ist[dann] = ist[jetzt]; delete ist[jetzt]; neu.ist = ist;
+  }
+  return neu;
+}
+
+/** Fällt aus, nur in dieser Woche (SP-0423, Silas, 21.10.: „wenn man das, was man grad verschiebt, dorthin schiebt und
+ *  loslässt, dann wird die Veranstaltung in der Woche als ‚Fällt aus‘ rot markiert“): der Lebenslauf eines Termins,
+ *  `{ s: 'ausgefallen' }` (mit Grund, wenn einer genannt ist) — derselbe Eintrag wie „… ausgefallen“ in der Ist-Karte
+ *  (V-0357), nur auch vorab. Er zählt nicht, sperrt nichts und fehlt im Kalender-Abo. Mit an false findet der Termin
+ *  doch statt: Ein „ausgefallen“ geht, jeder andere Eintrag bleibt. Rein: der neue Plan. */
+export function ausfallen(plan, vkId, an = true, grund = null) {
+  const neu = JSON.parse(JSON.stringify(plan || {}));
+  const ist = { ...(neu.ist || {}) };
+  if (an) ist[vkId] = grund ? { s: 'ausgefallen', grund } : { s: 'ausgefallen' };
+  else if ((istEintrag(ist[vkId]) || {}).s === 'ausgefallen') delete ist[vkId];
+  if (Object.keys(ist).length) neu.ist = ist; else delete neu.ist;
+  return neu;
+}
+
+/** Was in einem Teil nur in einer Woche gilt (SP-0421, SP-0423): die Täusche und die verlegten Termine. Beide hängen an
+ *  den Terminen der gewählten Gruppe; wer umwählt, verliert sie. */
+export function nurDieseWocheVon(plan, teil) {
+  const von = (x) => Object.keys((plan && plan[x]) || {}).filter((id) => id.startsWith(`${teil}@`));
+  return { tausch: von('tausch'), verlegt: von('verlegt') };
+}
+
 
 /** Einen Block löschen — eine Reihe mit allem, was einzeln aus ihr verschoben wurde (`serie`, SP-0414): Es sind ihre
  *  Vorkommen, nur an anderer Stelle. */
@@ -1182,16 +1247,19 @@ export function standardwoche(angebot, plan, erg) {
     const quelle = istWahl(t) ? (t.optionen || []).find((o) => o.id === wahl[t.id]) : t;
     if (!quelle) continue;
     for (const mu of muster(quelle)) {
+      // Ein Termin, der nur in einer Woche woanders liegt (SP-0421 getauscht, SP-0423 verlegt), gehört weiter zu seinem
+      // Muster: Gezählt und eingeordnet wird er an seinem ursprünglichen Platz.
+      const her = (v) => v.verlegt || v.tausch || v;
       const vk = z.vk.filter((v) => !v.ausgefallen && (mu.typ === 'serie'
-        ? wochentag(v.datum) === TAGE.indexOf(mu.tag) && v.start === min(mu.start)
-        : (mu.daten || []).some((x) => x.datum === v.datum)));
+        ? wochentag(her(v).datum) === TAGE.indexOf(mu.tag) && her(v).start === min(mu.start)
+        : (mu.daten || []).some((x) => x.datum === her(v).datum)));
       // Ein, zwei Einzeltermine (der Kick-off) sind kein Wochenmuster: Sie stehen rechts und in der echten Woche. Eine
       // Reihe seltener als jede zweite Vorlesungswoche (BuK-VL 6×, EINFWI-Übung 5×) gehört nicht zum Gerüst (V-0354,
       // Silas: „In der Woche-Ansicht entsteht das Grundgerüst mit allen Terminen, die mindestens alle 2 Wochen regulär
       // stattfinden“) — sie steht als Umriss da (unregel), weil sie den Platz an ihren Tagen trotzdem sperrt.
       if (!vk.length || (mu.typ === 'reihe' && vk.length < 3)) continue;
       const unregel = mu.typ === 'reihe' && vk.length < regelmaessigAb(erg);
-      const platz = mu.typ === 'serie' ? { tag: TAGE.indexOf(mu.tag), start: min(mu.start), ende: min(mu.ende) } : typischerPlatz(vk);
+      const platz = mu.typ === 'serie' ? { tag: TAGE.indexOf(mu.tag), start: min(mu.start), ende: min(mu.ende) } : typischerPlatz(vk.map(her));
       kacheln.push({
         art: 'termin', schicht: istWahl(t) ? 'B' : 'A', teil: t.id, modul: m.id, option: quelle === t ? null : quelle.id,
         ...platz, ort: mu.ort || quelle.ort || t.ort || null, reihe: mu.typ === 'reihe', anzahl: vk.length, vk,
@@ -1341,10 +1409,12 @@ export function ereignisse(angebot, plan, optionen = {}) {
       datum: v.datum, bis: v.bis || null, ort: v.ort || null, online: v.online || null,
       ganztag: !!v.ganztag || v.start == null, wichtig: !!v.wichtig, unsicher: !!v.unsicher,
       teil: v.teil || null, zaehlt_min: v.zaehlt_min, flags: v.flags, ausgefallen: v.ausgefallen || null, ist: v.ist || null,
-      einzeln: !!v.serie || !!v.tausch,
+      einzeln: !!v.serie || !!v.tausch || !!v.verlegt,
     };
-    // Nur in dieser Woche bei einer anderen Gruppe (SP-0421): wo der Termin sonst liegt.
-    if (v.tausch) e.sonst = { datum: v.tausch.datum, start: isoZeit(v.tausch.datum, v.tausch.start), ende: isoZeit(v.tausch.datum, v.tausch.ende) };
+    // Nur in dieser Woche bei einer anderen Gruppe (SP-0421) oder verlegt (SP-0423, `verlegt: true`): wo der Termin sonst liegt.
+    const her = v.tausch || v.verlegt;
+    if (her) e.sonst = { datum: her.datum, start: isoZeit(her.datum, her.start), ende: isoZeit(her.datum, her.ende) };
+    if (v.verlegt) e.verlegt = true;
     if (!e.ganztag) { e.start = isoZeit(v.datum, v.start); e.ende = isoZeit(v.datum, v.ende ?? v.start); }
     if (v.punkt != null) e.uhrzeit = hhmm(v.punkt);
     return e;
